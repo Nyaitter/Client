@@ -21,7 +21,7 @@
         // 設定画面の「リンク」に表示するリソースです。
         resourceLinks: [
             {
-                name: 'Nyaitter GitHubリポジトリ',
+                name: 'Github',
                 url: 'https://github.com/Nyaitter',
             },
         ],
