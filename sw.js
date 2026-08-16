@@ -55,6 +55,17 @@ function getSafeNotificationUrl(value) {
   }
 }
 
+function getSafePushIconUrl(value) {
+  try {
+    const url = new URL(value || '/pwa-icon-192.png', self.location.origin);
+    const isHttp = url.protocol === 'http:' || url.protocol === 'https:';
+    const isSafeHttp = url.protocol === 'https:' || url.origin === self.location.origin;
+    return isHttp && isSafeHttp ? url.href : new URL('/pwa-icon-192.png', self.location.origin).href;
+  } catch (_) {
+    return new URL('/pwa-icon-192.png', self.location.origin).href;
+  }
+}
+
 function parsePushIdentifier(value, minimum) {
   if (
     (typeof value !== 'number' && typeof value !== 'string') ||
@@ -144,7 +155,7 @@ self.addEventListener('push', (event) => {
   }
 
   const title = String(payload.title || 'Nyaitter').slice(0, 80);
-  const iconUrl = typeof payload.icon === 'string' && payload.icon.startsWith('/') ? payload.icon : '/pwa-icon-192.png';
+  const iconUrl = getSafePushIconUrl(payload.icon);
   const options = {
     body: String(payload.body || '新しい通知があります').slice(0, 240),
     icon: iconUrl,
