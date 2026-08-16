@@ -1,11 +1,13 @@
+const { apiUrl, userFileUrl } = globalThis.NyaitterClientConfig;
+
 export async function apiRequest(path, { method = 'GET', body } = {}) {
     const headers = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     try {
-        const response = await fetch(path, {
+        const response = await fetch(apiUrl(path), {
             method,
             headers,
-            credentials: 'same-origin',
+            credentials: 'include',
             body: body === undefined ? undefined : JSON.stringify(body),
         });
         const payload = await response.json().catch(() => ({}));
@@ -483,14 +485,16 @@ export const api = (() => {
         storage: {
             from: () => ({
                 getPublicUrl: (id) => ({
-                    data: { publicUrl: `/uploads/${encodeURIComponent(id)}` },
+                    data: {
+                        publicUrl: userFileUrl(id),
+                    },
                 }),
             }),
         },
         functions: {
             invoke: async (name, { body }) => {
                 if (name === 'delete-files')
-                    return apiRequest('/server/api/posts/uploads', {
+                    return apiRequest('/server/api/uploads', {
                         method: 'DELETE',
                         body:
                             typeof body === 'string' ? JSON.parse(body) : body,

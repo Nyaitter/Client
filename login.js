@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const AUTH_API = '/server/auth';
+  const { apiUrl } = globalThis.NyaitterClientConfig;
+  const AUTH_API = apiUrl('/server/auth');
   const NYAITTER_ADDRESS_PATTERN = /^#\d{1,16}@[A-Za-z0-9.-]+(?::\d{1,5})?$/;
 
   const loginModal = document.getElementById('login-modal');
@@ -98,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const response = await fetch(`${AUTH_API}/login-approvals/${encodeURIComponent(approvalId)}/poll`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
+          credentials: 'include',
           body: JSON.stringify({ approval_token: approvalToken }),
         });
         const data = await response.json().catch(() => ({}));
@@ -243,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(`${AUTH_API}/external/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
+        credentials: 'include',
         body: JSON.stringify({ state, proof }),
       });
       let data = await response.json().catch(() => ({}));
@@ -265,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const response = await fetch(`${AUTH_API}/external/init`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
+      credentials: 'include',
       body: JSON.stringify({ nyaitter_address: nyaitterAddress }),
     });
     const data = await response.json().catch(() => ({}));
@@ -297,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(`${AUTH_API}/scratch/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
+        credentials: 'include',
         body: JSON.stringify({ type: 'generateCode', username: scratchUsername }),
       });
       const data = await response.json().catch(() => ({}));
@@ -337,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(`${AUTH_API}/scratch/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
+        credentials: 'include',
         body: JSON.stringify({
           type: 'verifyComment',
           username: scratchUsername,
@@ -456,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
       redirect: params.redirect,
     });
     const response = await fetch(`${AUTH_API}/external/confirm-context?${query.toString()}`, {
-      credentials: 'same-origin',
+      credentials: 'include',
       headers: { Accept: 'application/json' },
     });
     const data = await response.json().catch(() => ({}));
@@ -518,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(`${AUTH_API}/external/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        credentials: 'same-origin',
+        credentials: 'include',
         body: JSON.stringify({
           nyaitter_address: pendingExternalConfirm.nyaitter_address,
           state: pendingExternalConfirm.state,

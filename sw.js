@@ -1,8 +1,12 @@
 const STATIC_ASSET_PATTERN = /\.(?:html|css|js|mjs|json|webmanifest|png|jpe?g|gif|svg|ico|webp|avif|woff2?|ttf|otf)$/i;
+importScripts('./config.js');
+
+const { apiUrl } = self.NyaitterClientConfig;
 const APP_SHELL = [
   '/',
   '/index.html',
   '/style.css',
+  '/config.js',
   '/js/main.js',
   '/js/app.js',
   '/js/state.js',
@@ -61,7 +65,7 @@ function isCacheableStaticResponse(response) {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open('nyaitter-client-v2')
+    caches.open('nyaitter-client-v3')
       .then((cache) => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting()),
   );
@@ -71,7 +75,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys
-        .filter((key) => key.startsWith('nyaitter-client') && key !== 'nyaitter-client-v2')
+        .filter((key) => key.startsWith('nyaitter-client') && key !== 'nyaitter-client-v3')
         .map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
@@ -93,7 +97,7 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           if (isCacheableStaticResponse(response)) {
             const copy = response.clone();
-            caches.open('nyaitter-client-v2').then((cache) => cache.put(request.mode === 'navigate' ? '/index.html' : request, copy));
+            caches.open('nyaitter-client-v3').then((cache) => cache.put(request.mode === 'navigate' ? '/index.html' : request, copy));
           }
           return response;
         })
@@ -106,7 +110,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(request).then((cached) => cached || fetch(request).then((response) => {
       if (!isCacheableStaticResponse(response)) return response;
       const copy = response.clone();
-      caches.open('nyaitter-client-v2').then((cache) => cache.put(request, copy));
+      caches.open('nyaitter-client-v3').then((cache) => cache.put(request, copy));
       return response;
     })),
   );
@@ -162,7 +166,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     try {
       let subscription = event.newSubscription;
       if (!subscription) {
-        const configResponse = await fetch('/server/api/push/config', { credentials: 'same-origin' });
+        const configResponse = await fetch(apiUrl('/server/api/push/config'), { credentials: 'include' });
         if (!configResponse.ok) return;
         const config = await configResponse.json();
         if (!config.enabled || !config.vapid_public_key) return;
@@ -172,9 +176,9 @@ self.addEventListener('pushsubscriptionchange', (event) => {
         });
       }
 
-      await fetch('/server/api/push/subscriptions', {
+      await fetch(apiUrl('/server/api/push/subscriptions'), {
         method: 'POST',
-        credentials: 'same-origin',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ subscription: subscription.toJSON() }),
       });

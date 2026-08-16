@@ -3,7 +3,13 @@ import { api, apiRequest } from './api.js';
 import { renderLimitedMarkdown } from './safeMarkdown.js';
 import { ICONS } from './icons.js';
 import { DOM, showMainJsError } from './dom.js';
-import { RESOURCE_LINKS, WIDGET_LINKS } from './linkSettings.js';
+
+const {
+    apiUrl,
+    apiWebSocketUrl,
+    resourceLinks: RESOURCE_LINKS,
+    widgetLinks: WIDGET_LINKS,
+} = globalThis.NyaitterClientConfig;
 
 const {
     getSelectedFiles,
@@ -1399,6 +1405,15 @@ export function initApp() {
     }
 
     function getUserIconUrl(user) {
+        const iconData = typeof user?.icon_data === 'string' ? user.icon_data.trim() : '';
+        if (iconData) {
+            if (/^https?:\/\//i.test(iconData)) {
+                return getSafeHttpUrl(iconData) || '/logo.png';
+            }
+            const configuredUrl = globalThis.NyaitterClientConfig.userFileUrl(iconData);
+            if (configuredUrl) return configuredUrl;
+        }
+
         const userId = Number(user?.id);
         return Number.isInteger(userId) && userId > 0
             ? `/server/api/users/${encodeURIComponent(userId)}/icon`
@@ -4373,7 +4388,7 @@ export function initApp() {
             reader.onerror = () => reject(reader.error);
             reader.readAsDataURL(file);
         });
-        const { data, error } = await apiRequest('/server/api/posts/uploads', {
+        const { data, error } = await apiRequest('/server/api/uploads', {
             method: 'POST',
             body: { file: base64, fileName: file.name, contentType: file.type },
         });
@@ -4398,7 +4413,7 @@ export function initApp() {
     async function deleteFilesViaEdgeFunction(fileIds) {
         if (!fileIds || fileIds.length === 0) return;
 
-        const { error } = await apiRequest('/server/api/posts/uploads', {
+        const { error } = await apiRequest('/server/api/uploads', {
             method: 'DELETE',
             body: { fileIds },
         });
@@ -6611,7 +6626,7 @@ export function initApp() {
 	                                <div class="settings-bot-docs-section">
 	                                    <h4 style="margin-top: 1.5rem; font-size: 1rem;">APIの使い方</h4>
 	                                    <p class="settings-help-text">HTTPリクエストの <code>Authorization</code> ヘッダー（または <code>X-API-Key</code> ヘッダー）に指定してください。トークンをURLのクエリパラメータへ含めないでください。</p>
-	                                    <pre class="settings-code-example"><code>curl -X POST ${window.location.origin}/server/api/posts \\
+	                                    <pre class="settings-code-example"><code>curl -X POST ${apiUrl('/server/api/posts')} \\
   -H "Authorization: Bearer bot_..." \\
   -H "Content-Type: application/json" \\
   -d '{"content": "Hello from Bot!"}'</code></pre>
@@ -7202,7 +7217,7 @@ export function initApp() {
             summary.textContent = 'ストレージ使用量を読み込んでいます…';
             fileList.replaceChildren();
             const { data, error } = await apiRequest(
-                '/server/api/posts/uploads/storage',
+                '/server/api/uploads/storage',
             );
             if (error) {
                 summary.textContent = 'ストレージ情報の取得に失敗しました。';
@@ -7266,7 +7281,7 @@ export function initApp() {
                         return;
                     deleteButton.disabled = true;
                     const { error: deleteError } = await apiRequest(
-                        '/server/api/posts/uploads',
+                        '/server/api/uploads',
                         {
                             method: 'DELETE',
                             body: { fileIds: [file.id] },
@@ -9620,8 +9635,8 @@ export function initApp() {
                 .from('post')
                 .update({
                     content: newContent,
-                    attachments:
-                        finalAttachments.length > 0 ? finalAttachments : null,
+                    // Serverはattachmentsを配列として検証するため、添付がない場合も空配列を送る。
+                    attachments: finalAttachments,
                     mask: maskActive,
                     lock: lockActive,
                 })
@@ -10886,10 +10901,7 @@ export function initApp() {
         if (getRealtimeChannel()) stopRealtimeConnection();
         setRealtimeShouldReconnect(true);
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const socket = new WebSocket(
-            `${protocol}//${window.location.host}/server/realtime`,
-        );
+        const socket = new WebSocket(apiWebSocketUrl('/realtime'));
         setRealtimeChannel(socket);
         setRealtimeAuthKey(authKey);
 
