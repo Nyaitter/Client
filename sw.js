@@ -1,7 +1,27 @@
 const STATIC_ASSET_PATTERN = /\.(?:html|css|js|mjs|json|webmanifest|png|jpe?g|gif|svg|ico|webp|avif|woff2?|ttf|otf)$/i;
 importScripts('./config.js');
 
-const { apiUrl } = self.NyaitterClientConfig;
+const { apiUrl, userFileEndpoint } = self.NyaitterClientConfig;
+
+function getSameOriginEndpointPath(value) {
+  try {
+    const url = new URL(value, self.location.origin);
+    if (url.origin !== self.location.origin) return null;
+    const path = url.pathname.replace(/\/+$/, '');
+    return path || '/';
+  } catch (_) {
+    return null;
+  }
+}
+
+function matchesEndpointPath(url, endpointPath) {
+  if (!endpointPath || endpointPath === '/') return false;
+  return url.pathname === endpointPath || url.pathname.startsWith(`${endpointPath}/`);
+}
+
+const apiEndpointPath = getSameOriginEndpointPath(apiUrl('/'));
+const userFileEndpointPath = getSameOriginEndpointPath(userFileEndpoint || '');
+
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -65,7 +85,7 @@ function isCacheableStaticResponse(response) {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open('nyaitter-client-v3')
+    caches.open('nyaitter-client-v4')
       .then((cache) => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting()),
   );
@@ -75,7 +95,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys
-        .filter((key) => key.startsWith('nyaitter-client') && key !== 'nyaitter-client-v3')
+        .filter((key) => key.startsWith('nyaitter-client') && key !== 'nyaitter-client-v4')
         .map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
@@ -86,7 +106,11 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/server/') || url.pathname.startsWith('/uploads/')) {
+  if (
+    url.origin !== self.location.origin ||
+    matchesEndpointPath(url, apiEndpointPath) ||
+    matchesEndpointPath(url, userFileEndpointPath)
+  ) {
     return;
   }
 
@@ -97,7 +121,7 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           if (isCacheableStaticResponse(response)) {
             const copy = response.clone();
-            caches.open('nyaitter-client-v3').then((cache) => cache.put(request.mode === 'navigate' ? '/index.html' : request, copy));
+            caches.open('nyaitter-client-v4').then((cache) => cache.put(request.mode === 'navigate' ? '/index.html' : request, copy));
           }
           return response;
         })
@@ -106,14 +130,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      if (!isCacheableStaticResponse(response)) return response;
-      const copy = response.clone();
-      caches.open('nyaitter-client-v3').then((cache) => cache.put(request, copy));
-      return response;
-    })),
-  );
+  // APIや任意のGETリクエストをキャッシュしない。静的アセット以外は通常のネットワーク要求として処理する。
+  // apiEndpoint が / の場合でも、動的レスポンスをService Workerのキャッシュへ混入させない。
+  return;
 });
 
 self.addEventListener('push', (event) => {

@@ -1415,9 +1415,12 @@ export function initApp() {
         }
 
         const userId = Number(user?.id);
-        return Number.isInteger(userId) && userId > 0
-            ? `/server/api/users/${encodeURIComponent(userId)}/icon`
-            : '/logo.png';
+        if (Number.isInteger(userId) && userId > 0) {
+            return globalThis.NyaitterClientConfig.apiUrl(
+                `/users/${encodeURIComponent(userId)}/icon`,
+            );
+        }
+        return '/logo.png';
     }
 
     function getUserHeaderImageUrl(user) {
