@@ -11,18 +11,26 @@
 
     const CLIENT_CONFIG = {
         // Nyaitter ServerのAPIルート。静的サイトと同一オリジンで配信する場合は変更不要です。
-        apiEndpoint: '/server',
+        apiEndpoint: 'https://api.nyaitter.jp/',
 
         // ユーザーファイルの公開URLです。R2の公開ドメインなどを使う場合に指定します。
         // 例: '/uploads'、'https://media.example.com'
         // 空文字列の場合、ClientはユーザーファイルのURLを生成しません。
-        userFileEndpoint: '',
+        userFileEndpoint: 'https://files.nyaitter.jp/',
 
         // 設定画面の「リンク」に表示するリソースです。
         resourceLinks: [
             {
-                name: 'Github',
+                name: 'Nyaitter(Github)',
                 url: 'https://github.com/Nyaitter',
+            },
+            {
+                name: 'サーバー(Github)',
+                url: 'https://github.com/nyantorusabu/Server',
+            },
+            {
+                name: 'クライアント(Github)',
+                url: 'https://github.com/nyantorusabu/Client',
             },
         ],
 
