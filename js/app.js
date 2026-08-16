@@ -4913,6 +4913,8 @@ export function initApp() {
                 const repostBtn = document.createElement('button');
                 repostBtn.className = 'repost-button';
                 repostBtn.innerHTML = `${ICONS.repost} <span>---</span>`;
+                // メニュー表示と引用作成に、既に描画用に取得済みの投稿を再利用する。
+                repostBtn._nyaitterPost = actionTargetPost;
                 actionsDiv.appendChild(repostBtn);
 
                 (async () => {
@@ -8924,29 +8926,65 @@ export function initApp() {
         if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
         openPostModal({ id: postId, name: username });
     };
-    window.handleLike = async (button, postId) => {
-        if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
-        button.disabled = true;
-
+    function applyOptimisticPostToggle(button, postId, {
+        activeClass,
+        accountField,
+    }) {
         const countSpan = button.querySelector('span:not(.icon)');
-        const currentCount = parseInt(countSpan.textContent);
+        const originalCount = Number.parseInt(countSpan?.textContent, 10);
+        const wasActive = button.classList.contains(activeClass);
+        const isActive = !wasActive;
+        const currentUser = getCurrentUser();
+        const originalIds = Array.isArray(currentUser?.[accountField])
+            ? [...currentUser[accountField]]
+            : [];
+        const nextIds = new Set(originalIds.map(Number));
+        if (isActive) nextIds.add(Number(postId));
+        else nextIds.delete(Number(postId));
+
+        button.classList.toggle(activeClass, isActive);
+        if (countSpan && Number.isFinite(originalCount)) {
+            countSpan.textContent = String(Math.max(0, originalCount + (isActive ? 1 : -1)));
+        }
+        if (currentUser) currentUser[accountField] = [...nextIds];
+
+        return {
+            isActive,
+            restore() {
+                button.classList.toggle(activeClass, wasActive);
+                if (countSpan && Number.isFinite(originalCount)) {
+                    countSpan.textContent = String(originalCount);
+                }
+                if (currentUser) currentUser[accountField] = originalIds;
+            },
+            applyServerState(serverIsActive, serverIds, serverCount) {
+                button.classList.toggle(activeClass, Boolean(serverIsActive));
+                if (countSpan && Number.isFinite(Number(serverCount))) {
+                    countSpan.textContent = String(Math.max(0, Number(serverCount)));
+                }
+                if (currentUser && Array.isArray(serverIds)) currentUser[accountField] = serverIds;
+            },
+        };
+    }
+
+    window.handleLike = async (button, postId) => {
+        if (!getCurrentUser() || button.disabled) return;
+        const optimistic = applyOptimisticPostToggle(button, postId, {
+            activeClass: 'liked',
+            accountField: 'like',
+        });
+        button.disabled = true;
 
         try {
             const { data, error } = await api.rpc('handle_like', {
                 p_post_id: postId,
             });
-
             if (error) throw error;
 
-            const isLiked = data.liked;
-            getCurrentUser().like = data.updated_likes;
+            optimistic.applyServerState(data.liked, data.updated_likes, data.count);
             invalidateTimelinePageCache();
-
-            countSpan.textContent = isLiked
-                ? currentCount + 1
-                : currentCount - 1;
-            button.classList.toggle('liked', isLiked);
         } catch (e) {
+            optimistic.restore();
             console.error('いいね更新エラー:', e);
             showAppAlert('いいねの更新に失敗しました。');
         } finally {
@@ -8954,28 +8992,23 @@ export function initApp() {
         }
     };
     window.handleStar = async (button, postId) => {
-        if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+        if (!getCurrentUser() || button.disabled) return;
+        const optimistic = applyOptimisticPostToggle(button, postId, {
+            activeClass: 'starred',
+            accountField: 'star',
+        });
         button.disabled = true;
-
-        const countSpan = button.querySelector('span:not(.icon)');
-        const currentCount = parseInt(countSpan.textContent);
 
         try {
             const { data, error } = await api.rpc('handle_star', {
                 p_post_id: postId,
             });
-
             if (error) throw error;
 
-            const isStarred = data.starred;
-            getCurrentUser().star = data.updated_stars;
+            optimistic.applyServerState(data.starred, data.updated_stars, data.count);
             invalidateTimelinePageCache();
-
-            countSpan.textContent = isStarred
-                ? currentCount + 1
-                : currentCount - 1;
-            button.classList.toggle('starred', isStarred);
         } catch (e) {
+            optimistic.restore();
             console.error('お気に入り更新エラー:', e);
             showAppAlert('お気に入りの更新に失敗しました。');
         } finally {
@@ -8998,36 +9031,47 @@ export function initApp() {
         if (postContent) postContent.classList.remove('hidden');
     };
     window.handleFollowToggle = async (targetUserId, button, isLock) => {
-        if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+        if (!getCurrentUser() || button.disabled) return;
+
+        const currentUser = getCurrentUser();
+        const originalFollows = Array.isArray(currentUser.follow)
+            ? [...currentUser.follow]
+            : [];
+        const wasFollowing = button.classList.contains('follow-button-following');
+        const optimisticFollowing = !wasFollowing;
+        const followerCountSpan = document.querySelector('#follower-count strong');
+        const originalFollowerCount = Number.parseInt(followerCountSpan?.textContent, 10);
+
+        updateFollowButtonState(button, optimisticFollowing, isLock);
         button.disabled = true;
+        const nextFollows = new Set(originalFollows.map(Number));
+        if (optimisticFollowing) nextFollows.add(Number(targetUserId));
+        else nextFollows.delete(Number(targetUserId));
+        currentUser.follow = [...nextFollows];
+        if (followerCountSpan && Number.isFinite(originalFollowerCount)) {
+            followerCountSpan.textContent = String(Math.max(
+                0,
+                originalFollowerCount + (optimisticFollowing ? 1 : -1),
+            ));
+        }
 
         try {
             const { data, error } = await api.rpc('handle_follow', {
                 p_target_id: targetUserId,
             });
-
             if (error) throw error;
 
-            const isFollowing = data.following;
-            getCurrentUser().follow = data.updated_follows;
+            currentUser.follow = Array.isArray(data.updated_follows)
+                ? data.updated_follows
+                : currentUser.follow;
+            updateFollowButtonState(button, Boolean(data.following), isLock);
             invalidateTimelinePageCache();
-
-            updateFollowButtonState(button, isFollowing, isLock);
-
-            // フォロワー数を再取得（既存RPC呼び出しを継続利用）
-            const followerCountSpan = document.querySelector(
-                '#follower-count strong',
-            );
-            if (followerCountSpan) {
-                const { data: newCount, error: newCountError } = await api.rpc(
-                    'get_follower_count',
-                    {
-                        target_user_id: targetUserId,
-                    },
-                );
-                followerCountSpan.textContent = !newCountError ? newCount : '?';
-            }
         } catch (e) {
+            currentUser.follow = originalFollows;
+            updateFollowButtonState(button, wasFollowing, isLock);
+            if (followerCountSpan && Number.isFinite(originalFollowerCount)) {
+                followerCountSpan.textContent = String(originalFollowerCount);
+            }
             console.error('フォロー更新エラー:', e);
             showAppAlert('フォロー状態の更新に失敗しました。');
         } finally {
@@ -11238,13 +11282,12 @@ export function initApp() {
 
             const repostButton = target.closest('.repost-button');
             if (repostButton) {
-                api.from('post')
-                    .select('*, user(id, name, scid, icon_data, admin, verify)')
-                    .eq('id', actionTargetPostId)
-                    .single()
-                    .then(({ data }) => {
-                        if (data) openRepostModal(data, repostButton);
-                    });
+                const post = repostButton._nyaitterPost || {
+                    id: actionTargetPostId,
+                    user: { id: null, name: '', icon_data: null },
+                    content: '',
+                };
+                openRepostModal(post, repostButton);
                 return;
             }
 
