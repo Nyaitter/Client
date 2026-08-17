@@ -562,6 +562,36 @@ export function initApp() {
         }
     }
 
+    function getSavedScrollTargetY(routeKey = getScrollRouteKey()) {
+        const y = Number(getSavedScrollPositions()[routeKey]?.y);
+        return Number.isFinite(y) && y > 0 ? y : 0;
+    }
+
+    async function restoreCachedPagesUntilScrollPosition(
+        container,
+        pageCache,
+        loadCachedPage,
+    ) {
+        const targetY = getSavedScrollTargetY();
+        if (!container || !pageCache?.pages || targetY <= 0) return;
+
+        // 保存した位置を復元する前に、その位置が到達可能になるまで既読ページだけを描画する。
+        // 未取得ページはこの処理で通信せず、通常の無限スクロールに任せる。
+        const requiredHeight = targetY + Math.max(window.innerHeight || 0, 600);
+        while (pageCache.pages.has(getCurrentPagination().page)) {
+            const pageHeight = Math.max(
+                document.documentElement.scrollHeight || 0,
+                document.body?.scrollHeight || 0,
+            );
+            if (pageHeight >= requiredHeight) break;
+
+            const previousPage = getCurrentPagination().page;
+            const restored = await loadCachedPage();
+            if (!restored || getCurrentPagination().page === previousPage) break;
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+    }
+
     function clearSavedScrollPosition(routeKey) {
         if (!routeKey) return;
         try {
@@ -972,13 +1002,6 @@ export function initApp() {
             });
         }
     }
-
-    const contributors = apiRequest('/server/api/contributors')
-        .then(({ data, error }) => {
-            if (error || !Array.isArray(data?.contributors)) return [];
-            return data.contributors;
-        })
-        .catch(() => []);
 
     let customEmojiIds = [];
     const custom_emoji = fetch('/emoji/list.json', {
@@ -4550,6 +4573,7 @@ export function initApp() {
                 if (postHeader) {
                     postHeader.querySelector('.post-menu-btn')?.remove();
                     postHeader.querySelector('.post-menu')?.remove();
+                    postHeader.classList.remove('has-post-menu');
 
                     if (
                         getCurrentUser() &&
@@ -4557,6 +4581,7 @@ export function initApp() {
                         (getCurrentUser().id === post.userid ||
                             getCurrentUser().admin)
                     ) {
+                        postHeader.classList.add('has-post-menu');
                         const menuBtn = document.createElement('button');
                         menuBtn.type = 'button';
                         menuBtn.className = 'post-menu-btn';
@@ -4635,8 +4660,10 @@ export function initApp() {
         const authorLink = document.createElement('a');
         authorLink.href = `#profile/${displayAuthor.id}`;
         authorLink.className = 'post-author';
-        authorLink.textContent = displayAuthor.name || '不明'; // 安全なtextContent
-        authorLink.innerHTML = getEmoji(authorLink.innerHTML);
+        const authorName = document.createElement('span');
+        authorName.className = 'post-author-name';
+        authorName.innerHTML = getEmoji(escapeHTML(displayAuthor.name || '不明'));
+        authorLink.appendChild(authorName);
         postHeader.appendChild(authorLink);
 
         if (displayAuthor.admin) {
@@ -4645,12 +4672,6 @@ export function initApp() {
             adminBadge.className = 'admin-badge';
             adminBadge.title = 'NyaitterTeam';
             authorLink.appendChild(adminBadge);
-        } else if ((await contributors).includes(displayAuthor.id)) {
-            const contributorBadge = document.createElement('img');
-            contributorBadge.src = 'icons/contributor.png';
-            contributorBadge.className = 'contributor-badge';
-            contributorBadge.title = '開発協力者';
-            authorLink.appendChild(contributorBadge);
         } else if (displayAuthor.verify) {
             const verifyBadge = document.createElement('img');
             verifyBadge.src = 'icons/verify.png';
@@ -4673,6 +4694,7 @@ export function initApp() {
         }
 
         if (getCurrentUser()) {
+            postHeader.classList.add('has-post-menu');
             const menuBtn = document.createElement('button');
             menuBtn.type = 'button';
             menuBtn.className = 'post-menu-btn';
@@ -6185,7 +6207,7 @@ export function initApp() {
 	                <div class="profile-info">
 	                    <h2>
 	                        ${getEmoji(escapeHTML(user.name))}
-	                        ${user.admin ? `<img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">` : (await contributors).includes(user.id) ? `<img src="icons/contributor.png" class="contributor-badge" title="開発協力者">` : user.verify ? `<img src="icons/verify.png" class="verify-badge" title="認証済み">` : ''}
+	                        ${user.admin ? `<img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">` : user.verify ? `<img src="icons/verify.png" class="verify-badge" title="認証済み">` : ''}
 	                        
 	                    </h2>
 											<div class="user-id" title="Nyaitter ID">${getNyaitterId(user)} ${user.visibility?.scid === 'public' && user.scid ? `(<a href="https://scratch.mit.edu/users/${user.scid}" class="scidlink" target="_blank" rel="noopener noreferrer">@${user.scid}</a>)` : ''}</div>
@@ -8122,8 +8144,8 @@ export function initApp() {
         trigger.className = 'load-more-trigger';
         container.appendChild(trigger);
 
-        const loadMore = async () => {
-            if (getIsLoadingMore() || !getCurrentPagination().hasMore) return;
+        const loadMore = async ({ cachedOnly = false } = {}) => {
+            if (getIsLoadingMore() || !getCurrentPagination().hasMore) return false;
 
             const currentTrigger =
                 container.querySelector('.load-more-trigger');
@@ -8142,6 +8164,7 @@ export function initApp() {
             try {
                 const pageNumber = getCurrentPagination().page;
                 let optimizedPage = postPageCache?.pages.get(pageNumber);
+                if (!optimizedPage && cachedOnly) return false;
                 if (!optimizedPage) {
                     const previousPage =
                         pageNumber > 0
@@ -8341,6 +8364,7 @@ export function initApp() {
 
                 getCurrentPagination().page++;
                 getCurrentPagination().hasMore = hasMoreItems;
+                return true;
             } catch (error) {
                 posterror = error;
                 console.error('ポストの読み込みに失敗:', error);
@@ -8399,6 +8423,11 @@ export function initApp() {
         trigger.after(load_btn);
 
         await loadMore();
+        await restoreCachedPagesUntilScrollPosition(
+            container,
+            postPageCache,
+            () => loadMore({ cachedOnly: true }),
+        );
         if (getCurrentPagination().hasMore)
             localPostLoadObserver.observe(trigger);
     }
@@ -8415,8 +8444,6 @@ export function initApp() {
         trigger.className = 'load-more-trigger';
         container.appendChild(trigger);
 
-        const _contributors = await contributors;
-
         const renderUserCard = (u) => {
             const userCard = document.createElement('div');
             userCard.className = 'profile-card widget-item';
@@ -8429,11 +8456,9 @@ export function initApp() {
 
             const badgeHTML = u.admin
                 ? ` <img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">`
-                : _contributors.includes(u.id)
-                  ? ` <img src="icons/contributor.png" class="contributor-badge" title="開発協力者">`
-                  : u.verify
-                    ? ` <img src="icons/verify.png" class="verify-badge" title="認証済み">`
-                    : '';
+                : u.verify
+                  ? ` <img src="icons/verify.png" class="verify-badge" title="認証済み">`
+                  : '';
 
             userLink.innerHTML = `
 	                <img src="${getUserIconUrl(u)}" style="width:48px; height:48px; border-radius:50%;" alt="${escapeHTML(u.name)}'s icon">
@@ -8447,8 +8472,8 @@ export function initApp() {
             return userCard;
         };
 
-        const loadMore = async () => {
-            if (getIsLoadingMore() || !getCurrentPagination().hasMore) return;
+        const loadMore = async ({ cachedOnly = false } = {}) => {
+            if (getIsLoadingMore() || !getCurrentPagination().hasMore) return false;
             setIsLoadingMore(true);
             trigger.innerHTML = '<div class="spinner"></div>';
 
@@ -8466,6 +8491,11 @@ export function initApp() {
                 users = Array.isArray(cachedPage.users) ? cachedPage.users : [];
                 hasMoreForPage = Boolean(cachedPage.hasMore);
             } else {
+                if (cachedOnly) {
+                    setIsLoadingMore(false);
+                    trigger.innerHTML = '';
+                    return false;
+                }
                 const selectColumns =
                     'id, name, me, scid, icon_data, admin, verify';
 
@@ -8529,7 +8559,7 @@ export function initApp() {
                 !options.isCurrent()
             ) {
                 setIsLoadingMore(false);
-                return;
+                return false;
             }
 
             if (error) {
@@ -8565,6 +8595,7 @@ export function initApp() {
                 }
             }
             setIsLoadingMore(false);
+            return !error;
         };
 
         setPostLoadObserver(
@@ -8579,6 +8610,11 @@ export function initApp() {
         );
 
         await loadMore();
+        await restoreCachedPagesUntilScrollPosition(
+            container,
+            userPageCache,
+            () => loadMore({ cachedOnly: true }),
+        );
         if (getCurrentPagination().hasMore)
             getPostLoadObserver().observe(trigger);
     }
