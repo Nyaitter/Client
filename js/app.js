@@ -514,6 +514,39 @@ export function initApp() {
         return profilePostPageCaches.get(pageKey);
     }
 
+    function invalidateProfileTabPageCache(userId, subpage) {
+        const normalizedUserId = Number(userId);
+        if (!Number.isInteger(normalizedUserId) || normalizedUserId < 0)
+            return;
+
+        const postSubTypeByTab = {
+            posts: 'posts_only',
+            replies: 'replies_only',
+            likes: 'likes',
+            stars: 'stars',
+        };
+        const postSubType = postSubTypeByTab[subpage];
+        const userScope = getCurrentUser()?.id ?? 'guest';
+        let changed = false;
+
+        if (postSubType) {
+            const cacheSuffix = `:${normalizedUserId}:${postSubType}:`;
+            profilePostPageCaches.forEach((_, cacheKey) => {
+                if (cacheKey.includes(cacheSuffix)) {
+                    profilePostPageCaches.delete(cacheKey);
+                    changed = true;
+                }
+            });
+        }
+
+        if (subpage === 'following' || subpage === 'followers') {
+            const cacheKey = `${userScope}:profile-users:${normalizedUserId}:${subpage}`;
+            if (userPageCaches.delete(cacheKey)) changed = true;
+        }
+
+        if (changed) persistPageCaches();
+    }
+
     function getAuxiliaryPostPageCache(cacheKey) {
         if (!auxiliaryPostPageCaches.has(cacheKey)) {
             auxiliaryPostPageCaches.set(cacheKey, { pages: new Map() });
@@ -547,6 +580,11 @@ export function initApp() {
         if (screenDataCaches.delete(cacheKey)) persistPageCaches();
     }
 
+    function getPostDetailCacheKey(postId) {
+        const userScope = getCurrentUser()?.id ?? 'guest';
+        return `${userScope}:post-detail:${postId}`;
+    }
+
     function getDmCacheKey(kind, dmId = '') {
         const userScope = getCurrentUser()?.id ?? 'guest';
         return `${userScope}:dm:${kind}:${dmId}`;
@@ -577,6 +615,12 @@ export function initApp() {
         profilePostPageCaches.clear();
         auxiliaryPostPageCaches.clear();
         userPageCaches.clear();
+        const userScope = getCurrentUser()?.id ?? 'guest';
+        const postDetailCachePrefix = `${userScope}:post-detail:`;
+        screenDataCaches.forEach((_, cacheKey) => {
+            if (cacheKey.startsWith(postDetailCachePrefix))
+                screenDataCaches.delete(cacheKey);
+        });
         // DM・ユーザー検索の画面データは投稿の変更とは独立して保持する。
         persistPageCaches();
     }
@@ -1222,6 +1266,7 @@ export function initApp() {
             'stars-screen',
             'notifications-screen',
             'profile-screen',
+            'post-detail-screen',
         ];
         const screenId = screenIds.find((id) => {
             const screen = document.getElementById(id);
@@ -1231,6 +1276,14 @@ export function initApp() {
 
         const screen = document.getElementById(screenId);
         if (!screen) return null;
+        if (screenId === 'post-detail-screen') {
+            const postMatch = /^#post\/(\d+)$/.exec(
+                window.location.hash || '',
+            );
+            const postId = Number(postMatch?.[1]);
+            if (!Number.isInteger(postId) || postId <= 0) return null;
+            return { screenId, screen, postId };
+        }
         if (screenId !== 'profile-screen') return { screenId, screen };
 
         const profileMatch = /^#profile\/(\d+)(?:\/([^/?#]+))?$/.exec(
@@ -1359,6 +1412,11 @@ export function initApp() {
                     const profileUser = activeProfilePullRefreshUser;
                     if (Number(profileUser?.id) !== context.userId) return;
                     await loadProfileTabContent(profileUser, context.subpage);
+                } else if (context.screenId === 'post-detail-screen') {
+                    deleteScreenDataCache(
+                        getPostDetailCacheKey(context.postId),
+                    );
+                    await showPostDetail(context.postId, { forceRefresh: true });
                 }
             } catch (error) {
                 console.error('タイムラインの更新に失敗:', error);
@@ -1467,6 +1525,8 @@ export function initApp() {
         }
         setupTimelinePullToRefresh();
         updatePullToRefreshAvailability();
+        // 画面シェルを表示できた時点で、一覧データの取得完了を待たずに解除する。
+        showLoading(false);
     }
 
     function escapeHTML(str) {
@@ -4811,7 +4871,9 @@ export function initApp() {
                 menu.appendChild(reportBtn);
             }
 
-            if (getCurrentUser().id === post.userid || getCurrentUser().admin) {
+            const isPostOwner =
+                Number(getCurrentUser().id) === Number(post.userid);
+            if (isPostOwner) {
                 const pinBtn = document.createElement('button');
                 pinBtn.className = 'pin-btn';
                 if (!getCurrentUser().pin || getCurrentUser().pin !== post.id) {
@@ -4827,7 +4889,9 @@ export function initApp() {
                     editBtn.textContent = '編集';
                     menu.appendChild(editBtn);
                 }
+            }
 
+            if (isPostOwner || getCurrentUser().admin) {
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
                 deleteBtn.textContent = '削除';
@@ -5609,7 +5673,12 @@ export function initApp() {
         showLoading(false);
     }
 
-    async function showPostDetail(postId) {
+    async function showPostDetail(postId, { forceRefresh = false } = {}) {
+        const normalizedPostId = Number(postId);
+        if (!Number.isInteger(normalizedPostId) || normalizedPostId <= 0) {
+            throw new Error('無効なポストIDです。');
+        }
+        const postDetailCacheKey = getPostDetailCacheKey(normalizedPostId);
         DOM.pageHeader.innerHTML = `
 	            <div class="header-with-back-button">
 	                <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
@@ -5620,10 +5689,19 @@ export function initApp() {
         contentDiv.innerHTML = '<div class="spinner"></div>';
 
         try {
-            const { data: threadPayload, error: threadError } =
-                await apiRequest(
-                    `/server/api/posts/${encodeURIComponent(postId)}/thread`,
+            let threadPayload = forceRefresh
+                ? null
+                : getScreenDataCache(postDetailCacheKey);
+            let threadError = null;
+            if (!threadPayload) {
+                const result = await apiRequest(
+                    `/server/api/posts/${encodeURIComponent(normalizedPostId)}/thread`,
                 );
+                threadPayload = result.data || null;
+                threadError = result.error;
+                if (!threadError && threadPayload)
+                    setScreenDataCache(postDetailCacheKey, threadPayload);
+            }
             const mainPost = threadPayload?.post || null;
             const allRepliesRaw = Array.isArray(threadPayload?.replies)
                 ? threadPayload.replies
@@ -5668,7 +5746,7 @@ export function initApp() {
                 'padding: 1rem; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-top: 1rem; margin-bottom: 0; font-size: 1.2rem;';
             contentDiv.appendChild(repliesHeader);
 
-            const rootPostId = Number(postId);
+            const rootPostId = normalizedPostId;
             const normalizedReplies = allRepliesRaw
                 .map((reply) => {
                     const replyId = Number(reply?.id);
@@ -6225,6 +6303,7 @@ export function initApp() {
                 ? `#profile/${normalizedUserId}`
                 : `#profile/${normalizedUserId}/${normalizedTab}`;
         const routeKey = getScrollRouteKey(hash);
+        invalidateProfileTabPageCache(normalizedUserId, normalizedTab);
         clearSavedScrollPosition(routeKey);
 
         const profileScreen = document.getElementById('profile-screen');
