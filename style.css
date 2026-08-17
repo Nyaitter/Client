@@ -1091,6 +1091,7 @@ em-emoji-picker {
 
 .post-header {
     display: flex;
+    box-sizing: border-box;
     min-width: 0;
     width: 100%;
     gap: 0.5rem;
@@ -1107,7 +1108,7 @@ em-emoji-picker {
 .post-author {
     display: flex;
     min-width: 0;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     align-items: center;
     gap: 0.25rem;
     overflow: hidden;
@@ -1119,6 +1120,7 @@ em-emoji-picker {
 
 .post-author-name {
     min-width: 0;
+    flex: 1 1 auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
