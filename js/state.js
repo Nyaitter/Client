@@ -29,7 +29,9 @@ const state = {
     postLoadObserver: undefined,
     currentSearchTab: 'posts',
     currentPagination: { page: 0, hasMore: true, type: null, options: {} },
-    isDarkmode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+    isDarkmode:
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches,
     emoji_picker_theme: 'light',
     dmE2EPublicKeyCache: new Map(),
     dmE2ERegisteredUsers: null,

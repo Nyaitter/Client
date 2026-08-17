@@ -41,6 +41,23 @@ document.addEventListener('DOMContentLoaded', () => {
     copyMessage.classList.add('hidden');
   }
 
+  async function copyTextToClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = String(text);
+    textArea.setAttribute('readonly', '');
+    textArea.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+    document.body.appendChild(textArea);
+    textArea.select();
+    const copied = typeof document.execCommand === 'function' && document.execCommand('copy');
+    textArea.remove();
+    if (!copied) throw new Error('Clipboard API is not available');
+  }
+
   function isNyaitterAddress(value) {
     return NYAITTER_ADDRESS_PATTERN.test(String(value || '').trim());
   }
@@ -187,7 +204,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function finishLogin() {
-    localStorage.removeItem('nyaitter_session_token');
+    try {
+      localStorage.removeItem('nyaitter_session_token');
+    } catch (_) {
+      // ストレージが制限された環境でも、Cookieを使うログイン完了処理は継続する。
+    }
 
     // 先にhistoryを書き換えると、ブラウザが同じURLへのreplaceを最適化して
     // クライアントを再初期化しないことがある。現在のクエリ付きURLから直接遷移先を
@@ -324,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   verificationCodeElem.addEventListener('click', () => {
-    navigator.clipboard.writeText(verificationCodeElem.textContent).then(() => {
+    copyTextToClipboard(verificationCodeElem.textContent).then(() => {
       copyMessage.classList.remove('hidden');
       errorMessage.classList.add('hidden');
       window.setTimeout(() => copyMessage.classList.add('hidden'), 2000);
