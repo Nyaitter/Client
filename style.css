@@ -1086,20 +1086,47 @@ em-emoji-picker {
 
 .post-main {
     flex-grow: 1;
+    min-width: 0;
 }
 
 .post-header {
     display: flex;
+    min-width: 0;
+    width: 100%;
     gap: 0.5rem;
     align-items: center;
+    flex-wrap: nowrap;
     margin-bottom: 0.25rem;
     position: relative;
 }
 
+.post-header.has-post-menu {
+    padding-right: 32px;
+}
+
 .post-author {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 0.25rem;
+    overflow: hidden;
+    white-space: nowrap;
     font-weight: bold;
     color: var(--text-color);
     text-decoration: none;
+}
+
+.post-author-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.post-author .admin-badge,
+.post-author .verify-badge {
+    flex: 0 0 auto;
 }
 
 .post-author:hover {
@@ -1107,12 +1134,15 @@ em-emoji-picker {
 }
 
 .post-time {
+    flex: 0 0 auto;
+    white-space: nowrap;
     font-size: 0.9rem;
     color: var(--secondary-text-color);
 }
 
 .post-lock-indicator {
     display: inline-flex;
+    flex: 0 0 auto;
     align-items: center;
     color: var(--secondary-text-color);
 }
@@ -1123,8 +1153,7 @@ em-emoji-picker {
 }
 
 .admin-badge,
-.verify-badge,
-.contributor-badge {
+.verify-badge {
     width: 1.2em;
     height: 1.2em;
     vertical-align: text-bottom;

@@ -92,8 +92,16 @@
     "name": "禁止"
   },
   {
+    "id": "nyax",
+    "name": "NyaX"
+  },
+  {
+    "id": "nekochat",
+    "name": "NekoChat"
+  },
+  {
     "id": "nyaitter",
-    "name": "Nyaitterアイコン(小さい)"
+    "name": "Nyaitter"
   },
   {
     "id": "crew",
