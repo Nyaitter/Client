@@ -87,10 +87,90 @@ const {
 export function initApp() {
     const METRICS_FALLBACK = '?';
     let recommendedUsersRequest = null;
-    let sidebarOverflowAbortController = null;
+    let sidebarOverflowResizeHandler = null;
     let sidebarOverflowResizeTimer = null;
     let activeProfilePullRefreshUser = null;
     let activeSearchRequestVersion = 0;
+
+    function scheduleNextFrame(callback) {
+        if (typeof window.requestAnimationFrame === 'function') {
+            return window.requestAnimationFrame(callback);
+        }
+        return window.setTimeout(callback, 0);
+    }
+
+    function matchesMedia(query) {
+        return (
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia(query).matches
+        );
+    }
+
+    async function copyTextToClipboard(text) {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+
+        const textArea = document.createElement('textarea');
+        textArea.value = String(text);
+        textArea.setAttribute('readonly', '');
+        textArea.style.cssText =
+            'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+        document.body.appendChild(textArea);
+        textArea.select();
+        const copied =
+            typeof document.execCommand === 'function' &&
+            document.execCommand('copy');
+        textArea.remove();
+        if (!copied) throw new Error('Clipboard API is not available');
+    }
+
+    function createViewportObserver(callback, options = {}) {
+        if (typeof IntersectionObserver === 'function') {
+            return new IntersectionObserver(callback, options);
+        }
+
+        let target = null;
+        let scheduled = false;
+        const rootMargin = Number.parseInt(options.rootMargin, 10) || 0;
+        const requestFrame =
+            window.requestAnimationFrame || ((handler) => setTimeout(handler, 0));
+        const checkIntersection = () => {
+            scheduled = false;
+            if (!target || !document.documentElement.contains(target)) return;
+            const bounds = target.getBoundingClientRect();
+            const viewportHeight =
+                window.innerHeight || document.documentElement.clientHeight || 0;
+            const isIntersecting =
+                bounds.top <= viewportHeight + rootMargin &&
+                bounds.bottom >= -rootMargin;
+            callback([{ target, isIntersecting }]);
+        };
+        const scheduleCheck = () => {
+            if (scheduled) return;
+            scheduled = true;
+            requestFrame(checkIntersection);
+        };
+        const onViewportChange = () => scheduleCheck();
+
+        return {
+            observe(element) {
+                target = element;
+                window.addEventListener('scroll', onViewportChange);
+                window.addEventListener('resize', onViewportChange);
+                scheduleCheck();
+            },
+            unobserve(element) {
+                if (target === element) target = null;
+            },
+            disconnect() {
+                target = null;
+                window.removeEventListener('scroll', onViewportChange);
+                window.removeEventListener('resize', onViewportChange);
+            },
+        };
+    }
 
     const appDialog = {
         modal: document.getElementById('app-dialog-modal'),
@@ -184,7 +264,7 @@ export function initApp() {
         appDialog.input.addEventListener('keydown', onInputKeyDown);
         document.addEventListener('keydown', onKeyDown);
         appDialog.modal.classList.remove('hidden');
-        requestAnimationFrame(() => {
+        scheduleNextFrame(() => {
             (isPrompt ? appDialog.input : appDialog.submitButton).focus();
         });
     }
@@ -588,7 +668,7 @@ export function initApp() {
             const previousPage = getCurrentPagination().page;
             const restored = await loadCachedPage();
             if (!restored || getCurrentPagination().page === previousPage) break;
-            await new Promise((resolve) => requestAnimationFrame(resolve));
+            await new Promise((resolve) => scheduleNextFrame(resolve));
         }
     }
 
@@ -668,8 +748,8 @@ export function initApp() {
         const version = ++scrollRestoreVersion;
 
         const restoreAfterPaint = () => {
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
+            scheduleNextFrame(() => {
+                scheduleNextFrame(() => {
                     if (
                         version !== scrollRestoreVersion ||
                         activeScrollRouteKey !== routeKey
@@ -712,7 +792,11 @@ export function initApp() {
             if (!Array.isArray(accounts))
                 localStorage.removeItem('nyaitter_accounts');
         } catch (_) {
-            localStorage.removeItem('nyaitter_accounts');
+            try {
+                localStorage.removeItem('nyaitter_accounts');
+            } catch (_) {
+                // ストレージが完全に無効な環境では、メモリ上の状態だけで続行する。
+            }
         }
     }
 
@@ -1111,7 +1195,7 @@ export function initApp() {
 
     function applyInterfaceTheme(themePreference = 'light') {
         setIsDarkmode(
-            window.matchMedia('(prefers-color-scheme: dark)').matches,
+            matchesMedia('(prefers-color-scheme: dark)'),
         );
         const useDarkTheme =
             themePreference === 'dark' ||
@@ -1128,7 +1212,7 @@ export function initApp() {
     }
 
     function isPullToRefreshMobileViewport() {
-        return window.matchMedia('(max-width: 680px)').matches;
+        return matchesMedia('(max-width: 680px)');
     }
 
     function getActivePullToRefreshContext() {
@@ -2487,7 +2571,7 @@ export function initApp() {
             placeholder.textContent = editor.dataset.markdownPlaceholder || '';
             placeholder.hidden = Boolean(source);
         }
-        requestAnimationFrame(() => syncMarkdownEditorDecoration(editor));
+        scheduleNextFrame(() => syncMarkdownEditorDecoration(editor));
     }
 
     function getContentEditorPreference() {
@@ -2972,9 +3056,10 @@ export function initApp() {
     }
 
     function setupSidebarOverflowMenu() {
-        sidebarOverflowAbortController?.abort();
-        sidebarOverflowAbortController = new AbortController();
-        const { signal } = sidebarOverflowAbortController;
+        if (sidebarOverflowResizeHandler) {
+            window.removeEventListener('resize', sidebarOverflowResizeHandler);
+            sidebarOverflowResizeHandler = null;
+        }
         const sidebar = document.getElementById('left-nav');
         sidebar?.classList.remove('sidebar-overflow-open');
         const menu = DOM.navMenuTop;
@@ -2986,7 +3071,7 @@ export function initApp() {
             existingOverflow.remove();
         }
 
-        if (window.matchMedia('(max-width: 680px)').matches) return;
+        if (matchesMedia('(max-width: 680px)')) return;
 
         const logo = DOM.navLogo;
         const menuBottom = DOM.navMenuBottom;
@@ -2996,17 +3081,14 @@ export function initApp() {
             : [];
         if (!sidebar || !menu || menuLinks.length === 0) return;
 
-        window.addEventListener(
-            'resize',
-            () => {
-                window.clearTimeout(sidebarOverflowResizeTimer);
-                sidebarOverflowResizeTimer = window.setTimeout(
-                    setupSidebarOverflowMenu,
-                    120,
-                );
-            },
-            { signal },
-        );
+        sidebarOverflowResizeHandler = () => {
+            window.clearTimeout(sidebarOverflowResizeTimer);
+            sidebarOverflowResizeTimer = window.setTimeout(
+                setupSidebarOverflowMenu,
+                120,
+            );
+        };
+        window.addEventListener('resize', sidebarOverflowResizeHandler);
 
         const availableMenuHeight = () =>
             Math.max(
@@ -3209,7 +3291,7 @@ export function initApp() {
         const AccountButton = document.getElementById('account-button');
         if (PostButton) {
             if (
-                window.matchMedia('(max-width:680px)').matches &&
+                matchesMedia('(max-width:680px)') &&
                 location.hash.startsWith('#dm')
             ) {
                 if (!PostButton.classList.contains('hidden')) {
@@ -3221,7 +3303,7 @@ export function initApp() {
         }
         if (AccountButton) {
             if (
-                window.matchMedia('(max-width:680px)').matches &&
+                matchesMedia('(max-width:680px)') &&
                 location.hash.startsWith('#dm')
             ) {
                 if (!AccountButton.classList.contains('hidden')) {
@@ -3231,7 +3313,7 @@ export function initApp() {
                 AccountButton.classList.remove('hidden');
             }
         }
-        window.requestAnimationFrame(setupSidebarOverflowMenu);
+        scheduleNextFrame(setupSidebarOverflowMenu);
         await loadRightSidebar();
     }
 
@@ -3528,7 +3610,11 @@ export function initApp() {
         }
     }
     function setAccountList(list) {
-        localStorage.setItem('nyaitter_accounts', JSON.stringify(list));
+        try {
+            localStorage.setItem('nyaitter_accounts', JSON.stringify(list));
+        } catch (_) {
+            // ストレージが制限された環境でも、現在のログイン状態は維持する。
+        }
     }
     function addAccountToList(user) {
         let accounts = getAccountList();
@@ -5477,7 +5563,7 @@ export function initApp() {
             };
 
             setPostLoadObserver(
-                new IntersectionObserver(
+                createViewportObserver(
                     (entries) => {
                         if (entries[0].isIntersecting) {
                             void loadMoreNotifications();
@@ -5748,7 +5834,7 @@ export function initApp() {
                 isLoadingReplies = false;
             };
 
-            const repliesLoadObserver = new IntersectionObserver(
+            const repliesLoadObserver = createViewportObserver(
                 (entries) => {
                     if (entries[0].isIntersecting) {
                         loadMoreReplies();
@@ -7454,9 +7540,7 @@ export function initApp() {
             copyBotKeyBtn.addEventListener('click', async () => {
                 if (!newlyCreatedValue?.value) return;
                 try {
-                    await navigator.clipboard.writeText(
-                        newlyCreatedValue.value,
-                    );
+                    await copyTextToClipboard(newlyCreatedValue.value);
                     copyBotKeyBtn.textContent = 'コピー完了！';
                     setTimeout(() => {
                         if (copyBotKeyBtn) copyBotKeyBtn.textContent = 'コピー';
@@ -8106,7 +8190,7 @@ export function initApp() {
 
         // IntersectionObserverを設定して無限スクロールを実装
         setPostLoadObserver(
-            new IntersectionObserver(
+            createViewportObserver(
                 (entries) => {
                     if (entries[0].isIntersecting) {
                         loadMoreLogs();
@@ -8478,7 +8562,7 @@ export function initApp() {
             }
         };
 
-        localPostLoadObserver = new IntersectionObserver(
+        localPostLoadObserver = createViewportObserver(
             (entries) => {
                 if (entries[0].isIntersecting && !getIsLoadingMore()) {
                     loadMore();
@@ -8670,7 +8754,7 @@ export function initApp() {
         };
 
         setPostLoadObserver(
-            new IntersectionObserver(
+            createViewportObserver(
                 (entries) => {
                     if (entries[0].isIntersecting && !getIsLoadingMore()) {
                         loadMore();
@@ -8771,7 +8855,7 @@ export function initApp() {
         };
 
         setPostLoadObserver(
-            new IntersectionObserver(
+            createViewportObserver(
                 (entries) => {
                     if (entries[0].isIntersecting && !getIsLoadingMore()) {
                         loadMore();
@@ -8953,9 +9037,7 @@ export function initApp() {
     }
 
     window.copyPost = async (postId, button) => {
-        await navigator.clipboard.writeText(
-            `${window.location.origin}/#post/${postId}`,
-        );
+        await copyTextToClipboard(`${window.location.origin}/#post/${postId}`);
         if (button) {
             button.innerText = `コピーしました!`;
         }
@@ -9821,6 +9903,14 @@ export function initApp() {
     const DM_E2E_INFO_PREFIX = 'nyaitter-dm-v1';
     const DM_E2E_KEY_STORAGE_PREFIX = 'nyaitter_dm_key_';
 
+    function supportsDmE2E() {
+        return Boolean(
+            globalThis.crypto?.subtle &&
+                typeof TextEncoder === 'function' &&
+                typeof TextDecoder === 'function',
+        );
+    }
+
     function dmE2EBytesToBase64url(bytes) {
         let binary = '';
         for (let i = 0; i < bytes.length; i++)
@@ -10051,6 +10141,8 @@ export function initApp() {
      */
     async function dmE2EDecryptMessage(msg, userId) {
         if (!msg || !msg.e2e) return msg?.content || '';
+        if (!supportsDmE2E())
+            return '🔒 このブラウザでは暗号化メッセージを表示できません';
         try {
             const entry = msg.e2e.ct && msg.e2e.ct[String(userId)];
             if (!entry) throw new Error('この端末向けの暗号文がありません');
@@ -11242,9 +11334,7 @@ export function initApp() {
             }
 
             if (textToCopy) {
-                navigator.clipboard
-                    .writeText(textToCopy)
-                    .then(() => {
+                copyTextToClipboard(textToCopy).then(() => {
                         const originalContent = copyButton.innerHTML;
                         copyButton.innerHTML = 'Copied!';
                         copyButton.style.minWidth = '50px';

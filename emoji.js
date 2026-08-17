@@ -3,6 +3,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 	if (!container) return;
 
 	const isSafeEmojiId = (value) => /^[A-Za-z0-9_-]{1,80}$/.test(String(value || ''));
+	const nextFrame =
+		window.requestAnimationFrame || ((callback) => window.setTimeout(callback, 0));
+	const copyTextToClipboard = async (text) => {
+		if (navigator.clipboard?.writeText) {
+			await navigator.clipboard.writeText(text);
+			return;
+		}
+
+		const textArea = document.createElement('textarea');
+		textArea.value = String(text);
+		textArea.setAttribute('readonly', '');
+		textArea.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+		document.body.appendChild(textArea);
+		textArea.select();
+		const copied = typeof document.execCommand === 'function' && document.execCommand('copy');
+		textArea.remove();
+		if (!copied) throw new Error('Clipboard API is not available');
+	};
 			const showMessage = (message, className) => {
 			container.replaceChildren();
 			const paragraph = document.createElement('p');
@@ -43,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 				if (event.target === dialogModal) close();
 			};
 			document.addEventListener('keydown', onKeyDown);
-			requestAnimationFrame(() => dialogAction.focus());
+			nextFrame(() => dialogAction.focus());
 		};
 
 
@@ -100,7 +118,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 			const emojiId = button.dataset.emojiId;
 			if (!isSafeEmojiId(emojiId)) return;
 			try {
-				await navigator.clipboard.writeText(`_${emojiId}_`);
+									await copyTextToClipboard(`_${emojiId}_`);
+
 				const originalText = button.textContent;
 				button.textContent = 'コピーしました!';
 				button.disabled = true;

@@ -15,8 +15,10 @@ function startApp() {
 
     // 2フレーム待つことで、初期ローディング画面が描画された後に
     // initApp() 内の /server/auth/me リクエストを開始する。
-    window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
+    const nextFrame =
+        window.requestAnimationFrame || ((callback) => window.setTimeout(callback, 0));
+    nextFrame(() => {
+        nextFrame(() => {
             initApp();
         });
     });
