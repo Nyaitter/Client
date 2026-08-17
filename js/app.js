@@ -5019,6 +5019,29 @@ export function initApp() {
         return postEl;
     }
 
+    const LAST_TIMELINE_TAB_KEY = 'nyaitter_last_timeline_tab';
+
+    function getLastTimelineTab() {
+        const userId = getCurrentUser()?.id ?? 'guest';
+        try {
+            return (
+                localStorage.getItem(`${LAST_TIMELINE_TAB_KEY}_${userId}`) ||
+                'all'
+            );
+        } catch (_) {
+            return 'all';
+        }
+    }
+
+    function saveLastTimelineTab(tab) {
+        const userId = getCurrentUser()?.id ?? 'guest';
+        try {
+            localStorage.setItem(`${LAST_TIMELINE_TAB_KEY}_${userId}`, tab);
+        } catch (_) {
+            // localStorageが利用できない環境でもタイムラインの表示は継続する。
+        }
+    }
+
     async function showMainScreen() {
         DOM.pageHeader.innerHTML = `<h2 id="page-title">ホーム</h2>`;
         showScreen('main-screen');
@@ -5033,17 +5056,13 @@ export function initApp() {
 	                <button class="timeline-tab-button" data-tab="following">フォロー中</button>
 		                <button class="timeline-tab-button" data-tab="announce">お知らせ</button>
 		            `;
-            // ユーザー設定からデフォルトタブを取得。なければ 'all' を使用
-            setCurrentTimelineTab(
-                getCurrentUser().settings?.default_timeline_tab || 'all',
-            );
+            setCurrentTimelineTab(getLastTimelineTab());
         } else {
             tabsContainer.innerHTML = `
 	                <button class="timeline-tab-button" data-tab="all">すべて</button>
 		                <button class="timeline-tab-button" data-tab="announce">お知らせ</button>
 		            `;
-            // 未ログインユーザーのデフォルトは「すべて」固定
-            setCurrentTimelineTab('all');
+            setCurrentTimelineTab(getLastTimelineTab());
         }
 
         if (getCurrentUser()) {
@@ -5275,6 +5294,10 @@ export function initApp() {
 	            </div>`;
 
         showScreen('notifications-screen');
+        if (getPostLoadObserver()) {
+            getPostLoadObserver().disconnect();
+            setPostLoadObserver(null);
+        }
         const contentDiv = DOM.notificationsContent;
         contentDiv.innerHTML = '<div class="spinner"></div>';
 
@@ -5336,34 +5359,21 @@ export function initApp() {
                 void updateNavAndSidebars();
             }
 
+            const NOTIFICATIONS_PER_PAGE = 30;
+            let notificationOffset = 0;
+            let hasMoreNotifications = true;
+            let isLoadingMoreNotifications = false;
+            const renderedNotificationIds = new Set();
+            const trigger = document.createElement('div');
+            trigger.className = 'load-more-trigger';
             contentDiv.innerHTML = '';
-            const { data: notificationPayload, error } = await apiRequest(
-                '/server/api/notifications?limit=100',
-            );
-            if (error) {
-                const noticeEl = document.createElement('div');
-                const content = document.createElement('div');
-                content.className = 'notification-item-content';
-                content.textContent =
-                    '[エラー] 通知の取得に失敗したため古い通知を表示しています。';
-                noticeEl.appendChild(content);
-                contentDiv.appendChild(noticeEl);
-            } else {
-                getCurrentUser().notice = (
-                    notificationPayload.notifications || []
-                )
-                    .map(normalizeStructuredNotification)
-                    .filter(Boolean);
-                getCurrentUser().notification_unread_count = Number(
-                    notificationPayload.notification_unread_count || 0,
-                );
-                getCurrentUser().nav_summary_fetched_recently = false;
-            }
+            contentDiv.appendChild(trigger);
 
-            if (getCurrentUser().notice?.length) {
-                getCurrentUser().notice.forEach((n_obj) => {
-                    const notification = normalizeStructuredNotification(n_obj);
-                    if (!notification) return;
+            const appendNotifications = (notifications) => {
+                notifications.forEach((notification) => {
+                    const notificationId = String(notification.id);
+                    if (renderedNotificationIds.has(notificationId)) return;
+                    renderedNotificationIds.add(notificationId);
 
                     const noticeEl = document.createElement('div');
                     noticeEl.className = 'widget-item notification-item';
@@ -5389,12 +5399,95 @@ export function initApp() {
 
                     noticeEl.appendChild(content);
                     noticeEl.appendChild(deleteBtn);
-                    contentDiv.appendChild(noticeEl);
+                    contentDiv.insertBefore(noticeEl, trigger);
                 });
-            } else {
-                contentDiv.innerHTML =
-                    '<p style="padding: 2rem; text-align:center; color: var(--secondary-text-color);">通知はまだありません。</p>';
-            }
+            };
+
+            const loadMoreNotifications = async () => {
+                if (
+                    isLoadingMoreNotifications ||
+                    !hasMoreNotifications ||
+                    !getCurrentUser()
+                )
+                    return;
+
+                isLoadingMoreNotifications = true;
+                trigger.innerHTML = '<div class="spinner"></div>';
+                try {
+                    const { data: notificationPayload, error } =
+                        await apiRequest(
+                            `/server/api/notifications?limit=${NOTIFICATIONS_PER_PAGE}&offset=${notificationOffset}`,
+                        );
+                    if (error) throw error;
+
+                    const notifications = (
+                        notificationPayload.notifications || []
+                    )
+                        .map(normalizeStructuredNotification)
+                        .filter(Boolean);
+                    const currentNotifications = Array.isArray(
+                        getCurrentUser().notice,
+                    )
+                        ? getCurrentUser().notice
+                        : [];
+                    if (notificationOffset === 0) {
+                        getCurrentUser().notice = notifications;
+                    } else {
+                        const existingIds = new Set(
+                            currentNotifications.map((notification) =>
+                                String(notification.id),
+                            ),
+                        );
+                        notifications.forEach((notification) => {
+                            if (existingIds.has(String(notification.id))) return;
+                            existingIds.add(String(notification.id));
+                            currentNotifications.push(notification);
+                        });
+                        getCurrentUser().notice = currentNotifications;
+                    }
+                    getCurrentUser().notification_unread_count = Number(
+                        notificationPayload.notification_unread_count || 0,
+                    );
+                    getCurrentUser().nav_summary_fetched_recently = false;
+
+                    appendNotifications(notifications);
+                    notificationOffset += notifications.length;
+                    if (notifications.length < NOTIFICATIONS_PER_PAGE) {
+                        hasMoreNotifications = false;
+                        trigger.textContent =
+                            notificationOffset > 0
+                                ? 'すべての通知を読み込みました'
+                                : '通知はまだありません。';
+                        if (getPostLoadObserver())
+                            getPostLoadObserver().disconnect();
+                    } else {
+                        trigger.textContent = '';
+                    }
+                } catch (error) {
+                    console.error('通知の取得に失敗しました:', error);
+                    hasMoreNotifications = false;
+                    trigger.textContent =
+                        notificationOffset > 0
+                            ? '通知の追加読み込みに失敗しました。'
+                            : '通知の読み込みに失敗しました。';
+                    if (getPostLoadObserver()) getPostLoadObserver().disconnect();
+                } finally {
+                    isLoadingMoreNotifications = false;
+                }
+            };
+
+            setPostLoadObserver(
+                new IntersectionObserver(
+                    (entries) => {
+                        if (entries[0].isIntersecting) {
+                            void loadMoreNotifications();
+                        }
+                    },
+                    { rootMargin: '200px' },
+                ),
+            );
+            getPostLoadObserver().observe(trigger);
+            await loadMoreNotifications();
         } catch (e) {
             console.error('通知画面エラー:', e);
             contentDiv.innerHTML = `<p class="error-message">通知の読み込みに失敗しました。</p>`;
@@ -6045,37 +6138,24 @@ export function initApp() {
             normalizedTab === 'posts'
                 ? `#profile/${normalizedUserId}`
                 : `#profile/${normalizedUserId}/${normalizedTab}`;
-        const userScope = getCurrentUser()?.id ?? 'guest';
-        const profileCachePrefix = `${userScope}:${hash}:${normalizedUserId}:`;
-        let cacheChanged = false;
-        profilePostPageCaches.forEach((_, cacheKey) => {
-            if (cacheKey.startsWith(profileCachePrefix)) {
-                profilePostPageCaches.delete(cacheKey);
-                cacheChanged = true;
-            }
-        });
-
-        if (normalizedTab === 'following' || normalizedTab === 'followers') {
-            cacheChanged =
-                userPageCaches.delete(
-                    `${userScope}:profile-users:${normalizedUserId}:${normalizedTab}`,
-                ) || cacheChanged;
-        }
-        if (getPublicProfileCache().delete(normalizedUserId)) {
-            cacheChanged = true;
-        }
-        if (cacheChanged) persistPageCaches();
-
         const routeKey = getScrollRouteKey(hash);
         clearSavedScrollPosition(routeKey);
 
-        if (window.location.hash === hash) {
-            // 同一タブではhashchangeが発火しないため、先頭へ移動してから再描画する。
-            // router()の遷移開始処理が0,0を保存するので、古い位置は復元されない。
+        const profileScreen = document.getElementById('profile-screen');
+        const activeProfile = activeProfilePullRefreshUser;
+        if (
+            profileScreen &&
+            !profileScreen.classList.contains('hidden') &&
+            Number(activeProfile?.id) === normalizedUserId
+        ) {
+            // プロフィールのヘッダー・アクション・タブを維持し、選択したタブの内容だけを切り替える。
+            if (window.location.hash !== hash)
+                window.history.replaceState(window.history.state, '', hash);
             window.scrollTo({ left: 0, top: 0, behavior: 'auto' });
-            void router();
+            void loadProfileTabContent(activeProfile, normalizedTab);
             return;
         }
+
         window.location.hash = hash;
     }
 
@@ -6545,10 +6625,6 @@ export function initApp() {
 	                            <div class="settings-danger-zone"></div>
 	                        </section>
 	                        <section class="settings-group-panel" data-settings-panel="ui" hidden>
-	                            <label for="setting-default-timeline">ホーム画面のデフォルトタブ</label>
-	                            <select id="setting-default-timeline" class="settings-select">
-	                                <option value="all">すべて</option><option value="foryou">おすすめ</option><option value="following">フォロー中</option>
-	                            </select>
 	                            <label for="setting-post-timestamp-format">ポスト日時の表示</label>
 	                            <select id="setting-post-timestamp-format" class="settings-select">
 	                                <option value="relative">相対</option>
@@ -6698,11 +6774,6 @@ export function initApp() {
             `${headerH + 8}px`,
         );
 
-        // settingsに値がない場合は 'all' をデフォルトとして扱う
-        const currentDefaultTab =
-            getCurrentUser().settings?.default_timeline_tab || 'all';
-        document.getElementById('setting-default-timeline').value =
-            currentDefaultTab;
         document.getElementById('setting-post-timestamp-format').value =
             normalizePostTimestampFormat(
                 getCurrentUser().settings?.post_timestamp_format,
@@ -8726,6 +8797,7 @@ export function initApp() {
         }
         setIsLoadingMore(false); // 読み込み状態をリセット
         setCurrentTimelineTab(tab);
+        saveLastTimelineTab(tab);
         document
             .querySelectorAll('.timeline-tab-button')
             .forEach((btn) =>
@@ -8775,9 +8847,6 @@ export function initApp() {
                     reject_unknown_login: form.querySelector(
                         '#setting-reject-unknown-login',
                     ).checked,
-                    default_timeline_tab: form.querySelector(
-                        '#setting-default-timeline',
-                    ).value,
                     post_timestamp_format: normalizePostTimestampFormat(
                         form.querySelector('#setting-post-timestamp-format')
                             .value,
@@ -10896,8 +10965,8 @@ export function initApp() {
             );
             markRealtimeSummaryFresh();
             updateNavAndSidebars();
-            if (window.location.hash.startsWith('#notifications'))
-                showNotificationsScreen();
+            // 表示中の通知一覧はリアルタイム受信で再描画しない。操作中の位置と状態を維持し、
+            // 次回の明示的な再読み込みまたは画面遷移時に最新の一覧を反映する。
             return;
         }
         if (event.type === 'notification_unread_count') {
