@@ -91,6 +91,7 @@ export function initApp() {
     let sidebarOverflowResizeTimer = null;
     let activeProfilePullRefreshUser = null;
     let activeSearchRequestVersion = 0;
+    let serverClientLimits = null;
 
     function scheduleNextFrame(callback) {
         if (typeof window.requestAnimationFrame === 'function') {
@@ -104,6 +105,49 @@ export function initApp() {
             typeof window.matchMedia === 'function' &&
             window.matchMedia(query).matches
         );
+    }
+
+    function normalizeClientInputRange(range) {
+        if (!range || typeof range !== 'object') return null;
+        const min = Number.isInteger(range.min) && range.min >= 0
+            ? range.min
+            : null;
+        const max = Number.isInteger(range.max) && range.max >= 0
+            ? range.max
+            : null;
+        if (min === null && max === null) return null;
+        if (min !== null && max !== null && min > max) return null;
+        return { min, max };
+    }
+
+    function applyServerInputLimits(root = document) {
+        const inputLimits = serverClientLimits?.input;
+        if (!inputLimits) return;
+        const selector = '[data-server-input-limit]';
+        const elements = [];
+        if (root instanceof Element && root.matches(selector)) elements.push(root);
+        if (root?.querySelectorAll) elements.push(...root.querySelectorAll(selector));
+
+        elements.forEach((element) => {
+            if (!(element instanceof HTMLInputElement) &&
+                !(element instanceof HTMLTextAreaElement))
+                return;
+            const range = normalizeClientInputRange(
+                inputLimits[element.dataset.serverInputLimit],
+            );
+            if (!range) return;
+            if (range.min === null) element.removeAttribute('minlength');
+            else element.minLength = range.min;
+            if (range.max === null) element.removeAttribute('maxlength');
+            else element.maxLength = range.max;
+        });
+    }
+
+    async function loadServerClientLimits() {
+        const { data, error } = await apiRequest('/server/status');
+        if (error || !data?.client_limits) return;
+        serverClientLimits = data.client_limits;
+        applyServerInputLimits();
     }
 
     async function copyTextToClipboard(text) {
@@ -3053,6 +3097,7 @@ export function initApp() {
 
     function attachMarkdownContentEditor(editor) {
         if (!(editor instanceof HTMLTextAreaElement)) return;
+        applyServerInputLimits(editor);
         const useNyaitterEditor = applyContentEditorPreference(editor);
         if (!useNyaitterEditor) return;
         if (editor.dataset.markdownContentEditor === 'true') {
@@ -4498,7 +4543,7 @@ export function initApp() {
 	                ${isModal ? '<button class="modal-close-btn">×</button>' : ''}
 	                <div class="form-content">
 	                    <div id="reply-info" class="hidden" style="margin-bottom: 0.5rem; color: var(--secondary-text-color);"></div>
-                            <div class="markdown-textarea-editor post-content-editor"><textarea id="post-content" class="markdown-content-editor" rows="3" maxlength="280" spellcheck="true" data-markdown-content-editor placeholder="いまどうしてる？"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
+                            <div class="markdown-textarea-editor post-content-editor"><textarea id="post-content" class="markdown-content-editor" rows="3" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length" placeholder="いまどうしてる？"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
                             <div class="file-preview-container"></div>
 	                    <div class="post-form-actions">
 	                        <button type="button" class="attachment-button float-left" title="ファイルを添付">
@@ -6598,7 +6643,7 @@ export function initApp() {
 	                <div class="dm-conversation-view">${messagesHTML}</div>
 	                <div class="dm-message-form">
 	                    <div class="dm-form-content">
-                            <div class="markdown-textarea-editor dm-content-editor"><textarea id="dm-message-input" class="markdown-content-editor" rows="2" spellcheck="true" data-markdown-content-editor placeholder="メッセージを送信"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
+                            <div class="markdown-textarea-editor dm-content-editor"><textarea id="dm-message-input" class="markdown-content-editor" rows="2" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length" placeholder="メッセージを送信"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
                             <div class="file-preview-container dm-file-preview"></div>
 	                    </div>
 	                    <div class="dm-form-actions">
@@ -7168,7 +7213,7 @@ export function initApp() {
 	                        </div>
 	                        <section class="settings-group-panel" data-settings-panel="profile">
 	                            <label for="setting-username">ユーザー名</label>
-	                            <input type="text" id="setting-username" required value="${escapeHTML(getCurrentUser().name)}">
+	                            <input type="text" id="setting-username" required data-server-input-limit="user_name_length" value="${escapeHTML(getCurrentUser().name)}">
 	                            <label for="setting-icon-input">アイコン</label>
 	                            <div class="setting-icon-container">
 	                                <img id="setting-icon-preview" src="${getUserIconUrl(getCurrentUser())}" alt="アイコンのプレビュー" title="クリックしてファイルを選択">
@@ -7184,7 +7229,7 @@ export function initApp() {
 	                            </div>
 	                            <input type="file" id="setting-header-input" accept="image/*" class="hidden">
 	                            <label for="setting-me">自己紹介</label>
-	                            <textarea id="setting-me">${escapeHTML(getCurrentUser().me || '')}</textarea>
+	                            <textarea id="setting-me" data-server-input-limit="profile_bio_length">${escapeHTML(getCurrentUser().me || '')}</textarea>
 	                        </section>
 	                        <section class="settings-group-panel" data-settings-panel="privacy" hidden>
 	                            <fieldset><legend>公開設定</legend>
@@ -8177,6 +8222,7 @@ export function initApp() {
                 requestSettingsSave(document.getElementById('settings-form'));
             });
 
+        applyServerInputLimits(document.getElementById('settings-screen'));
         const settingsForm = document.getElementById('settings-form');
         settingsForm.addEventListener('submit', (event) =>
             event.preventDefault(),
@@ -9844,7 +9890,7 @@ export function initApp() {
 	                    <img src="${getUserIconUrl(getCurrentUser())}" class="user-icon" alt="your icon">
 	                    <button class="modal-close-btn">×</button>
 	                    <div class="form-content">
-	                                                <div class="markdown-textarea-editor post-form-textarea"><textarea id="edit-post-textarea" class="markdown-content-editor" rows="5" maxlength="280" spellcheck="true" data-markdown-content-editor>${escapeHTML(String(post.content || ''))}</textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
+	                                                <div class="markdown-textarea-editor post-form-textarea"><textarea id="edit-post-textarea" class="markdown-content-editor" rows="5" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length">${escapeHTML(String(post.content || ''))}</textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
                         <div class="file-preview-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">${renderAttachments()}</div>
 	                        <div class="post-form-actions" style="padding-top: 1rem;">
 	                            <button type="button" class="attachment-button float-left" title="ファイルを追加">${ICONS.attachment}</button>
@@ -10826,7 +10872,7 @@ export function initApp() {
 	                <div class="post-form" style="padding: 1rem;">
 	                    <button class="modal-close-btn">×</button>
 	                    <div class="form-content">
-	                                                <div class="markdown-textarea-editor dm-content-editor" style="min-height: 100px; font-size: 1rem;"><textarea id="edit-dm-textarea" class="markdown-content-editor" rows="5" spellcheck="true" data-markdown-content-editor>${escapeHTML(String(messagePlaintext))}</textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
+	                                                <div class="markdown-textarea-editor dm-content-editor" style="min-height: 100px; font-size: 1rem;"><textarea id="edit-dm-textarea" class="markdown-content-editor" rows="5" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length">${escapeHTML(String(messagePlaintext))}</textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
                         <div class="file-preview-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;"></div>
 	                        <div class="post-form-actions" style="padding-top: 1rem;">
 	                            <button type="button" class="attachment-button float-left" title="ファイルを追加">${ICONS.attachment}</button>
@@ -12147,6 +12193,7 @@ export function initApp() {
     DOM.freezeOverlay.classList.add('hidden');
     DOM.connectionErrorOverlay.classList.add('hidden');
     void registerPwaServiceWorker();
+    void loadServerClientLimits();
     void (async () => {
         const handledPushOpen = await handlePendingPushNotificationOpen();
         if (!handledPushOpen) await checkSession();
