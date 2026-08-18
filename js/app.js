@@ -2412,8 +2412,31 @@ export function initApp() {
             return Object.is(normalized, -0) ? 0 : normalized;
         };
 
+        const unescapeDecorationEscapes = (value) => {
+            const escapable = new Set(['\\', '[', ']', '/']);
+            let output = '';
+            for (let index = 0; index < value.length; index += 1) {
+                const character = value[index];
+                const nextCharacter = value[index + 1];
+                if (character === '\\' && escapable.has(nextCharacter)) {
+                    output += nextCharacter;
+                    index += 1;
+                    continue;
+                }
+                output += character;
+            }
+            return output;
+        };
+        const isEscapedDecorationStart = (value, index) => {
+            let slashCount = 0;
+            for (let position = index - 1; position >= 0; position -= 1) {
+                if (value[position] !== '\\') break;
+                slashCount += 1;
+            }
+            return slashCount % 2 === 1;
+        };
         const renderPlainText = (standardText) => {
-            let processed = escapeHTML(standardText);
+            let processed = escapeHTML(unescapeDecorationEscapes(standardText));
             const urls = [];
 
             const urlRegex =
@@ -2490,6 +2513,9 @@ export function initApp() {
             while (
                 (match = decorationDirectivePattern.exec(standardText)) !== null
             ) {
+                if (isEscapedDecorationStart(standardText, match.index)) {
+                    continue;
+                }
                 output += renderPlainText(
                     standardText.slice(previousIndex, match.index),
                 );
@@ -2522,6 +2548,9 @@ export function initApp() {
             while (
                 (match = decorationDirectivePattern.exec(standardText)) !== null
             ) {
+                if (isEscapedDecorationStart(standardText, match.index)) {
+                    continue;
+                }
                 output += renderSegment(standardText.slice(previousIndex, match.index));
                 const isReset = match[0].startsWith('[/');
                 const resetName = isReset
@@ -2985,6 +3014,20 @@ export function initApp() {
         caret.style.height = `${rect.height}px`;
     }
 
+    function syncMarkdownEditorPreviewHeight(editor) {
+        if (!(editor instanceof HTMLTextAreaElement)) return;
+        const host = editor.closest('.markdown-textarea-editor');
+        const preview = getMarkdownEditorPreview(editor);
+        if (!host || !preview || !editor._markdownPreviewEnabled) return;
+
+        host.style.height = 'auto';
+        editor.style.height = 'auto';
+        const minimumHeight = Math.max(host.offsetHeight, editor.offsetHeight);
+        const height = Math.max(minimumHeight, preview.scrollHeight);
+        host.style.height = `${Math.ceil(height)}px`;
+        editor.style.height = `${Math.ceil(height)}px`;
+    }
+
     function updateMarkdownEditorPreview(
         editor,
         selection = getMarkdownEditorSelectionSnapshot(editor),
@@ -3025,7 +3068,9 @@ export function initApp() {
             placeholder.textContent = editor.dataset.markdownPlaceholder || '';
             placeholder.hidden = published || Boolean(source);
         }
-        if (!published) {
+        if (published) {
+            scheduleNextFrame(() => syncMarkdownEditorPreviewHeight(editor));
+        } else {
             scheduleNextFrame(() => syncMarkdownEditorDecoration(editor));
         }
     }
@@ -3051,6 +3096,10 @@ export function initApp() {
             delete editor._markdownPreviewEmojiWasDisabled;
         }
         editor.disabled = previewEnabled;
+        if (!previewEnabled) {
+            host?.style.removeProperty('height');
+            editor.style.removeProperty('height');
+        }
         host?.classList.toggle('is-markdown-previewing', previewEnabled);
         if (button) {
             button.classList.toggle('active', previewEnabled);
@@ -7673,7 +7722,17 @@ export function initApp() {
 
         const dangerZone = document.querySelector('.settings-danger-zone');
 
-        let dangerZoneHTML = `
+	        let dangerZoneHTML = `
+	            <section class="settings-account-identity" aria-labelledby="settings-nyaitter-id-title">
+	                <h4 id="settings-nyaitter-id-title">NyaitterID</h4>
+	                <p class="settings-help-text">再割り当て後は、現在のNyaitterIDへ戻せない場合があります。処理中は一時的に接続が切断されます。</p>
+	                <button type="button" id="settings-reassign-nyaitter-id-btn">NyaitterIDを再割り当て</button>
+	            </section>
+	            <section class="settings-account-delete" aria-labelledby="settings-account-delete-title">
+	                <h4 id="settings-account-delete-title">アカウント削除</h4>
+	                <p class="settings-help-text">投稿、DM、セッション、保存済みのアカウント情報を削除します。この操作は元に戻せません。</p>
+	                <button type="button" id="settings-delete-account-btn" class="settings-danger-button">アカウントを削除</button>
+	            </section>
 	            <button type="button" id="settings-account-switcher-btn">アカウント切替</button>
 	            <button type="button" id="settings-logout-btn">ログアウト</button>
 	        `;
@@ -8281,11 +8340,71 @@ export function initApp() {
             .addEventListener('click', openAccountSwitcherModal);
         document
             .getElementById('settings-logout-btn')
-            .addEventListener('click', (e) => {
+            .addEventListener('click', () => {
                 handleLogout();
+            });
+        document
+            .getElementById('settings-reassign-nyaitter-id-btn')
+            .addEventListener('click', async (event) => {
+                const button = event.currentTarget;
+                if (!(await showAppConfirm('NyaitterIDを再割り当てしますか？ 現在のIDへ戻せない場合があります。'))) return;
+                button.disabled = true;
+
+	                const { data, error } = await apiRequest('/server/api/users/me/nyaitter-id/reassign', {
+	                    method: 'POST',
+                    body: {},
+	                });
+	                if (error) {
+	                    button.disabled = false;
+	                    showAppAlert(error.message || 'NyaitterIDを再割り当てできませんでした。');
+	                    return;
+	                }
+	                if (data?.user) {
+	                    setCurrentUser(data.user);
+	                    updateAccountData(getCurrentUser());
+	                    await updateNavAndSidebars();
+	                }
+	                showAppAlert('NyaitterIDを再割り当てしました。');
+	                await router();
+	            });
+	        document
+	                        .getElementById('settings-delete-account-btn')
+            .addEventListener('click', async (event) => {
+                const button = event.currentTarget;
+                if (!(await showAppConfirm('アカウントを削除しますか？ 投稿、DM、セッションなどのデータは削除され、元に戻せません。'))) return;
+                button.disabled = true;
+
+	                const { data: prepared, error: prepareError } = await apiRequest('/server/api/users/me/account/delete/prepare', {
+	                    method: 'POST',
+                    body: {},
+	                });
+	                if (prepareError || !prepared?.confirmation_token) {
+	                    button.disabled = false;
+	                    showAppAlert(prepareError?.message || 'アカウント削除の確認を開始できませんでした。');
+	                    return;
+	                }
+	                if (!(await showAppConfirm('確認: このアカウントとすべてのコンテンツを完全に削除します。本当に続行しますか？'))) {
+	                    button.disabled = false;
+	                    return;
+	                }
+	                const { error } = await apiRequest('/server/api/users/me/account', {
+	                    method: 'DELETE',
+                    body: { confirmation_token: prepared.confirmation_token },
+	                });
+	                if (error) {
+	                    button.disabled = false;
+	                    showAppAlert(error.message || 'アカウントを削除できませんでした。');
+	                    return;
+	                }
+                await api.auth.signOut().catch(() => {});
+                setCurrentUser(null);
+                unsubscribeFromChanges();
+                window.location.hash = '#';
+                await router();
             });
 
         showLoading(false);
+
     }
 
     function formatModerationDate(value) {
