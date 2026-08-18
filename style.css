@@ -638,7 +638,6 @@ img.emoji {
 }
 
 .post-form-actions button:disabled {
-    background-color: #8ecdf8;
     cursor: not-allowed;
 }
 
@@ -654,6 +653,7 @@ img.emoji {
 
 .attachment-button,
 .emoji-pic-button,
+.markdown-preview-button,
 .post-mask-button,
 .post-lock-button,
 .post-announcement-button {
@@ -669,6 +669,7 @@ img.emoji {
 
 .attachment-button:hover,
 .emoji-pic-button:hover,
+.markdown-preview-button:hover,
 .post-mask-button:hover,
 .post-lock-button:hover,
 .post-announcement-button:hover {
@@ -696,6 +697,7 @@ img.emoji {
 
 .post-mask-button.active svg,
 .post-lock-button.active svg,
+.markdown-preview-button.active svg,
 .post-announcement-button.active svg {
     stroke: var(--primary-color);
 }
@@ -786,6 +788,21 @@ textarea.markdown-content-editor::placeholder {
     display: none;
 }
 
+.markdown-textarea-editor.is-markdown-previewing .markdown-content-editor {
+    z-index: 0;
+    pointer-events: none;
+}
+
+.markdown-textarea-editor.is-markdown-previewing .markdown-editor-paint {
+    z-index: 2;
+}
+
+.markdown-textarea-editor.is-markdown-previewing .markdown-editor-selection,
+.markdown-textarea-editor.is-markdown-previewing .markdown-editor-composition,
+.markdown-textarea-editor.is-markdown-previewing .markdown-editor-caret {
+    display: none;
+}
+
 .markdown-textarea-editor.is-plain-textarea .markdown-content-editor {
     z-index: auto;
     color: var(--text-color) !important;
@@ -804,6 +821,22 @@ textarea.markdown-content-editor::placeholder {
     color: var(--secondary-text-color) !important;
     -webkit-text-fill-color: var(--secondary-text-color);
     opacity: 1;
+}
+
+.markdown-textarea-editor.is-plain-textarea.is-markdown-previewing
+    .markdown-editor-paint {
+    display: block;
+    z-index: 2;
+}
+
+.markdown-textarea-editor.is-plain-textarea.is-markdown-previewing
+    .markdown-content-editor {
+    z-index: 0;
+    color: transparent !important;
+    caret-color: transparent;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .markdown-editor-preview,
