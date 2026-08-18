@@ -2329,13 +2329,14 @@ export function initApp() {
             'fuchsia',
         ]);
         const MAX_DECORATION_DIRECTIVES = 24;
-        const decoration = {
+        const decorationDefaults = {
             color: null,
             size: 1,
             rotate: 0,
             x: 0,
             y: 0,
         };
+        const decoration = { ...decorationDefaults };
 
         const parseDecorationValue = (name, rawValue) => {
             const value = String(rawValue || '').trim().toLowerCase();
@@ -2407,7 +2408,7 @@ export function initApp() {
             if (decoration.rotate || decoration.x || decoration.y) {
                 styles.push('display:inline-block');
                 styles.push(
-                    `transform:translate(${decoration.x}em,${decoration.y}em) rotate(${decoration.rotate}deg)`,
+                    `transform:translate(${decoration.x}em,${-decoration.y}em) rotate(${decoration.rotate}deg)`,
                 );
                 styles.push('transform-origin:center');
             }
@@ -2418,7 +2419,8 @@ export function initApp() {
             if (!allowContentDecorations || editorSyntax) {
                 return renderPlainText(standardText);
             }
-            const directivePattern = /\[(color|size|rotate|x|y)=([^\]\r\n]{1,32})\]/gi;
+            const directivePattern =
+                /\[(?:\/(color|size|rotate|x|y)|(color|size|rotate|x|y)=([^\]\r\n]{1,32}))\]/gi;
             let output = '';
             let previousIndex = 0;
             let directiveCount = 0;
@@ -2438,12 +2440,17 @@ export function initApp() {
                 }
                 directiveCount += 1;
                 output += renderSegment(standardText.slice(previousIndex, match.index));
-                const name = match[1].toLowerCase();
-                const parsedValue = parseDecorationValue(name, match[2]);
-                if (parsedValue === null) {
-                    output += renderSegment(match[0]);
+                const resetName = match[1]?.toLowerCase();
+                if (resetName) {
+                    decoration[resetName] = decorationDefaults[resetName];
                 } else {
-                    decoration[name] = parsedValue;
+                    const name = match[2].toLowerCase();
+                    const parsedValue = parseDecorationValue(name, match[3]);
+                    if (parsedValue === null) {
+                        output += renderSegment(match[0]);
+                    } else {
+                        decoration[name] = parsedValue;
+                    }
                 }
                 previousIndex = directivePattern.lastIndex;
             }
