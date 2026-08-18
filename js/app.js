@@ -7005,7 +7005,10 @@ export function initApp() {
 	                    </div>
 	                </div>`;
 
-            if (getCurrentUser() && userId !== getCurrentUser().id) {
+            if (
+                getCurrentUser() &&
+                Number(user.id) !== Number(getCurrentUser().id)
+            ) {
                 const actionsContainer =
                     profileHeader.querySelector('#profile-actions');
                 if (actionsContainer) {
