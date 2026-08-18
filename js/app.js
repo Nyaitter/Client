@@ -545,6 +545,29 @@ export function initApp() {
         persistPageCaches();
     }
 
+    function hasSameUserId(leftUser, rightUser) {
+        const leftId = Number(leftUser?.id);
+        const rightId = Number(rightUser?.id);
+        return (
+            Number.isInteger(leftId) &&
+            Number.isInteger(rightId) &&
+            leftId === rightId
+        );
+    }
+
+    function isCurrentUserProfile(user) {
+        return hasSameUserId(user, getCurrentUser());
+    }
+
+    function userIdListIncludes(ids, userId) {
+        const normalizedUserId = Number(userId);
+        return (
+            Number.isInteger(normalizedUserId) &&
+            Array.isArray(ids) &&
+            ids.some((id) => Number(id) === normalizedUserId)
+        );
+    }
+
     function getProfilePostPageCache(userId, subType, pinId = '') {
         const userScope = getCurrentUser()?.id ?? 'guest';
         const pageKey = `${userScope}:${window.location.hash || '#'}:${userId}:${subType}:${pinId || ''}`;
@@ -3594,12 +3617,12 @@ export function initApp() {
         let recHTML = '<div class="widget-title">おすすめユーザー</div>';
         recHTML += recommendedUsers
             .map((user) => {
-                const isFollowing = getCurrentUser()?.follow?.includes(user.id);
+                const isFollowing = userIdListIncludes(getCurrentUser()?.follow, user.id);
                 const btnClass = isFollowing
                     ? 'follow-button-following'
                     : 'follow-button-not-following';
                 const btnText = isFollowing ? 'フォロー中' : 'フォロー';
-                return ` <div class="widget-item recommend-user"> <a href="#profile/${user.id}" class="profile-link" style="text-decoration:none; color:inherit; display:flex; align-items:center; gap:0.5rem;"> <img src="${getUserIconUrl(user)}" style="width:40px;height:40px;border-radius:50%;" alt="${escapeHTML(user.name)}'s icon"> <div> <span>${getEmoji(escapeHTML(user.name))}</span> <small style="color:var(--secondary-text-color); display:block;">${getNyaitterId(user)}</small> </div> </a> ${getCurrentUser() && getCurrentUser().id !== user.id ? `<button class="${btnClass}" data-user-id="${user.id}">${btnText}</button>` : ''} </div>`;
+                return ` <div class="widget-item recommend-user"> <a href="#profile/${user.id}" class="profile-link" style="text-decoration:none; color:inherit; display:flex; align-items:center; gap:0.5rem;"> <img src="${getUserIconUrl(user)}" style="width:40px;height:40px;border-radius:50%;" alt="${escapeHTML(user.name)}'s icon"> <div> <span>${getEmoji(escapeHTML(user.name))}</span> <small style="color:var(--secondary-text-color); display:block;">${getNyaitterId(user)}</small> </div> </a> ${getCurrentUser() && !isCurrentUserProfile(user) ? `<button class="${btnClass}" data-user-id="${user.id}">${btnText}</button>` : ''} </div>`;
             })
             .join('');
         if (DOM.rightSidebar.recommendations)
@@ -6893,7 +6916,7 @@ export function initApp() {
                 if (
                     actionsContainer &&
                     getCurrentUser()?.admin &&
-                    Number(user.id) !== Number(getCurrentUser().id)
+                    !isCurrentUserProfile(user)
                 ) {
                     const menuButton = document.createElement('button');
                     menuButton.type = 'button';
@@ -6919,10 +6942,9 @@ export function initApp() {
 
             // ブロック状態の通知
             let blockNoticeHtml = '';
-            if (getCurrentUser() && getCurrentUser().id !== user.id) {
+            if (getCurrentUser() && !isCurrentUserProfile(user)) {
                 if (
-                    Array.isArray(getCurrentUser().block) &&
-                    getCurrentUser().block.includes(user.id)
+                    userIdListIncludes(getCurrentUser().block, user.id)
                 ) {
                     blockNoticeHtml += `<div class="freeze-notice">あなたはこのユーザーをブロックしています。ポスト/メッセージは表示されません。</div>`;
                 }
@@ -7007,7 +7029,7 @@ export function initApp() {
 
             if (
                 getCurrentUser() &&
-                Number(user.id) !== Number(getCurrentUser().id)
+                !isCurrentUserProfile(user)
             ) {
                 const actionsContainer =
                     profileHeader.querySelector('#profile-actions');
@@ -7022,8 +7044,7 @@ export function initApp() {
 
                     // フォローボタン
                     const followButton = document.createElement('button');
-                    const isFollowing =
-                        getCurrentUser().follow?.includes(userId);
+                    const isFollowing = userIdListIncludes(getCurrentUser().follow, userId);
                     updateFollowButtonState(
                         followButton,
                         isFollowing,
@@ -11438,18 +11459,18 @@ export function initApp() {
         menu.className = 'post-menu is-visible';
 
         // ブロック/ブロック解除
-        if (getCurrentUser().id !== targetUser.id) {
+        if (!isCurrentUserProfile(targetUser)) {
             const isBlocked =
                 Array.isArray(getCurrentUser().block) &&
-                getCurrentUser().block.includes(targetUser.id);
+                userIdListIncludes(getCurrentUser().block, targetUser.id);
             const blockBtn = document.createElement('button');
             blockBtn.textContent = isBlocked ? 'ブロック解除' : 'ブロック';
             blockBtn.onclick = async () => {
                 blockBtn.disabled = true;
                 let updatedBlock = isBlocked
                     ? getCurrentUser().block.filter(
-                          (id) => id !== targetUser.id,
-                      )
+							  (id) => Number(id) !== Number(targetUser.id),
+						  )
                     : [...(getCurrentUser().block || []), targetUser.id];
                 const { data: updatePayload, error } = await apiRequest(
                     '/server/api/users/me',
