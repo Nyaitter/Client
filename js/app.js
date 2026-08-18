@@ -2412,8 +2412,31 @@ export function initApp() {
             return Object.is(normalized, -0) ? 0 : normalized;
         };
 
+        const unescapeDecorationEscapes = (value) => {
+            const escapable = new Set(['\\', '[', ']', '/']);
+            let output = '';
+            for (let index = 0; index < value.length; index += 1) {
+                const character = value[index];
+                const nextCharacter = value[index + 1];
+                if (character === '\\' && escapable.has(nextCharacter)) {
+                    output += nextCharacter;
+                    index += 1;
+                    continue;
+                }
+                output += character;
+            }
+            return output;
+        };
+        const isEscapedDecorationStart = (value, index) => {
+            let slashCount = 0;
+            for (let position = index - 1; position >= 0; position -= 1) {
+                if (value[position] !== '\\') break;
+                slashCount += 1;
+            }
+            return slashCount % 2 === 1;
+        };
         const renderPlainText = (standardText) => {
-            let processed = escapeHTML(standardText);
+            let processed = escapeHTML(unescapeDecorationEscapes(standardText));
             const urls = [];
 
             const urlRegex =
@@ -2490,6 +2513,9 @@ export function initApp() {
             while (
                 (match = decorationDirectivePattern.exec(standardText)) !== null
             ) {
+                if (isEscapedDecorationStart(standardText, match.index)) {
+                    continue;
+                }
                 output += renderPlainText(
                     standardText.slice(previousIndex, match.index),
                 );
@@ -2522,6 +2548,9 @@ export function initApp() {
             while (
                 (match = decorationDirectivePattern.exec(standardText)) !== null
             ) {
+                if (isEscapedDecorationStart(standardText, match.index)) {
+                    continue;
+                }
                 output += renderSegment(standardText.slice(previousIndex, match.index));
                 const isReset = match[0].startsWith('[/');
                 const resetName = isReset
@@ -2985,6 +3014,20 @@ export function initApp() {
         caret.style.height = `${rect.height}px`;
     }
 
+    function syncMarkdownEditorPreviewHeight(editor) {
+        if (!(editor instanceof HTMLTextAreaElement)) return;
+        const host = editor.closest('.markdown-textarea-editor');
+        const preview = getMarkdownEditorPreview(editor);
+        if (!host || !preview || !editor._markdownPreviewEnabled) return;
+
+        host.style.height = 'auto';
+        editor.style.height = 'auto';
+        const minimumHeight = Math.max(host.offsetHeight, editor.offsetHeight);
+        const height = Math.max(minimumHeight, preview.scrollHeight);
+        host.style.height = `${Math.ceil(height)}px`;
+        editor.style.height = `${Math.ceil(height)}px`;
+    }
+
     function updateMarkdownEditorPreview(
         editor,
         selection = getMarkdownEditorSelectionSnapshot(editor),
@@ -3025,7 +3068,9 @@ export function initApp() {
             placeholder.textContent = editor.dataset.markdownPlaceholder || '';
             placeholder.hidden = published || Boolean(source);
         }
-        if (!published) {
+        if (published) {
+            scheduleNextFrame(() => syncMarkdownEditorPreviewHeight(editor));
+        } else {
             scheduleNextFrame(() => syncMarkdownEditorDecoration(editor));
         }
     }
@@ -3051,6 +3096,10 @@ export function initApp() {
             delete editor._markdownPreviewEmojiWasDisabled;
         }
         editor.disabled = previewEnabled;
+        if (!previewEnabled) {
+            host?.style.removeProperty('height');
+            editor.style.removeProperty('height');
+        }
         host?.classList.toggle('is-markdown-previewing', previewEnabled);
         if (button) {
             button.classList.toggle('active', previewEnabled);
