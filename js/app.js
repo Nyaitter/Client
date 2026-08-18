@@ -2329,6 +2329,14 @@ export function initApp() {
             'fuchsia',
         ]);
         const MAX_DECORATION_DIRECTIVES = 24;
+        const decorationNames = ['color', 'size', 'rotate', 'x', 'y'];
+        const resolveDecorationName = (abbreviation) => {
+            const prefix = String(abbreviation || '').toLowerCase();
+            const matches = decorationNames.filter((name) =>
+                name.startsWith(prefix),
+            );
+            return matches.length === 1 ? matches[0] : null;
+        };
         const decorationDefaults = {
             color: null,
             size: 1,
@@ -2415,12 +2423,46 @@ export function initApp() {
             return styles.join(';');
         };
 
-        const renderDecoratedText = (standardText) => {
-            if (!allowContentDecorations || editorSyntax) {
-                return renderPlainText(standardText);
+        const decorationDirectivePattern =
+            /\[(?:\/([a-z]{0,6})|([a-z]{1,6})=([^\]\r\n]{1,32}))\]/gi;
+        const isValidDecorationDirective = (match) => {
+            const isReset = match[0].startsWith('[/');
+            if (isReset) {
+                const resetName = match[1]
+                    ? resolveDecorationName(match[1])
+                    : 'all';
+                return Boolean(resetName);
             }
-            const directivePattern =
-                /\[(?:\/(color|size|rotate|x|y)|(color|size|rotate|x|y)=([^\]\r\n]{1,32}))\]/gi;
+            const name = match[2] ? resolveDecorationName(match[2]) : null;
+            return Boolean(
+                name && parseDecorationValue(name, match[3]) !== null,
+            );
+        };
+        const renderDecorationSyntax = (standardText) => {
+            let output = '';
+            let previousIndex = 0;
+            let match;
+            decorationDirectivePattern.lastIndex = 0;
+            while (
+                (match = decorationDirectivePattern.exec(standardText)) !== null
+            ) {
+                output += renderPlainText(
+                    standardText.slice(previousIndex, match.index),
+                );
+                output += isValidDecorationDirective(match)
+                    ? renderSyntax(match[0])
+                    : renderPlainText(match[0]);
+                previousIndex = decorationDirectivePattern.lastIndex;
+            }
+            return output + renderPlainText(standardText.slice(previousIndex));
+        };
+        const renderDecoratedText = (standardText) => {
+            if (!allowContentDecorations) {
+                return editorSyntax
+                    ? renderDecorationSyntax(standardText)
+                    : renderPlainText(standardText);
+            }
+            decorationDirectivePattern.lastIndex = 0;
             let output = '';
             let previousIndex = 0;
             let directiveCount = 0;
@@ -2433,26 +2475,46 @@ export function initApp() {
                     ? `<span class="post-content-decoration" style="${escapeHTML(style)}">${rendered}</span>`
                     : rendered;
             };
-            while ((match = directivePattern.exec(standardText)) !== null) {
+            while (
+                (match = decorationDirectivePattern.exec(standardText)) !== null
+            ) {
+                output += renderSegment(standardText.slice(previousIndex, match.index));
+                const isReset = match[0].startsWith('[/');
+                const resetName = isReset
+                    ? match[1]
+                        ? resolveDecorationName(match[1])
+                        : 'all'
+                    : null;
+                const name = match[2]
+                    ? resolveDecorationName(match[2])
+                    : null;
+                if (!resetName && !name) {
+                    output += renderSegment(match[0]);
+                    previousIndex = decorationDirectivePattern.lastIndex;
+                    continue;
+                }
                 if (directiveCount >= MAX_DECORATION_DIRECTIVES) {
                     output += renderSegment(standardText.slice(previousIndex));
                     return output;
                 }
                 directiveCount += 1;
-                output += renderSegment(standardText.slice(previousIndex, match.index));
-                const resetName = match[1]?.toLowerCase();
                 if (resetName) {
-                    decoration[resetName] = decorationDefaults[resetName];
+                    if (resetName === 'all') {
+                        Object.assign(decoration, decorationDefaults);
+                    } else {
+                        decoration[resetName] = decorationDefaults[resetName];
+                    }
+                    output += renderSyntax(match[0]);
                 } else {
-                    const name = match[2].toLowerCase();
                     const parsedValue = parseDecorationValue(name, match[3]);
                     if (parsedValue === null) {
                         output += renderSegment(match[0]);
                     } else {
                         decoration[name] = parsedValue;
+                        output += renderSyntax(match[0]);
                     }
                 }
-                previousIndex = directivePattern.lastIndex;
+                previousIndex = decorationDirectivePattern.lastIndex;
             }
             return output + renderSegment(standardText.slice(previousIndex));
         };
@@ -2882,33 +2944,84 @@ export function initApp() {
     function updateMarkdownEditorPreview(
         editor,
         selection = getMarkdownEditorSelectionSnapshot(editor),
+        { published = false } = {},
     ) {
+        if (!published && editor._markdownPreviewEnabled) {
+            updateMarkdownEditorPreview(editor, selection, { published: true });
+            return;
+        }
         const preview = getMarkdownEditorPreview(editor);
         if (!preview) return;
         const source = getMarkdownEditorValue(editor);
         const rawTextMode =
-            selection.start !== selection.end ||
-            Boolean(editor._markdownEditorComposition?.active);
+            !published &&
+            (selection.start !== selection.end ||
+                Boolean(editor._markdownEditorComposition?.active));
         if (rawTextMode) {
             preview.textContent = source;
         } else {
             preview.innerHTML = source
                 ? formatPostContent(source, getAllUsersCache(), {
                       allowMarkdown: true,
-                      editorSyntax: true,
+                      editorSyntax: !published,
+                      allowContentDecorations: published,
                   })
                 : '';
         }
-        preview.dataset.markdownEditorMode = rawTextMode ? 'raw' : 'formatted';
+        preview.dataset.markdownEditorMode = published
+            ? 'published'
+            : rawTextMode
+              ? 'raw'
+              : 'formatted';
         preview.classList.remove('hidden');
         const placeholder = getMarkdownEditorPaint(editor)?.querySelector(
             '.markdown-editor-placeholder',
         );
         if (placeholder) {
             placeholder.textContent = editor.dataset.markdownPlaceholder || '';
-            placeholder.hidden = Boolean(source);
+            placeholder.hidden = published || Boolean(source);
         }
-        scheduleNextFrame(() => syncMarkdownEditorDecoration(editor));
+        if (!published) {
+            scheduleNextFrame(() => syncMarkdownEditorDecoration(editor));
+        }
+    }
+
+    function setMarkdownEditorPreview(editor, enabled) {
+        if (!(editor instanceof HTMLTextAreaElement)) return;
+        const host = editor.closest('.markdown-textarea-editor');
+        const controls = host?.closest(
+            'form, .modal-content, .post-form, .dm-form-content',
+        );
+        const button = controls?.querySelector('.markdown-preview-button');
+        const emojiButton = controls?.querySelector('.emoji-pic-button');
+        const previewEnabled = Boolean(enabled);
+        editor._markdownPreviewEnabled = previewEnabled;
+        if (previewEnabled) {
+            delete editor._markdownEditorComposition;
+            if (emojiButton) {
+                editor._markdownPreviewEmojiWasDisabled = emojiButton.disabled;
+                emojiButton.disabled = true;
+            }
+        } else if (emojiButton) {
+            emojiButton.disabled = Boolean(editor._markdownPreviewEmojiWasDisabled);
+            delete editor._markdownPreviewEmojiWasDisabled;
+        }
+        editor.disabled = previewEnabled;
+        host?.classList.toggle('is-markdown-previewing', previewEnabled);
+        if (button) {
+            button.classList.toggle('active', previewEnabled);
+            button.innerHTML = ICONS.preview;
+            button.title = previewEnabled ? '編集に戻る' : 'プレビューを表示';
+            button.setAttribute('aria-label', button.title);
+            button.setAttribute('aria-pressed', String(previewEnabled));
+        }
+        updateMarkdownEditorPreview(editor, undefined, {
+            published: previewEnabled,
+        });
+        if (!previewEnabled) {
+            editor.focus();
+            scheduleNextFrame(() => syncMarkdownEditorDecoration(editor));
+        }
     }
 
     function getContentEditorPreference() {
@@ -3133,6 +3246,25 @@ export function initApp() {
             '[data-markdown-content-editor]',
         );
         if (!picker || !pickerButton || !editor) return;
+
+        let previewButton = container.querySelector('.markdown-preview-button');
+        if (!previewButton) {
+            previewButton = document.createElement('button');
+            previewButton.type = 'button';
+            previewButton.className = 'markdown-preview-button float-left';
+            previewButton.innerHTML = ICONS.preview;
+            previewButton.title = 'プレビューを表示';
+            previewButton.setAttribute('aria-label', 'プレビューを表示');
+            previewButton.setAttribute('aria-pressed', 'false');
+            pickerButton.insertAdjacentElement('afterend', previewButton);
+        }
+        if (previewButton.dataset.markdownPreviewControl !== 'true') {
+            previewButton.dataset.markdownPreviewControl = 'true';
+            previewButton.addEventListener('click', () => {
+                picker.classList.add('hidden');
+                setMarkdownEditorPreview(editor, !editor._markdownPreviewEnabled);
+            });
+        }
 
         const emojiMart = window.EmojiMart;
         if (!emojiMart?.Picker) {
