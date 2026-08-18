@@ -1166,6 +1166,38 @@ export function initApp() {
         });
 
     const POSTS_PER_PAGE = 30;
+    const DATA_SAVER_POSTS_PER_PAGE = 12;
+    const DATA_SAVER_USERS_PER_PAGE = 10;
+    const DATA_SAVER_MEDIA_PER_PAGE = 6;
+    const DATA_SAVER_NOTIFICATIONS_PER_PAGE = 12;
+
+    function isDataSaverEnabled() {
+        return Boolean(getCurrentUser()?.settings?.data_saver);
+    }
+
+    function getPostsPerPage() {
+        return isDataSaverEnabled()
+            ? DATA_SAVER_POSTS_PER_PAGE
+            : POSTS_PER_PAGE;
+    }
+
+    function getUsersPerPage() {
+        return isDataSaverEnabled()
+            ? DATA_SAVER_USERS_PER_PAGE
+            : POSTS_PER_PAGE;
+    }
+
+    function getMediaPerPage() {
+        return isDataSaverEnabled()
+            ? DATA_SAVER_MEDIA_PER_PAGE
+            : 15;
+    }
+
+    function getNotificationsPerPage() {
+        return isDataSaverEnabled()
+            ? DATA_SAVER_NOTIFICATIONS_PER_PAGE
+            : 30;
+    }
 
     const COLOR_THEME_PRESETS = Object.freeze({
         nyaitter: Object.freeze({
@@ -1324,9 +1356,11 @@ export function initApp() {
         let trackingPull = false;
         let pullActive = false;
         let refreshInProgress = false;
+        let pullReadyHapticSent = false;
 
         const resetIndicator = () => {
             pullActive = false;
+            pullReadyHapticSent = false;
             indicator.style.setProperty('--pull-distance', '0px');
             indicator.style.setProperty('--pull-opacity', '0');
             indicator.classList.remove(
@@ -1340,6 +1374,18 @@ export function initApp() {
 
         const showPullProgress = (distance) => {
             const ready = distance >= PULL_THRESHOLD;
+            if (ready && !pullReadyHapticSent) {
+                if (typeof navigator.vibrate === 'function') {
+                    try {
+                        navigator.vibrate(12);
+                    } catch (_) {
+                        // バイブレーションが制限された環境でもPTRの操作は継続する。
+                    }
+                }
+                pullReadyHapticSent = true;
+            } else if (!ready) {
+                pullReadyHapticSent = false;
+            }
             indicator.style.setProperty('--pull-distance', `${distance}px`);
             indicator.style.setProperty(
                 '--pull-opacity',
@@ -1551,6 +1597,136 @@ export function initApp() {
         }
     }
 
+    function getAttachmentImagePreviewUrl(attachment, originalUrl) {
+        if (!isDataSaverEnabled()) return originalUrl;
+        const fileId = typeof attachment?.id === 'string'
+            ? attachment.id.trim()
+            : '';
+        if (!fileId) return originalUrl;
+        return getSafeHttpUrl(
+            apiUrl(`/uploads/preview?file_id=${encodeURIComponent(fileId)}`),
+            originalUrl,
+        );
+    }
+
+    function configureAttachmentImage(img, attachment, originalUrl) {
+        const previewUrl = getAttachmentImagePreviewUrl(attachment, originalUrl);
+        img.src = previewUrl;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        if ('fetchPriority' in img) img.fetchPriority = 'low';
+        if (previewUrl !== originalUrl) {
+            img.addEventListener(
+                'error',
+                () => {
+                    img.src = originalUrl;
+                },
+                { once: true },
+            );
+        }
+    }
+
+    const urlCardCache = new Map();
+    const URL_CARD_CACHE_LIMIT = 200;
+
+    function getUrlCardTarget(content) {
+        const source = String(content || '')
+            .replace(/```[\s\S]*?```/g, '')
+            .replace(/`[^`\r\n]{0,500}`/g, '');
+        const urlPattern =
+            /https:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,63}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=;]*)/g;
+        let match;
+        while ((match = urlPattern.exec(source)) !== null) {
+            const candidate = match[0];
+            const before = source[match.index - 1] || '';
+            const after = source[match.index + candidate.length] || '';
+            // <URL> はリンクとして残し、外部サイトへのメタデータ取得だけを抑止する。
+            if (before === '<' && after === '>') continue;
+            const safeUrl = getSafeHttpUrl(candidate);
+            if (!safeUrl) continue;
+            try {
+                const parsed = new URL(safeUrl);
+                if (
+                    parsed.protocol === 'https:' &&
+                    !parsed.username &&
+                    !parsed.password
+                ) {
+                    return parsed.href;
+                }
+            } catch (_) {
+                // URLの妥当性は次の候補の検査で補う。
+            }
+        }
+        return null;
+    }
+
+    function getUrlCard(url) {
+        if (urlCardCache.has(url)) return urlCardCache.get(url);
+        const request = apiRequest(
+            `/server/api/url-cards?url=${encodeURIComponent(url)}`,
+        )
+            .then(({ data, error }) => {
+                if (error || !data?.card || typeof data.card !== 'object')
+                    return null;
+                const safeUrl = getSafeHttpUrl(data.card.url);
+                if (!safeUrl) return null;
+                const title = String(data.card.title || '').trim().slice(0, 160);
+                if (!title) return null;
+                return {
+                    url: safeUrl,
+                    hostname: String(data.card.hostname || '').trim().slice(0, 253),
+                    title,
+                    description: String(data.card.description || '')
+                        .trim()
+                        .slice(0, 280),
+                    siteName: String(data.card.site_name || '').trim().slice(0, 100),
+                };
+            })
+            .catch(() => null);
+        urlCardCache.set(url, request);
+        while (urlCardCache.size > URL_CARD_CACHE_LIMIT) {
+            urlCardCache.delete(urlCardCache.keys().next().value);
+        }
+        return request;
+    }
+
+    function appendUrlCard(container, content) {
+        const targetUrl = getUrlCardTarget(content);
+        if (!targetUrl) return;
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'url-card-placeholder';
+        placeholder.setAttribute('aria-live', 'polite');
+        container.appendChild(placeholder);
+
+        void getUrlCard(targetUrl).then((card) => {
+            if (!card || !placeholder.isConnected) {
+                placeholder.remove();
+                return;
+            }
+            const cardLink = document.createElement('a');
+            cardLink.className = 'url-card';
+            cardLink.href = card.url;
+            cardLink.target = '_blank';
+            cardLink.rel = 'noopener noreferrer';
+
+            const hostname = document.createElement('span');
+            hostname.className = 'url-card-hostname';
+            hostname.textContent = card.siteName || card.hostname;
+            const title = document.createElement('strong');
+            title.className = 'url-card-title';
+            title.textContent = card.title;
+            cardLink.append(hostname, title);
+            if (card.description) {
+                const description = document.createElement('span');
+                description.className = 'url-card-description';
+                description.textContent = card.description;
+                cardLink.appendChild(description);
+            }
+            placeholder.replaceWith(cardLink);
+        });
+    }
+
     function getEmoji(str) {
         switch (getCurrentUser()?.settings?.emoji || 'twemoji') {
             case 'twemoji':
@@ -1624,15 +1800,18 @@ export function initApp() {
                 );
                 if (!safeAttachmentUrl) continue;
                 const publicURL = escapeHTML(safeAttachmentUrl);
+                const previewURL = escapeHTML(
+                    getAttachmentImagePreviewUrl(attachment, safeAttachmentUrl),
+                );
                 const attachmentName = escapeHTML(
                     String(attachment.name || '添付ファイル').slice(0, 255),
                 );
 
                 let itemHTML = '<div class="attachment-item">';
                 if (attachment.type === 'image') {
-                    itemHTML += `<img src="${publicURL}" alt="${attachmentName}" class="attachment-image" data-action="open-image" data-url="${publicURL}">`;
+                    itemHTML += `<img src="${previewURL}" alt="${attachmentName}" class="attachment-image" loading="lazy" decoding="async" data-action="open-image" data-url="${publicURL}">`;
                 } else if (attachment.type === 'video') {
-                    itemHTML += `<video src="${publicURL}" controls></video>`;
+                    itemHTML += `<video src="${publicURL}" controls preload="${isDataSaverEnabled() ? 'metadata' : 'auto'}"></video>`;
                 } else if (attachment.type === 'audio') {
                     itemHTML += `<audio src="${publicURL}" controls></audio>`;
                 }
@@ -2113,7 +2292,11 @@ export function initApp() {
     function formatPostContent(
         text,
         userCache = new Map(),
-        { allowMarkdown = false, editorSyntax = false } = {},
+        {
+            allowMarkdown = false,
+            editorSyntax = false,
+            allowContentDecorations = false,
+        } = {},
     ) {
         const renderSyntax = (syntax) =>
             editorSyntax
@@ -2139,7 +2322,44 @@ export function initApp() {
             }
             return processed;
         };
-        const processStandardText = (standardText) => {
+        const namedColors = new Set([
+            'black', 'white', 'red', 'green', 'blue', 'yellow', 'orange',
+            'purple', 'pink', 'gray', 'grey', 'brown', 'cyan', 'magenta',
+            'lime', 'navy', 'teal', 'silver', 'maroon', 'olive', 'aqua',
+            'fuchsia',
+        ]);
+        const MAX_DECORATION_DIRECTIVES = 24;
+        const decoration = {
+            color: null,
+            size: 1,
+            rotate: 0,
+            x: 0,
+            y: 0,
+        };
+
+        const parseDecorationValue = (name, rawValue) => {
+            const value = String(rawValue || '').trim().toLowerCase();
+            if (name === 'color') {
+                if (/^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(value))
+                    return value;
+                return namedColors.has(value) ? value : null;
+            }
+            if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(value)) return null;
+            const number = Number(value);
+            if (!Number.isFinite(number)) return null;
+            const limits = {
+                size: [0.5, 3],
+                rotate: [-180, 180],
+                x: [-2, 2],
+                y: [-2, 2],
+            };
+            const [minimum, maximum] = limits[name] || [];
+            if (number < minimum || number > maximum) return null;
+            const normalized = Math.round(number * 1000) / 1000;
+            return Object.is(normalized, -0) ? 0 : normalized;
+        };
+
+        const renderPlainText = (standardText) => {
             let processed = escapeHTML(standardText);
             const urls = [];
 
@@ -2152,16 +2372,15 @@ export function initApp() {
             });
 
             processed = replaceCustomEmoji(processed);
-
             processed = getEmoji(processed);
 
             const hashtagRegex = /#([^<>/@#\s]+)/g;
-            processed = processed.replace(hashtagRegex, (match, tagName) => {
-                return `<a href="#search/${encodeURIComponent(tagName)}">#${getEmoji(tagName)}</a>`;
-            });
+            processed = processed.replace(hashtagRegex, (match, tagName) =>
+                `<a href="#search/${encodeURIComponent(tagName)}">#${getEmoji(tagName)}</a>`,
+            );
             const mentionRegex = /@(\d+)/g;
             processed = processed.replace(mentionRegex, (match, userId) => {
-                const numericId = parseInt(userId);
+                const numericId = parseInt(userId, 10);
                 if (userCache.has(numericId)) {
                     const user = userCache.get(numericId);
                     const userName = user ? user.name : `user${numericId}`;
@@ -2170,17 +2389,68 @@ export function initApp() {
                 return match;
             });
 
-            urls.forEach((url, i) => {
-                const placeholder = `%%URL_${i}%%`;
+            urls.forEach((url, index) => {
+                const placeholder = `%%URL_${index}%%`;
                 const safeUrl = getSafeHttpUrl(url);
                 const link = safeUrl
                     ? `<a href="${escapeHTML(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHTML(url)}</a>`
                     : escapeHTML(url);
                 processed = processed.replace(placeholder, link);
             });
-
             return processed.replace(/\n/g, '<br>');
         };
+
+        const getDecorationStyle = () => {
+            const styles = [];
+            if (decoration.color) styles.push(`color:${decoration.color}`);
+            if (decoration.size !== 1) styles.push(`font-size:${decoration.size}em`);
+            if (decoration.rotate || decoration.x || decoration.y) {
+                styles.push('display:inline-block');
+                styles.push(
+                    `transform:translate(${decoration.x}em,${decoration.y}em) rotate(${decoration.rotate}deg)`,
+                );
+                styles.push('transform-origin:center');
+            }
+            return styles.join(';');
+        };
+
+        const renderDecoratedText = (standardText) => {
+            if (!allowContentDecorations || editorSyntax) {
+                return renderPlainText(standardText);
+            }
+            const directivePattern = /\[(color|size|rotate|x|y)=([^\]\r\n]{1,32})\]/gi;
+            let output = '';
+            let previousIndex = 0;
+            let directiveCount = 0;
+            let match;
+            const renderSegment = (segment) => {
+                if (!segment) return '';
+                const rendered = renderPlainText(segment);
+                const style = getDecorationStyle();
+                return style
+                    ? `<span class="post-content-decoration" style="${escapeHTML(style)}">${rendered}</span>`
+                    : rendered;
+            };
+            while ((match = directivePattern.exec(standardText)) !== null) {
+                if (directiveCount >= MAX_DECORATION_DIRECTIVES) {
+                    output += renderSegment(standardText.slice(previousIndex));
+                    return output;
+                }
+                directiveCount += 1;
+                output += renderSegment(standardText.slice(previousIndex, match.index));
+                const name = match[1].toLowerCase();
+                const parsedValue = parseDecorationValue(name, match[2]);
+                if (parsedValue === null) {
+                    output += renderSegment(match[0]);
+                } else {
+                    decoration[name] = parsedValue;
+                }
+                previousIndex = directivePattern.lastIndex;
+            }
+            return output + renderSegment(standardText.slice(previousIndex));
+        };
+
+        const processStandardText = renderDecoratedText;
 
         if (!allowMarkdown) return processStandardText(text);
 
@@ -4916,29 +5186,42 @@ export function initApp() {
                     masktitle.innerHTML = formatPostContent(
                         post.content.split('\n')[0].slice(1),
                         userCache,
-                        { allowMarkdown: true },
+                        {
+                            allowMarkdown: true,
+                            allowContentDecorations: true,
+                        },
                     );
                     postMain.appendChild(masktitle);
                     postContent.innerHTML = formatPostContent(
                         post.content.slice(1),
                         userCache,
-                        { allowMarkdown: true },
+                        {
+                            allowMarkdown: true,
+                            allowContentDecorations: true,
+                        },
                     );
                 } else {
                     postContent.innerHTML = formatPostContent(
                         post.content,
                         userCache,
-                        { allowMarkdown: true },
+                        {
+                            allowMarkdown: true,
+                            allowContentDecorations: true,
+                        },
                     );
                 }
             } else {
                 postContent.innerHTML = formatPostContent(
                     post.content,
                     userCache,
-                    { allowMarkdown: true },
+                    {
+                        allowMarkdown: true,
+                        allowContentDecorations: true,
+                    },
                 );
             }
             postMain.appendChild(postContent);
+            if (!post.mask) appendUrlCard(postMain, post.content);
         }
 
         // maskが有効の場合表示ボタンを追加
@@ -4988,7 +5271,7 @@ export function initApp() {
 
                     if (attachment.type === 'image') {
                         const img = document.createElement('img');
-                        img.src = publicURL;
+                        configureAttachmentImage(img, attachment, publicURL);
                         img.alt = attachmentName;
                         img.className = 'attachment-image';
                         img.onclick = (e) => {
@@ -5000,6 +5283,7 @@ export function initApp() {
                         const video = document.createElement('video');
                         video.src = publicURL;
                         video.controls = true;
+                        video.preload = isDataSaverEnabled() ? 'metadata' : 'auto';
                         video.onclick = (e) => {
                             e.stopPropagation();
                         };
@@ -5509,7 +5793,7 @@ export function initApp() {
                 void updateNavAndSidebars();
             }
 
-            const NOTIFICATIONS_PER_PAGE = 30;
+            const NOTIFICATIONS_PER_PAGE = getNotificationsPerPage();
             let notificationOffset = 0;
             let hasMoreNotifications = true;
             let isLoadingMoreNotifications = false;
@@ -6807,8 +7091,13 @@ export function initApp() {
                                 <option value="textarea">Textarea</option>
                                 <option value="nyaitter">Nyaitterエディタ</option>
                             </select>
-                            <p class="settings-help-text">Textareaはブラウザ標準の入力欄です。NyaitterエディタはMarkdownとカスタム絵文字を入力中に表示します。</p>
-                            <label for="setting-theme">テーマ</label>
+                            	                            <p class="settings-help-text">Textareaはブラウザ標準の入力欄です。NyaitterエディタはMarkdownとカスタム絵文字を入力中に表示します。</p>
+	                            <fieldset class="settings-data-saver"><legend>通信量</legend>
+	                                <label><input type="checkbox" id="setting-data-saver" ${getCurrentUser().settings?.data_saver ? 'checked' : ''}> データセーバーを有効にする</label>
+	                                <p class="settings-help-text">画像は低画質プレビューで表示し、開いた時だけ元の画質を取得します。リアルタイム接続を停止し、一覧の一度の取得件数も減らします。</p>
+	                            </fieldset>
+	                            <label for="setting-theme">テーマ</label>
+
 	                            <select id="setting-theme" class="settings-select">
 	                                <option value="auto">端末設定</option><option value="light">ライト</option><option value="dark">ダーク</option>
 	                            </select>
@@ -8289,9 +8578,10 @@ export function initApp() {
         page,
         beforeCursor = null,
     ) {
+        const pageSize = getPostsPerPage();
         const params = new URLSearchParams({
-            limit: String(POSTS_PER_PAGE),
-            offset: String(page * POSTS_PER_PAGE),
+            limit: String(pageSize),
+            offset: String(page * pageSize),
         });
         if (beforeCursor != null) {
             params.set('before_id', String(beforeCursor));
@@ -8322,10 +8612,10 @@ export function initApp() {
                 showPinPost = true;
             }
         } else if (type === 'likes' || type === 'stars') {
-            const from = page * POSTS_PER_PAGE;
+            const from = page * pageSize;
             if (options.userId) {
                 const { data, error } = await apiRequest(
-                    `/server/api/users/${encodeURIComponent(options.userId)}/${type}?limit=${POSTS_PER_PAGE}&offset=${from}`,
+                    `/server/api/users/${encodeURIComponent(options.userId)}/${type}?limit=${pageSize}&offset=${from}`,
                 );
                 if (error) throw error;
                 return {
@@ -8337,7 +8627,7 @@ export function initApp() {
                 };
             }
             const ids = [...(options.ids || [])].reverse();
-            const pageIds = ids.slice(from, from + POSTS_PER_PAGE);
+            const pageIds = ids.slice(from, from + pageSize);
             params.set('mode', 'ids');
             params.set('ids', pageIds.join(','));
             params.set('offset', '0');
@@ -8347,7 +8637,7 @@ export function initApp() {
             if (error) throw error;
             return {
                 posts: data.posts || [],
-                hasMore: ids.length > from + POSTS_PER_PAGE,
+                hasMore: ids.length > from + pageSize,
                 nextCursor: null,
                 showPinPost: false,
                 context: data.context || null,
@@ -8370,6 +8660,7 @@ export function initApp() {
     }
 
     async function loadPostsWithPagination(container, type, options = {}) {
+        const pageSize = getPostsPerPage();
         let localPostLoadObserver;
         const postPageCache = options.pageCache || null;
         setCurrentPagination({ page: 0, hasMore: true, type, options });
@@ -8436,12 +8727,12 @@ export function initApp() {
                             type === 'search'
                                 ? {
                                       query: options.query,
-                                      page_size: POSTS_PER_PAGE,
+                                      page_size: pageSize,
                                       page_num: getCurrentPagination().page,
                                   }
                                 : {
                                       p_user_id: getCurrentUser()?.id || null,
-                                      page_size: POSTS_PER_PAGE,
+                                      page_size: pageSize,
                                       page_num: getCurrentPagination().page,
                                   };
 
@@ -8454,8 +8745,8 @@ export function initApp() {
                         hasMoreItems = rpcResult.has_next || false;
                     } else {
                         const from =
-                            getCurrentPagination().page * POSTS_PER_PAGE;
-                        const to = from + POSTS_PER_PAGE - 1;
+                            getCurrentPagination().page * pageSize;
+                        const to = from + pageSize - 1;
 
                         let postIdsToFetch = [];
                         let idQuery;
@@ -8508,7 +8799,7 @@ export function initApp() {
                             const idList = options.ids || [];
                             const reversedList = [...idList].reverse();
                             postIdsToFetch = reversedList.slice(from, to + 1);
-                            if (postIdsToFetch.length < POSTS_PER_PAGE) {
+                            if (postIdsToFetch.length < pageSize) {
                                 hasMoreItems = false;
                             }
                         }
@@ -8524,7 +8815,7 @@ export function initApp() {
                             ) {
                                 postIdsToFetch.push(options.pinId);
                             }
-                            if (idData.length < POSTS_PER_PAGE) {
+                            if (idData.length < pageSize) {
                                 hasMoreItems = false;
                             }
                         }
@@ -8668,7 +8959,10 @@ export function initApp() {
 
     async function loadUsersWithPagination(container, type, options = {}) {
         const userPageCache = options.pageCache || null;
-        const pageSize = Number(options.pageSize) || POSTS_PER_PAGE;
+        const requestedPageSize = Number(options.pageSize) || POSTS_PER_PAGE;
+        const pageSize = isDataSaverEnabled()
+            ? Math.min(requestedPageSize, getUsersPerPage())
+            : requestedPageSize;
         setCurrentPagination({ page: 0, hasMore: true, type, options });
 
         let trigger = container.querySelector('.load-more-trigger');
@@ -8736,7 +9030,7 @@ export function initApp() {
                 if (type === 'follows') {
                     if (options.userId) {
                         const result = await apiRequest(
-                            `/server/api/users/${encodeURIComponent(options.userId)}/following?limit=${POSTS_PER_PAGE}&offset=${from}`,
+                            `/server/api/users/${encodeURIComponent(options.userId)}/following?limit=${pageSize}&offset=${from}`,
                         );
                         users = Array.isArray(result.data?.following)
                             ? result.data.following
@@ -8873,7 +9167,7 @@ export function initApp() {
         trigger.className = 'load-more-trigger';
         container.appendChild(trigger);
 
-        const MEDIA_PER_PAGE = 15; // メディアタブ専用の表示数
+        const MEDIA_PER_PAGE = getMediaPerPage(); // メディアタブ専用の表示数
 
         const loadMore = async () => {
             if (getIsLoadingMore() || !getCurrentPagination().hasMore) return;
@@ -8904,10 +9198,24 @@ export function initApp() {
                         itemLink.href = `#post/${item.post_id}`;
                         itemLink.className = 'media-grid-item';
 
+                        const publicUrl = getSafeHttpUrl(publicUrlData?.publicUrl);
+                        if (!publicUrl) continue;
                         if (item.file_type === 'image') {
-                            itemLink.innerHTML = `<img src="${escapeHTML(publicUrlData.publicUrl)}" loading="lazy" alt="投稿メディア">`;
+                            const image = document.createElement('img');
+                            configureAttachmentImage(
+                                image,
+                                { id: item.file_id },
+                                publicUrl,
+                            );
+                            image.alt = '投稿メディア';
+                            itemLink.appendChild(image);
                         } else if (item.file_type === 'video') {
-                            itemLink.innerHTML = `<video src="${escapeHTML(publicUrlData.publicUrl)}" muted playsinline loading="lazy"></video>`;
+                            const video = document.createElement('video');
+                            video.src = publicUrl;
+                            video.muted = true;
+                            video.playsInline = true;
+                            video.preload = isDataSaverEnabled() ? 'metadata' : 'auto';
+                            itemLink.appendChild(video);
                         }
                         gridContainer.appendChild(itemLink);
                     }
@@ -9020,6 +9328,8 @@ export function initApp() {
                         'nyaitter'
                             ? 'nyaitter'
                             : 'textarea',
+                    data_saver: form.querySelector('#setting-data-saver')
+                        .checked,
                     theme: form.querySelector('#setting-theme').value,
                     color_theme: normalizeColorTheme(
                         form.querySelector('#setting-color-theme').value,
@@ -9098,6 +9408,7 @@ export function initApp() {
             updateAccountData(getCurrentUser());
             applyInterfaceTheme(getCurrentUser().settings?.theme || 'light');
             applyColorTheme(getCurrentUser().settings || {});
+            applyDataSaverRealtimePreference();
             refreshMarkdownContentEditors();
             await updateNavAndSidebars();
             setNewIconDataUrl(null);
@@ -11089,6 +11400,7 @@ export function initApp() {
     }
 
     function scheduleRealtimeReconnect() {
+        if (isDataSaverEnabled()) return;
         if (
             !getRealtimeShouldReconnect() ||
             !getCurrentUser() ||
@@ -11209,6 +11521,10 @@ export function initApp() {
     }
 
     function connectRealtimeSocket() {
+        if (isDataSaverEnabled()) {
+            stopRealtimeConnection();
+            return;
+        }
         if (!getRealtimeShouldReconnect() || !getCurrentUser()) return;
         // Same-origin WebSocket handshakeにはHttpOnly Cookieが自動送信される。
         // URLクエリにBearerトークンを載せるとログ・監視基盤へ漏れるため使わない。
@@ -11256,18 +11572,30 @@ export function initApp() {
             setRealtimeAuthKey(null);
             if (getRealtimePingTimer()) clearInterval(getRealtimePingTimer());
             setRealtimePingTimer(null);
-            refreshNavSummaryFallback();
-            scheduleRealtimeReconnect();
+            if (!isDataSaverEnabled()) {
+                refreshNavSummaryFallback();
+                scheduleRealtimeReconnect();
+            }
         };
     }
 
     function subscribeToChanges() {
+        if (isDataSaverEnabled()) {
+            stopRealtimeConnection();
+            return;
+        }
         setRealtimeShouldReconnect(true);
         connectRealtimeSocket();
     }
 
     function unsubscribeFromChanges() {
         stopRealtimeConnection();
+    }
+
+    function applyDataSaverRealtimePreference() {
+        if (!getCurrentUser()) return;
+        if (isDataSaverEnabled()) unsubscribeFromChanges();
+        else subscribeToChanges();
     }
 
     // アプリケーション全体のクリックイベントを処理する単一のハンドラ

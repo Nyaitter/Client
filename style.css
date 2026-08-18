@@ -1163,10 +1163,73 @@ em-emoji-picker {
 
 .post-content {
     margin-bottom: 1rem;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    overflow-wrap: anywhere;
     white-space: pre-wrap;
     line-break: anywhere;
     font-size: 1rem;
     cursor: pointer;
+}
+
+.post-content-decoration {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.url-card {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    flex-direction: column;
+    gap: 0.22rem;
+    box-sizing: border-box;
+    overflow: hidden;
+    margin: 0 0 1rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: inherit;
+    background: var(--bg-color);
+    text-decoration: none;
+}
+
+.url-card:hover {
+    border-color: var(--primary-color);
+    text-decoration: none;
+}
+
+.url-card-hostname {
+    overflow: hidden;
+    color: var(--secondary-text-color);
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.url-card-title,
+.url-card-description {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.url-card-title {
+    font-size: 0.96rem;
+}
+
+.url-card-description {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--secondary-text-color);
+    font-size: 0.88rem;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.url-card-placeholder {
+    display: none;
 }
 
 .post-content.post-mask-title {
