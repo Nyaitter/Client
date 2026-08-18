@@ -5160,6 +5160,19 @@ export function initApp() {
         }
     };
 
+    function isPostReactionActive(post, serverField, accountField) {
+        const serverState = post?.[serverField];
+        if (typeof serverState === 'boolean') return serverState;
+
+        const currentUser = getCurrentUser();
+        const postId = Number(post?.id);
+        return (
+            Number.isFinite(postId) &&
+            Array.isArray(currentUser?.[accountField]) &&
+            currentUser[accountField].some((id) => Number(id) === postId)
+        );
+    }
+
     async function renderPost(post, author, options = {}) {
         if (!post || filterBlockedPosts([post]).length === 0) return null;
         await ensureMentionedUsersCached([post.content]);
@@ -5613,12 +5626,12 @@ export function initApp() {
                 actionsDiv.appendChild(replyBtn);
 
                 const likeBtn = document.createElement('button');
-                likeBtn.className = `like-button ${getCurrentUser().like?.includes(actionTargetPost.id) ? 'liked' : ''}`;
+                likeBtn.className = `like-button ${isPostReactionActive(actionTargetPost, 'liked_by_me', 'like') ? 'liked' : ''}`;
                 likeBtn.innerHTML = `${ICONS.likes} <span>---</span>`;
                 actionsDiv.appendChild(likeBtn);
 
                 const starBtn = document.createElement('button');
-                starBtn.className = `star-button ${getCurrentUser().star?.includes(actionTargetPost.id) ? 'starred' : ''}`;
+                starBtn.className = `star-button ${isPostReactionActive(actionTargetPost, 'starred_by_me', 'star') ? 'starred' : ''}`;
                 starBtn.innerHTML = `${ICONS.stars} <span>---</span>`;
                 actionsDiv.appendChild(starBtn);
 
