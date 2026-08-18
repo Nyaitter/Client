@@ -2408,7 +2408,7 @@ export function initApp() {
             if (decoration.rotate || decoration.x || decoration.y) {
                 styles.push('display:inline-block');
                 styles.push(
-                    `transform:translate(${decoration.x}em,${decoration.y}em) rotate(${decoration.rotate}deg)`,
+                    `transform:translate(${decoration.x}em,${-decoration.y}em) rotate(${decoration.rotate}deg)`,
                 );
                 styles.push('transform-origin:center');
             }
