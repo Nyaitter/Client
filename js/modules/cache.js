@@ -266,7 +266,7 @@ export function getTimelinePageCacheKey() {
     return `${userScope}:${window.location.hash || '#'}`;
 }
 
-export function getTimelinePageCache(tab) {
+export function getTimelinePageCache(tab, { forceRefresh = false } = {}) {
     const pageKey = getTimelinePageCacheKey();
     if (!timelinePageCaches.has(pageKey)) {
         timelinePageCaches.set(pageKey, {
@@ -278,7 +278,7 @@ export function getTimelinePageCache(tab) {
         trimPageCacheMap(timelinePageCaches, MAX_TIMELINE_PAGE_CACHES);
     }
     const tabCaches = timelinePageCaches.get(pageKey).timelines;
-    if (!tabCaches.has(tab)) {
+    if (forceRefresh || !tabCaches.has(tab)) {
         tabCaches.set(tab, { pages: new Map() });
         persistPageCaches();
     }
@@ -308,24 +308,39 @@ export function invalidateProfileTabPageCache(userId, subpage) {
     if (!Number.isInteger(normalizedUserId) || normalizedUserId < 0)
         return;
 
-    const postSubTypeByTab = {
-        '': 'posts',
-        replies: 'replies',
-        media: 'media',
-        likes: 'likes',
-        stars: 'stars',
+    const normalizedTab = String(subpage || 'posts');
+    const postSubTypesByTab = {
+        posts: ['posts_only'],
+        replies: ['replies_only'],
+        likes: ['likes'],
+        stars: ['stars'],
     };
-    const targetSubType = postSubTypeByTab[subpage] || subpage;
+    const targetSubTypes = postSubTypesByTab[normalizedTab] || [];
     let changed = false;
+
     for (const key of profilePostPageCaches.keys()) {
         const parts = key.split(':');
         const cacheUserId = Number(parts[2]);
         const cacheSubType = parts[3];
-        if (cacheUserId === normalizedUserId && cacheSubType === targetSubType) {
+        if (
+            cacheUserId === normalizedUserId &&
+            targetSubTypes.includes(cacheSubType)
+        ) {
             profilePostPageCaches.delete(key);
             changed = true;
         }
     }
+
+    if (normalizedTab === 'following' || normalizedTab === 'followers') {
+        const profileUserCacheKey = `:profile-users:${normalizedUserId}:${normalizedTab}`;
+        for (const key of userPageCaches.keys()) {
+            if (key.includes(profileUserCacheKey)) {
+                userPageCaches.delete(key);
+                changed = true;
+            }
+        }
+    }
+
     if (changed) persistPageCaches();
 }
 

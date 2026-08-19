@@ -132,18 +132,22 @@ export function updatePullToRefreshAvailability() {
     const available = Boolean(
         isPullToRefreshMobileViewport() && getActivePullToRefreshContext(),
     );
-    indicator.classList.toggle('ptr-available', available);
+    document.documentElement.classList.toggle('pull-to-refresh-enabled', available);
+    document.body.classList.toggle('pull-to-refresh-enabled', available);
     if (!available) {
-        indicator.classList.remove('ptr-visible', 'ptr-refreshing');
-        indicator.style.removeProperty('--pull-distance');
+        indicator.classList.remove('is-pulling', 'is-ready', 'is-refreshing');
+        indicator.style.setProperty('--pull-distance', '0px');
+        indicator.style.setProperty('--pull-opacity', '0');
         indicator.setAttribute('aria-hidden', 'true');
     }
 }
 
 let ptrInitialized = false;
+let ptrOnRefresh = null;
 export function setupTimelinePullToRefresh(onRefresh) {
     if (ptrInitialized) return;
     ptrInitialized = true;
+    ptrOnRefresh = typeof onRefresh === 'function' ? onRefresh : null;
 
     const indicator = document.getElementById('pull-to-refresh-indicator');
     if (!indicator) return;
@@ -155,8 +159,8 @@ export function setupTimelinePullToRefresh(onRefresh) {
     let pullActive = false;
     let refreshInProgress = false;
 
-    const MAX_PULL_DISTANCE = 88;
-    const PULL_THRESHOLD = 52;
+    const MAX_PULL_DISTANCE = 104;
+    const PULL_THRESHOLD = 66;
 
     const canStartPull = (target) => {
         if (window.scrollY > 0) return false;
@@ -169,35 +173,40 @@ export function setupTimelinePullToRefresh(onRefresh) {
 
     const resetIndicator = () => {
         pullActive = false;
-        indicator.classList.remove('ptr-visible', 'ptr-refreshing');
-        indicator.style.removeProperty('--pull-distance');
+        indicator.classList.remove('is-pulling', 'is-ready', 'is-refreshing');
+        indicator.style.setProperty('--pull-distance', '0px');
+        indicator.style.setProperty('--pull-opacity', '0');
         indicator.setAttribute('aria-hidden', 'true');
         const label = indicator.querySelector('.pull-to-refresh-label');
         if (label) label.textContent = '引いて更新';
     };
 
     const showPullProgress = (distance) => {
-        indicator.classList.add('ptr-visible');
-        indicator.classList.remove('ptr-refreshing');
-        indicator.style.setProperty('--pull-distance', `${Math.min(distance, MAX_PULL_DISTANCE)}px`);
+        const pullDistance = Math.min(distance, MAX_PULL_DISTANCE);
+        const ready = pullDistance >= PULL_THRESHOLD;
+        indicator.classList.add('is-pulling');
+        indicator.classList.remove('is-refreshing');
+        indicator.classList.toggle('is-ready', ready);
+        indicator.style.setProperty('--pull-distance', `${pullDistance}px`);
+        indicator.style.setProperty('--pull-opacity', String(Math.min(1, pullDistance / 34)));
         indicator.setAttribute('aria-hidden', 'false');
         const label = indicator.querySelector('.pull-to-refresh-label');
-        if (label) {
-            label.textContent = distance >= PULL_THRESHOLD ? '離して更新' : '引いて更新';
-        }
+        if (label) label.textContent = ready ? '離して更新' : '引いて更新';
     };
 
     const runRefresh = async () => {
         if (refreshInProgress) return;
         refreshInProgress = true;
-        indicator.classList.add('ptr-visible', 'ptr-refreshing');
-        indicator.style.setProperty('--pull-distance', `${PULL_THRESHOLD}px`);
+        indicator.classList.remove('is-pulling', 'is-ready');
+        indicator.classList.add('is-refreshing');
+        indicator.style.setProperty('--pull-distance', '0px');
+        indicator.style.setProperty('--pull-opacity', '1');
         const label = indicator.querySelector('.pull-to-refresh-label');
-        if (label) label.textContent = '更新中…';
+        if (label) label.textContent = '更新中';
 
         try {
-            if (typeof onRefresh === 'function') {
-                await onRefresh(getActivePullToRefreshContext());
+            if (ptrOnRefresh) {
+                await ptrOnRefresh(getActivePullToRefreshContext());
             }
         } finally {
             setTimeout(() => {
@@ -266,4 +275,5 @@ export function setupTimelinePullToRefresh(onRefresh) {
     }, { passive: true });
 
     window.addEventListener('resize', updatePullToRefreshAvailability, { passive: true });
+    updatePullToRefreshAvailability();
 }

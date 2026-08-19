@@ -1,6 +1,7 @@
 import { DOM } from './dom.js';
 import {
     getCurrentUser,
+    getCurrentTimelineTab,
     getPostLoadObserver,
     setIsLoadingMore,
 } from './state.js';
@@ -25,7 +26,10 @@ import { showNotificationsScreen } from './screens/notificationsScreen.js';
 import { showLikesScreen, showStarsScreen } from './screens/likesStarsScreen.js';
 import { showPostDetail } from './screens/postDetailScreen.js';
 import { showDmScreen } from './screens/dmScreen.js';
-import { showProfileScreen } from './screens/profileScreen.js';
+import {
+    showProfileScreen,
+    refreshActiveProfileTab,
+} from './screens/profileScreen.js';
 import { showSettingsScreen, getSettingsGroupFromHash } from './screens/settingsScreen.js';
 import {
     showAdminReportsScreen,
@@ -37,6 +41,19 @@ import { showLoading } from './utils/helpers.js';
 let routerGeneration = 0;
 let scrollRestoreVersion = 0;
 
+async function refreshPullToRefreshContext(context) {
+    if (context?.type === 'timeline') {
+        await switchTimelineTab(getCurrentTimelineTab(), {
+            forceRefresh: true,
+            resetScroll: true,
+        });
+        return;
+    }
+    if (context?.type === 'profile') {
+        await refreshActiveProfileTab(context);
+    }
+}
+
 export function showScreen(screenId) {
     DOM.screens.forEach((screen) => {
         if (!screen.classList.contains('hidden')) {
@@ -47,7 +64,7 @@ export function showScreen(screenId) {
     if (targetScreen) {
         targetScreen.classList.remove('hidden');
     }
-    setupTimelinePullToRefresh();
+    setupTimelinePullToRefresh(refreshPullToRefreshContext);
     updatePullToRefreshAvailability();
     // 画面シェルを表示できた時点で、一覧データの取得完了を待たずに解除する。
     showLoading(false);
