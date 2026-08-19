@@ -850,6 +850,43 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         void loadUserStorage();
     });
 
+    const renderResourceLinks = () => {
+        const resourceLinksList = document.getElementById('settings-resource-links');
+        if (!resourceLinksList) return;
+
+        resourceLinksList.replaceChildren();
+        const resources = Array.isArray(RESOURCE_LINKS) ? RESOURCE_LINKS : [];
+        if (resources.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'settings-help-text';
+            empty.textContent = '表示するリソースリンクはありません。';
+            resourceLinksList.appendChild(empty);
+            return;
+        }
+
+        resources.forEach((resource) => {
+            if (
+                !resource ||
+                typeof resource.name !== 'string' ||
+                typeof resource.url !== 'string'
+            ) {
+                return;
+            }
+            const item = document.createElement('article');
+            item.className = 'settings-session-item';
+            const link = document.createElement('a');
+            link.className = 'settings-session-title';
+            link.textContent = resource.name;
+            link.href = resource.url;
+            if (/^https:\/\//i.test(resource.url)) {
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+            }
+            item.appendChild(link);
+            resourceLinksList.appendChild(item);
+        });
+    };
+
     const selectSettingsGroup = (group) => {
         document.querySelectorAll('.settings-group-button').forEach((button) => {
             const active = button.dataset.settingsGroup === group;
@@ -862,6 +899,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         if (group === 'notifications') void loadPushSettingsState();
         if (group === 'storage') void loadUserStorage();
         if (group === 'api') void loadUserBotTokens();
+        if (group === 'resources') renderResourceLinks();
     };
 
     const dangerZone = document.querySelector('.settings-danger-zone');
