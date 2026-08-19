@@ -255,6 +255,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                 <a href="#settings/notifications" class="settings-group-button" data-settings-group="notifications">通知</a>
                 <a href="#settings/storage" class="settings-group-button" data-settings-group="storage">ストレージ</a>
                 <a href="#settings/api" class="settings-group-button" data-settings-group="api">API / Bot</a>
+                <a href="#settings/imposter" class="settings-group-button" data-settings-group="imposter">インポスター</a>
                 <a href="#settings/resources" class="settings-group-button" data-settings-group="resources">リソース</a>
             </nav>
             <form id="settings-form" class="settings-detail">
@@ -371,6 +372,21 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         <p id="push-notification-status" role="status">通知の状態を確認しています…</p>
                         <button type="button" id="push-notification-action" class="settings-primary-button" disabled>読み込み中…</button>
                         <p class="settings-help-text">通知はこの端末・ブラウザごとに設定されます。HTTPS対応のブラウザで利用できます。</p>
+                    </section>
+                </section>
+                <section class="settings-group-panel" data-settings-panel="imposter" hidden>
+                    <section class="settings-imposter" aria-labelledby="settings-imposter-title">
+                        <h4 id="settings-imposter-title">インポスター</h4>
+                        <p class="settings-help-text">親NyaitterIDに紐づく、通常のアカウントとして利用できる偽のNyaitterIDです。親アカウントを破棄すると、作成したインポスターも削除されます。</p>
+                        <div id="settings-imposter-create" class="settings-bot-create-container">
+                            <label for="settings-imposter-name" style="font-weight: 600; font-size: 0.9rem;">新しいインポスターの表示名</label>
+                            <div class="settings-bot-create-form">
+                                <input type="search" id="settings-imposter-name" placeholder="表示名" maxlength="50" autocomplete="off">
+                                <button type="button" id="settings-imposter-create-btn" class="settings-primary-button">作成</button>
+                            </div>
+                            <p id="settings-imposter-limit" class="settings-help-text" role="status">インポスターを読み込んでいます…</p>
+                        </div>
+                        <div id="settings-imposter-list" class="settings-sessions-list" aria-live="polite"></div>
                     </section>
                 </section>
                 <section class="settings-group-panel" data-settings-panel="storage" hidden>
@@ -767,6 +783,202 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         });
     }
 
+    const imposterList = document.getElementById('settings-imposter-list');
+    const imposterLimit = document.getElementById('settings-imposter-limit');
+    const imposterCreateContainer = document.getElementById('settings-imposter-create');
+    const imposterNameInput = document.getElementById('settings-imposter-name');
+    const imposterCreateButton = document.getElementById('settings-imposter-create-btn');
+    const formatImposterId = (value) => String(Number(value) || 0).padStart(4, '0');
+    const imposterRoleLabel = (role) => ({
+        owner: '所有者',
+        manager: '管理者',
+        editor: '編集者',
+    }[role] || '編集者');
+
+    const loadImposters = async () => {
+        if (!imposterList || !imposterLimit) return;
+        imposterList.replaceChildren();
+        imposterLimit.textContent = 'インポスターを読み込んでいます…';
+        const { data, error } = await apiRequest('/server/api/imposters');
+        if (error) {
+            imposterLimit.textContent = 'インポスター情報の取得に失敗しました。';
+            const message = document.createElement('p');
+            message.className = 'settings-help-text';
+            message.textContent = error.message || 'インポスター情報を取得できませんでした。';
+            imposterList.appendChild(message);
+            return;
+        }
+
+        const imposters = Array.isArray(data?.imposters) ? data.imposters : [];
+        const ownedCount = imposters.filter((imposter) => imposter?.imposter?.role === 'owner').length;
+        const limit = Math.max(0, Number(data?.limit) || 0);
+        const isCurrentImposter = Boolean(getCurrentUser()?.is_imposter);
+        if (imposterCreateContainer) imposterCreateContainer.hidden = isCurrentImposter;
+        imposterLimit.textContent = isCurrentImposter
+            ? 'インポスターから新しいインポスターを作成することはできません。'
+            : `作成済み: ${ownedCount} / ${limit}`;
+
+        if (imposters.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'settings-help-text';
+            empty.textContent = '利用できるインポスターはありません。';
+            imposterList.appendChild(empty);
+            return;
+        }
+
+        imposters.forEach((imposter) => {
+            const metadata = imposter?.imposter || {};
+            const canManage = metadata.role === 'owner' || metadata.role === 'manager';
+            const item = document.createElement('article');
+            item.className = 'settings-session-item';
+            const details = document.createElement('div');
+            details.className = 'settings-session-details';
+            const title = document.createElement('div');
+            title.className = 'settings-session-title';
+            title.textContent = imposter.name || `NyaitterID ${formatImposterId(imposter.id)}`;
+            const idBadge = document.createElement('span');
+            idBadge.className = 'settings-bot-token-id';
+            idBadge.textContent = `NyaitterID: ${formatImposterId(imposter.nyaitter_id || imposter.id)}`;
+            const roleBadge = document.createElement('span');
+            roleBadge.className = 'settings-session-current';
+            roleBadge.textContent = `インポスター / ${imposterRoleLabel(metadata.role)}`;
+            title.append(' ', idBadge, ' ', roleBadge);
+            details.appendChild(title);
+
+            const memberSection = document.createElement('div');
+            memberSection.className = 'settings-sessions-list';
+            const members = Array.isArray(metadata.members) ? metadata.members : [];
+            const memberHeading = document.createElement('p');
+            memberHeading.className = 'settings-help-text';
+            memberHeading.textContent = members.length > 0 ? '共同運用者' : '共同運用者はいません。';
+            memberSection.appendChild(memberHeading);
+
+            members.forEach((member) => {
+                const memberRow = document.createElement('div');
+                memberRow.className = 'settings-session-item';
+                const memberDetails = document.createElement('div');
+                memberDetails.className = 'settings-session-details';
+                memberDetails.textContent = `NyaitterID: ${formatImposterId(member.user_id)}`;
+                memberRow.appendChild(memberDetails);
+                if (canManage) {
+                    const actions = document.createElement('div');
+                    actions.className = 'settings-session-actions';
+                    const roleSelect = document.createElement('select');
+                    roleSelect.dataset.imposterControl = 'true';
+                    ['manager', 'editor'].forEach((role) => {
+                        const option = document.createElement('option');
+                        option.value = role;
+                        option.textContent = imposterRoleLabel(role);
+                        option.selected = member.role === role;
+                        roleSelect.appendChild(option);
+                    });
+                    roleSelect.addEventListener('change', async () => {
+                        roleSelect.disabled = true;
+                        const { error: updateError } = await apiRequest(`/server/api/imposters/${encodeURIComponent(imposter.id)}/members/${encodeURIComponent(member.user_id)}`, {
+                            method: 'PATCH',
+                            body: { role: roleSelect.value },
+                        });
+                        if (updateError) showAppAlert(`権限の変更に失敗しました: ${updateError.message}`);
+                        await loadImposters();
+                    });
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'settings-session-revoke-button';
+                    removeButton.textContent = '解除';
+                    removeButton.addEventListener('click', async () => {
+                        if (!(await showAppConfirm(`NyaitterID ${formatImposterId(member.user_id)} の共同運用を解除しますか？`))) return;
+                        removeButton.disabled = true;
+                        const { error: removeError } = await apiRequest(`/server/api/imposters/${encodeURIComponent(imposter.id)}/members/${encodeURIComponent(member.user_id)}`, { method: 'DELETE' });
+                        if (removeError) showAppAlert(`共同運用者の解除に失敗しました: ${removeError.message}`);
+                        await loadImposters();
+                    });
+                    actions.append(roleSelect, removeButton);
+                    memberRow.appendChild(actions);
+                } else {
+                    const roleText = document.createElement('span');
+                    roleText.className = 'settings-help-text';
+                    roleText.textContent = imposterRoleLabel(member.role);
+                    memberRow.appendChild(roleText);
+                }
+                memberSection.appendChild(memberRow);
+            });
+
+            if (canManage) {
+                const inviteRow = document.createElement('div');
+                inviteRow.className = 'settings-bot-create-form';
+                const memberIdInput = document.createElement('input');
+                memberIdInput.type = 'number';
+                memberIdInput.min = '1';
+                memberIdInput.placeholder = '共同運用者のNyaitterID';
+                memberIdInput.dataset.imposterControl = 'true';
+                const memberRoleSelect = document.createElement('select');
+                memberRoleSelect.dataset.imposterControl = 'true';
+                ['editor', 'manager'].forEach((role) => {
+                    const option = document.createElement('option');
+                    option.value = role;
+                    option.textContent = imposterRoleLabel(role);
+                    memberRoleSelect.appendChild(option);
+                });
+                const inviteButton = document.createElement('button');
+                inviteButton.type = 'button';
+                inviteButton.textContent = '招待';
+                inviteButton.addEventListener('click', async () => {
+                    const userId = Number(memberIdInput.value);
+                    if (!Number.isInteger(userId) || userId <= 0) {
+                        showAppAlert('共同運用者のNyaitterIDを入力してください。');
+                        return;
+                    }
+                    inviteButton.disabled = true;
+                    const { error: inviteError } = await apiRequest(`/server/api/imposters/${encodeURIComponent(imposter.id)}/members`, {
+                        method: 'POST',
+                        body: { user_id: userId, role: memberRoleSelect.value },
+                    });
+                    if (inviteError) showAppAlert(`共同運用者の招待に失敗しました: ${inviteError.message}`);
+                    await loadImposters();
+                });
+                inviteRow.append(memberIdInput, memberRoleSelect, inviteButton);
+                memberSection.appendChild(inviteRow);
+            }
+            details.appendChild(memberSection);
+
+            const actions = document.createElement('div');
+            actions.className = 'settings-session-actions';
+            if (metadata.role === 'owner') {
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'settings-danger-button';
+                deleteButton.textContent = 'インポスターを削除';
+                deleteButton.addEventListener('click', async () => {
+                    if (!(await showAppConfirm(`インポスター「${imposter.name || formatImposterId(imposter.id)}」を削除しますか？\nこの操作は取り消せません。`))) return;
+                    deleteButton.disabled = true;
+                    const { error: deleteError } = await apiRequest(`/server/api/imposters/${encodeURIComponent(imposter.id)}`, { method: 'DELETE' });
+                    if (deleteError) showAppAlert(`インポスターの削除に失敗しました: ${deleteError.message}`);
+                    await loadImposters();
+                });
+                actions.appendChild(deleteButton);
+            }
+            item.append(details, actions);
+            imposterList.appendChild(item);
+        });
+    };
+
+    imposterCreateButton?.addEventListener('click', async () => {
+        const name = (imposterNameInput?.value || '').trim();
+        if (!name) {
+            showAppAlert('インポスターの表示名を入力してください。');
+            return;
+        }
+        imposterCreateButton.disabled = true;
+        const { error } = await apiRequest('/server/api/imposters', {
+            method: 'POST',
+            body: { name },
+        });
+        if (error) showAppAlert(`インポスターの作成に失敗しました: ${error.message}`);
+        else if (imposterNameInput) imposterNameInput.value = '';
+        imposterCreateButton.disabled = false;
+        await loadImposters();
+    });
+
     const formatStorageSize = (value) => {
         const bytes = Math.max(0, Number(value) || 0);
         if (bytes < 1024) return `${bytes} B`;
@@ -899,6 +1111,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         if (group === 'notifications') void loadPushSettingsState();
         if (group === 'storage') void loadUserStorage();
         if (group === 'api') void loadUserBotTokens();
+        if (group === 'imposter') void loadImposters();
         if (group === 'resources') renderResourceLinks();
     };
 
@@ -1023,6 +1236,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
     settingsForm?.addEventListener('submit', (e) => e.preventDefault());
     settingsForm?.querySelectorAll('select, input[type="checkbox"]').forEach((control) => {
         control.addEventListener('change', async () => {
+            if (control.dataset.imposterControl === 'true') return;
             if (control.id === 'setting-theme') applyInterfaceTheme(control.value);
             if (control.id === 'setting-ip-trust-enabled' && control.checked) {
                 const { error } = await apiRequest('/server/auth/trust-current-ip', { method: 'POST' });

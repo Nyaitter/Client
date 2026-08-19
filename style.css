@@ -1194,6 +1194,19 @@ em-emoji-picker {
     vertical-align: text-bottom;
 }
 
+.imposter-badge {
+    display: inline-block;
+    margin-left: 0.35rem;
+    padding: 0.1rem 0.42rem;
+    border: 1px solid var(--accent-color, #6f42c1);
+    border-radius: 999px;
+    color: var(--accent-color, #6f42c1);
+    font-size: 0.58em;
+    font-weight: 700;
+    line-height: 1.35;
+    vertical-align: middle;
+}
+
 .post-content {
     margin-bottom: 1rem;
     min-width: 0;
