@@ -1,6 +1,7 @@
 import { getCurrentUser } from '../state.js';
 import { formatPostContent, customEmojiPromise } from './format.js';
 import { applyServerInputLimits, scheduleNextFrame } from '../utils/helpers.js';
+import { ICONS } from '../icons.js';
 
 export function normalizeMarkdownEditorValue(value) {
     return String(value ?? '').replace(/\r\n?/g, '\n');
@@ -292,6 +293,30 @@ export function syncMarkdownEditorDecoration(editor) {
     paint.style.transform = `translate(${-editor.scrollLeft}px, ${-editor.scrollTop}px)`;
     selectionLayer.replaceChildren();
     syncMarkdownEditorCompositionDecoration(editor, preview, paint);
+    caret.hidden = true;
+
+    if (document.activeElement !== editor) return;
+
+    const { start, end } = selection;
+    const paintRect = paint.getBoundingClientRect();
+    if (start !== end) {
+        getMarkdownEditorSelectionRects(preview, start, end).forEach((rect) => {
+            appendMarkdownEditorRect(
+                selectionLayer,
+                'markdown-editor-selection-rect',
+                rect,
+                paintRect,
+            );
+        });
+        return;
+    }
+
+    const rect = getMarkdownEditorCaretRect(preview, start);
+    if (!rect || rect.height === 0) return;
+    caret.hidden = false;
+    caret.style.left = `${rect.left - paintRect.left}px`;
+    caret.style.top = `${rect.top - paintRect.top}px`;
+    caret.style.height = `${rect.height}px`;
 }
 
 export function syncMarkdownEditorPreviewHeight(editor, preview) {
@@ -306,6 +331,65 @@ export function setMarkdownEditorPreview(preview, html, mode) {
     if (!preview) return;
     preview.dataset.markdownEditorMode = mode;
     preview.innerHTML = html;
+}
+
+export function toggleMarkdownEditorPreview(editor) {
+    if (!(editor instanceof HTMLTextAreaElement)) return;
+    const host = editor.closest('.markdown-textarea-editor');
+    if (!host) return;
+    const previewEnabled = !editor._markdownPreviewEnabled;
+
+    editor._markdownPreviewEnabled = previewEnabled;
+    const emojiButton = host.closest('.post-form, .form-content')?.querySelector('.emoji-pic-button');
+    if (previewEnabled) {
+        delete editor._markdownEditorComposition;
+        if (emojiButton) {
+            editor._markdownPreviewEmojiWasDisabled = emojiButton.disabled;
+            emojiButton.disabled = true;
+        }
+    } else if (emojiButton) {
+        emojiButton.disabled = Boolean(editor._markdownPreviewEmojiWasDisabled);
+        delete editor._markdownPreviewEmojiWasDisabled;
+    }
+    editor.disabled = previewEnabled;
+    host.classList.toggle('is-markdown-previewing', previewEnabled);
+    const button = host.closest('.post-form, .form-content')?.querySelector('.markdown-preview-button');
+    if (button) {
+        button.classList.toggle('active', previewEnabled);
+        button.title = previewEnabled ? '編集に戻る' : 'プレビューを表示';
+        button.setAttribute('aria-label', button.title);
+        button.setAttribute('aria-pressed', String(previewEnabled));
+    }
+    updateMarkdownEditorPreview(editor, undefined, { published: previewEnabled });
+    if (!previewEnabled) {
+        editor.focus();
+        scheduleNextFrame(() => syncMarkdownEditorDecoration(editor));
+    }
+}
+
+export function setupMarkdownEditorPreviewButton(container, editor) {
+    if (!container || !(editor instanceof HTMLTextAreaElement)) return;
+    const existing = container.querySelector('.markdown-preview-button');
+    if (existing) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'markdown-preview-button float-left';
+    button.innerHTML = ICONS.preview;
+    button.title = 'プレビューを表示';
+    button.setAttribute('aria-label', 'プレビューを表示');
+    button.setAttribute('aria-pressed', 'false');
+    const emojiButton = container.querySelector('.emoji-pic-button');
+    if (emojiButton) {
+        emojiButton.insertAdjacentElement('afterend', button);
+    } else {
+        const actions = container.querySelector('.post-form-actions, .dm-form-actions');
+        if (actions) actions.prepend(button);
+    }
+    button.addEventListener('click', () => {
+        const picker = container.querySelector('#emoji-picker');
+        if (picker) picker.classList.add('hidden');
+        toggleMarkdownEditorPreview(editor);
+    });
 }
 
 export function updateMarkdownEditorPreview(
@@ -334,7 +418,17 @@ export function updateMarkdownEditorPreview(
               })
             : '';
     }
+    preview.classList.remove('hidden');
     preview.dataset.markdownEditorMode = mode;
+
+    const placeholder = getMarkdownEditorPaint(editor)?.querySelector(
+        '.markdown-editor-placeholder',
+    );
+    if (placeholder) {
+        placeholder.textContent = editor.dataset.markdownPlaceholder || '';
+        placeholder.hidden = published || Boolean(rawValue);
+    }
+
     syncMarkdownEditorPreviewHeight(editor, preview);
 
     if (published) {
@@ -345,16 +439,20 @@ export function updateMarkdownEditorPreview(
 }
 
 export function getContentEditorPreference() {
-    return getCurrentUser()?.settings?.content_editor !== 'native';
+    return getCurrentUser()?.settings?.content_editor === 'nyaitter';
 }
 
 export function applyContentEditorPreference(editor) {
     if (!(editor instanceof HTMLTextAreaElement)) return false;
-    const container = editor.closest('.markdown-editor-container');
+    const container = editor.closest('.markdown-textarea-editor');
     const enabled = getContentEditorPreference();
     if (!container) return enabled;
-    container.classList.toggle('is-native', !enabled);
+    if (editor.dataset.markdownPlaceholder === undefined) {
+        editor.dataset.markdownPlaceholder = editor.placeholder || '';
+    }
+    container.classList.toggle('is-plain-textarea', !enabled);
     container.classList.toggle('is-nyaitter-editor', enabled);
+    editor.placeholder = enabled ? '' : editor.dataset.markdownPlaceholder || '';
     return enabled;
 }
 

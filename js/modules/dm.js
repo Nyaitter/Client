@@ -29,6 +29,7 @@ import {
     attachMarkdownContentEditor,
     getMarkdownEditorValue,
     setMarkdownEditorValue,
+    setupMarkdownEditorPreviewButton,
 } from './editor.js';
 import {
     cacheUser,
@@ -632,7 +633,9 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
         `;
 
         await emoji_picker_create({ triggerButton: content.querySelector('.emoji-pic-button') });
-        attachMarkdownContentEditor(content.querySelector('#edit-dm-textarea'));
+        const editDmEditor = content.querySelector('#edit-dm-textarea');
+        attachMarkdownContentEditor(editDmEditor);
+        setupMarkdownEditorPreviewButton(content, editDmEditor);
 
         content.querySelector('#update-dm-btn')?.addEventListener('click', async () => {
             const updatedText = getMarkdownEditorValue(content.querySelector('#edit-dm-textarea')).trim();
