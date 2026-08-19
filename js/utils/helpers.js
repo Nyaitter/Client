@@ -221,20 +221,23 @@ export function showAppConfirm(message) {
 }
 
 export function formatNyaitterId(user) {
-    const rawId = Number(user?.id);
-    if (!Number.isInteger(rawId) || rawId < 0) return '#?';
-    return `#${rawId}`;
+    const sourceId = String(user?.nyaitter_id ?? user?.id ?? '')
+        .trim()
+        .replace(/^#/, '')
+        .split('@', 1)[0];
+    const rawId = Number(sourceId);
+    if (!Number.isSafeInteger(rawId) || rawId < 0) return '#?';
+    return `#${String(rawId).padStart(4, '0')}`;
 }
 
 export function getNyaitterId(user) {
-    const rawId = Number(user?.id);
-    if (!Number.isInteger(rawId) || rawId < 0) return '#?';
     const nyaitterAddress =
         typeof user?.nyaitter_address === 'string'
             ? user.nyaitter_address.trim()
             : '';
-    if (nyaitterAddress.startsWith('#')) return nyaitterAddress;
-    return `#${rawId}`;
+    const addressMatch = nyaitterAddress.match(/^#(\d{1,16})(@.+)$/);
+    if (addressMatch) return `#${addressMatch[1].padStart(4, '0')}${addressMatch[2]}`;
+    return formatNyaitterId(user);
 }
 
 export function normalizePostTimestampFormat(format) {
@@ -456,7 +459,15 @@ export function getUserIconUrl(user) {
         const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(iconData);
         if (configuredUrl) return configuredUrl;
     }
-    return '/logo.png';
+
+    const userId = Number(user?.id);
+    const fallbackUrl =
+        Number.isSafeInteger(userId) && userId > 0
+            ? globalThis.NyaitterClientConfig?.apiUrl?.(
+                  `/server/api/users/${encodeURIComponent(String(userId))}/icon`,
+              )
+            : null;
+    return fallbackUrl || '/logo.png';
 }
 
 export function getUserHeaderImageUrl(user) {
