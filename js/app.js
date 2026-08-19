@@ -578,6 +578,47 @@ export function initApp() {
         );
     }
 
+    function normalizePostId(value) {
+        const postId = Number(value);
+        return Number.isInteger(postId) && postId > 0 ? postId : null;
+    }
+
+    function isPinnedPost(postId, pinId = getCurrentUser()?.pin) {
+        const normalizedPostId = normalizePostId(postId);
+        return (
+            normalizedPostId !== null &&
+            normalizedPostId === normalizePostId(pinId)
+        );
+    }
+
+    function cacheUser(user) {
+        const userId = Number(user?.id);
+        if (!Number.isInteger(userId) || userId < 0) return null;
+        const cache = getAllUsersCache();
+        const existing = cache.get(userId) || cache.get(String(userId)) || {};
+        const cachedUser = { ...existing, ...user, id: userId };
+        cache.set(userId, cachedUser);
+        cache.delete(String(userId));
+        return cachedUser;
+    }
+
+    function cacheUsers(users) {
+        for (const user of users || []) cacheUser(user);
+    }
+
+    function getCachedUser(userId, userCache = null) {
+        const normalizedUserId = Number(userId);
+        if (!Number.isInteger(normalizedUserId) || normalizedUserId < 0)
+            return null;
+        return (
+            userCache?.get(normalizedUserId) ||
+            userCache?.get(String(normalizedUserId)) ||
+            getAllUsersCache().get(normalizedUserId) ||
+            getAllUsersCache().get(String(normalizedUserId)) ||
+            null
+        );
+    }
+
     function getProfilePostPageCache(userId, subType, pinId = '') {
         const userScope = getCurrentUser()?.id ?? 'guest';
         const pageKey = `${userScope}:${window.location.hash || '#'}:${userId}:${subType}:${pinId || ''}`;
@@ -2103,7 +2144,7 @@ export function initApp() {
         )
             return;
         if (sender && Number.isInteger(Number(sender.id)))
-            getAllUsersCache().set(Number(sender.id), sender);
+            cacheUser(sender);
 
         const view = document.querySelector('.dm-conversation-view');
         if (!view) {
@@ -2508,7 +2549,7 @@ export function initApp() {
             const mentionRegex = /@(\d+)/g;
             processed = processed.replace(mentionRegex, (match, userId) => {
                 const numericId = parseInt(userId, 10);
-                const user = userCache.get(numericId) || getAllUsersCache().get(numericId);
+                const user = getCachedUser(numericId, userCache);
                 if (user) {
                     const userName = user.name || `user${numericId}`;
                     return `<a href="#profile/${numericId}">@${getEmoji(escapeHTML(userName))}</a>`;
@@ -3362,7 +3403,7 @@ export function initApp() {
                 .from('user')
                 .select('id, name, scid, icon_data')
                 .in('id', newIdsToFetch);
-            if (users) users.forEach((u) => getAllUsersCache().set(u.id, u));
+            if (users) cacheUsers(users);
         }
     }
 
@@ -3979,6 +4020,7 @@ export function initApp() {
                 throw new Error('ユーザーデータの取得に失敗しました。');
 
             setCurrentUser(data);
+            cacheUser(data);
 
             if (getCurrentUser().freeze) {
                 DOM.freezeReason.textContent = getCurrentUser().freeze;
@@ -5245,6 +5287,7 @@ export function initApp() {
 
         const displayAuthor = author || post.author;
         if (!displayAuthor) return null;
+        cacheUser(displayAuthor);
 
         const isSimpleRepost = post.repost_to && !post.content;
 
@@ -5478,11 +5521,9 @@ export function initApp() {
             if (isPostOwner) {
                 const pinBtn = document.createElement('button');
                 pinBtn.className = 'pin-btn';
-                if (!getCurrentUser().pin || getCurrentUser().pin !== post.id) {
-                    pinBtn.textContent = 'ピン留め';
-                } else {
-                    pinBtn.textContent = 'ピン留めを解除';
-                }
+                pinBtn.textContent = isPinnedPost(post.id)
+                    ? 'ピン留めを解除'
+                    : 'ピン留め';
                 menu.appendChild(pinBtn);
 
                 if (!post.repost_to || post.content) {
@@ -6611,7 +6652,7 @@ export function initApp() {
                     ),
                 );
                 for (const member of dmPayload?.members || []) {
-                    getAllUsersCache().set(member.id, member);
+                    cacheUser(member);
                 }
                 getCurrentUser().unreadDmTotal = Number(
                     dmPayload?.unread_total || 0,
@@ -6714,7 +6755,7 @@ export function initApp() {
             }
             const dm = Array.isArray(dmPayload?.dm) ? dmPayload.dm[0] : null;
             for (const member of dmPayload?.members || []) {
-                getAllUsersCache().set(member.id, member);
+                cacheUser(member);
             }
             setActiveDmMemberIds(
                 Array.isArray(dm?.member) ? dm.member.map(Number) : [],
@@ -6775,7 +6816,7 @@ export function initApp() {
                     .select('id, name, scid, icon_data')
                     .in('id', newIdsToFetch);
                 if (users) {
-                    users.forEach((u) => getAllUsersCache().set(u.id, u));
+                    cacheUsers(users);
                 }
             }
 
@@ -6904,8 +6945,10 @@ export function initApp() {
         const result = await apiRequest(
             `/server/api/users/${encodeURIComponent(normalizedId)}`,
         );
-        if (!result.error && result.data?.user)
+        if (!result.error && result.data?.user) {
             getPublicProfileCache().set(normalizedId, result.data.user);
+            cacheUser(result.data.user);
+        }
         return { data: result.data?.user || null, error: result.error };
     }
 
@@ -7253,18 +7296,20 @@ export function initApp() {
 
         try {
             switch (subpage) {
-                case 'posts':
+                case 'posts': {
+                    const pinnedPostId = normalizePostId(user.pinned_post_id);
                     await loadPostsWithPagination(contentDiv, 'profile_posts', {
                         userId: user.id,
                         subType: 'posts_only',
-                        pinId: user.pinned_post_id,
+                        pinId: pinnedPostId,
                         pageCache: getProfilePostPageCache(
                             user.id,
                             'posts_only',
-                            user.pinned_post_id,
+                            pinnedPostId,
                         ),
                     });
                     break;
+                }
                 case 'replies':
                     await loadPostsWithPagination(contentDiv, 'profile_posts', {
                         userId: user.id,
@@ -9238,11 +9283,15 @@ export function initApp() {
                                 await idQuery.range(from, to);
                             if (idError) throw idError;
                             postIdsToFetch = idData.map((p) => p.id);
+                            const pinnedPostId = normalizePostId(options.pinId);
                             if (
                                 showPinPost &&
-                                !postIdsToFetch.includes(options.pinId)
+                                pinnedPostId !== null &&
+                                !postIdsToFetch.some(
+                                    (postId) => Number(postId) === pinnedPostId,
+                                )
                             ) {
-                                postIdsToFetch.push(options.pinId);
+                                postIdsToFetch.push(pinnedPostId);
                             }
                             if (idData.length < pageSize) {
                                 hasMoreItems = false;
@@ -9274,7 +9323,7 @@ export function initApp() {
 
                 if (posts && posts.length > 0) {
                     for (const user of pageContext?.users || []) {
-                        getAllUsersCache().set(user.id, user);
+                        cacheUser(user);
                     }
                     posts = filterBlockedPosts(posts);
 
@@ -9289,7 +9338,7 @@ export function initApp() {
 
                     if (showPinPost) {
                         const pinPost = posts.find(
-                            (p) => p.id === options.pinId,
+                            (post) => isPinnedPost(post.id, options.pinId),
                         );
                         if (pinPost) {
 							const postEl = await renderPost(
@@ -9309,7 +9358,7 @@ export function initApp() {
                     }
                     // 投稿レンダリング
                     for (const post of posts) {
-                        if (showPinPost && post.id === options.pinId) continue; // ピン留めポストはすでに表示済みのためスキップ
+                        if (showPinPost && isPinnedPost(post.id, options.pinId)) continue; // ピン留めポストはすでに表示済みのためスキップ
 						const postEl = await renderPost(post, post.author, {
 							userCache: getAllUsersCache(),
 							metricsPromise,
@@ -9877,6 +9926,8 @@ export function initApp() {
             }
 
             setCurrentUser(data);
+            cacheUser(data);
+            getPublicProfileCache().delete(Number(data.id));
             updateAccountData(getCurrentUser());
             applyInterfaceTheme(getCurrentUser().settings?.theme || 'light');
             applyColorTheme(getCurrentUser().settings || {});
@@ -9908,7 +9959,7 @@ export function initApp() {
         let cmessage, emessage;
 
         if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
-        if (!getCurrentUser().pin || getCurrentUser().pin !== postId) {
+        if (!isPinnedPost(postId)) {
             cmessage = 'このポストをピン留めしますか?';
             emessage = 'ポストのピン留め';
         } else {
@@ -9926,7 +9977,14 @@ export function initApp() {
                 throw new Error(
                     `ポストのピン留め処理に失敗: ${fetchError.message}`,
                 );
-            getCurrentUser().pin = pinId;
+            const normalizedPinId = normalizePostId(pinId);
+            getCurrentUser().pin = normalizedPinId;
+            const currentUserId = Number(getCurrentUser().id);
+            if (Number.isInteger(currentUserId)) {
+                // ピン留めIDを含む公開プロフィールと先頭ページの古い結果を破棄する。
+                getPublicProfileCache().delete(currentUserId);
+                invalidateProfileTabPageCache(currentUserId, 'posts');
+            }
             invalidateTimelinePageCache();
             router();
         } catch (e) {
@@ -10279,7 +10337,7 @@ export function initApp() {
                 : dmPayload?.dm;
             if (!dm) throw new Error('DM情報の取得に失敗しました。');
             for (const member of dmPayload?.members || []) {
-                getAllUsersCache().set(member.id, member);
+                cacheUser(member);
             }
 
             const isHost = dm.host_id === getCurrentUser().id;
@@ -10655,7 +10713,7 @@ export function initApp() {
                 .select('id, name, scid, icon_data')
                 .in('id', newIdsToFetch);
             if (newUsers)
-                newUsers.forEach((u) => getAllUsersCache().set(u.id, u));
+                cacheUsers(newUsers);
         }
 
         const message = {
@@ -11470,7 +11528,7 @@ export function initApp() {
                     .select('id, name, scid, icon_data')
                     .in('id', newIdsToFetch);
                 if (newUsers)
-                    newUsers.forEach((u) => getAllUsersCache().set(u.id, u));
+                    cacheUsers(newUsers);
             }
 
             let attachmentsData = [];
