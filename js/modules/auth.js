@@ -85,7 +85,7 @@ export function addAccountToList(user) {
         id: Number(user.id),
         name: String(user.name || ''),
         icon_data: user.icon_data || null,
-        nyaitter_address: user.nyaitter_address || null,
+        nyaitter_id: user.nyaitter_id ?? Number(user.id),
     });
     setAccountList(list);
 }
@@ -106,7 +106,7 @@ export function updateAccountData(user) {
             ...list[index],
             name: String(user.name || list[index].name),
             icon_data: user.icon_data !== undefined ? user.icon_data : list[index].icon_data,
-            nyaitter_address: user.nyaitter_address || list[index].nyaitter_address,
+            nyaitter_id: user.nyaitter_id ?? list[index].nyaitter_id ?? Number(user.id),
         };
         setAccountList(list);
     }
@@ -225,12 +225,12 @@ export async function openAccountSwitcherModal() {
           : [];
     if (!error) {
         setAccountList(
-            accounts.map(({ id, name, icon_data, scid, nyaitter_address }) => ({
+            accounts.map(({ id, name, icon_data, scid, nyaitter_id }) => ({
                 id: Number(id),
                 name: String(name || ''),
                 icon_data: icon_data || null,
                 scid: scid || null,
-                nyaitter_address: nyaitter_address || null,
+                nyaitter_id: nyaitter_id ?? Number(id),
             })),
         );
     }

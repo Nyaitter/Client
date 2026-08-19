@@ -231,12 +231,6 @@ export function formatNyaitterId(user) {
 }
 
 export function getNyaitterId(user) {
-    const nyaitterAddress =
-        typeof user?.nyaitter_address === 'string'
-            ? user.nyaitter_address.trim()
-            : '';
-    const addressMatch = nyaitterAddress.match(/^#(\d{1,16})(@.+)$/);
-    if (addressMatch) return `#${addressMatch[1].padStart(4, '0')}${addressMatch[2]}`;
     return formatNyaitterId(user);
 }
 
@@ -387,82 +381,103 @@ export function configureAttachmentImage(img, previewUrl, originalUrl) {
 }
 
 const urlCardCache = new Map();
-export function getUrlCardTarget(card) {
-    return card?.redirect_url || card?.target_url || card?.url || '';
+const URL_CARD_CACHE_LIMIT = 200;
+
+export function getUrlCardTarget(content) {
+    const source = String(content || '')
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/`[^`\r\n]{0,500}`/g, '');
+    const urlPattern =
+        /https:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,63}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=;]*)/g;
+    let match;
+    while ((match = urlPattern.exec(source)) !== null) {
+        const candidate = match[0];
+        const before = source[match.index - 1] || '';
+        const after = source[match.index + candidate.length] || '';
+        if (before === '<' && after === '>') continue;
+
+        const safeUrl = getSafeHttpUrl(candidate);
+        if (!safeUrl) continue;
+        try {
+            const parsed = new URL(safeUrl);
+            if (parsed.protocol === 'https:' && !parsed.username && !parsed.password) {
+                return parsed.href;
+            }
+        } catch (_) {
+            // 次の候補を検査する。
+        }
+    }
+    return null;
 }
 
-export async function getUrlCard(url) {
-    const safeTargetUrl = getSafeHttpUrl(url);
-    if (!safeTargetUrl) return null;
-    if (urlCardCache.has(safeTargetUrl)) {
-        return urlCardCache.get(safeTargetUrl);
-    }
-    const requestPromise = (async () => {
-        try {
-            const { data, error } = await apiRequest(
-                `/server/api/url-card?url=${encodeURIComponent(safeTargetUrl)}`,
-            );
-            if (error || !data || data.error) return null;
-            return data;
-        } catch (_) {
-            return null;
-        }
-    })();
-    urlCardCache.set(safeTargetUrl, requestPromise);
-    if (urlCardCache.size > 200) {
-        const oldest = urlCardCache.keys().next().value;
-        urlCardCache.delete(oldest);
+export function getUrlCard(url) {
+    if (urlCardCache.has(url)) return urlCardCache.get(url);
+
+    const requestPromise = apiRequest(
+        `/server/api/url-cards?url=${encodeURIComponent(url)}`,
+    )
+        .then(({ data, error }) => {
+            if (error || !data?.card || typeof data.card !== 'object') return null;
+            const safeUrl = getSafeHttpUrl(data.card.url);
+            if (!safeUrl) return null;
+
+            const title = String(data.card.title || '').trim().slice(0, 160);
+            if (!title) return null;
+            return {
+                url: safeUrl,
+                hostname: String(data.card.hostname || '').trim().slice(0, 253),
+                title,
+                description: String(data.card.description || '').trim().slice(0, 280),
+                siteName: String(data.card.site_name || '').trim().slice(0, 100),
+            };
+        })
+        .catch(() => null);
+
+    urlCardCache.set(url, requestPromise);
+    while (urlCardCache.size > URL_CARD_CACHE_LIMIT) {
+        urlCardCache.delete(urlCardCache.keys().next().value);
     }
     return requestPromise;
 }
 
-export async function appendUrlCard(container, url) {
+export function appendUrlCard(container, content) {
     if (!container) return;
-    const card = await getUrlCard(url);
-    if (!card || !card.title) return;
-    const targetUrl = getSafeHttpUrl(getUrlCardTarget(card));
+    const targetUrl = getUrlCardTarget(content);
     if (!targetUrl) return;
 
-    const cardEl = document.createElement('a');
-    cardEl.href = targetUrl;
-    cardEl.target = '_blank';
-    cardEl.rel = 'noopener noreferrer';
-    cardEl.className = 'post-url-card';
+    const placeholder = document.createElement('div');
+    placeholder.className = 'url-card-placeholder';
+    placeholder.setAttribute('aria-live', 'polite');
+    container.appendChild(placeholder);
 
-    const imageWrapper = document.createElement('div');
-    imageWrapper.className = 'post-url-card-image-wrapper';
-    const imageEl = document.createElement('img');
-    imageEl.className = 'post-url-card-image';
-    imageEl.alt = card.title || '';
-    imageEl.src = getSafeHttpUrl(card.image) || '/favicon.png';
-    imageEl.loading = 'lazy';
-    imageWrapper.appendChild(imageEl);
-    cardEl.appendChild(imageWrapper);
+    void getUrlCard(targetUrl).then((card) => {
+        if (!card || !placeholder.parentElement) {
+            placeholder.remove();
+            return;
+        }
 
-    const bodyEl = document.createElement('div');
-    bodyEl.className = 'post-url-card-body';
-    const titleEl = document.createElement('div');
-    titleEl.className = 'post-url-card-title';
-    titleEl.textContent = card.title;
-    bodyEl.appendChild(titleEl);
+        const cardLink = document.createElement('a');
+        cardLink.className = 'url-card';
+        cardLink.href = card.url;
+        cardLink.target = '_blank';
+        cardLink.rel = 'noopener noreferrer';
 
-    if (card.description) {
-        const descEl = document.createElement('div');
-        descEl.className = 'post-url-card-description';
-        descEl.textContent = card.description;
-        bodyEl.appendChild(descEl);
-    }
+        const hostname = document.createElement('span');
+        hostname.className = 'url-card-hostname';
+        hostname.textContent = card.siteName || card.hostname;
+        const title = document.createElement('strong');
+        title.className = 'url-card-title';
+        title.textContent = card.title;
+        cardLink.append(hostname, title);
 
-    const hostEl = document.createElement('div');
-    hostEl.className = 'post-url-card-host';
-    try {
-        hostEl.textContent = new URL(targetUrl).hostname;
-    } catch (_) {
-        hostEl.textContent = targetUrl;
-    }
-    bodyEl.appendChild(hostEl);
-    cardEl.appendChild(bodyEl);
-    container.appendChild(cardEl);
+        if (card.description) {
+            const description = document.createElement('span');
+            description.className = 'url-card-description';
+            description.textContent = card.description;
+            cardLink.appendChild(description);
+        }
+        placeholder.replaceWith(cardLink);
+    });
 }
 
 export function getUserIconUrl(user) {

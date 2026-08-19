@@ -359,7 +359,7 @@ function handleGlobalClick(e) {
                     showAppAlert('通知の削除に失敗しました。');
                 } else {
                     getCurrentUser().notice = getCurrentUser().notice.filter(
-                        (n) => n.id !== notificationId,
+                        (n) => Number(n.id) !== Number(notificationId),
                     );
                     if (wasUnread) {
                         getCurrentUser().notification_unread_count = Math.max(
