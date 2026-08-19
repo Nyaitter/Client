@@ -144,10 +144,20 @@ export function initApp() {
     }
 
     async function loadServerClientLimits() {
-        const { data, error } = await apiRequest('/server/status');
-        if (error || !data?.client_limits) return;
-        serverClientLimits = data.client_limits;
-        applyServerInputLimits();
+        try {
+            const { data, error } = await apiRequest('/server/status');
+            if (error || !data?.client_limits) {
+                DOM.connectionErrorOverlay.classList.remove('hidden');
+                return false;
+            }
+            serverClientLimits = data.client_limits;
+            applyServerInputLimits();
+            return true;
+        } catch (error) {
+            console.error('[startup] status request failed:', error);
+            DOM.connectionErrorOverlay.classList.remove('hidden');
+            return false;
+        }
     }
 
     async function copyTextToClipboard(text) {
@@ -12372,9 +12382,10 @@ export function initApp() {
     });
 
     // 「再試行」ボタンのイベントリスナー
-    DOM.retryConnectionBtn.addEventListener('click', () => {
+    DOM.retryConnectionBtn.addEventListener('click', async () => {
         DOM.connectionErrorOverlay.classList.add('hidden'); // エラー表示を隠す
-        checkSession(); // 再度セッションチェックを実行
+        if (!(await loadServerClientLimits())) return;
+        void checkSession(); // status確認後にセッションチェックを実行
     });
 
     window.addEventListener('hashchange', router);
