@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const { apiUrl } = globalThis.NyaitterClientConfig;
+  const { apiUrl, turnstileSiteKey } = globalThis.NyaitterClientConfig;
   const AUTH_API = apiUrl('/server/auth');
   const NYAITTER_ADDRESS_PATTERN = /^#\d{1,16}@[A-Za-z0-9.-]+(?::\d{1,5})?$/;
 
@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginApprovalWaitModal = document.getElementById('login-approval-wait-modal');
   const loginApprovalWaitStatus = document.getElementById('login-approval-wait-status');
   const loginApprovalWaitCancelBtn = document.getElementById('login-approval-wait-cancel-btn');
+  const turnstileContainer = document.getElementById('login-turnstile-container');
+  const turnstileWidget = document.getElementById('login-turnstile-widget');
 
   if (!authStep1 || !authStep2 || !profileLink || !usernameInput || !getCodeBtn
     || !verificationCodeElem || !verifyCommentBtn || !loadingOverlay || !errorMessage || !copyMessage || !loginInstruction) {
@@ -26,6 +28,102 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let scratchUsername = '';
   let activeApprovalWait = null;
+
+  // Cloudflare Turnstile（サーバーとクライアントの両方に鍵が設定されている場合のみ有効）
+  const configuredTurnstileSiteKey = String(turnstileSiteKey || '').trim();
+  let turnstileEnabled = false;
+  let turnstileInitialized = false;
+  let turnstileWidgetId = null;
+  let turnstileToken = null;
+
+  function disableGetCodeButton() {
+    getCodeBtn.disabled = true;
+  }
+
+  function enableGetCodeButton() {
+    getCodeBtn.disabled = false;
+  }
+
+  function loadTurnstileScript() {
+    return new Promise((resolve, reject) => {
+      if (window.turnstile) {
+        resolve();
+        return;
+      }
+      const existing = document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error('Turnstileの読み込みに失敗しました。')), { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Turnstileの読み込みに失敗しました。'));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function detectTurnstileRequirement() {
+    if (!configuredTurnstileSiteKey || !turnstileContainer || !turnstileWidget) return;
+    try {
+      const response = await fetch(apiUrl('/server/status'), {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data?.turnstile?.enabled) {
+        turnstileEnabled = true;
+      }
+    } catch (_) {
+      // 状態を取得できない場合はTurnstileを強制せず、従来どおり動作させる。
+    }
+  }
+
+  async function setupTurnstile() {
+    if (!turnstileEnabled || !turnstileContainer || !turnstileWidget) return;
+    if (!turnstileInitialized) {
+      turnstileInitialized = true;
+      try {
+        await loadTurnstileScript();
+      } catch (error) {
+        turnstileEnabled = false;
+        enableGetCodeButton();
+        return;
+      }
+    }
+    if (turnstileWidgetId != null) return;
+
+    turnstileContainer.classList.remove('hidden');
+    disableGetCodeButton();
+    turnstileWidgetId = window.turnstile.render(turnstileWidget, {
+      sitekey: configuredTurnstileSiteKey,
+      theme: 'auto',
+      callback: (token) => {
+        turnstileToken = token;
+        enableGetCodeButton();
+      },
+      'expired-callback': () => {
+        turnstileToken = null;
+        disableGetCodeButton();
+      },
+      'error-callback': () => {
+        turnstileToken = null;
+        disableGetCodeButton();
+      },
+    });
+  }
+
+  function resetTurnstile() {
+    turnstileToken = null;
+    if (turnstileWidgetId != null && window.turnstile) {
+      try {
+        window.turnstile.reset(turnstileWidgetId);
+      } catch (_) {}
+    }
+    disableGetCodeButton();
+  }
 
   function showLoading(show) {
     loadingOverlay.classList.toggle('hidden', !show);
@@ -179,6 +277,9 @@ document.addEventListener('DOMContentLoaded', () => {
       updateLoginMode();
     }
     loginModal.classList.remove('hidden');
+    if (turnstileEnabled) {
+      void setupTurnstile();
+    }
     window.setTimeout(() => usernameInput.focus(), 0);
   }
 
@@ -306,6 +407,10 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('Scratchユーザー名またはNyaitterアドレスを入力してください。');
       return;
     }
+    if (turnstileEnabled && !turnstileToken) {
+      showError('認証チャレンジを完了してください。');
+      return;
+    }
 
     showLoading(true);
     hideMessages();
@@ -320,10 +425,18 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ type: 'generateCode', username: scratchUsername }),
+        body: JSON.stringify({
+          type: 'generateCode',
+          username: scratchUsername,
+          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
+        }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) throw new Error(data.error || 'コードの生成に失敗しました。');
+      if (!response.ok || data.error) {
+        if (response.status === 403) resetTurnstile();
+        throw new Error(data.error || 'コードの生成に失敗しました。');
+      }
+      resetTurnstile();
 
       verificationCodeElem.textContent = data.code;
       profileLink.href = `https://scratch.mit.edu/users/${encodeURIComponent(scratchUsername)}/#comments`;
@@ -612,7 +725,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   updateLoginMode();
-  if (new URL(window.location.href).searchParams.get('login') === '1') openLoginModal();
+  void detectTurnstileRequirement().then(() => {
+    // 検出が遅れてモーダルが開かれていた場合（外部ログインコールバックなど）にも
+    // Turnstileウィジェットを確実に描画する。
+    if (loginModal && !loginModal.classList.contains('hidden')) {
+      void setupTurnstile();
+    }
+    if (new URL(window.location.href).searchParams.get('login') === '1') openLoginModal();
+  });
   void handleExternalLoginCallback();
   void handleExternalConfirmRequest();
 });

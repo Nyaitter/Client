@@ -3558,6 +3558,12 @@ body.dark .recommend-user button {
     background: var(--widget-bg-color);
     cursor: pointer;
 }
+.account-switcher-empty {
+    padding: 1rem 0.2rem;
+    text-align: center;
+    color: var(--secondary-text-color);
+    list-style: none;
+}
 /* ワンクッション */
 .post-mask-alert {
     padding: 0.6rem 1.2rem;
@@ -4178,6 +4184,27 @@ body.dark .recommend-user button {
     border-radius: 9999px;
     font-size: 1rem;
     letter-spacing: 0.01em;
+}
+
+.login-turnstile-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.login-turnstile-container.hidden {
+    display: none;
+}
+
+.login-turnstile-hint {
+    margin: 0;
+    text-align: center;
+}
+
+#get-code-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 #login-modal #username-input:focus-visible,

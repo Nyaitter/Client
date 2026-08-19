@@ -33,6 +33,12 @@
                 url: 'https://github.com/Nyaitter',
             },
         ],
+
+        // Cloudflare Turnstileのサイトキーです（例: '0x4AAAAA...'）。
+        // 空文字列ならログインモーダルのTurnstileチャレンジは表示されません。
+        // サーバー側（TURNSTILE_SECRET_KEY または turnstile.secret）でも設定されている場合のみ、
+        // ログインモーダルの認証コード取得にチャレンジ完了が必須になります。
+        turnstileSiteKey: '',
     };
 
     function normalizeEndpoint(value) {
@@ -119,6 +125,7 @@
     globalThis.NyaitterClientConfig = Object.freeze({
         apiEndpoint: CLIENT_CONFIG.apiEndpoint,
         userFileEndpoint: CLIENT_CONFIG.userFileEndpoint,
+        turnstileSiteKey: String(CLIENT_CONFIG.turnstileSiteKey || '').trim(),
         resourceLinks: Object.freeze([...CLIENT_CONFIG.resourceLinks]),
         widgetLinks: Object.freeze([...CLIENT_CONFIG.widgetLinks]),
         apiUrl,
