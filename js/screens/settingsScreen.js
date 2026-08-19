@@ -1099,20 +1099,62 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         });
     };
 
+    const settingsGroupDetails = {
+        profile: {
+            title: 'プロフィール',
+            description: 'プロフィールに表示される情報と画像を設定します。',
+        },
+        privacy: {
+            title: 'プライバシーとセキュリティ',
+            description: '公開範囲、ログイン保護、アカウント管理を設定します。',
+        },
+        ui: {
+            title: 'UI / フォント',
+            description: '表示形式、テーマ、フォントなどの見た目を設定します。',
+        },
+        notifications: {
+            title: '通知',
+            description: 'この端末でのプッシュ通知の状態を確認・変更します。',
+        },
+        storage: {
+            title: 'ストレージ',
+            description: 'アップロード済みのファイルとストレージ使用量を管理します。',
+        },
+        api: {
+            title: 'API / Bot',
+            description: 'Bot用APIキーを生成・管理します。',
+        },
+        imposter: {
+            title: 'インポスター',
+            description: 'インポスターの作成、共同運用者、権限を管理します。',
+        },
+        resources: {
+            title: 'リソース',
+            description: 'Nyaitterに関するリソースへのリンクを表示します。',
+        },
+    };
+
     const selectSettingsGroup = (group) => {
+        const activeGroup = settingsGroupDetails[group] ? group : 'profile';
+        const details = settingsGroupDetails[activeGroup];
+        const title = document.getElementById('settings-group-title');
+        const description = document.getElementById('settings-group-description');
+        if (title) title.textContent = details.title;
+        if (description) description.textContent = details.description;
+
         document.querySelectorAll('.settings-group-button').forEach((button) => {
-            const active = button.dataset.settingsGroup === group;
+            const active = button.dataset.settingsGroup === activeGroup;
             button.classList.toggle('active', active);
         });
         document.querySelectorAll('.settings-group-panel').forEach((panel) => {
-            panel.hidden = panel.dataset.settingsPanel !== group;
+            panel.hidden = panel.dataset.settingsPanel !== activeGroup;
         });
-        if (group === 'privacy') void loadLoginSecuritySessions();
-        if (group === 'notifications') void loadPushSettingsState();
-        if (group === 'storage') void loadUserStorage();
-        if (group === 'api') void loadUserBotTokens();
-        if (group === 'imposter') void loadImposters();
-        if (group === 'resources') renderResourceLinks();
+        if (activeGroup === 'privacy') void loadLoginSecuritySessions();
+        if (activeGroup === 'notifications') void loadPushSettingsState();
+        if (activeGroup === 'storage') void loadUserStorage();
+        if (activeGroup === 'api') void loadUserBotTokens();
+        if (activeGroup === 'imposter') void loadImposters();
+        if (activeGroup === 'resources') renderResourceLinks();
     };
 
     const dangerZone = document.querySelector('.settings-danger-zone');
