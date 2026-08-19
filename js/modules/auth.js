@@ -14,6 +14,7 @@ import {
     escapeHTML,
     getUserIconUrl,
     formatNyaitterId,
+    holdLoadingScreen,
     showLoading,
 } from '../utils/helpers.js';
 import { getEmoji } from './format.js';
@@ -335,25 +336,42 @@ export async function openAccountSwitcherModal() {
             }
             if (userId === currentId) return;
 
-            const { error: switchError } = await apiRequest(
-                automaticImposter
-                    ? `/server/auth/imposters/${encodeURIComponent(userId)}/switch`
-                    : '/server/auth/accounts/switch',
-                automaticImposter
-                    ? { method: 'POST', body: {} }
-                    : { method: 'POST', body: { user_id: userId } },
-            );
+            const releaseLoadingScreen = holdLoadingScreen();
+            let switchError = null;
+            try {
+                const result = await apiRequest(
+                    automaticImposter
+                        ? `/server/auth/imposters/${encodeURIComponent(userId)}/switch`
+                        : '/server/auth/accounts/switch',
+                    automaticImposter
+                        ? { method: 'POST', body: {} }
+                        : { method: 'POST', body: { user_id: userId } },
+                );
+                switchError = result.error;
+                if (!switchError) {
+                    closeModal();
+                    unsubscribeFromChanges();
+                    const switchedUser = await checkSession({ route: false });
+                    if (!switchedUser) {
+                        switchError = new Error('切替後のアカウント情報を確認できませんでした。');
+                    } else {
+                        window.location.hash = '#';
+                        await router();
+                    }
+                }
+            } catch (error) {
+                switchError = error instanceof Error
+                    ? error
+                    : new Error('アカウントの切替中に通信エラーが発生しました。');
+            } finally {
+                releaseLoadingScreen();
+            }
+
             if (switchError) {
                 await showAppAlert(
                     `アカウントの切替に失敗しました: ${switchError.message}`,
                 );
-                return;
             }
-            closeModal();
-            setCurrentUser(null);
-            unsubscribeFromChanges();
-            window.location.hash = '#';
-            await checkSession();
         };
     });
 }
