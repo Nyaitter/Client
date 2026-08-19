@@ -95,7 +95,7 @@ export async function loadPushSettingsState() {
         const permission = Notification.permission;
         if (permission === 'denied') {
             setPushSettingsUi({
-                status: 'サーバーのプッシュ通知は有効です。ただし、この端末のブラウザでは通知が拒否されています。ブラウザ設定から許可してください。',
+                status: 'ブラウザで通知が拒否されています。ブラウザ設定から許可してください。',
                 actionLabel: '通知が拒否されています',
             });
             return {
@@ -108,8 +108,8 @@ export async function loadPushSettingsState() {
 
         setPushSettingsUi({
             status: subscription
-                ? 'サーバーのプッシュ通知は有効です。この端末でプッシュ通知を購読中です。'
-                : 'サーバーのプッシュ通知は有効です。この端末ではプッシュ通知を購読していません。',
+                ? 'この端末でプッシュ通知を購読中です。'
+                : 'この端末ではプッシュ通知を購読していません。',
             actionLabel: subscription
                 ? 'この端末の購読を解除'
                 : 'この端末で通知を有効化',
