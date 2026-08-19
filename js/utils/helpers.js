@@ -240,52 +240,68 @@ export function getNyaitterId(user) {
     return formatNyaitterId(user);
 }
 
-export function normalizePostTimestampFormat(format) {
-    return format === 'relative' || format === 'absolute'
-        ? format
-        : 'standard';
+const POST_TIMESTAMP_FORMATS = new Set([
+    'relative',
+    'relative_detailed',
+    'absolute_24',
+    'absolute_12',
+]);
+
+export function normalizePostTimestampFormat(value) {
+    return POST_TIMESTAMP_FORMATS.has(value) ? value : 'relative';
 }
 
 export function getPostTimestampFormat() {
-    const userFormat = getCurrentUser()?.settings?.post_timestamp_format;
-    return normalizePostTimestampFormat(userFormat);
+    return normalizePostTimestampFormat(
+        getCurrentUser()?.settings?.post_timestamp_format,
+    );
 }
 
-export function formatPostTimestamp(post) {
-    const date = new Date(post.created_at);
-    if (Number.isNaN(date.getTime())) return '';
+export function formatPostTimestamp(post, format = getPostTimestampFormat()) {
+    const value = post?.created_at;
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return '日時不明';
 
-    const format = getPostTimestampFormat();
-    if (format === 'absolute') {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return `${year}/${month}/${day} ${hours}:${minutes}`;
-    }
-
-    const diff = (new Date() - date) / 1000;
-    if (format === 'relative') {
-        if (diff < 60) return `${Math.floor(diff)}秒前`;
-        if (diff < 3600) return `${Math.floor(diff / 60)}分前`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
-        if (diff < 604800) return `${Math.floor(diff / 86400)}日前`;
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}/${month}/${day}`;
-    }
-
-    if (diff < 60) return `${Math.floor(diff)}秒前`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}分前`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
+    const pad = (number) => String(number).padStart(2, '0');
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}/${month}/${day} ${hours}:${minutes}`;
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hour = date.getHours();
+    const minute = pad(date.getMinutes());
+    const second = pad(date.getSeconds());
+
+    if (format === 'absolute_24') {
+        return `${year}/${month}/${day} ${pad(hour)}:${minute}:${second}`;
+    }
+    if (format === 'absolute_12') {
+        const period = hour < 12 ? '午前' : '午後';
+        const hour12 = hour % 12 || 12;
+        return `${year}/${month}/${day} ${period} ${pad(hour12)}:${minute}:${second}`;
+    }
+
+    const elapsedSeconds = Math.max(
+        0,
+        Math.floor((Date.now() - date.getTime()) / 1000),
+    );
+    let remaining = elapsedSeconds;
+    const units = [
+        ['年', 365 * 24 * 60 * 60],
+        ['ヶ月', 30 * 24 * 60 * 60],
+        ['日', 24 * 60 * 60],
+        ['時間', 60 * 60],
+        ['分', 60],
+        ['秒', 1],
+    ];
+    const parts = [];
+    for (const [label, seconds] of units) {
+        const amount = Math.floor(remaining / seconds);
+        remaining %= seconds;
+        if (amount > 0) {
+            parts.push(`${amount}${label}`);
+            if (format === 'relative') break;
+        }
+    }
+    return `${parts.length > 0 ? parts.join('') : '0秒'}前`;
 }
 
 export function formatSecurityTimestamp(value) {
@@ -472,7 +488,11 @@ export function getUserIconUrl(user) {
 
 export function getUserHeaderImageUrl(user) {
     const headerData =
-        typeof user?.header_data === 'string' ? user.header_data.trim() : '';
+        typeof user?.header_image === 'string'
+            ? user.header_image.trim()
+            : typeof user?.header_data === 'string'
+              ? user.header_data.trim()
+              : '';
     if (headerData) {
         if (/^https?:\/\//i.test(headerData)) {
             return getSafeHttpUrl(headerData) || '';

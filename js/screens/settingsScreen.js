@@ -109,6 +109,7 @@ export async function saveSettings(form) {
             name: form.querySelector('#setting-username')?.value.trim(),
             me: form.querySelector('#setting-me')?.value.trim(),
             settings: {
+                ...(getCurrentUser().settings || {}),
                 lock: form.querySelector('#setting-lock')?.checked || false,
                 show_like: form.querySelector('#setting-show-like')?.checked || false,
                 show_follow: form.querySelector('#setting-show-follow')?.checked || false,
@@ -192,12 +193,23 @@ export async function saveSettings(form) {
             await deleteFilesViaEdgeFunction([...previousStoredFileIds]);
         }
 
-        setCurrentUser(data);
-        cacheUser(data);
-        getPublicProfileCache().delete(Number(data.id));
-        updateAccountData(getCurrentUser());
-        applyInterfaceTheme(getCurrentUser().settings?.theme || 'light');
-        applyColorTheme(getCurrentUser().settings || {});
+        if (!data || typeof data !== 'object') {
+            throw new Error('サーバーから更新後の設定を取得できませんでした。');
+        }
+        const updatedUser = {
+            ...getCurrentUser(),
+            ...data,
+            settings: {
+                ...(getCurrentUser().settings || {}),
+                ...(data.settings || {}),
+            },
+        };
+        setCurrentUser(updatedUser);
+        cacheUser(updatedUser);
+        getPublicProfileCache().delete(Number(updatedUser.id));
+        updateAccountData(updatedUser);
+        applyInterfaceTheme(updatedUser.settings?.theme || 'light');
+        applyColorTheme(updatedUser.settings || {});
         applyDataSaverRealtimePreference();
         refreshMarkdownContentEditors();
         await updateNavAndSidebars();

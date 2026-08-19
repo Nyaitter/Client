@@ -10,6 +10,28 @@ export const DATA_SAVER_NOTIFICATIONS_PER_PAGE = 12;
 
 export const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
+export const COLOR_THEME_PRESETS = Object.freeze({
+    nyaitter: Object.freeze({
+        primary_color: '#ff9900',
+        primary_hover_color: '#e88b00',
+        light_primary_color: '#ffebcc',
+        dark_light_primary_color: '#8f5600',
+    }),
+    nyax: Object.freeze({
+        primary_color: '#1d9bf0',
+        primary_hover_color: '#1a8cd8',
+        light_primary_color: '#cce6ff',
+        dark_light_primary_color: '#004a8f',
+    }),
+});
+
+export const COLOR_THEME_CSS_VARIABLES = Object.freeze({
+    primary_color: '--primary-color',
+    primary_hover_color: '--primary-hover-color',
+    light_primary_color: '--l-light-primary-color',
+    dark_light_primary_color: '--d-light-primary-color',
+});
+
 export function isDataSaverEnabled() {
     return Boolean(getCurrentUser()?.settings?.data_saver);
 }
@@ -30,55 +52,46 @@ export function getNotificationsPerPage() {
     return isDataSaverEnabled() ? DATA_SAVER_NOTIFICATIONS_PER_PAGE : 30;
 }
 
-export function normalizeColorTheme(theme) {
-    if (theme === 'custom') return 'custom';
-    if (['blue', 'green', 'orange', 'purple', 'red'].includes(theme)) {
-        return theme;
+export function normalizeColorTheme(value) {
+    return ['nyaitter', 'nyax', 'custom'].includes(value)
+        ? value
+        : 'nyaitter';
+}
+
+export function getSafeColorPalette(colorTheme, customColors = {}) {
+    const theme = normalizeColorTheme(colorTheme);
+    const basePalette = COLOR_THEME_PRESETS.nyaitter;
+    if (theme !== 'custom') return COLOR_THEME_PRESETS[theme];
+
+    return Object.fromEntries(
+        Object.entries(basePalette).map(([key, fallback]) => [
+            key,
+            typeof customColors?.[key] === 'string' &&
+            HEX_COLOR_PATTERN.test(customColors[key])
+                ? customColors[key].toLowerCase()
+                : fallback,
+        ]),
+    );
+}
+
+export function applyColorTheme(settings = {}) {
+    const colorTheme = normalizeColorTheme(settings?.color_theme);
+    const palette = getSafeColorPalette(colorTheme, settings?.custom_colors);
+    const rootStyle = document.documentElement.style;
+    for (const [key, cssVariable] of Object.entries(COLOR_THEME_CSS_VARIABLES)) {
+        rootStyle.setProperty(cssVariable, palette[key]);
     }
-    return 'blue';
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.content = palette.primary_color;
+    return { colorTheme, palette };
 }
 
-export function getSafeColorPalette(colors = {}) {
-    const defaultPalette = {
-        primary: '#1d9bf0',
-        secondary: '#0c7abf',
-        accent: '#e8f5fe',
-        border: '#cbe7fb',
-    };
-    const hexPattern = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
-    return {
-        primary: hexPattern.test(colors?.primary) ? colors.primary : defaultPalette.primary,
-        secondary: hexPattern.test(colors?.secondary) ? colors.secondary : defaultPalette.secondary,
-        accent: hexPattern.test(colors?.accent) ? colors.accent : defaultPalette.accent,
-        border: hexPattern.test(colors?.border) ? colors.border : defaultPalette.border,
-    };
-}
-
-export function applyColorTheme(theme, customColors = null) {
-    const root = document.documentElement;
-    const normalizedTheme = normalizeColorTheme(theme);
-    root.setAttribute('data-color-theme', normalizedTheme);
-    if (normalizedTheme === 'custom' && customColors) {
-        const palette = getSafeColorPalette(customColors);
-        root.style.setProperty('--primary-color', palette.primary);
-        root.style.setProperty('--secondary-color', palette.secondary);
-        root.style.setProperty('--accent-color', palette.accent);
-        root.style.setProperty('--border-color', palette.border);
-    } else {
-        root.style.removeProperty('--primary-color');
-        root.style.removeProperty('--secondary-color');
-        root.style.removeProperty('--accent-color');
-        root.style.removeProperty('--border-color');
-    }
-}
-
-export function getCustomColorsFromInputs() {
-    return getSafeColorPalette({
-        primary: document.getElementById('custom-color-primary')?.value,
-        secondary: document.getElementById('custom-color-secondary')?.value,
-        accent: document.getElementById('custom-color-accent')?.value,
-        border: document.getElementById('custom-color-border')?.value,
+export function getCustomColorsFromInputs(root = document) {
+    const requestedColors = {};
+    root.querySelectorAll('.settings-color-code[data-color-key]').forEach((input) => {
+        requestedColors[input.dataset.colorKey] = input.value.trim();
     });
+    return getSafeColorPalette('custom', requestedColors);
 }
 
 export function applyInterfaceTheme(themePreference = null) {
@@ -93,10 +106,7 @@ export function applyInterfaceTheme(themePreference = null) {
     );
     document.body.classList.toggle('dark', isDark);
     document.body.classList.toggle('light', !isDark);
-    applyColorTheme(
-        getCurrentUser()?.settings?.color_theme,
-        getCurrentUser()?.settings?.custom_colors,
-    );
+    applyColorTheme(getCurrentUser()?.settings || {});
 }
 
 // Pull to refresh support
