@@ -7870,13 +7870,13 @@ export function initApp() {
 	        let dangerZoneHTML = `
 	            <section class="settings-account-identity" aria-labelledby="settings-nyaitter-id-title">
 	                <h4 id="settings-nyaitter-id-title">NyaitterID</h4>
-	                <p class="settings-help-text">再割り当て後は、現在のNyaitterIDへ戻せない場合があります。処理中は一時的に接続が切断されます。</p>
+	                <p class="settings-help-text">再割り当てをした場合元のIDに戻すことはできません。</p>
 	                <button type="button" id="settings-reassign-nyaitter-id-btn">NyaitterIDを再割り当て</button>
 	            </section>
 	            <section class="settings-account-delete" aria-labelledby="settings-account-delete-title">
-	                <h4 id="settings-account-delete-title">アカウント削除</h4>
-	                <p class="settings-help-text">投稿、DM、セッション、保存済みのアカウント情報を削除します。この操作は元に戻せません。</p>
-	                <button type="button" id="settings-delete-account-btn" class="settings-danger-button">アカウントを削除</button>
+	                <h4 id="settings-account-delete-title">NyaitterIDの破棄</h4>
+	                <p class="settings-help-text">あなたのNyaitterIDを破棄し、全てのデータを削除します。この操作は取り消せません。</p>
+	                <button type="button" id="settings-delete-account-btn" class="settings-danger-button">NyaitterIDを破棄</button>
 	            </section>
 	            <button type="button" id="settings-account-switcher-btn">アカウント切替</button>
 	            <button type="button" id="settings-logout-btn">ログアウト</button>
