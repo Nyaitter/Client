@@ -378,7 +378,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                 <section class="settings-group-panel" data-settings-panel="imposter" hidden>
                     <section class="settings-imposter" aria-labelledby="settings-imposter-title">
                         <h4 id="settings-imposter-title">インポスター</h4>
-                        <p class="settings-help-text">親NyaitterIDに紐づく、通常のアカウントとして利用できる偽のNyaitterIDです。親アカウントを破棄すると、作成したインポスターも削除されます。</p>
+                        <p class="settings-help-text">1つのNyaitterIDから複数作成可能な偽のNyaitterIdです。</p>
                         <div id="settings-imposter-create" class="settings-bot-create-container">
                             <label for="settings-imposter-name" style="font-weight: 600; font-size: 0.9rem;">新しいインポスターの表示名</label>
                             <div class="settings-bot-create-form">
