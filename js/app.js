@@ -5182,10 +5182,20 @@ export function initApp() {
 
         const postMain = document.createElement('div');
         postMain.className = 'post-main';
+        const postHeader = document.createElement('div');
+        postHeader.className = 'post-header';
+        const authorName = document.createElement('span');
+        authorName.className = 'post-author-name';
+        authorName.textContent = 'UnknownPost';
+        const account = document.createElement('span');
+        account.className = 'post-time';
+        account.textContent = '@unknown';
+        postHeader.append(authorName, account);
+
         const message = document.createElement('div');
         message.className = 'deleted-post-container';
         message.textContent = '不明なポストです。';
-        postMain.appendChild(message);
+        postMain.append(postHeader, message);
         postEl.appendChild(postMain);
         return postEl;
     }
