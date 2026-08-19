@@ -51,6 +51,7 @@ import {
     getUserHeaderImageUrl,
     copyTextToClipboard,
     formatSecurityTimestamp,
+    formatNyaitterId,
     normalizePostTimestampFormat,
     applyServerInputLimits,
     showLoading,
@@ -788,7 +789,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
     const imposterCreateContainer = document.getElementById('settings-imposter-create');
     const imposterNameInput = document.getElementById('settings-imposter-name');
     const imposterCreateButton = document.getElementById('settings-imposter-create-btn');
-    const formatImposterId = (value) => String(Number(value) || 0).padStart(4, '0');
+    const formatImposterId = (value) => formatNyaitterId({ nyaitter_id: value });
     const imposterRoleLabel = (role) => ({
         owner: '所有者',
         manager: '管理者',
