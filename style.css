@@ -1195,11 +1195,9 @@ em-emoji-picker {
 }
 
 .imposter-badge {
-    display: inline-flex;
+    display: inline-block;
     margin-left: 0.35rem;
     padding: 0.1rem 0.42rem;
-    align-items: center;
-    justify-content: center;
     border: 1px solid var(--accent-color, #6f42c1);
     border-radius: 999px;
     color: var(--accent-color, #6f42c1);
@@ -1207,11 +1205,6 @@ em-emoji-picker {
     font-weight: 700;
     line-height: 1.35;
     vertical-align: middle;
-}
-
-.imposter-badge svg {
-    width: 1.35em;
-    height: 1.35em;
 }
 
 .post-content {
