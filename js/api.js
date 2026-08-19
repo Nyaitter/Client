@@ -376,10 +376,22 @@ export const api = (() => {
                 );
             if (name === 'handle_follow') {
                 const targetUserId =
-                    params.p_target_id ?? params.target_user_id;
+                    params.p_target_user_id ??
+                    params.p_target_id ??
+                    params.target_user_id;
+                const numericTargetUserId = Number(targetUserId);
+                if (
+                    !Number.isSafeInteger(numericTargetUserId) ||
+                    numericTargetUserId <= 0
+                ) {
+                    return Promise.resolve({
+                        data: null,
+                        error: new Error('Invalid follow target user ID'),
+                    });
+                }
                 return withSingle(
                     request(
-                        `/server/api/users/${encodeURIComponent(targetUserId)}/follow`,
+                        `/server/api/users/${encodeURIComponent(numericTargetUserId)}/follow`,
                         { method: 'POST' },
                     ),
                 );
