@@ -829,7 +829,10 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
             deleteButton.addEventListener('click', async () => {
                 if (!file.id || !(await showAppConfirm(`ファイル「${file.name || file.id}」を削除しますか？\n投稿やプロフィールで使用中の場合、表示できなくなることがあります。`))) return;
                 deleteButton.disabled = true;
-                const { error: deleteError } = await apiRequest(`/server/api/uploads/${encodeURIComponent(file.id)}`, { method: 'DELETE' });
+                const { error: deleteError } = await apiRequest('/server/api/uploads', {
+                    method: 'DELETE',
+                    body: { fileIds: [file.id] },
+                });
                 if (deleteError) {
                     showAppAlert(`ファイルの削除に失敗しました: ${deleteError.message}`);
                     deleteButton.disabled = false;

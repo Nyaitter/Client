@@ -677,9 +677,7 @@ export function handleCtrlEnter(e) {
     }
 }
 
-export async function attachPostFormListeners(container, onPostSuccess = null) {
-    await emoji_picker_create({ triggerButton: container.querySelector('.emoji-pic-button') });
-
+export function attachPostFormListeners(container, onPostSuccess = null) {
     container.querySelector('.attachment-button')?.addEventListener('click', () => {
         container.querySelector('#file-input')?.click();
     });
@@ -729,6 +727,12 @@ export async function attachPostFormListeners(container, onPostSuccess = null) {
         attachMarkdownContentEditor(editor);
         setupMarkdownEditorPreviewButton(container, editor);
     }
+
+    void emoji_picker_create({
+        triggerButton: container.querySelector('.emoji-pic-button'),
+    }).catch((error) => {
+        console.error('絵文字ピッカーの初期化に失敗しました:', error);
+    });
 }
 
 export async function handleFileSelection(event, container, { append = false } = {}) {
@@ -1319,13 +1323,29 @@ export async function deletePost(postId) {
             .single();
         if (fetchError) throw new Error(`ポスト情報の取得に失敗: ${fetchError.message}`);
 
-        if (postData.attachments && postData.attachments.length > 0) {
-            const fileIds = postData.attachments.map((file) => file.id);
-            await deleteFilesViaEdgeFunction(fileIds);
-        }
+        const currentUser = getCurrentUser();
+        const isAdminDeletingOtherPost =
+            Boolean(currentUser?.admin) &&
+            Number(postData.userid ?? postData.author?.id) !== Number(currentUser.id);
 
-        const { error: deleteError } = await api.from('post').delete().eq('id', postId);
-        if (deleteError) throw deleteError;
+        if (isAdminDeletingOtherPost) {
+            const { error: adminDeleteError } = await apiRequest(
+                `/server/api/posts/admin/${encodeURIComponent(String(postId))}`,
+                { method: 'DELETE' },
+            );
+            if (adminDeleteError) throw adminDeleteError;
+        } else {
+            if (postData.attachments && postData.attachments.length > 0) {
+                const fileIds = postData.attachments.map((file) => file.id);
+                await deleteFilesViaEdgeFunction(fileIds);
+            }
+
+            const { error: deleteError } = await api
+                .from('post')
+                .delete()
+                .eq('id', postId);
+            if (deleteError) throw deleteError;
+        }
 
         invalidateTimelinePageCache();
         await router();
