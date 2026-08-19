@@ -2508,9 +2508,9 @@ export function initApp() {
             const mentionRegex = /@(\d+)/g;
             processed = processed.replace(mentionRegex, (match, userId) => {
                 const numericId = parseInt(userId, 10);
-                if (userCache.has(numericId)) {
-                    const user = userCache.get(numericId);
-                    const userName = user ? user.name : `user${numericId}`;
+                const user = userCache.get(numericId) || getAllUsersCache().get(numericId);
+                if (user) {
+                    const userName = user.name || `user${numericId}`;
                     return `<a href="#profile/${numericId}">@${getEmoji(escapeHTML(userName))}</a>`;
                 }
                 return match;
