@@ -1659,9 +1659,20 @@ export function initApp() {
         return div.innerHTML.replaceAll(`'`, '&#39;').replaceAll(`"`, '&#34;');
     }
 
+    function decodeHtmlEntities(value) {
+        const source = String(value || '');
+        if (!source.includes('&')) return source;
+        const decoder = document.createElement('textarea');
+        decoder.innerHTML = source;
+        return decoder.value;
+    }
+
     function getSafeHttpUrl(value, fallback = '') {
         try {
-            const url = new URL(String(value || ''), window.location.origin);
+            const url = new URL(
+                decodeHtmlEntities(value),
+                window.location.origin,
+            );
             if (!['http:', 'https:'].includes(url.protocol)) return fallback;
             if (
                 url.protocol === 'http:' &&
@@ -2469,16 +2480,20 @@ export function initApp() {
             return slashCount % 2 === 1;
         };
         const renderPlainText = (standardText) => {
-            let processed = escapeHTML(unescapeDecorationEscapes(standardText));
             const urls = [];
-
             const urlRegex =
                 /(https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=;]*))/g;
-            processed = processed.replace(urlRegex, (url) => {
-                const placeholder = `%%URL_${urls.length}%%`;
-                urls.push(url);
-                return placeholder;
-            });
+            // URLはHTMLエスケープ前の原文から抽出する。エスケープ後の`&amp;`を
+            // hrefへ二重に埋め込むと、クエリ文字列を含むURLが別URLになってしまう。
+            let processed = unescapeDecorationEscapes(standardText).replace(
+                urlRegex,
+                (url) => {
+                    const placeholder = `%%URL_${urls.length}%%`;
+                    urls.push(url);
+                    return placeholder;
+                },
+            );
+            processed = escapeHTML(processed);
 
             processed = replaceCustomEmoji(processed);
             processed = getEmoji(processed);
@@ -2501,9 +2516,10 @@ export function initApp() {
             urls.forEach((url, index) => {
                 const placeholder = `%%URL_${index}%%`;
                 const safeUrl = getSafeHttpUrl(url);
+                const displayUrl = decodeHtmlEntities(url);
                 const link = safeUrl
-                    ? `<a href="${escapeHTML(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHTML(url)}</a>`
-                    : escapeHTML(url);
+                    ? `<a href="${escapeHTML(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHTML(displayUrl)}</a>`
+                    : escapeHTML(displayUrl);
                 processed = processed.replace(placeholder, link);
             });
             return processed.replace(/\n/g, '<br>');
