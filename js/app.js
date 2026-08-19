@@ -1788,7 +1788,10 @@ export function initApp() {
         container.appendChild(placeholder);
 
         void getUrlCard(targetUrl).then((card) => {
-            if (!card || !placeholder.isConnected) {
+            // 投稿一覧は非接続の投稿DOMを先に描画してから一括挿入する。
+            // isConnectedで判定すると、キャッシュ済みカードが即時解決した場合に
+            // 再読み込み直後のプレースホルダーが削除されてしまう。
+            if (!card || !placeholder.parentElement) {
                 placeholder.remove();
                 return;
             }
