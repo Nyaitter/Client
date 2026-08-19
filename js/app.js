@@ -5173,8 +5173,27 @@ export function initApp() {
         );
     }
 
+    function renderUnknownPostReference(post) {
+        const postEl = document.createElement('div');
+        postEl.className = 'post unknown-post';
+        if (Number.isInteger(Number(post?.id))) {
+            postEl.dataset.postId = String(post.id);
+        }
+
+        const postMain = document.createElement('div');
+        postMain.className = 'post-main';
+        const message = document.createElement('div');
+        message.className = 'deleted-post-container';
+        message.textContent = '不明なポストです。';
+        postMain.appendChild(message);
+        postEl.appendChild(postMain);
+        return postEl;
+    }
+
     async function renderPost(post, author, options = {}) {
-        if (!post || filterBlockedPosts([post]).length === 0) return null;
+        if (!post) return null;
+        if (post.unknown) return renderUnknownPostReference(post);
+        if (filterBlockedPosts([post]).length === 0) return null;
         await ensureMentionedUsersCached([post.content]);
         const {
             isNested = false,
@@ -5336,6 +5355,11 @@ export function initApp() {
                 replyText.textContent = ` さんに返信`;
                 replyDiv.appendChild(replyAuthorLink);
                 replyDiv.appendChild(replyText);
+                postMain.appendChild(replyDiv);
+            } else if (post.reply_to_post?.unknown) {
+                const replyDiv = document.createElement('div');
+                replyDiv.className = 'replying-to';
+                replyDiv.textContent = '不明なポストに返信';
                 postMain.appendChild(replyDiv);
             }
         }
