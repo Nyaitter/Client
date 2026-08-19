@@ -104,6 +104,22 @@ export function resetProfileTabNavigation(userId, subpage) {
     window.location.hash = hash;
 }
 
+export async function refreshActiveProfileTab({ userId, subpage } = {}) {
+    const normalizedUserId = Number(userId);
+    const activeProfile = activeProfilePullRefreshUser;
+    if (
+        !Number.isInteger(normalizedUserId) ||
+        normalizedUserId < 0 ||
+        Number(activeProfile?.id) !== normalizedUserId
+    ) {
+        return;
+    }
+
+    const normalizedTab = String(subpage || 'posts');
+    invalidateProfileTabPageCache(normalizedUserId, normalizedTab);
+    await loadProfileTabContent(activeProfile, normalizedTab);
+}
+
 export async function showProfileScreen(userId, subpage = 'posts', showScreenFn = null) {
     DOM.pageHeader.innerHTML = `
         <div class="header-with-back-button">
