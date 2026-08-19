@@ -20,7 +20,7 @@ import {
     ensureMentionedUsersCached,
 } from './posts.js';
 import { createViewportObserver } from '../utils/viewport.js';
-import { getPostsPerPage } from './theme.js';
+import { getPostsPerPage, isDataSaverEnabled } from './theme.js';
 
 export let currentRouterGeneration = 0;
 export function incrementRouterGeneration() {
