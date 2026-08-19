@@ -578,9 +578,25 @@ export function imageDataUrlToFile(dataUrl, filename = 'image.png') {
     return new File([u8arr], filename, { type: mime });
 }
 
+let loadingScreenHoldCount = 0;
+
+export function holdLoadingScreen() {
+    loadingScreenHoldCount += 1;
+    showLoading(true);
+    let released = false;
+
+    return () => {
+        if (released) return;
+        released = true;
+        loadingScreenHoldCount = Math.max(0, loadingScreenHoldCount - 1);
+        if (loadingScreenHoldCount === 0) showLoading(false);
+    };
+}
+
 export function showLoading(show) {
     if (!DOM.loadingOverlay) return;
-    DOM.loadingOverlay.classList.toggle('hidden', !show);
-    DOM.loadingOverlay.setAttribute('aria-hidden', String(!show));
-    DOM.loadingOverlay.setAttribute('aria-busy', String(show));
+    const visible = loadingScreenHoldCount > 0 || Boolean(show);
+    DOM.loadingOverlay.classList.toggle('hidden', !visible);
+    DOM.loadingOverlay.setAttribute('aria-hidden', String(!visible));
+    DOM.loadingOverlay.setAttribute('aria-busy', String(visible));
 }

@@ -14,6 +14,7 @@ import {
     escapeHTML,
     getUserIconUrl,
     formatNyaitterId,
+    holdLoadingScreen,
     showLoading,
 } from '../utils/helpers.js';
 import { getEmoji } from './format.js';
@@ -225,13 +226,16 @@ export async function openAccountSwitcherModal() {
           : [];
     if (!error) {
         setAccountList(
-            accounts.map(({ id, name, icon_data, scid, nyaitter_id }) => ({
-                id: Number(id),
-                name: String(name || ''),
-                icon_data: icon_data || null,
-                scid: scid || null,
-                nyaitter_id: nyaitter_id ?? Number(id),
-            })),
+            accounts
+                .filter((account) => !account.automatic_imposter)
+                .map(({ id, name, icon_data, scid, nyaitter_id, is_imposter }) => ({
+                    id: Number(id),
+                    name: String(name || ''),
+                    icon_data: icon_data || null,
+                    scid: scid || null,
+                    nyaitter_id: nyaitter_id ?? Number(id),
+                    is_imposter: Boolean(is_imposter),
+                })),
         );
     }
     const current = getCurrentUser();
@@ -245,13 +249,14 @@ export async function openAccountSwitcherModal() {
                     ? accounts
                           .map(
                               (acc) => `
-                    <li class="account-switcher-item${Number(acc.id) === currentId ? ' active' : ''}" data-id="${escapeHTML(String(acc.id))}">
+                    <li class="account-switcher-item${Number(acc.id) === currentId ? ' active' : ''}" data-id="${escapeHTML(String(acc.id))}" data-automatic-imposter="${acc.automatic_imposter ? 'true' : 'false'}">
                         <span class="switcher-user-info">
                             <img class="switcher-user-icon" src="${escapeHTML(getUserIconUrl(acc))}" alt="${escapeHTML(acc.name || '')}">
                             <span>${getEmoji(escapeHTML(acc.name || '不明なユーザー'))}</span>
                             <span style="color:var(--secondary-text-color); font-size:0.95em;">${formatNyaitterId(acc)}</span>
+                            ${acc.is_imposter ? '<span class="settings-session-current">インポスター</span>' : ''}
                         </span>
-                        <button type="button" class="switcher-delete-btn" title="この端末からアカウントを解除">×</button>
+                        ${acc.automatic_imposter ? '' : '<button type="button" class="switcher-delete-btn" title="この端末からアカウントを解除">×</button>'}
                     </li>`,
                           )
                           .join('')
@@ -272,6 +277,7 @@ export async function openAccountSwitcherModal() {
 
     content.querySelectorAll('.account-switcher-item').forEach((item) => {
         const userId = Number(item.dataset.id);
+        const automaticImposter = item.dataset.automaticImposter === 'true';
         item.onclick = async (event) => {
             if (event.target.closest('.switcher-delete-btn')) {
                 if (
@@ -330,24 +336,42 @@ export async function openAccountSwitcherModal() {
             }
             if (userId === currentId) return;
 
-            const { error: switchError } = await apiRequest(
-                '/server/auth/accounts/switch',
-                {
-                    method: 'POST',
-                    body: { user_id: userId },
-                },
-            );
+            const releaseLoadingScreen = holdLoadingScreen();
+            let switchError = null;
+            try {
+                const result = await apiRequest(
+                    automaticImposter
+                        ? `/server/auth/imposters/${encodeURIComponent(userId)}/switch`
+                        : '/server/auth/accounts/switch',
+                    automaticImposter
+                        ? { method: 'POST', body: {} }
+                        : { method: 'POST', body: { user_id: userId } },
+                );
+                switchError = result.error;
+                if (!switchError) {
+                    closeModal();
+                    unsubscribeFromChanges();
+                    const switchedUser = await checkSession({ route: false });
+                    if (!switchedUser) {
+                        switchError = new Error('切替後のアカウント情報を確認できませんでした。');
+                    } else {
+                        window.location.hash = '#';
+                        await router();
+                    }
+                }
+            } catch (error) {
+                switchError = error instanceof Error
+                    ? error
+                    : new Error('アカウントの切替中に通信エラーが発生しました。');
+            } finally {
+                releaseLoadingScreen();
+            }
+
             if (switchError) {
                 await showAppAlert(
                     `アカウントの切替に失敗しました: ${switchError.message}`,
                 );
-                return;
             }
-            closeModal();
-            setCurrentUser(null);
-            unsubscribeFromChanges();
-            window.location.hash = '#';
-            await checkSession();
         };
     });
 }
