@@ -3,11 +3,15 @@ const { apiUrl, userFileUrl } = globalThis.NyaitterClientConfig;
 export async function apiRequest(path, { method = 'GET', body } = {}) {
     const headers = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
+    // 本人専用の認証状態は設定・リアクション更新後に変化するため、ブラウザの
+    // 条件付きGETで古いcurrentUserを復元させない。
+    const isAuthStateRequest = String(path).startsWith('/server/auth/me');
     try {
         const response = await fetch(apiUrl(path), {
             method,
             headers,
             credentials: 'include',
+            cache: isAuthStateRequest ? 'no-store' : 'default',
             body: body === undefined ? undefined : JSON.stringify(body),
         });
         const payload = await response.json().catch(() => ({}));
