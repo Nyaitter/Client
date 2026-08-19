@@ -2508,9 +2508,9 @@ export function initApp() {
             const mentionRegex = /@(\d+)/g;
             processed = processed.replace(mentionRegex, (match, userId) => {
                 const numericId = parseInt(userId, 10);
-                if (userCache.has(numericId)) {
-                    const user = userCache.get(numericId);
-                    const userName = user ? user.name : `user${numericId}`;
+                const user = userCache.get(numericId) || getAllUsersCache().get(numericId);
+                if (user) {
+                    const userName = user.name || `user${numericId}`;
                     return `<a href="#profile/${numericId}">@${getEmoji(escapeHTML(userName))}</a>`;
                 }
                 return match;
@@ -9063,8 +9063,30 @@ export function initApp() {
         };
     }
 
-    async function loadPostsWithPagination(container, type, options = {}) {
-        const pageSize = getPostsPerPage();
+	function bindPaginationOptionsToRoute(options) {
+		const routeGeneration = routerGeneration;
+		const callerIsCurrent = options.isCurrent;
+		return {
+			...options,
+			isCurrent: () => (
+				routeGeneration === routerGeneration &&
+				(typeof callerIsCurrent !== 'function' || callerIsCurrent())
+			),
+		};
+	}
+
+	function isActivePaginationLoader(container, trigger, options) {
+		return (
+			getCurrentPagination().options === options &&
+			container.isConnected &&
+			container.contains(trigger) &&
+			options.isCurrent()
+		);
+	}
+
+	async function loadPostsWithPagination(container, type, options = {}) {
+		options = bindPaginationOptionsToRoute(options);
+		const pageSize = getPostsPerPage();
         let localPostLoadObserver;
         const postPageCache = options.pageCache || null;
         setCurrentPagination({ page: 0, hasMore: true, type, options });
@@ -9073,15 +9095,18 @@ export function initApp() {
         trigger.className = 'load-more-trigger';
         container.appendChild(trigger);
 
-        const loadMore = async ({ cachedOnly = false } = {}) => {
-            if (getIsLoadingMore() || !getCurrentPagination().hasMore) return false;
-
-            const currentTrigger =
-                container.querySelector('.load-more-trigger');
-            if (!currentTrigger) {
-                if (localPostLoadObserver) localPostLoadObserver.disconnect();
-                return;
-            }
+		const loadMore = async ({ cachedOnly = false } = {}) => {
+			const currentTrigger =
+				container.querySelector('.load-more-trigger');
+			if (
+				!isActivePaginationLoader(container, currentTrigger, options) ||
+				getIsLoadingMore() ||
+				!getCurrentPagination().hasMore
+			) {
+				if (!currentTrigger && localPostLoadObserver)
+					localPostLoadObserver.disconnect();
+				return false;
+			}
 
             setIsLoadingMore(true);
             currentTrigger.innerHTML = '<div class="spinner"></div>';
@@ -9244,7 +9269,8 @@ export function initApp() {
                     }
                 }
 
-                if (!container.querySelector('.load-more-trigger')) return;
+				if (!isActivePaginationLoader(container, currentTrigger, options))
+					return false;
 
                 if (posts && posts.length > 0) {
                     for (const user of pageContext?.users || []) {
@@ -9266,45 +9292,53 @@ export function initApp() {
                             (p) => p.id === options.pinId,
                         );
                         if (pinPost) {
-                            const postEl = await renderPost(
-                                pinPost,
-                                pinPost.author,
-                                {
-                                    userCache: getAllUsersCache(),
-                                    metricsPromise,
-                                    isPinned: true,
-                                    clampHeight: true,
-                                },
-                            );
-                            if (postEl) currentTrigger.before(postEl);
+							const postEl = await renderPost(
+								pinPost,
+								pinPost.author,
+								{
+									userCache: getAllUsersCache(),
+									metricsPromise,
+									isPinned: true,
+									clampHeight: true,
+								},
+							);
+							if (!isActivePaginationLoader(container, currentTrigger, options))
+								return false;
+							if (postEl) currentTrigger.before(postEl);
                         }
                     }
                     // 投稿レンダリング
                     for (const post of posts) {
                         if (showPinPost && post.id === options.pinId) continue; // ピン留めポストはすでに表示済みのためスキップ
-                        const postEl = await renderPost(post, post.author, {
-                            userCache: getAllUsersCache(),
-                            metricsPromise,
-                            clampHeight: true,
-                        });
-                        if (postEl) currentTrigger.before(postEl);
+						const postEl = await renderPost(post, post.author, {
+							userCache: getAllUsersCache(),
+							metricsPromise,
+							clampHeight: true,
+						});
+						if (!isActivePaginationLoader(container, currentTrigger, options))
+							return false;
+						if (postEl) currentTrigger.before(postEl);
                     }
                 }
 
                 getCurrentPagination().page++;
                 getCurrentPagination().hasMore = hasMoreItems;
                 return true;
-            } catch (error) {
-                posterror = error;
-                console.error('ポストの読み込みに失敗:', error);
-                currentTrigger.innerText = 'ポストの読み込みに失敗しました。';
-                getCurrentPagination().hasMore = false;
-                if (localPostLoadObserver) localPostLoadObserver.disconnect();
-                load_btn.remove();
-            } finally {
-                load_btn.classList.remove('hide');
+			} catch (error) {
+				if (!isActivePaginationLoader(container, currentTrigger, options))
+					return false;
+				posterror = error;
+				console.error('ポストの読み込みに失敗:', error);
+				currentTrigger.innerText = 'ポストの読み込みに失敗しました。';
+				getCurrentPagination().hasMore = false;
+				if (localPostLoadObserver) localPostLoadObserver.disconnect();
+				load_btn.remove();
+			} finally {
+				if (!isActivePaginationLoader(container, currentTrigger, options))
+					return;
+				load_btn.classList.remove('hide');
 
-                setIsLoadingMore(false);
+				setIsLoadingMore(false);
                 const finalTrigger =
                     container.querySelector('.load-more-trigger');
                 if (!finalTrigger) return;
@@ -9336,12 +9370,16 @@ export function initApp() {
             }
         };
 
-        localPostLoadObserver = createViewportObserver(
-            (entries) => {
-                if (entries[0].isIntersecting && !getIsLoadingMore()) {
-                    loadMore();
-                }
-            },
+		localPostLoadObserver = createViewportObserver(
+			(entries) => {
+				if (
+					entries[0].isIntersecting &&
+					isActivePaginationLoader(container, trigger, options) &&
+					!getIsLoadingMore()
+				) {
+					loadMore();
+				}
+			},
             { rootMargin: '200px' },
         );
 
@@ -9357,12 +9395,16 @@ export function initApp() {
             postPageCache,
             () => loadMore({ cachedOnly: true }),
         );
-        if (getCurrentPagination().hasMore)
-            localPostLoadObserver.observe(trigger);
+		if (
+			isActivePaginationLoader(container, trigger, options) &&
+			getCurrentPagination().hasMore
+		)
+			localPostLoadObserver.observe(trigger);
     }
 
-    async function loadUsersWithPagination(container, type, options = {}) {
-        const userPageCache = options.pageCache || null;
+	async function loadUsersWithPagination(container, type, options = {}) {
+		options = bindPaginationOptionsToRoute(options);
+		const userPageCache = options.pageCache || null;
         const requestedPageSize = Number(options.pageSize) || POSTS_PER_PAGE;
         const pageSize = isDataSaverEnabled()
             ? Math.min(requestedPageSize, getUsersPerPage())
@@ -9404,9 +9446,14 @@ export function initApp() {
             return userCard;
         };
 
-        const loadMore = async ({ cachedOnly = false } = {}) => {
-            if (getIsLoadingMore() || !getCurrentPagination().hasMore) return false;
-            setIsLoadingMore(true);
+		const loadMore = async ({ cachedOnly = false } = {}) => {
+			if (
+				!isActivePaginationLoader(container, trigger, options) ||
+				getIsLoadingMore() ||
+				!getCurrentPagination().hasMore
+			)
+				return false;
+			setIsLoadingMore(true);
             trigger.innerHTML = '<div class="spinner"></div>';
 
             const from = getCurrentPagination().page * pageSize;
@@ -9423,11 +9470,13 @@ export function initApp() {
                 users = Array.isArray(cachedPage.users) ? cachedPage.users : [];
                 hasMoreForPage = Boolean(cachedPage.hasMore);
             } else {
-                if (cachedOnly) {
-                    setIsLoadingMore(false);
-                    trigger.innerHTML = '';
-                    return false;
-                }
+				if (cachedOnly) {
+					if (isActivePaginationLoader(container, trigger, options)) {
+						setIsLoadingMore(false);
+						trigger.innerHTML = '';
+					}
+					return false;
+				}
                 const selectColumns =
                     'id, name, me, scid, icon_data, admin, verify';
 
@@ -9486,13 +9535,8 @@ export function initApp() {
                     });
             }
 
-            if (
-                typeof options.isCurrent === 'function' &&
-                !options.isCurrent()
-            ) {
-                setIsLoadingMore(false);
-                return false;
-            }
+			if (!isActivePaginationLoader(container, trigger, options))
+				return false;
 
             if (error) {
                 console.error(`${type}のユーザー読み込みに失敗:`, error);
@@ -9533,7 +9577,11 @@ export function initApp() {
         setPostLoadObserver(
             createViewportObserver(
                 (entries) => {
-                    if (entries[0].isIntersecting && !getIsLoadingMore()) {
+                    if (
+                        entries[0].isIntersecting &&
+                        isActivePaginationLoader(container, trigger, options) &&
+                        !getIsLoadingMore()
+                    ) {
                         loadMore();
                     }
                 },
@@ -9547,12 +9595,16 @@ export function initApp() {
             userPageCache,
             () => loadMore({ cachedOnly: true }),
         );
-        if (getCurrentPagination().hasMore)
+        if (
+            isActivePaginationLoader(container, trigger, options) &&
+            getCurrentPagination().hasMore
+        )
             getPostLoadObserver().observe(trigger);
     }
 
-    async function loadMediaGrid(container, options = {}) {
-        setCurrentPagination({
+	async function loadMediaGrid(container, options = {}) {
+		options = bindPaginationOptionsToRoute(options);
+		setCurrentPagination({
             page: 0,
             hasMore: true,
             type: 'media',
@@ -9573,9 +9625,14 @@ export function initApp() {
 
         const MEDIA_PER_PAGE = getMediaPerPage(); // メディアタブ専用の表示数
 
-        const loadMore = async () => {
-            if (getIsLoadingMore() || !getCurrentPagination().hasMore) return;
-            setIsLoadingMore(true);
+		const loadMore = async () => {
+			if (
+				!isActivePaginationLoader(container, trigger, options) ||
+				getIsLoadingMore() ||
+				!getCurrentPagination().hasMore
+			)
+				return;
+			setIsLoadingMore(true);
             trigger.innerHTML = '<div class="spinner"></div>';
 
             const from = getCurrentPagination().page * MEDIA_PER_PAGE;
@@ -9584,11 +9641,14 @@ export function initApp() {
             const { data: mediaResponse, error } = await apiRequest(
                 `/server/api/users/${encodeURIComponent(options.userId)}/media?limit=${MEDIA_PER_PAGE}&offset=${from}`,
             );
-            const mediaItems = Array.isArray(mediaResponse?.media_items)
-                ? mediaResponse.media_items
-                : [];
+			const mediaItems = Array.isArray(mediaResponse?.media_items)
+				? mediaResponse.media_items
+				: [];
 
-            if (error) {
+			if (!isActivePaginationLoader(container, trigger, options))
+				return;
+
+			if (error) {
                 console.error('メディアの読み込みに失敗:', error);
                 trigger.innerHTML = '読み込みに失敗しました。';
             } else {
@@ -9642,13 +9702,18 @@ export function initApp() {
                     trigger.innerHTML = '';
                 }
             }
-            setIsLoadingMore(false);
-        };
+			if (isActivePaginationLoader(container, trigger, options))
+				setIsLoadingMore(false);
+		};
 
-        setPostLoadObserver(
+		setPostLoadObserver(
             createViewportObserver(
                 (entries) => {
-                    if (entries[0].isIntersecting && !getIsLoadingMore()) {
+                    if (
+                        entries[0].isIntersecting &&
+                        isActivePaginationLoader(container, trigger, options) &&
+                        !getIsLoadingMore()
+                    ) {
                         loadMore();
                     }
                 },
@@ -9657,7 +9722,10 @@ export function initApp() {
         );
 
         await loadMore();
-        if (getCurrentPagination().hasMore)
+        if (
+            isActivePaginationLoader(container, trigger, options) &&
+            getCurrentPagination().hasMore
+        )
             getPostLoadObserver().observe(trigger);
     }
 
