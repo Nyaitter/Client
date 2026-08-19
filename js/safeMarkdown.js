@@ -7,12 +7,20 @@ function escapeHtml(value) {
         .replaceAll("'", '&#39;');
 }
 
+function decodeHtmlEntities(value) {
+    const source = String(value ?? '');
+    if (!source.includes('&')) return source;
+    const decoder = document.createElement('textarea');
+    decoder.innerHTML = source;
+    return decoder.value;
+}
+
 /**
  * Markdownリンク用のURLはHTTPSだけを許可する。
  * プロトコル相対URL・data:・javascript:・file:・認証情報付きURLも拒否する。
  */
 export function getSafeMarkdownUrl(value) {
-    const raw = String(value || '');
+    const raw = decodeHtmlEntities(value);
     // 制御文字とそのパーセントエンコードは、ブラウザ・中継層ごとの解釈差を避けるため拒否する。
     if (
         /[\u0000-\u001F\u007F]/.test(raw) ||
