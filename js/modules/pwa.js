@@ -93,15 +93,23 @@ export async function loadPushSettingsState() {
 
         const subscription = await registration.pushManager.getSubscription();
         const permission = Notification.permission;
+        const subscriptionCount = Math.max(
+            0,
+            Number(configResult.data.subscription_count) || 0,
+        );
+        const hasServerSubscription = subscriptionCount > 0;
         if (permission === 'denied') {
             setPushSettingsUi({
-                status: 'ブラウザで通知が拒否されています。ブラウザ設定から許可してください。',
+                status: hasServerSubscription
+                    ? `このアカウントではプッシュ通知を購読中です（${subscriptionCount}端末）。ただし、この端末のブラウザでは通知が拒否されています。`
+                    : 'ブラウザで通知が拒否されています。ブラウザ設定から許可してください。',
                 actionLabel: '通知が拒否されています',
             });
             return {
                 registration,
                 config: configResult.data,
                 subscription,
+                subscriptionCount,
                 permission,
             };
         }
@@ -109,7 +117,9 @@ export async function loadPushSettingsState() {
         setPushSettingsUi({
             status: subscription
                 ? 'この端末でプッシュ通知を購読中です。'
-                : 'この端末ではプッシュ通知を購読していません。',
+                : hasServerSubscription
+                  ? `このアカウントではプッシュ通知を購読中です（${subscriptionCount}端末）。この端末では未購読です。`
+                  : 'この端末ではプッシュ通知を購読していません。',
             actionLabel: subscription
                 ? 'この端末の購読を解除'
                 : 'この端末で通知を有効化',
@@ -119,6 +129,7 @@ export async function loadPushSettingsState() {
             registration,
             config: configResult.data,
             subscription,
+            subscriptionCount,
             permission,
         };
     } catch (error) {
