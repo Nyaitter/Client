@@ -25,6 +25,7 @@ import {
     attachMarkdownContentEditor,
     getMarkdownEditorValue,
     setMarkdownEditorValue,
+    setupMarkdownEditorPreviewButton,
 } from './editor.js';
 import { sendNotification } from './notifications.js';
 import { isDataSaverEnabled } from './theme.js';
@@ -726,6 +727,7 @@ export async function attachPostFormListeners(container, onPostSuccess = null) {
             }
         });
         attachMarkdownContentEditor(editor);
+        setupMarkdownEditorPreviewButton(container, editor);
     }
 }
 
@@ -1150,7 +1152,9 @@ export async function openEditPostModal(postId, onSaved = null) {
         `;
 
         await emoji_picker_create({ triggerButton: DOM.editPostModalContent.querySelector('.emoji-pic-button') });
-        attachMarkdownContentEditor(DOM.editPostModalContent.querySelector('#edit-post-textarea'));
+        const editPostEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
+        attachMarkdownContentEditor(editPostEditor);
+        setupMarkdownEditorPreviewButton(DOM.editPostModalContent, editPostEditor);
 
         DOM.editPostModal.querySelector('#update-post-button').onclick = () =>
             handleUpdatePost(postId, currentAttachments, filesToAdd, Array.from(filesToDelete), onSaved);

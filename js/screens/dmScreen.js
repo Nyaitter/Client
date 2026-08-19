@@ -34,7 +34,7 @@ import {
 } from '../modules/dm.js';
 import { filterBlockedPosts, uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
 import { formatPostContent, getEmoji } from '../modules/format.js';
-import { attachMarkdownContentEditor, getMarkdownEditorValue, setMarkdownEditorValue } from '../modules/editor.js';
+import { attachMarkdownContentEditor, getMarkdownEditorValue, setMarkdownEditorValue, setupMarkdownEditorPreviewButton } from '../modules/editor.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { sendNotification } from '../modules/notifications.js';
 import { escapeHTML, getNyaitterId, showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
@@ -257,6 +257,7 @@ export async function showDmConversation(dmId) {
 
         const messageInput = document.getElementById('dm-message-input');
         attachMarkdownContentEditor(messageInput);
+        setupMarkdownEditorPreviewButton(container, messageInput);
         const fileInput = document.getElementById('dm-file-input');
         const previewContainer = container.querySelector('.file-preview-container');
 
