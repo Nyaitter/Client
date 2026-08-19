@@ -842,7 +842,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
             idBadge.textContent = `NyaitterID: ${formatImposterId(imposter.nyaitter_id || imposter.id)}`;
             const roleBadge = document.createElement('span');
             roleBadge.className = 'settings-session-current';
-            roleBadge.textContent = `インポスター / ${imposterRoleLabel(metadata.role)}`;
+            roleBadge.textContent = imposterRoleLabel(metadata.role);
             title.append(' ', idBadge, ' ', roleBadge);
             details.appendChild(title);
 
