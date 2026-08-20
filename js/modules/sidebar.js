@@ -63,19 +63,18 @@ function openMobileSidebar() {
     const overlay = document.createElement('div');
     overlay.id = 'mobile-sidebar-overlay';
     overlay.className = 'mobile-sidebar-overlay';
+    const mobileAccountMarkup = (DOM.navMenuBottom.innerHTML || '')
+        .replace(
+            'id="account-button" class="nav-item account-button"',
+            'class="nav-item account-button mobile-sidebar-account-button"',
+        );
     overlay.innerHTML = `
         <aside class="mobile-sidebar-panel" aria-label="サイドメニュー" role="dialog" aria-modal="true">
-            <div class="mobile-sidebar-header">
-                <div class="mobile-sidebar-account">
-                    <img src="${escapeHTML(getUserIconUrl(getCurrentUser()))}" class="user-icon" alt="">
-                    <div>
-                        <strong>${getEmoji(escapeHTML(getCurrentUser()?.name || ''))}</strong>
-                        <span>${formatNyaitterId(getCurrentUser())}</span>
-                    </div>
-                </div>
-                <button type="button" class="mobile-sidebar-close" aria-label="メニューを閉じる">×</button>
+            <div class="mobile-sidebar-content">
+                <div class="mobile-sidebar-logo">${DOM.navLogo.innerHTML}</div>
+                <nav class="mobile-sidebar-menu">${DOM.navMenuTop.innerHTML}</nav>
+                <div class="mobile-sidebar-bottom">${mobileAccountMarkup}</div>
             </div>
-            <nav class="mobile-sidebar-menu">${DOM.navMenuTop.innerHTML}</nav>
         </aside>`;
     document.body.appendChild(overlay);
     mobileSidebarOpen = true;
@@ -90,8 +89,8 @@ function openMobileSidebar() {
         window.location.href,
     );
 
-    overlay.querySelector('.mobile-sidebar-close')?.addEventListener('click', () => {
-        closeMobileSidebar();
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) closeMobileSidebar();
     }, { signal });
     overlay.querySelectorAll('a.nav-item').forEach((item) => {
         item.addEventListener('click', () => closeMobileSidebar(), { signal });
@@ -100,30 +99,53 @@ function openMobileSidebar() {
         closeMobileSidebar();
         openPostModal();
     }, { signal });
+    overlay.querySelector('.mobile-sidebar-account-button')?.addEventListener('click', () => {
+        closeMobileSidebar();
+        void openAccountSwitcherModal();
+    }, { signal });
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') closeMobileSidebar();
     }, { signal });
 
     let startX = null;
     let startY = null;
-    overlay.addEventListener('pointerdown', (event) => {
-        startX = event.clientX;
-        startY = event.clientY;
-    }, { signal });
-    overlay.addEventListener('pointerup', (event) => {
+    const beginSwipe = (x, y) => {
+        startX = x;
+        startY = y;
+    };
+    const finishSwipe = (x, y) => {
         if (startX === null || startY === null) return;
-        const horizontalDistance = event.clientX - startX;
-        const verticalDistance = event.clientY - startY;
+        const horizontalDistance = x - startX;
+        const verticalDistance = y - startY;
         startX = null;
         startY = null;
-        if (horizontalDistance <= -64 && Math.abs(verticalDistance) <= 72) {
+        if (horizontalDistance <= -48 && Math.abs(verticalDistance) <= 80) {
             closeMobileSidebar();
         }
+    };
+    // Pointer Eventsに対応しないモバイルブラウザでも閉じられるようTouch Eventsも監視する。
+    overlay.addEventListener('pointerdown', (event) => {
+        beginSwipe(event.clientX, event.clientY);
+    }, { signal });
+    overlay.addEventListener('pointerup', (event) => {
+        finishSwipe(event.clientX, event.clientY);
     }, { signal });
     overlay.addEventListener('pointercancel', () => {
         startX = null;
         startY = null;
     }, { signal });
+    overlay.addEventListener('touchstart', (event) => {
+        const touch = event.touches[0];
+        if (touch) beginSwipe(touch.clientX, touch.clientY);
+    }, { passive: true, signal });
+    overlay.addEventListener('touchend', (event) => {
+        const touch = event.changedTouches[0];
+        if (touch) finishSwipe(touch.clientX, touch.clientY);
+    }, { passive: true, signal });
+    overlay.addEventListener('touchcancel', () => {
+        startX = null;
+        startY = null;
+    }, { passive: true, signal });
 }
 
 window.addEventListener('popstate', () => {
@@ -485,8 +507,11 @@ export async function updateNavAndSidebars() {
         }
     }
     if (accountButton) {
-        // モバイルでは全画面サイドメニューの入口として常に表示する。
-        accountButton.classList.remove('hidden');
+        // メッセージ画面では操作領域を確保するため、入口アイコンを非表示にする。
+        accountButton.classList.toggle(
+            'hidden',
+            matchesMedia('(max-width:680px)') && location.hash.startsWith('#dm'),
+        );
     }
 
     scheduleNextFrame(setupSidebarOverflowMenu);

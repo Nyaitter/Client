@@ -5731,82 +5731,43 @@ body.pull-to-refresh-enabled {
         position: fixed;
         z-index: 1200;
         inset: 0;
-        background: var(--main-bg-color);
+        background: color-mix(in srgb, #000 42%, transparent);
     }
 
     .mobile-sidebar-panel {
         display: flex;
         box-sizing: border-box;
-        width: 100%;
+        width: min(84vw, 22rem);
         height: 100%;
         min-height: 100dvh;
         flex-direction: column;
         background: var(--main-bg-color);
-        animation: mobile-sidebar-enter 180ms ease-out;
+        box-shadow: 0.35rem 0 1.4rem rgba(0, 0, 0, 0.28);
+        animation: mobile-sidebar-enter 220ms ease-out;
     }
 
-    .mobile-sidebar-header {
+    .mobile-sidebar-content {
+        display: flex;
+        min-height: 100%;
+        flex: 1;
+        flex-direction: column;
+    }
+
+    .mobile-sidebar-logo {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
-        border-bottom: 1px solid var(--border-color);
+        min-height: 4.2rem;
+        padding: max(0.8rem, env(safe-area-inset-top)) 1rem 0.65rem;
     }
 
-    .mobile-sidebar-account {
-        display: flex;
-        min-width: 0;
+    .mobile-sidebar-logo .nav-logo-img {
+        display: inline-flex;
         align-items: center;
-        gap: 0.75rem;
     }
 
-    .mobile-sidebar-account .user-icon {
-        width: 48px;
-        height: 48px;
-        flex: 0 0 auto;
-        border-radius: 50%;
-        object-fit: cover;
-    }
-
-    .mobile-sidebar-account div {
-        display: grid;
-        min-width: 0;
-        gap: 0.12rem;
-    }
-
-    .mobile-sidebar-account strong,
-    .mobile-sidebar-account span {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .mobile-sidebar-account span {
-        color: var(--secondary-text-color);
-        font-size: 0.85rem;
-    }
-
-    .mobile-sidebar-close {
-        display: grid;
-        width: 2.75rem;
-        height: 2.75rem;
-        flex: 0 0 auto;
-        padding: 0;
-        border: 0;
-        border-radius: 50%;
-        place-items: center;
-        background: transparent;
-        color: var(--text-color);
-        font: inherit;
-        font-size: 2rem;
-        cursor: pointer;
-    }
-
-    .mobile-sidebar-close:hover,
-    .mobile-sidebar-close:focus-visible {
-        background: var(--bg-color);
-        outline: none;
+    .mobile-sidebar-logo .nyaitter-logo-image {
+        max-width: 9.5rem;
+        max-height: 2.4rem;
     }
 
     .mobile-sidebar-menu {
@@ -5815,8 +5776,27 @@ body.pull-to-refresh-enabled {
         flex-direction: column;
         gap: 0.45rem;
         overflow-y: auto;
-        padding: 1rem;
-        padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+        padding: 0.6rem 1rem 1rem;
+    }
+
+    .mobile-sidebar-bottom {
+        padding: 0.8rem 1rem calc(0.8rem + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--border-color);
+    }
+
+    .mobile-sidebar-bottom .account-button {
+        position: static;
+        display: flex;
+        width: 100%;
+        min-height: 3.5rem;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 0.65rem;
+        border-radius: 10px;
+    }
+
+    .mobile-sidebar-bottom .account-button .account-info {
+        display: flex;
     }
 
     .mobile-sidebar-menu .nav-item {
@@ -5852,6 +5832,6 @@ body.pull-to-refresh-enabled {
 }
 
 @keyframes mobile-sidebar-enter {
-    from { transform: translateX(1.25rem); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
 }
