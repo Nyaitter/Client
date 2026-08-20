@@ -325,7 +325,7 @@ function bindGroupManageEvents(group) {
     document.querySelectorAll('[data-delete-role]').forEach((button) => button.addEventListener('click', async () => {
         if (!await showAppConfirm('このロールを削除しますか？')) return;
         try { showLoading(true); await request(groupPath(group.id, `/roles/${encodeURIComponent(button.dataset.deleteRole)}`), { method: 'DELETE' }); await refreshGroupManage(group); } catch (error) { showAppAlert(error.message || 'ロールを削除できませんでした。'); } finally { showLoading(false); }
-    });
+    }));
     document.getElementById('group-transfer-owner-form')?.addEventListener('submit', async (event) => {
         event.preventDefault(); const userId = Number(new FormData(event.currentTarget).get('user_id'));
         if (!await showAppConfirm('オーナー権限を移譲しますか？この操作は取り消せません。')) return;
