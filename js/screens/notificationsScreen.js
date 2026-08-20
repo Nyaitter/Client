@@ -11,7 +11,7 @@ import {
 } from '../modules/notifications.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { createViewportObserver } from '../utils/viewport.js';
-import { getNotificationsPerPage } from '../modules/theme.js';
+import { getNotificationsPerPage, setupTimelinePullToRefresh } from '../modules/theme.js';
 import { showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
 
 export async function showNotificationsScreen(showScreenFn = null) {
@@ -48,6 +48,11 @@ export async function showNotificationsScreen(showScreenFn = null) {
     }
     const contentDiv = DOM.notificationsContent;
     contentDiv.innerHTML = '<div class="spinner"></div>';
+
+    setupTimelinePullToRefresh(async (context) => {
+        if (context?.type !== 'notifications') return;
+        await showNotificationsScreen(showScreenFn);
+    });
 
     document
         .getElementById('mark-all-read-btn')

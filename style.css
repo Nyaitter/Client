@@ -3141,10 +3141,13 @@ body.dark .recommend-user button {
     align-items: center;
     justify-content: center;
 }
+.dm-message-form .markdown-preview-button,
 #dm-attachment-btn {
     background: none;
-    color: var(--primary-color);
+    color: var(--text-color);
 }
+
+.dm-message-form .markdown-preview-button:hover,
 #dm-attachment-btn:hover {
     background-color: var(--bg-color);
 }

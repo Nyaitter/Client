@@ -51,6 +51,14 @@ async function refreshPullToRefreshContext(context) {
     }
     if (context?.type === 'profile') {
         await refreshActiveProfileTab(context);
+        return;
+    }
+    if (context?.type === 'notifications') {
+        await showNotificationsScreen(showScreen);
+        return;
+    }
+    if (context?.type === 'post-detail') {
+        await showPostDetail(context.postId, { forceRefresh: true }, showScreen);
     }
 }
 

@@ -1305,6 +1305,12 @@ export async function openEditPostModal(postId, onSaved = null) {
         const editPostEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
         attachMarkdownContentEditor(editPostEditor);
         setupMarkdownEditorPreviewButton(DOM.editPostModalContent, editPostEditor);
+        DOM.editPostModalContent.querySelector('.post-mask-button')?.addEventListener('click', () => {
+            handlePostMask(DOM.editPostModalContent);
+        });
+        DOM.editPostModalContent.querySelector('.post-lock-button')?.addEventListener('click', () => {
+            handlePostLock(DOM.editPostModalContent);
+        });
 
         DOM.editPostModal.querySelector('#update-post-button').onclick = () =>
             handleUpdatePost(postId, currentAttachments, filesToAdd, Array.from(filesToDelete), onSaved);
