@@ -110,8 +110,9 @@ export function applyInterfaceTheme(themePreference = null) {
 }
 
 // Pull to refresh support
-export function isPullToRefreshMobileViewport() {
-    return matchesMedia('(max-width: 680px)');
+export function isPullToRefreshTouchCapable() {
+    return Number(globalThis.navigator?.maxTouchPoints || 0) > 0
+        || matchesMedia('(any-pointer: coarse)');
 }
 
 export function getActivePullToRefreshContext() {
@@ -126,6 +127,13 @@ export function getActivePullToRefreshContext() {
         const notificationsScreen = document.getElementById('notifications-screen');
         if (notificationsScreen && !notificationsScreen.classList.contains('hidden')) {
             return { type: 'notifications' };
+        }
+    }
+    const postDetailMatch = currentHash.match(/^#post\/(\d+)$/);
+    if (postDetailMatch) {
+        const postDetailScreen = document.getElementById('post-detail-screen');
+        if (postDetailScreen && !postDetailScreen.classList.contains('hidden')) {
+            return { type: 'post-detail', postId: Number(postDetailMatch[1]) };
         }
     }
     const profileMatch = currentHash.match(/^#profile\/(\d+)(?:\/([a-z]+))?$/);
@@ -146,7 +154,7 @@ export function updatePullToRefreshAvailability() {
     const indicator = document.getElementById('pull-to-refresh-indicator');
     if (!indicator) return;
     const available = Boolean(
-        isPullToRefreshMobileViewport() && getActivePullToRefreshContext(),
+        isPullToRefreshTouchCapable() && getActivePullToRefreshContext(),
     );
     document.documentElement.classList.toggle('pull-to-refresh-enabled', available);
     document.body.classList.toggle('pull-to-refresh-enabled', available);
@@ -214,7 +222,7 @@ export function setupTimelinePullToRefresh(onRefresh) {
     };
 
     const runRefresh = async () => {
-        if (refreshInProgress) return;
+        if (refreshInProgress || !getActivePullToRefreshContext() || !ptrOnRefresh) return;
         refreshInProgress = true;
         indicator.classList.remove('is-pulling', 'is-ready');
         indicator.classList.add('is-refreshing');
@@ -237,7 +245,7 @@ export function setupTimelinePullToRefresh(onRefresh) {
 
     document.addEventListener('touchstart', (event) => {
         updatePullToRefreshAvailability();
-        if (refreshInProgress || !isPullToRefreshMobileViewport()) return;
+        if (refreshInProgress || !isPullToRefreshTouchCapable()) return;
         const target = event.target instanceof Element ? event.target : null;
         const touch = event.touches[0];
         if (!target || !touch || !canStartPull(target)) return;
@@ -292,6 +300,14 @@ export function setupTimelinePullToRefresh(onRefresh) {
         startScrollY = 0;
         if (!refreshInProgress) resetIndicator();
     }, { passive: true });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.repeat || !event.altKey || event.ctrlKey || event.metaKey
+            || String(event.key || '').toLowerCase() !== 'r') return;
+        if (!getActivePullToRefreshContext()) return;
+        event.preventDefault();
+        void runRefresh();
+    });
 
     window.addEventListener('resize', updatePullToRefreshAvailability, { passive: true });
     updatePullToRefreshAvailability();
