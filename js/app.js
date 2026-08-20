@@ -33,7 +33,7 @@ let serverClientLimits = null;
  */
 export async function loadServerClientLimits() {
     try {
-        const { data, error } = await apiRequest('/server/status');
+        const { data, error } = await apiRequest('/server/api/status');
         if (error || !data?.client_limits) {
             DOM.connectionErrorOverlay?.classList.remove('hidden');
             return false;
