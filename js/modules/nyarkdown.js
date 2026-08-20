@@ -323,11 +323,16 @@ export function renderNyarkDown(
         return output + renderSegment(standardText.slice(previousIndex));
     };
 
+    // Older profile text and other stored plain-text fields may already contain
+    // HTML entities. Normalize them once, then escape every rendered text segment.
+    // This prevents double-escaped display while keeping raw markup as text.
+    const normalizedText = decodeHtmlEntities(String(text || ''));
+
     if (!allowMarkdown) {
-        return renderDecoratedText(text || '');
+        return renderDecoratedText(normalizedText);
     }
 
-    return renderLimitedMarkdown(text || '', {
+    return renderLimitedMarkdown(normalizedText, {
         renderText: (chunk) => renderDecoratedText(chunk),
         renderLinkLabel: (label) => renderPlainText(label),
         sanitizeUrl: getSafeHttpUrl,
