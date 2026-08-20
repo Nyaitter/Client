@@ -289,17 +289,23 @@ export async function handleDmButtonClick(targetUserId, onOpenConversation = nul
     showLoading(true);
 
     try {
-        const { data: dmId, error } = await apiRequest('/server/api/dm/direct', {
+        const normalizedTargetUserId = Number(targetUserId);
+        if (!Number.isInteger(normalizedTargetUserId) || normalizedTargetUserId < 0) {
+            throw new Error('DMの相手を確認できませんでした');
+        }
+
+        const { data, error } = await apiRequest('/server/api/dm', {
             method: 'POST',
-            body: { target_user_id: targetUserId },
+            body: { member: [normalizedTargetUserId] },
         });
+        const dmId = data?.dm?.id || data?.id || null;
 
         if (error || !dmId) throw new Error(error?.message || 'DMの開始に失敗しました');
 
         if (typeof onOpenConversation === 'function') {
             onOpenConversation(dmId);
         } else {
-            window.location.hash = `#dm/${encodeURIComponent(dmId)}`;
+            window.location.hash = `#dm/${encodeURIComponent(String(dmId))}`;
         }
     } catch (e) {
         console.error('DM開始エラー:', e);
