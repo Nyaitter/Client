@@ -782,7 +782,7 @@ export function createPostFormHTML(isModal = false) {
                     <input type="file" id="file-input" class="hidden" multiple>
                     <div id="emoji-picker" class="hidden"></div>
                     <div class="post-group-menu hidden" role="menu"></div>
-                    <button type="button" class="post-group-button float-right" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.profile}</button>
+                    <button type="button" class="post-group-button float-right" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
                     <button id="post-submit-button" class="float-right">ポスト</button>
                     <button type="button" class="post-mask-button float-right" title="ワンクッション">
                         ${ICONS.mask}
@@ -888,7 +888,7 @@ async function openPostGroupMenu(container) {
         const { data, error } = await apiRequest('/server/api/groups/mine?limit=200');
         if (error) throw error;
         const groups = Array.isArray(data?.groups) ? data.groups : [];
-        menu.innerHTML = `<button type="button" class="post-group-menu-item ${!getPostingGroup(container) ? 'active' : ''}" data-group-id="">Nyaitter <small>通常ポスト</small></button>${groups.map((group) => `<button type="button" class="post-group-menu-item ${String(group.id) === String(getPostingGroup(container)?.id) ? 'active' : ''}" data-group-id="${escapeHTML(String(group.id))}"><strong>${escapeHTML(group.name || '無題のグループ')}</strong><small>グループ投稿</small></button>`).join('') || '<p class="post-group-menu-empty">参加中のグループはありません。</p>'}`;
+        menu.innerHTML = `<p class="post-group-menu-title">投稿先</p><button type="button" class="post-group-menu-item ${!getPostingGroup(container) ? 'active' : ''}" data-group-id=""><strong>Nyaitter</strong><small>通常ポスト</small></button>${groups.map((group) => `<button type="button" class="post-group-menu-item ${String(group.id) === String(getPostingGroup(container)?.id) ? 'active' : ''}" data-group-id="${escapeHTML(String(group.id))}"><strong>${escapeHTML(group.name || '無題のグループ')}</strong><small>グループ投稿</small></button>`).join('') || '<p class="post-group-menu-empty">参加中のグループはありません。</p>'}`;
         menu.querySelectorAll('[data-group-id]').forEach((item) => item.addEventListener('click', async () => {
             try {
                 const groupId = item.dataset.groupId;

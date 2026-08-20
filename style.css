@@ -5853,3 +5853,384 @@ body.pull-to-refresh-enabled {
     from { transform: translateX(-100%); }
     to { transform: translateX(0); }
 }
+
+/* グループUI: 既存の設定画面・一覧行の構成へ統一 */
+.group-ui-page {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1rem;
+}
+
+.group-ui-page-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.group-ui-page-heading > div {
+    min-width: 0;
+}
+
+.group-ui-page-heading h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.group-ui-section {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.group-ui-section-heading h4 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.group-ui-list-item {
+    gap: 0;
+    padding: 0;
+}
+
+.group-ui-list-link {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 0.15rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.group-ui-list-link:hover .settings-session-title,
+.group-ui-list-link:focus-visible .settings-session-title {
+    color: var(--primary-color);
+}
+
+.group-ui-list-link:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 3px;
+    border-radius: 8px;
+}
+
+.group-ui-avatar,
+.group-ui-profile-avatar {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--bg-color);
+    color: var(--secondary-text-color);
+    object-fit: cover;
+}
+
+.group-ui-avatar svg,
+.group-ui-profile-avatar svg {
+    width: 55%;
+    height: 55%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.group-ui-profile-avatar {
+    width: 76px;
+    height: 76px;
+}
+
+.group-ui-form,
+.group-ui-inline-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.group-ui-form label,
+.group-ui-inline-form label {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.38rem;
+    font-weight: 700;
+}
+
+.group-ui-form input,
+.group-ui-form textarea,
+.group-ui-form select,
+.group-ui-inline-form input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+}
+
+.group-ui-form textarea {
+    min-height: 6rem;
+    resize: vertical;
+}
+
+.group-ui-inline-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+}
+
+.group-ui-inline-form > button {
+    min-height: 2.5rem;
+}
+
+.group-ui-profile {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.group-ui-profile-copy {
+    min-width: 0;
+}
+
+.group-ui-profile-copy h3,
+.group-ui-profile-copy p {
+    margin: 0;
+}
+
+.group-ui-profile-copy h3 {
+    font-size: 1.2rem;
+}
+
+.group-ui-profile-copy > p:last-child {
+    margin-top: 0.45rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+.group-ui-profile-actions,
+.group-ui-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.group-ui-tabs {
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.group-ui-tabs button {
+    padding: 0.45rem 0.8rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--secondary-text-color);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.group-ui-tabs button:hover,
+.group-ui-tabs button:focus-visible {
+    background: var(--bg-color);
+    outline: none;
+}
+
+.group-ui-tabs button.active {
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
+
+.group-ui-member-row .settings-session-actions {
+    max-width: min(100%, 15rem);
+}
+
+.group-ui-role-select {
+    min-width: 8rem;
+    padding: 0.45rem 0.65rem;
+}
+
+.group-ui-form fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.9rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.group-ui-form fieldset legend {
+    width: 100%;
+    margin-bottom: 0.25rem;
+    font-weight: 700;
+}
+
+.group-ui-form fieldset label {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+@media (max-width: 640px) {
+    .group-ui-page {
+        gap: 1rem;
+        padding: 0.75rem;
+    }
+
+    .group-ui-page-heading,
+    .group-ui-profile {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .group-ui-page-heading {
+        display: flex;
+    }
+
+    .group-ui-profile {
+        display: flex;
+    }
+
+    .group-ui-profile-actions,
+    .group-ui-page-heading > .settings-primary-button {
+        width: 100%;
+    }
+
+    .group-ui-profile-actions > *,
+    .group-ui-page-heading > .settings-primary-button {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+
+    .group-ui-inline-form {
+        grid-template-columns: 1fr;
+    }
+
+    .group-ui-inline-form > button {
+        width: 100%;
+    }
+
+    .group-ui-member-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .group-ui-member-row .settings-session-actions {
+        max-width: none;
+        justify-content: flex-start;
+    }
+}
+
+/* グループ投稿UI: 既存投稿フォーム・タブ・補助メニューの表現へ統一 */
+.group-post-indicator {
+    padding: 0.08rem 0.42rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    background: var(--main-bg-color);
+    color: var(--secondary-text-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.post-group-button,
+.post-group-announcement-button {
+    border: 1px solid transparent;
+    color: var(--secondary-text-color);
+}
+
+.post-group-button:hover,
+.post-group-button:focus-visible,
+.post-group-button.active,
+.post-group-announcement-button:hover,
+.post-group-announcement-button:focus-visible,
+.post-group-announcement-button.active {
+    border-color: var(--border-color);
+    background: var(--main-bg-color);
+    color: var(--primary-color);
+    outline: none;
+}
+
+.post-group-menu {
+    gap: 0.2rem;
+    padding: 0.45rem;
+    border-radius: 10px;
+    box-shadow: 0 0.45rem 1.25rem rgba(0, 0, 0, 0.16);
+}
+
+.post-group-menu-title {
+    margin: 0;
+    padding: 0.35rem 0.45rem 0.25rem;
+    color: var(--secondary-text-color);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.post-group-menu-item {
+    gap: 0.2rem;
+    padding: 0.65rem 0.7rem;
+    border-radius: 8px;
+}
+
+.post-group-menu-item strong {
+    font-size: 0.92rem;
+}
+
+.post-group-menu-item.active {
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
+
+.post-group-menu-item.active small {
+    color: inherit;
+}
+
+.group-timeline-tab,
+.profile-group-tab {
+    font-weight: 700;
+}
+
+.group-timeline-tab > span,
+.profile-group-tab {
+    max-width: 9rem;
+}
+
+.group-timeline-mode-menu {
+    gap: 0.15rem;
+    padding: 0.35rem;
+    border-radius: 10px;
+    box-shadow: 0 0.45rem 1.25rem rgba(0, 0, 0, 0.16);
+}
+
+.group-timeline-mode-menu button {
+    border: 0;
+    border-radius: 8px;
+    padding: 0.55rem 0.7rem;
+    text-align: left;
+}
+
+.group-timeline-mode-menu button:hover,
+.group-timeline-mode-menu button:focus-visible {
+    background: var(--bg-color);
+    outline: none;
+}
+
+.group-timeline-mode-menu button.active {
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
