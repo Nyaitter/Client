@@ -28,6 +28,242 @@ let recommendedUsersRequest = null;
 let sidebarOverflowResizeHandler = null;
 let sidebarOverflowResizeTimer = null;
 let sidebarOverflowAbortController = null;
+let mobileSidebarOpen = false;
+let mobileSidebarHistoryEntry = false;
+let mobileSidebarAbortController = null;
+
+function isMobileSidebarViewport() {
+    return matchesMedia('(max-width: 680px)');
+}
+
+function closeMobileSidebar({ fromHistory = false } = {}) {
+    const overlay = document.getElementById('mobile-sidebar-overlay');
+    if (!mobileSidebarOpen && !overlay) return;
+    mobileSidebarOpen = false;
+    document.body.classList.remove('mobile-sidebar-open');
+    mobileSidebarAbortController?.abort();
+    mobileSidebarAbortController = null;
+    overlay?.remove();
+
+    if (mobileSidebarHistoryEntry && !fromHistory) {
+        mobileSidebarHistoryEntry = false;
+        window.history.back();
+    } else {
+        mobileSidebarHistoryEntry = false;
+    }
+}
+
+function setupMobileSidebarOverflow(overlay, signal) {
+    const menu = overlay.querySelector('.mobile-sidebar-menu');
+    const postButton = menu?.querySelector('.nav-item-post');
+    const menuLinks = menu
+        ? [...menu.querySelectorAll(':scope > a.nav-item')]
+        : [];
+    if (!menu || menuLinks.length === 0) return () => false;
+
+    const overflow = document.createElement('div');
+    overflow.className = 'nav-overflow-menu mobile-nav-overflow-menu';
+    overflow.innerHTML = `
+        <button type="button" class="nav-item nav-overflow-toggle" aria-expanded="false" aria-controls="mobile-nav-overflow-panel">
+            <span class="nav-item-icon-container">${ICONS.more}</span>
+            <span class="nav-item-text">その他</span>
+        </button>
+        <div id="mobile-nav-overflow-panel" class="nav-overflow-panel hidden" role="menu"></div>`;
+    const toggle = overflow.querySelector('.nav-overflow-toggle');
+    const panel = overflow.querySelector('.nav-overflow-panel');
+    let scheduled = false;
+
+    const closeOverflow = () => {
+        const wasOpen = overflow.classList.contains('is-open');
+        overflow.classList.remove('is-open');
+        panel.classList.add('hidden');
+        toggle?.setAttribute('aria-expanded', 'false');
+        return wasOpen;
+    };
+    const positionOverflowPanel = () => {
+        if (!toggle || panel.classList.contains('hidden')) return;
+        const edgeMargin = 8;
+        const gap = 6;
+        const toggleRect = toggle.getBoundingClientRect();
+        const panelWidth = Math.min(240, Math.max(0, window.innerWidth - edgeMargin * 2));
+        panel.style.width = `${panelWidth}px`;
+        panel.style.maxHeight = `${Math.max(0, window.innerHeight - edgeMargin * 2)}px`;
+
+        const panelHeight = panel.offsetHeight;
+        const panelWidthAfterLayout = panel.offsetWidth;
+        let top = toggleRect.bottom + gap;
+        if (top + panelHeight > window.innerHeight - edgeMargin) {
+            top = toggleRect.top - panelHeight - gap;
+        }
+        top = Math.max(edgeMargin, Math.min(top, window.innerHeight - panelHeight - edgeMargin));
+        const left = Math.max(
+            edgeMargin,
+            Math.min(toggleRect.left, window.innerWidth - panelWidthAfterLayout - edgeMargin),
+        );
+        panel.style.top = `${top}px`;
+        panel.style.left = `${left}px`;
+    };
+    const toggleOverflow = () => {
+        const isOpen = overflow.classList.toggle('is-open');
+        panel.classList.toggle('hidden', !isOpen);
+        toggle?.setAttribute('aria-expanded', String(isOpen));
+        if (isOpen) positionOverflowPanel();
+    };
+    const applyOverflow = () => {
+        scheduled = false;
+        if (!menu.isConnected) return;
+        menu.insertBefore(overflow, postButton || null);
+        menuLinks.forEach((item) => menu.insertBefore(item, overflow));
+        panel.replaceChildren();
+        closeOverflow();
+
+        let visibleCount = menuLinks.length;
+        while (menu.scrollHeight > menu.clientHeight && visibleCount > 0) {
+            visibleCount -= 1;
+            panel.prepend(menuLinks[visibleCount]);
+        }
+        if (visibleCount === menuLinks.length) overflow.remove();
+    };
+    const scheduleOverflow = () => {
+        if (scheduled) return;
+        scheduled = true;
+        window.requestAnimationFrame(applyOverflow);
+    };
+
+    scheduleOverflow();
+    window.addEventListener('resize', scheduleOverflow, { passive: true, signal });
+    toggle?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleOverflow();
+    }, { signal });
+    document.addEventListener('click', (event) => {
+        if (!overflow.contains(event.target)) closeOverflow();
+    }, { signal });
+    return closeOverflow;
+}
+
+function openMobileSidebar() {
+    if (!isMobileSidebarViewport()) {
+        void openAccountSwitcherModal();
+        return;
+    }
+    if (mobileSidebarOpen) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'mobile-sidebar-overlay';
+    overlay.className = 'mobile-sidebar-overlay';
+    const mobileAccountMarkup = (DOM.navMenuBottom.innerHTML || '')
+        .replace(
+            'id="account-button" class="nav-item account-button"',
+            'class="nav-item account-button mobile-sidebar-account-button"',
+        );
+    overlay.innerHTML = `
+        <aside class="mobile-sidebar-panel" aria-label="サイドメニュー" role="dialog" aria-modal="true">
+            <div class="mobile-sidebar-content">
+                <div class="mobile-sidebar-logo">${DOM.navLogo.innerHTML}</div>
+                <nav class="mobile-sidebar-menu">${DOM.navMenuTop.dataset.fullMenuMarkup || DOM.navMenuTop.innerHTML}</nav>
+                <div class="mobile-sidebar-bottom">${mobileAccountMarkup}</div>
+            </div>
+        </aside>`;
+    document.body.appendChild(overlay);
+    mobileSidebarOpen = true;
+    document.body.classList.add('mobile-sidebar-open');
+    mobileSidebarAbortController = new AbortController();
+    const { signal } = mobileSidebarAbortController;
+
+    mobileSidebarHistoryEntry = true;
+    window.history.pushState(
+        { ...(window.history.state || {}), nyaitterMobileSidebar: true },
+        '',
+        window.location.href,
+    );
+
+    overlay.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        if (target === overlay) {
+            closeMobileSidebar();
+            return;
+        }
+
+        if (target.closest('.nav-item-post')) {
+            event.preventDefault();
+            closeMobileSidebar();
+            openPostModal();
+            return;
+        }
+        if (target.closest('.mobile-sidebar-account-button')) {
+            event.preventDefault();
+            closeMobileSidebar();
+            void openAccountSwitcherModal();
+            return;
+        }
+        const navigationItem = target.closest('a.nav-item');
+        if (navigationItem) {
+            event.preventDefault();
+            event.stopPropagation();
+            const destinationHash = navigationItem.getAttribute('href') || '#';
+            closeMobileSidebar({ fromHistory: true });
+            window.history.replaceState(
+                { ...(window.history.state || {}), nyaitterMobileSidebar: false },
+                '',
+                window.location.href,
+            );
+            if (destinationHash !== (window.location.hash || '#')) {
+                window.location.hash = destinationHash;
+            }
+        }
+    }, { signal });
+    const closeMobileSidebarOverflow = setupMobileSidebarOverflow(overlay, signal);
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        if (!closeMobileSidebarOverflow()) closeMobileSidebar();
+    }, { signal });
+
+    let startX = null;
+    let startY = null;
+    const beginSwipe = (x, y) => {
+        startX = x;
+        startY = y;
+    };
+    const finishSwipe = (x, y) => {
+        if (startX === null || startY === null) return;
+        const horizontalDistance = x - startX;
+        const verticalDistance = y - startY;
+        startX = null;
+        startY = null;
+        if (horizontalDistance <= -48 && Math.abs(verticalDistance) <= 80) {
+            closeMobileSidebar();
+        }
+    };
+    // Pointer Eventsに対応しないモバイルブラウザでも閉じられるようTouch Eventsも監視する。
+    overlay.addEventListener('pointerdown', (event) => {
+        beginSwipe(event.clientX, event.clientY);
+    }, { signal });
+    overlay.addEventListener('pointerup', (event) => {
+        finishSwipe(event.clientX, event.clientY);
+    }, { signal });
+    overlay.addEventListener('pointercancel', () => {
+        startX = null;
+        startY = null;
+    }, { signal });
+    overlay.addEventListener('touchstart', (event) => {
+        const touch = event.touches[0];
+        if (touch) beginSwipe(touch.clientX, touch.clientY);
+    }, { passive: true, signal });
+    overlay.addEventListener('touchend', (event) => {
+        const touch = event.changedTouches[0];
+        if (touch) finishSwipe(touch.clientX, touch.clientY);
+    }, { passive: true, signal });
+    overlay.addEventListener('touchcancel', () => {
+        startX = null;
+        startY = null;
+    }, { passive: true, signal });
+}
+
+window.addEventListener('popstate', () => {
+    if (mobileSidebarOpen) closeMobileSidebar({ fromHistory: true });
+});
 
 export async function loadRightSidebar() {
     if (DOM.rightSidebar.searchWidget) {
@@ -310,6 +546,11 @@ export async function updateNavAndSidebars() {
                 hash: '#settings/profile',
                 icon: ICONS.settings,
             },
+            {
+                name: 'グループ',
+                hash: '#groups',
+                icon: ICONS.group,
+            },
         );
         if (getCurrentUser().admin) {
             menuItems.push({
@@ -322,7 +563,7 @@ export async function updateNavAndSidebars() {
 
     DOM.navLogo.innerHTML = `<a href="#" class="nav-logo-img">${ICONS.nyaitter_logo}</a>`;
 
-    DOM.navMenuTop.innerHTML = menuItems
+    const fullMenuMarkup = `${menuItems
         .map((item) => {
             let isActive = false;
             if (item.hash === '#') {
@@ -341,11 +582,14 @@ export async function updateNavAndSidebars() {
                     <span class="nav-item-text">${item.name}</span>
                 </a>`;
         })
-        .join('');
-
-    if (getCurrentUser()) {
-        DOM.navMenuTop.innerHTML += `<button class="nav-item nav-item-post"><span class="nav-item-text">ポスト</span><span class="nav-item-icon">${ICONS.send}</span></button>`;
-    }
+        .join('')}${
+            getCurrentUser()
+                ? `<button class="nav-item nav-item-post"><span class="nav-item-text">ポスト</span><span class="nav-item-icon">${ICONS.send}</span></button>`
+                : ''
+        }`;
+    DOM.navMenuTop.innerHTML = fullMenuMarkup;
+    // PC側の高さ調整でDOMが移動しても、モバイルは常に全候補から組み立てる。
+    DOM.navMenuTop.dataset.fullMenuMarkup = fullMenuMarkup;
 
     DOM.navMenuBottom.innerHTML = getCurrentUser()
         ? `<button id="account-button" class="nav-item account-button">
@@ -361,7 +605,10 @@ export async function updateNavAndSidebars() {
 
     DOM.navMenuBottom
         .querySelector('#account-button')
-        ?.addEventListener('click', openAccountSwitcherModal);
+        ?.addEventListener('click', () => {
+            if (isMobileSidebarViewport()) openMobileSidebar();
+            else void openAccountSwitcherModal();
+        });
     DOM.navMenuTop
         .querySelector('.nav-item-post')
         ?.addEventListener('click', () => openPostModal());
@@ -376,11 +623,11 @@ export async function updateNavAndSidebars() {
         }
     }
     if (accountButton) {
-        if (matchesMedia('(max-width:680px)') && location.hash.startsWith('#dm')) {
-            accountButton.classList.add('hidden');
-        } else {
-            accountButton.classList.remove('hidden');
-        }
+        // メッセージ画面では操作領域を確保するため、入口アイコンを非表示にする。
+        accountButton.classList.toggle(
+            'hidden',
+            matchesMedia('(max-width:680px)') && location.hash.startsWith('#dm'),
+        );
     }
 
     scheduleNextFrame(setupSidebarOverflowMenu);

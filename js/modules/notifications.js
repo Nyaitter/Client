@@ -106,6 +106,12 @@ export function getNotificationMessageSuffix(notification) {
             return ' さんによってDMから削除されました。';
         case 'dm_host_transfer':
             return ' さんからDMの管理者権限を受け取りました。';
+        case 'group_invite':
+            return ' さんからグループ招待が届いています。';
+        case 'group_join_request':
+            return ' さんからグループへの参加申請が届いています。';
+        case 'group_announcement':
+            return ' さんがグループアナウンスを投稿しました。';
         case 'admin_notice':
             return ' さんからお知らせがあります。';
         default:

@@ -514,12 +514,22 @@ img.emoji {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 .timeline-tabs {
     display: flex;
     flex-wrap: nowrap;
     min-width: max-content;
+}
+
+.timeline-tabs-sticky-container::-webkit-scrollbar,
+#profile-tabs::-webkit-scrollbar,
+.search-tabs::-webkit-scrollbar,
+#profile-sub-tabs-container::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
 }
 .post-form-sticky-container {
     background-color: var(
@@ -770,8 +780,9 @@ img.emoji {
 .emoji-pic-button,
 .markdown-preview-button,
 .post-mask-button,
-.post-lock-button,
-.post-announcement-button {
+    .post-lock-button,
+    .post-announcement-button,
+    .post-group-button {
     background: none;
     border: none;
     cursor: pointer;
@@ -786,8 +797,9 @@ img.emoji {
 .emoji-pic-button:hover,
 .markdown-preview-button:hover,
 .post-mask-button:hover,
-.post-lock-button:hover,
-.post-announcement-button:hover {
+    .post-lock-button:hover,
+    .post-announcement-button:hover,
+    .post-group-button:hover {
     background-color: var(--bg-color);
 }
 
@@ -812,8 +824,8 @@ img.emoji {
 
 .post-mask-button.active svg,
 .post-lock-button.active svg,
-.markdown-preview-button.active svg,
-.post-announcement-button.active svg {
+    .markdown-preview-button.active svg,
+    .post-announcement-button.active svg {
     stroke: var(--primary-color);
 }
 
@@ -2444,7 +2456,8 @@ body.dark .recommend-user button {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -2470,7 +2483,8 @@ body.dark .recommend-user button {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -2478,7 +2492,8 @@ body.dark .recommend-user button {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .tab-button {
@@ -5317,73 +5332,67 @@ body.dark .settings-bot-new-key-box {
     white-space: nowrap;
 }
 
-/* モバイルのタイムライン用プル・トゥ・リフレッシュ */
+/* PTRが有効な画面では、画面幅にかかわらず進行状態を表示する。 */
 .pull-to-refresh-indicator {
-    display: none;
+    --pull-distance: 0px;
+    --pull-opacity: 0;
+    position: fixed;
+    top: max(0.5rem, env(safe-area-inset-top));
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.5rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    background: var(--pg-bg-color);
+    color: var(--secondary-text-color);
+    box-shadow: 0 0.25rem 0.85rem rgba(0, 0, 0, 0.14);
+    pointer-events: none;
+    z-index: 110;
+    opacity: var(--pull-opacity);
+    transform: translate(-50%, calc(-5.25rem + var(--pull-distance)));
+    transition:
+        transform 180ms ease-out,
+        opacity 150ms ease-out,
+        color 150ms ease-out;
+    will-change: transform, opacity;
 }
 
-@media (max-width: 680px) {
-    .pull-to-refresh-indicator {
-        --pull-distance: 0px;
-        --pull-opacity: 0;
-        position: fixed;
-        top: max(0.5rem, env(safe-area-inset-top));
-        left: 50%;
-        display: flex;
-        align-items: center;
-        gap: 0.45rem;
-        min-height: 2.5rem;
-        padding: 0.45rem 0.8rem;
-        border: 1px solid var(--border-color);
-        border-radius: 9999px;
-        background: var(--pg-bg-color);
-        color: var(--secondary-text-color);
-        box-shadow: 0 0.25rem 0.85rem rgba(0, 0, 0, 0.14);
-        pointer-events: none;
-        z-index: 110;
-        opacity: var(--pull-opacity);
-        transform: translate(-50%, calc(-5.25rem + var(--pull-distance)));
-        transition:
-            transform 180ms ease-out,
-            opacity 150ms ease-out,
-            color 150ms ease-out;
-        will-change: transform, opacity;
-    }
+.pull-to-refresh-indicator.is-pulling {
+    transition: none;
+}
 
-    .pull-to-refresh-indicator.is-pulling {
-        transition: none;
-    }
+.pull-to-refresh-indicator.is-ready {
+    color: var(--primary-color);
+    font-weight: 700;
+}
 
-    .pull-to-refresh-indicator.is-ready {
-        color: var(--primary-color);
-        font-weight: 700;
-    }
+.pull-to-refresh-indicator.is-refreshing {
+    --pull-opacity: 1;
+    transform: translate(-50%, 0.5rem);
+    color: var(--primary-color);
+    font-weight: 700;
+}
 
-    .pull-to-refresh-indicator.is-refreshing {
-        --pull-opacity: 1;
-        transform: translate(-50%, 0.5rem);
-        color: var(--primary-color);
-        font-weight: 700;
-    }
+.pull-to-refresh-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 150ms ease-out;
+}
 
-    .pull-to-refresh-icon {
-        width: 1.25rem;
-        height: 1.25rem;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 2.25;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        transition: transform 150ms ease-out;
-    }
+.pull-to-refresh-indicator.is-ready .pull-to-refresh-icon {
+    transform: rotate(180deg);
+}
 
-    .pull-to-refresh-indicator.is-ready .pull-to-refresh-icon {
-        transform: rotate(180deg);
-    }
-
-    .pull-to-refresh-indicator.is-refreshing .pull-to-refresh-icon {
-        animation: pull-to-refresh-spin 800ms linear infinite;
-    }
+.pull-to-refresh-indicator.is-refreshing .pull-to-refresh-icon {
+    animation: pull-to-refresh-spin 800ms linear infinite;
 }
 
 @keyframes pull-to-refresh-spin {
@@ -5397,4 +5406,1508 @@ body.dark .settings-bot-new-key-box {
 html.pull-to-refresh-enabled,
 body.pull-to-refresh-enabled {
     overscroll-behavior-y: contain;
+}
+
+/* グループ画面 */
+.groups-index-screen,
+.group-detail-screen,
+.group-manage-screen {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+}
+.groups-index-heading,
+.group-manage-heading,
+.group-profile-header,
+.group-manage-row,
+.group-invite-card,
+.group-inline-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.groups-index-heading,
+.group-manage-heading,
+.group-manage-row,
+.group-invite-card {
+    justify-content: space-between;
+}
+.groups-index-heading h3,
+.group-manage-heading h3,
+.group-profile-header h3,
+.group-section h4,
+.group-manage-section h4 {
+    margin: 0;
+}
+.groups-index-heading p,
+.group-card p,
+.group-description,
+.group-status-note,
+.group-manage-row small {
+    margin: 0;
+    color: var(--secondary-text-color);
+}
+.group-section,
+.group-manage-section,
+.group-posts-placeholder {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--main-bg-color);
+}
+.group-list {
+    display: grid;
+    gap: 0.65rem;
+}
+.group-card,
+.group-invite-card {
+    box-sizing: border-box;
+    width: 100%;
+    color: inherit;
+    text-decoration: none;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.8rem;
+    background: var(--main-bg-color);
+}
+.group-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+.group-card:hover {
+    background: var(--bg-color);
+}
+.group-card-body {
+    min-width: 0;
+    display: grid;
+    gap: 0.25rem;
+    flex: 1;
+}
+.group-card-body p {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.group-card-icon,
+.group-profile-icon {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 auto;
+    border-radius: 12px;
+    object-fit: cover;
+}
+.group-profile-icon {
+    width: 72px;
+    height: 72px;
+}
+.group-card-icon-fallback {
+    display: grid;
+    place-items: center;
+    color: var(--secondary-text-color);
+    background: var(--bg-color);
+}
+.group-card-meta,
+.group-manage-row small {
+    display: block;
+    font-size: 0.8rem;
+}
+.group-card-joined {
+    flex: 0 0 auto;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+}
+.group-post-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.42rem;
+    border-radius: 999px;
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.group-post-mode-tabs {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+}
+.group-post-mode-tabs button,
+.group-timeline-mode-menu button {
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--main-bg-color);
+    color: var(--secondary-text-color);
+    padding: 0.42rem 0.8rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.group-post-mode-tabs button.active,
+.group-timeline-mode-menu button.active {
+    border-color: var(--primary-color);
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+    font-weight: 700;
+}
+.group-timeline-tab > span,
+.profile-group-tab {
+    overflow: hidden;
+    max-width: 10rem;
+    text-overflow: ellipsis;
+}
+.group-timeline-tab > span {
+    display: block;
+    white-space: nowrap;
+}
+.group-timeline-mode-menu {
+    position: fixed;
+    z-index: 1000;
+    display: grid;
+    min-width: 8.5rem;
+    gap: 0.3rem;
+    padding: 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--main-bg-color);
+    box-shadow: 0 0.5rem 1.4rem rgba(0, 0, 0, 0.18);
+}
+.post-group-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.post-form-actions .post-group-button svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 1.5;
+}
+.post-group-menu {
+    position: absolute;
+    z-index: 40;
+    right: 0.7rem;
+    bottom: 3.25rem;
+    display: grid;
+    min-width: min(18rem, calc(100vw - 2rem));
+    max-height: min(22rem, calc(100vh - 7rem));
+    overflow: auto;
+    padding: 0.35rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+    box-shadow: 0 0.65rem 1.6rem rgba(0, 0, 0, 0.18);
+}
+.post-group-menu-item {
+    display: grid;
+    gap: 0.15rem;
+    width: 100%;
+    padding: 0.6rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+}
+.post-group-menu-item:hover,
+.post-group-menu-item.active {
+    background: var(--bg-color);
+}
+.post-group-menu-item small,
+.post-group-menu-empty {
+    color: var(--secondary-text-color);
+    font-size: 0.78rem;
+}
+.post-group-menu-loading,
+.post-group-menu-empty {
+    padding: 0.75rem;
+    margin: 0;
+}
+.group-create-form,
+.group-manage-section form,
+.group-role-form {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+.group-create-form label,
+.group-manage-section label,
+.group-role-form > label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 600;
+}
+.group-create-form input,
+.group-create-form textarea,
+.group-create-form select,
+.group-manage-section input,
+.group-manage-section textarea,
+.group-manage-section select,
+.group-role-form input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 2.4rem;
+    padding: 0.55rem 0.65rem;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+    font: inherit;
+}
+.group-create-form textarea,
+.group-manage-section textarea {
+    min-height: 5rem;
+    resize: vertical;
+}
+.group-manage-row {
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.group-manage-row:last-child {
+    border-bottom: 0;
+}
+.group-role-form fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.8rem;
+    border: 0;
+    padding: 0;
+}
+.group-role-form fieldset label {
+    font-size: 0.9rem;
+}
+.group-danger-zone {
+    border-color: var(--like-color);
+}
+.group-screen-loading {
+    display: grid;
+    min-height: 12rem;
+    place-items: center;
+}
+@media (max-width: 520px) {
+    .groups-index-heading,
+    .group-manage-heading,
+    .group-invite-card,
+    .group-manage-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .group-inline-actions {
+        flex-wrap: wrap;
+    }
+}
+
+/* モバイル用全画面サイドメニュー */
+@media (max-width: 680px) {
+    body.mobile-sidebar-open {
+        overflow: hidden;
+    }
+
+    .mobile-sidebar-overlay {
+        position: fixed;
+        z-index: 1200;
+        inset: 0;
+        background: color-mix(in srgb, #000 42%, transparent);
+    }
+
+    .mobile-sidebar-panel {
+        display: flex;
+        box-sizing: border-box;
+        width: min(84vw, 22rem);
+        height: 100%;
+        min-height: 100dvh;
+        flex-direction: column;
+        background: var(--main-bg-color);
+        box-shadow: 0.35rem 0 1.4rem rgba(0, 0, 0, 0.28);
+        animation: mobile-sidebar-enter 220ms ease-out;
+    }
+
+    .mobile-sidebar-content {
+        display: flex;
+        min-height: 100%;
+        flex: 1;
+        flex-direction: column;
+    }
+
+    .mobile-sidebar-logo {
+        display: flex;
+        align-items: center;
+        min-height: 4.2rem;
+        padding: max(0.8rem, env(safe-area-inset-top)) 1rem 0.65rem;
+    }
+
+    .mobile-sidebar-logo .nav-logo-img {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .mobile-sidebar-logo .nyaitter-logo-image {
+        max-width: 9.5rem;
+        max-height: 2.4rem;
+    }
+
+    .mobile-sidebar-menu {
+        display: flex;
+        min-height: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: 0.45rem;
+        overflow-y: auto;
+        padding: 0.6rem 1rem 1rem;
+    }
+
+    .mobile-sidebar-menu .nav-item[href='#likes'],
+    .mobile-sidebar-menu .nav-item[href='#stars'] {
+        display: flex;
+    }
+
+    .mobile-sidebar-bottom {
+        padding: 0.8rem 1rem calc(0.8rem + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--border-color);
+    }
+
+    .mobile-sidebar-bottom .account-button {
+        position: static;
+        display: flex;
+        width: 100%;
+        min-height: 3.5rem;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 0.65rem;
+        border-radius: 10px;
+    }
+
+    .mobile-sidebar-bottom .account-button .account-info {
+        display: flex;
+    }
+
+    .mobile-sidebar-menu .nav-item {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 3.5rem;
+        justify-content: flex-start;
+        padding: 0.8rem 1rem;
+        font-size: 1.1rem;
+    }
+
+    .mobile-sidebar-menu .nav-item .nav-item-text {
+        display: inline;
+    }
+
+    .mobile-sidebar-menu .mobile-nav-overflow-menu {
+        display: block;
+    }
+
+    .mobile-sidebar-menu .nav-overflow-panel {
+        z-index: 1201;
+    }
+
+    .mobile-sidebar-menu .nav-item-post {
+        position: static;
+        right: auto;
+        bottom: auto;
+        width: 100%;
+        height: auto;
+        justify-content: center;
+        margin-top: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .mobile-sidebar-menu .nav-item-post .nav-item-text {
+        display: inline;
+    }
+
+    .mobile-sidebar-menu .nav-item-post .nav-item-icon {
+        display: none;
+    }
+}
+
+@keyframes mobile-sidebar-enter {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+
+/* グループUI: 既存の設定画面・一覧行の構成へ統一 */
+.group-ui-page {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1rem;
+}
+
+.group-ui-page-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.group-ui-page-heading > div {
+    min-width: 0;
+}
+
+.group-ui-page-heading h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.group-ui-section {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.group-ui-section-heading h4 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.group-ui-list-item {
+    gap: 0;
+    padding: 0;
+}
+
+.group-ui-list-link {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 0.15rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.group-ui-list-link:hover .settings-session-title,
+.group-ui-list-link:focus-visible .settings-session-title {
+    color: var(--primary-color);
+}
+
+.group-ui-list-link:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 3px;
+    border-radius: 8px;
+}
+
+.group-ui-avatar,
+.group-ui-profile-avatar {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--bg-color);
+    color: var(--secondary-text-color);
+    object-fit: cover;
+}
+
+.group-ui-avatar svg,
+.group-ui-profile-avatar svg {
+    width: 55%;
+    height: 55%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.group-ui-profile-avatar {
+    width: 76px;
+    height: 76px;
+}
+
+.group-ui-form,
+.group-ui-inline-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.group-ui-form label,
+.group-ui-inline-form label {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.38rem;
+    font-weight: 700;
+}
+
+.group-ui-form input,
+.group-ui-form textarea,
+.group-ui-form select,
+.group-ui-inline-form input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+}
+
+.group-ui-form textarea {
+    min-height: 6rem;
+    resize: vertical;
+}
+
+.group-ui-inline-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+}
+
+.group-ui-inline-form > button {
+    min-height: 2.5rem;
+}
+
+.group-ui-profile {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.group-ui-profile-copy {
+    min-width: 0;
+}
+
+.group-ui-profile-copy h3,
+.group-ui-profile-copy p {
+    margin: 0;
+}
+
+.group-ui-profile-copy h3 {
+    font-size: 1.2rem;
+}
+
+.group-ui-profile-copy > p:last-child {
+    margin-top: 0.45rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+.group-ui-profile-actions,
+.group-ui-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.group-ui-tabs {
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.group-ui-tabs button {
+    padding: 0.45rem 0.8rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--secondary-text-color);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.group-ui-tabs button:hover,
+.group-ui-tabs button:focus-visible {
+    background: var(--bg-color);
+    outline: none;
+}
+
+.group-ui-tabs button.active {
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
+
+.group-ui-member-row .settings-session-actions {
+    max-width: min(100%, 15rem);
+}
+
+.group-ui-role-select {
+    min-width: 8rem;
+    padding: 0.45rem 0.65rem;
+}
+
+.group-ui-form fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.9rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.group-ui-form fieldset legend {
+    width: 100%;
+    margin-bottom: 0.25rem;
+    font-weight: 700;
+}
+
+.group-ui-form fieldset label {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+@media (max-width: 640px) {
+    .group-ui-page {
+        gap: 1rem;
+        padding: 0.75rem;
+    }
+
+    .group-ui-page-heading,
+    .group-ui-profile {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .group-ui-page-heading {
+        display: flex;
+    }
+
+    .group-ui-profile {
+        display: flex;
+    }
+
+    .group-ui-profile-actions,
+    .group-ui-page-heading > .settings-primary-button {
+        width: 100%;
+    }
+
+    .group-ui-profile-actions > *,
+    .group-ui-page-heading > .settings-primary-button {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+
+    .group-ui-inline-form {
+        grid-template-columns: 1fr;
+    }
+
+    .group-ui-inline-form > button {
+        width: 100%;
+    }
+
+    .group-ui-member-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .group-ui-member-row .settings-session-actions {
+        max-width: none;
+        justify-content: flex-start;
+    }
+}
+
+/* グループ投稿UI: 既存投稿フォーム・タブ・補助メニューの表現へ統一 */
+.group-post-indicator {
+    padding: 0.08rem 0.42rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    background: var(--main-bg-color);
+    color: var(--secondary-text-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.post-group-menu {
+    gap: 0.2rem;
+    padding: 0.45rem;
+    border-radius: 10px;
+    box-shadow: 0 0.45rem 1.25rem rgba(0, 0, 0, 0.16);
+}
+
+.post-group-menu-title {
+    margin: 0;
+    padding: 0.35rem 0.45rem 0.25rem;
+    color: var(--secondary-text-color);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.post-group-menu-item {
+    gap: 0.2rem;
+    padding: 0.65rem 0.7rem;
+    border-radius: 8px;
+}
+
+.post-group-menu-item strong {
+    font-size: 0.92rem;
+}
+
+.post-group-menu-item.active {
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
+
+.post-group-menu-item.active small {
+    color: inherit;
+}
+
+.group-timeline-tab,
+.profile-group-tab {
+    font-weight: 700;
+}
+
+.group-timeline-tab > span,
+.profile-group-tab {
+    max-width: 9rem;
+}
+
+.group-timeline-mode-menu {
+    gap: 0.15rem;
+    padding: 0.35rem;
+    border-radius: 10px;
+    box-shadow: 0 0.45rem 1.25rem rgba(0, 0, 0, 0.16);
+}
+
+.group-timeline-mode-menu button {
+    border: 0;
+    border-radius: 8px;
+    padding: 0.55rem 0.7rem;
+    text-align: left;
+}
+
+.group-timeline-mode-menu button:hover,
+.group-timeline-mode-menu button:focus-visible {
+    background: var(--bg-color);
+    outline: none;
+}
+
+.group-timeline-mode-menu button.active {
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
+
+/* グループ作成・プロフィール編集モーダル */
+.group-modal-overlay {
+    z-index: 3000;
+    box-sizing: border-box;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.group-modal-content {
+    box-sizing: border-box;
+    width: min(680px, 100%);
+    max-width: 680px;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.group-modal-form {
+    gap: 1rem;
+    padding: 1.5rem;
+}
+
+.group-modal-heading h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.group-modal-images {
+    display: grid;
+    grid-template-columns: minmax(8rem, 0.8fr) minmax(0, 2fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.group-modal-image-field {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.group-modal-image-label {
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.group-modal-image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.group-modal-icon-preview,
+.group-modal-header-preview {
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 1px dashed var(--border-color);
+    background: var(--bg-color);
+    color: var(--secondary-text-color);
+    cursor: pointer;
+}
+
+.group-modal-icon-preview {
+    width: 5.25rem;
+    height: 5.25rem;
+    border-radius: 50%;
+}
+
+.group-modal-icon-preview > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.group-modal-icon-preview > span {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+}
+
+.group-modal-icon-preview svg {
+    width: 100%;
+    height: 100%;
+}
+
+.group-modal-header-preview {
+    width: 100%;
+    min-height: 5.25rem;
+    border-radius: 10px;
+}
+
+.group-modal-header-preview > img {
+    display: block;
+    width: 100%;
+    min-height: 5.25rem;
+    max-height: 9rem;
+    object-fit: cover;
+}
+
+.group-modal-header-preview.is-empty {
+    min-height: 5.25rem;
+}
+
+/* グループプロフィール */
+.group-ui-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    text-align: left;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+
+.group-ui-profile-header {
+    height: clamp(7rem, 18vw, 13rem);
+    background: var(--bg-color);
+}
+
+.group-ui-profile-header img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.group-ui-profile-main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.group-ui-posts {
+    min-width: 0;
+}
+
+.group-ui-post-tabs {
+    position: static;
+    margin: 0 -1rem;
+    background: var(--main-bg-color);
+}
+
+/* グループ管理 */
+.group-ui-manage-layout {
+    align-items: start;
+}
+
+.group-ui-manage-detail {
+    min-width: 0;
+}
+
+.group-ui-manage-detail .group-ui-section:first-child {
+    margin-top: 0;
+}
+
+.group-role-details {
+    margin-top: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--main-bg-color);
+}
+
+.group-role-details > summary {
+    padding: 0.7rem 0.85rem;
+    color: var(--text-color);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.group-role-form {
+    display: grid;
+    grid-template-columns: minmax(10rem, 0.8fr) minmax(0, 2fr) auto;
+    align-items: end;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.85rem;
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    border-radius: 0;
+}
+
+.group-role-form > label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 700;
+}
+
+.group-role-permissions {
+    min-width: 0;
+}
+
+.group-role-permissions legend {
+    margin-bottom: 0.35rem;
+    font-weight: 700;
+}
+
+.group-role-permissions > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 0.7rem;
+}
+
+.group-role-permissions label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    color: var(--text-color);
+    font-size: 0.88rem;
+    white-space: nowrap;
+}
+
+.group-role-form .settings-save-row {
+    display: block;
+    margin: 0;
+}
+
+.group-role-form .settings-save-row .settings-primary-button {
+    min-height: 2.5rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+    .group-modal-images,
+    .group-role-form {
+        grid-template-columns: 1fr;
+    }
+
+    .group-modal-header-field {
+        min-width: 0;
+    }
+
+    .group-modal-header-preview {
+        max-width: 100%;
+    }
+
+    .group-ui-manage-layout {
+        display: block;
+    }
+
+    .group-ui-manage-layout .settings-group-list {
+        position: static;
+        display: flex;
+        width: auto;
+        margin: 0 -0.75rem 1rem;
+        padding: 0.45rem 0.75rem;
+        overflow-x: auto;
+        border: 0;
+        border-radius: 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .group-ui-manage-layout .settings-group-button {
+        width: auto;
+        min-width: max-content;
+        text-align: center;
+    }
+
+    .group-ui-profile-main {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .group-ui-profile-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .group-ui-post-tabs {
+        margin: 0 -0.75rem;
+    }
+
+    .group-role-permissions > div {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .group-modal-form {
+        padding: 1.25rem 1rem;
+    }
+
+    .group-modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+
+    .group-modal-overlay {
+        padding: 0.5rem;
+    }
+}
+
+/* グループ一覧はタイトル色ではなく行の背景でホバー状態を示す。 */
+.group-ui-list-link {
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.group-ui-list-link:hover,
+.group-ui-list-link:focus-visible {
+    background: var(--bg-color);
+}
+
+.group-ui-list-link:hover .settings-session-title,
+.group-ui-list-link:focus-visible .settings-session-title {
+    color: inherit;
+}
+
+/* ログイン画面用ではない、グループ操作専用の小型セカンダリーボタン。 */
+.group-ui-secondary-button {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+}
+
+.group-ui-secondary-button:hover,
+.group-ui-secondary-button:focus-visible {
+    border-color: var(--secondary-text-color);
+    background: var(--bg-color);
+    outline: none;
+}
+
+/* ホームのタブ選択処理と競合しない、同じ見た目のグループ投稿フィルター。 */
+.group-post-tab-button {
+    display: flex;
+    flex: 1 0 8rem;
+    align-items: center;
+    justify-content: center;
+    min-width: 8rem;
+    padding: 1rem;
+    border: 0;
+    background: none;
+    color: var(--secondary-text-color);
+    font: inherit;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.2s;
+}
+
+.group-post-tab-button:hover,
+.group-post-tab-button:focus-visible {
+    background: var(--bg-color);
+    outline: none;
+}
+
+.group-post-tab-button.active {
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.group-post-tab-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 60px;
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--primary-color);
+    transform: translateX(-50%);
+}
+
+/* 設定のプロフィール編集画面に合わせた、管理画面内のグループプロフィール編集。 */
+.group-profile-form {
+    gap: 0.6rem;
+}
+
+.group-profile-form > label {
+    margin-top: 0.35rem;
+}
+
+.group-profile-image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.group-profile-icon-preview,
+.group-profile-header-preview {
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 2px solid var(--border-color);
+    color: var(--secondary-text-color);
+    cursor: pointer;
+}
+
+.group-profile-icon-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+}
+
+.group-profile-icon-preview > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.group-profile-icon-preview > span {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+}
+
+.group-profile-icon-preview svg {
+    width: 100%;
+    height: 100%;
+}
+
+.group-profile-header-preview {
+    width: min(100%, 360px);
+    height: 120px;
+    border-radius: 12px;
+    background: var(--light-primary-color);
+}
+
+.group-profile-header-preview.is-empty {
+    background: linear-gradient(135deg, var(--light-primary-color), var(--bg-color));
+    font-weight: 700;
+}
+
+.group-profile-header-preview > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ロール追加は、折りたたみと横詰めをやめて安定した設定フォームにする。 */
+.group-role-details {
+    display: none;
+}
+
+.group-role-form {
+    display: grid;
+    grid-template-columns: minmax(11rem, 0.8fr) minmax(0, 1.4fr);
+    gap: 0.85rem 1rem;
+    align-items: start;
+    margin-top: 0.9rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+}
+
+.group-role-form-heading,
+.group-role-form .settings-save-row {
+    grid-column: 1 / -1;
+}
+
+.group-role-form-heading h5 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.group-role-form-heading .settings-help-text {
+    margin-top: 0.25rem;
+}
+
+.group-role-name-field {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 700;
+}
+
+.group-role-permissions {
+    min-width: 0;
+    margin: 0;
+    padding: 0.7rem 0.8rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.group-role-permissions legend {
+    padding: 0 0.25rem;
+    font-weight: 700;
+}
+
+.group-role-permissions > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+}
+
+.group-role-permissions label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.group-role-permissions input {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+}
+
+.group-role-form .settings-save-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0;
+}
+
+@media (max-width: 640px) {
+    .group-profile-header-preview {
+        width: 100%;
+    }
+
+    .group-profile-header-actions {
+        display: grid;
+        width: 100%;
+    }
+
+    .group-role-form {
+        grid-template-columns: 1fr;
+    }
+
+    .group-role-permissions > div {
+        grid-template-columns: 1fr;
+    }
+
+    .group-role-form .settings-save-row {
+        justify-content: stretch;
+    }
+
+    .group-role-form .settings-save-row .settings-primary-button {
+        width: 100%;
+    }
+}
+
+.post-form-actions .post-group-button svg {
+    fill: none;
+    stroke: currentColor;
+}
+
+.post-form-actions .post-group-button.active svg {
+    stroke: var(--primary-color);
+}
+
+/* 投稿先グループ選択は、投稿アカウント切替メニューと同じメニュー構造に統一する。 */
+.post-group-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: min(17rem, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+    padding: 0.35rem;
+    border-radius: 12px;
+    background: var(--bg-color);
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 22%, transparent);
+}
+
+.post-group-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+    padding: 0.55rem;
+    border-radius: 8px;
+}
+
+.post-group-menu-item:hover,
+.post-group-menu-item:focus-visible,
+.post-group-menu-item.active {
+    background: var(--hover-bg-color, var(--main-bg-color));
+}
+
+.post-group-menu-item:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+.post-group-menu-icon {
+    box-sizing: border-box;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.post-group-menu-nyaitter-logo {
+    object-fit: contain;
+    padding: 4px;
+}
+
+.post-group-menu-icon-fallback {
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border-color);
+    background: var(--main-bg-color);
+    color: var(--secondary-text-color);
+}
+
+.post-group-menu-icon-fallback svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.post-group-menu-copy {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.post-group-menu-copy strong,
+.post-group-menu-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.post-group-menu-copy strong {
+    font-size: inherit;
+}
+
+.post-group-menu-copy small {
+    color: var(--secondary-text-color);
+    font-size: inherit;
+}
+
+.post-group-menu-item.active {
+    color: var(--text-color);
+}
+
+.post-group-menu-item.active small {
+    color: var(--secondary-text-color);
+}
+
+.post-group-menu-loading,
+.post-group-menu-empty {
+    display: grid;
+    min-height: 4rem;
+    margin: 0;
+    place-items: center;
+    color: var(--secondary-text-color);
+    text-align: center;
+}
+
+/* グループ管理の見出しと操作メニューは、長い管理項目をスクロールしても常に参照できるよう固定する。 */
+.group-ui-manage-page > .group-ui-page-heading {
+    position: sticky;
+    top: 0;
+    z-index: 35;
+    margin: -1rem -1rem 0;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--main-bg-color);
+}
+
+.group-ui-manage-layout .settings-group-list {
+    top: 5.25rem;
+    z-index: 30;
+    max-height: calc(100dvh - 6rem);
+    overflow-y: auto;
+}
+
+@media (max-width: 760px) {
+    .group-ui-manage-page > .group-ui-page-heading {
+        top: 0;
+        margin: -1rem -1rem 0;
+        padding: 0.7rem 1rem;
+    }
+
+    .group-ui-manage-layout .settings-group-list {
+        position: sticky;
+        top: 5.1rem;
+        z-index: 30;
+        max-height: none;
+        margin-top: 0;
+        background: var(--main-bg-color);
+    }
+}
+
+.group-modal-cancel-button {
+    min-width: 5.5rem;
+    border-radius: 9999px;
 }

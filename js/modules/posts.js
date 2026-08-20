@@ -346,6 +346,15 @@ export async function renderPost(post, author, options = {}) {
     postTime.textContent = `${getNyaitterId(displayAuthor)} · ${formatPostTimestamp(post)}`;
     postHeader.appendChild(postTime);
 
+    if (post.groupId || post.group_id) {
+        const groupIndicator = document.createElement('span');
+        groupIndicator.className = 'group-post-indicator';
+        groupIndicator.textContent = post.group_announcement || post.groupAnnouncement
+            ? 'グループアナウンス'
+            : 'グループ投稿';
+        postHeader.appendChild(groupIndicator);
+    }
+
     if (post.private || post.lock) {
         const lockIndicator = document.createElement('span');
         lockIndicator.className = 'post-lock-indicator';
@@ -670,7 +679,10 @@ function closePostAccountMenu(container) {
 function setPostingAccount(container, account) {
     const accountId = Number(account?.id);
     if (!Number.isInteger(accountId) || accountId <= 0) return;
+    const previousAccountId = Number(container?.dataset.postAsUserId);
+    const accountChanged = !Number.isInteger(previousAccountId) || previousAccountId !== accountId;
     container.dataset.postAsUserId = String(accountId);
+    container._postingAccount = account;
     const selector = container.querySelector('.post-account-selector');
     const icon = selector?.querySelector('.user-icon');
     if (icon) {
@@ -682,7 +694,17 @@ function setPostingAccount(container, account) {
         selector.setAttribute('aria-label', selector.title);
     }
     const announcementButton = container.querySelector('.post-announcement-button');
-    if (announcementButton) announcementButton.hidden = !account.admin;
+    if (announcementButton && !getPostingGroup(container)) {
+        announcementButton.hidden = !account.admin;
+        announcementButton.classList.toggle('hidden', !account.admin);
+        announcementButton.title = 'Nyaitterアナウンス';
+        announcementButton.setAttribute('aria-label', announcementButton.title);
+    }
+    if (accountChanged) {
+        const postingAccountVersion = Number(container._postingAccountVersion || 0) + 1;
+        container._postingAccountVersion = postingAccountVersion;
+        void syncPostGroupDestinationsForPostingAccount(container, postingAccountVersion);
+    }
 }
 
 async function openPostAccountMenu(container) {
@@ -772,24 +794,222 @@ export function createPostFormHTML(isModal = false) {
                     </button>
                     <input type="file" id="file-input" class="hidden" multiple>
                     <div id="emoji-picker" class="hidden"></div>
+                    <div class="post-group-menu hidden" role="menu"></div>
                     <button id="post-submit-button" class="float-right">ポスト</button>
+                    <button type="button" class="post-group-button float-right" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
                     <button type="button" class="post-mask-button float-right" title="ワンクッション">
                         ${ICONS.mask}
                     </button>
                     <button type="button" class="post-lock-button float-right" title="プライベート" aria-pressed="false">
                         ${ICONS.lock}
                     </button>
-                    ${
-                        getCurrentUser()?.admin
-                            ? `<button type="button" class="post-announcement-button float-right" title="アナウンス" aria-pressed="false">
-                        ${ICONS.megaphone}
-                    </button>`
-                            : ''
-                    }
+                    <button type="button" class="post-announcement-button float-right hidden" title="Nyaitterアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
                     <span class="float-clear"></span>
                 </div>
             </div>
         </div>`;
+}
+
+function getGroupIconUrl(group) {
+    const iconData = typeof group?.icon_data === 'string' ? group.icon_data.trim() : '';
+    if (!iconData) return '';
+    if (/^data:image\//i.test(iconData)) return iconData;
+    if (/^https?:\/\//i.test(iconData)) return getSafeHttpUrl(iconData) || '';
+    const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(iconData);
+    return typeof configuredUrl === 'string' ? configuredUrl : '';
+}
+
+function renderPostGroupMenuIcon(group) {
+    const iconUrl = getGroupIconUrl(group);
+    if (iconUrl) {
+        return `<img src="${escapeHTML(iconUrl)}" alt="" class="post-group-menu-icon">`;
+    }
+    return `<span class="post-group-menu-icon post-group-menu-icon-fallback" aria-hidden="true">${ICONS.group}</span>`;
+}
+
+function renderNyaitterPostMenuIcon() {
+    return '<img src="logo.png" alt="" class="post-group-menu-icon post-group-menu-nyaitter-logo">';
+}
+
+function getPostingGroup(container) {
+    return container?._postingGroup || null;
+}
+
+function setPostingGroup(container, group = null, { locked = false } = {}) {
+    if (!container) return;
+    container._postingGroup = group;
+    container._postGroupLocked = locked;
+    const destinationButton = container.querySelector('.post-group-button');
+    const lockButton = container.querySelector('.post-lock-button');
+    const announcementButton = container.querySelector('.post-announcement-button');
+    const groupName = group?.name || 'Nyaitter';
+    if (destinationButton) {
+        destinationButton.disabled = locked;
+        destinationButton.title = locked
+            ? `返信先グループ: ${groupName}`
+            : `投稿先: ${groupName}`;
+        destinationButton.setAttribute('aria-label', destinationButton.title);
+        destinationButton.classList.toggle('active', Boolean(group));
+    }
+    if (lockButton) {
+        lockButton.disabled = Boolean(group);
+        lockButton.classList.toggle('hidden', Boolean(group));
+        if (group) {
+            lockButton.classList.remove('active');
+            lockButton.setAttribute('aria-pressed', 'false');
+        }
+    }
+    if (announcementButton) {
+        const visible = group ? Boolean(group.canAnnounce) : Boolean(container?._postingAccount?.admin ?? getCurrentUser()?.admin);
+        announcementButton.hidden = !visible;
+        announcementButton.classList.toggle('hidden', !visible);
+        announcementButton.title = group ? 'グループアナウンス' : 'Nyaitterアナウンス';
+        announcementButton.setAttribute('aria-label', announcementButton.title);
+        announcementButton.classList.remove('active');
+        announcementButton.setAttribute('aria-pressed', 'false');
+    }
+}
+
+function closePostGroupMenu(container) {
+    const menu = container?.querySelector('.post-group-menu');
+    const button = container?.querySelector('.post-group-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+}
+
+function getPostingGroupListPath(container) {
+    const parameters = new URLSearchParams({ limit: '200' });
+    const postingAccountId = getPostingAccountId(container);
+    if (postingAccountId != null) parameters.set('post_as_user_id', String(postingAccountId));
+    return `/server/api/groups/mine?${parameters.toString()}`;
+}
+
+async function getPostingAccountGroups(container) {
+    const { data, error } = await apiRequest(getPostingGroupListPath(container));
+    if (error) throw error;
+    return Array.isArray(data?.groups) ? data.groups : [];
+}
+
+async function applyPostGroupSelection(container, groupId, { timelineSyncVersion = null, postingAccountVersion = null } = {}) {
+    const requestedAccountVersion = postingAccountVersion ?? Number(container?._postingAccountVersion || 0);
+    const parameters = new URLSearchParams();
+    const postingAccountId = getPostingAccountId(container);
+    if (postingAccountId != null) parameters.set('post_as_user_id', String(postingAccountId));
+    const query = parameters.size ? `?${parameters.toString()}` : '';
+    const { data, error } = await apiRequest(`/server/api/groups/${encodeURIComponent(groupId)}${query}`);
+    if (error || !data?.group?.membership || data.group.membership.status !== 'active') {
+        throw error || new Error('参加中のグループを確認できません。');
+    }
+    if (container?._postingAccountVersion !== requestedAccountVersion) return;
+    if (timelineSyncVersion != null && container?._timelinePostingDestinationVersion !== timelineSyncVersion) return;
+    const group = data.group;
+    const role = (group.roles || []).find((candidate) => String(candidate.id) === String(group.membership.role_id));
+    const permissions = role?.permissions || [];
+    setPostingGroup(container, {
+        id: group.id,
+        name: group.name || 'グループ',
+        canAnnounce: Number(group.owner_id) === Number(getPostingAccountId(container))
+            || permissions.includes('admin')
+            || permissions.includes('announce'),
+    }, { locked: Boolean(container?._postGroupLocked) });
+}
+
+function renderPostGroupMenu(container, groups) {
+    const menu = container?.querySelector('.post-group-menu');
+    if (!menu) return;
+    const nyaitterItem = `<button type="button" class="post-group-menu-item ${!getPostingGroup(container) ? 'active' : ''}" data-group-id="" aria-pressed="${String(!getPostingGroup(container))}">${renderNyaitterPostMenuIcon()}<span class="post-group-menu-copy"><strong>Nyaitter</strong><small>通常ポスト</small></span></button>`;
+    const groupItems = groups.map((group) => {
+        const selected = String(group.id) === String(getPostingGroup(container)?.id);
+        return `<button type="button" class="post-group-menu-item ${selected ? 'active' : ''}" data-group-id="${escapeHTML(String(group.id))}" aria-pressed="${String(selected)}">${renderPostGroupMenuIcon(group)}<span class="post-group-menu-copy"><strong>${escapeHTML(group.name || '無題のグループ')}</strong><small>グループポスト</small></span></button>`;
+    }).join('');
+    menu.innerHTML = `${nyaitterItem}${groupItems || '<p class="post-group-menu-empty">参加中のグループはありません。</p>'}`;
+    menu.querySelectorAll('[data-group-id]').forEach((item) => item.addEventListener('click', async () => {
+        try {
+            container._timelinePostingDestinationVersion = Number(container._timelinePostingDestinationVersion || 0) + 1;
+            const groupId = item.dataset.groupId;
+            if (groupId) await applyPostGroupSelection(container, groupId);
+            else setPostingGroup(container, null);
+            closePostGroupMenu(container);
+        } catch (error) {
+            showAppAlert(error.message || '投稿先グループを選択できませんでした。');
+        }
+    }));
+}
+
+async function syncPostGroupDestinationsForPostingAccount(container, postingAccountVersion) {
+    if (!container || container._postGroupLocked) return;
+    try {
+        const groups = await getPostingAccountGroups(container);
+        if (container._postingAccountVersion !== postingAccountVersion) return;
+        container._postingAccountGroups = groups;
+        const selectedGroup = getPostingGroup(container);
+        if (selectedGroup && !groups.some((group) => String(group.id) === String(selectedGroup.id))) {
+            setPostingGroup(container, null);
+        } else if (selectedGroup) {
+            try {
+                await applyPostGroupSelection(container, selectedGroup.id, { postingAccountVersion });
+            } catch (_) {
+                if (container._postingAccountVersion === postingAccountVersion) setPostingGroup(container, null);
+            }
+        }
+        if (!container.querySelector('.post-group-menu')?.classList.contains('hidden')) {
+            renderPostGroupMenu(container, groups);
+        }
+    } catch (_) {
+        const menu = container.querySelector('.post-group-menu');
+        if (container._postingAccountVersion === postingAccountVersion && menu && !menu.classList.contains('hidden')) {
+            menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
+        }
+    }
+}
+
+export function syncPostFormDestinationWithTimeline(container, groupId = null, groupName = '') {
+    if (!container || container._postGroupLocked) return;
+    const timelineSyncVersion = Number(container._timelinePostingDestinationVersion || 0) + 1;
+    container._timelinePostingDestinationVersion = timelineSyncVersion;
+    if (!groupId) {
+        setPostingGroup(container, null);
+        return;
+    }
+
+    const postingAccountVersion = Number(container._postingAccountVersion || 0);
+    setPostingGroup(container, {
+        id: String(groupId),
+        name: groupName || 'グループ',
+        canAnnounce: false,
+    });
+    void applyPostGroupSelection(container, groupId, { timelineSyncVersion, postingAccountVersion }).catch(() => {
+        if (
+            container._postingAccountVersion === postingAccountVersion
+            && container._timelinePostingDestinationVersion === timelineSyncVersion
+        ) {
+            setPostingGroup(container, null);
+        }
+    });
+}
+
+async function openPostGroupMenu(container) {
+    const menu = container?.querySelector('.post-group-menu');
+    const button = container?.querySelector('.post-group-button');
+    if (!menu || !button || container?._postGroupLocked) return;
+    if (!menu.classList.contains('hidden')) {
+        closePostGroupMenu(container);
+        return;
+    }
+    const postingAccountVersion = Number(container._postingAccountVersion || 0);
+    menu.classList.remove('hidden');
+    button.setAttribute('aria-expanded', 'true');
+    menu.innerHTML = '<div class="post-group-menu-loading"><div class="spinner"></div></div>';
+    try {
+        const groups = await getPostingAccountGroups(container);
+        if (container._postingAccountVersion !== postingAccountVersion || menu.classList.contains('hidden')) return;
+        container._postingAccountGroups = groups;
+        renderPostGroupMenu(container, groups);
+    } catch (_) {
+        if (container._postingAccountVersion === postingAccountVersion) {
+            menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
+        }
+    }
 }
 
 export function handleCtrlEnter(e) {
@@ -821,6 +1041,9 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
     });
     container.querySelector('.post-announcement-button')?.addEventListener('click', () => {
         handlePostAnnouncement(container);
+    });
+    container.querySelector('.post-group-button')?.addEventListener('click', () => {
+        void openPostGroupMenu(container);
     });
     container.querySelector('#post-submit-button')?.addEventListener('click', () => {
         handlePostSubmit(container, onPostSuccess);
@@ -968,6 +1191,11 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     const maskActive = container.querySelector('.post-mask-button')?.classList.contains('active') || false;
     const lockActive = container.querySelector('.post-lock-button')?.classList.contains('active') || false;
     const announcementActive = container.querySelector('.post-announcement-button')?.classList.contains('active') || false;
+    const postingGroup = getPostingGroup(container);
+    const groupAnnouncementActive = Boolean(postingGroup && announcementActive);
+    if (postingGroup && getQuotingPost()) {
+        return showAppAlert('引用・リポストはグループ投稿として送信できません。');
+    }
 
     const button = container.querySelector('#post-submit-button');
     if (button) {
@@ -1007,7 +1235,9 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 p_attachments: attachmentsData.length > 0 ? attachmentsData : null,
                 p_mask: maskActive,
                 p_lock: lockActive,
-                p_announcement: announcementActive,
+                p_announcement: Boolean(!postingGroup && announcementActive),
+                p_group_id: postingGroup?.id || null,
+                p_group_announcement: groupAnnouncementActive,
                 p_as_user_id: postingAccountId,
             })
             .single();
@@ -1018,6 +1248,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
         invalidateTimelinePageCache();
         setSelectedFiles([]);
         setMarkdownEditorValue(contentEl, '');
+        setPostingGroup(container, null);
         const previewContainer = container.querySelector('.file-preview-container');
         if (previewContainer) previewContainer.innerHTML = '';
 
@@ -1101,6 +1332,18 @@ export function openPostModal(replyTo = null, quotingPost = null) {
 
     modalFormContainer.innerHTML = createPostFormHTML(true);
     attachPostFormListeners(modalFormContainer);
+
+    const replyGroupId = replyTo?.groupId || replyTo?.group_id || null;
+    if (replyGroupId) {
+        setPostingGroup(modalFormContainer, {
+            id: replyGroupId,
+            name: replyTo?.group_name || 'グループ',
+            canAnnounce: false,
+        }, { locked: true });
+        void applyPostGroupSelection(modalFormContainer, replyGroupId).catch(() => {});
+    } else if (quotingPost) {
+        setPostingGroup(modalFormContainer, null, { locked: true });
+    }
 
     if (replyTo?.isPrivate || replyTo?.lock) {
         const lockButton = modalFormContainer.querySelector('.post-lock-button');

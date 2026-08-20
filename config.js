@@ -13,10 +13,11 @@
         // Nyaitter ServerのAPIルート。静的サイトと同一オリジンで配信する場合は変更不要です。
         apiEndpoint: '/server',
 
-        // ユーザーファイルの公開URLです。R2の公開ドメインなどを使う場合に指定します。
-        // 例: '/uploads'、'https://media.example.com'
-        // 空文字列の場合、ClientはユーザーファイルのURLを生成しません。
-        userFileEndpoint: '',
+        // nullなら、設定済みapiEndpointへ /uploads を追加したURLを自動利用します。
+        // Serverがユーザーファイルを専用ポートで配信する場合は、その絶対URLへ変更します。
+        // R2の公開ドメインなどを使う場合も、相対パスまたは絶対URLへ変更できます。
+        // 空文字列を明示すると、Client側のユーザーファイルURL生成を無効にします。
+        userFileEndpoint: null,
 
         // 設定画面の「リンク」に表示するリソースです。
         resourceLinks: [
@@ -60,8 +61,25 @@
         return url;
     }
 
+    function getUserFileEndpoint() {
+        if (CLIENT_CONFIG.userFileEndpoint !== null && CLIENT_CONFIG.userFileEndpoint !== undefined) {
+            return String(CLIENT_CONFIG.userFileEndpoint).trim();
+        }
+
+        const apiEndpoint = normalizeEndpoint(CLIENT_CONFIG.apiEndpoint);
+        const basePath = apiEndpoint.pathname.replace(/\/+$/, '');
+        apiEndpoint.pathname = `${basePath}/uploads`.replace(/\/{2,}/g, '/');
+        apiEndpoint.search = '';
+        apiEndpoint.hash = '';
+        const configuredApiEndpoint = String(CLIENT_CONFIG.apiEndpoint || '').trim();
+        return /^https?:\/\//i.test(configuredApiEndpoint)
+            ? apiEndpoint.href
+            : apiEndpoint.pathname;
+    }
+
     function userFileUrl(fileId = '') {
-        const endpoint = normalizeUserFileEndpoint(CLIENT_CONFIG.userFileEndpoint);
+        const configuredEndpoint = getUserFileEndpoint();
+        const endpoint = normalizeUserFileEndpoint(configuredEndpoint);
         if (!endpoint) return null;
         const encodedKey = String(fileId || '')
             .split('/')
@@ -75,8 +93,7 @@
         endpoint.search = '';
         endpoint.hash = '';
 
-        const configured = String(CLIENT_CONFIG.userFileEndpoint || '').trim();
-        if (/^https?:\/\//i.test(configured)) return endpoint.href;
+        if (/^https?:\/\//i.test(configuredEndpoint)) return endpoint.href;
         return endpoint.pathname;
     }
 
@@ -134,6 +151,31 @@
         apiWebSocketUrl,
     });
 
+    function installGetCodeButtonFailureRecovery() {
+        const getCodeButton = document.getElementById('get-code-btn');
+        const errorMessage = document.getElementById('error-message');
+        if (!getCodeButton || !errorMessage) return;
+
+        const restoreAfterVisibleError = () => {
+            if (errorMessage.classList.contains('hidden')) return;
+            // login.jsの取得処理がfinallyを終えた後に復元する。Turnstileが必要な場合も、
+            // 次回クリック時の既存検証でトークン未完了を拒否するため認証要件は維持される。
+            window.setTimeout(() => {
+                if (!errorMessage.classList.contains('hidden')) {
+                    getCodeButton.disabled = false;
+                }
+            }, 0);
+        };
+
+        new MutationObserver(restoreAfterVisibleError).observe(errorMessage, {
+            attributes: true,
+            attributeFilter: ['class'],
+            childList: true,
+            characterData: true,
+            subtree: true,
+        });
+    }
+
     function installLoginApprovalFailureReset() {
         const loginModal = document.getElementById('login-modal');
         const approvalWaitModal = document.getElementById('login-approval-wait-modal');
@@ -169,5 +211,12 @@
         observer.observe(approvalWaitModal, { attributes: true, attributeFilter: ['class'] });
     }
 
-    document.addEventListener('DOMContentLoaded', installLoginApprovalFailureReset, { once: true });
+    // config.jsはService Workerからも読み込まれるため、DOMを持つ画面環境だけで
+    // ログインモーダルの初期化を登録する。
+    if (typeof document !== 'undefined') {
+        document.addEventListener('DOMContentLoaded', () => {
+            installGetCodeButtonFailureRecovery();
+            installLoginApprovalFailureReset();
+        }, { once: true });
+    }
 })();

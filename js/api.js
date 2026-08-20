@@ -354,6 +354,8 @@ export const api = (() => {
                                 mask: params.p_mask,
                                 lock: params.p_lock,
                                 announcement: params.p_announcement,
+                                group_id: params.p_group_id,
+                                group_announcement: params.p_group_announcement,
                                 post_as_user_id: params.p_as_user_id,
                             },
                         },

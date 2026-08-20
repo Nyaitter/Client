@@ -318,16 +318,16 @@ export function invalidateProfileTabPageCache(userId, subpage) {
         likes: ['likes'],
         stars: ['stars'],
     };
-    const targetSubTypes = postSubTypesByTab[normalizedTab] || [];
+    const targetSubTypes = String(normalizedTab).startsWith('group:')
+        ? [normalizedTab]
+        : postSubTypesByTab[normalizedTab] || [];
     let changed = false;
 
     for (const key of profilePostPageCaches.keys()) {
-        const parts = key.split(':');
-        const cacheUserId = Number(parts[2]);
-        const cacheSubType = parts[3];
         if (
-            cacheUserId === normalizedUserId &&
-            targetSubTypes.includes(cacheSubType)
+            targetSubTypes.some((subType) =>
+                key.includes(`:${normalizedUserId}:${subType}:`),
+            )
         ) {
             profilePostPageCaches.delete(key);
             changed = true;
