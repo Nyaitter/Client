@@ -1,4 +1,4 @@
-import { DOM } from '../dom.js';
+import { DOM, openImageModal } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { api, apiRequest } from '../api.js';
 import {
@@ -503,7 +503,7 @@ export async function renderPost(post, author, options = {}) {
                     img.className = 'attachment-image';
                     img.onclick = (e) => {
                         e.stopPropagation();
-                        window.openImageModal?.(publicURL);
+                        openImageModal(publicURL);
                     };
                     itemDiv.appendChild(img);
                 } else if (attachment.type === 'video') {
