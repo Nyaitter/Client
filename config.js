@@ -194,8 +194,12 @@
         observer.observe(approvalWaitModal, { attributes: true, attributeFilter: ['class'] });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        installGetCodeButtonFailureRecovery();
-        installLoginApprovalFailureReset();
-    }, { once: true });
+    // config.jsはService Workerからも読み込まれるため、DOMを持つ画面環境だけで
+    // ログインモーダルの初期化を登録する。
+    if (typeof document !== 'undefined') {
+        document.addEventListener('DOMContentLoaded', () => {
+            installGetCodeButtonFailureRecovery();
+            installLoginApprovalFailureReset();
+        }, { once: true });
+    }
 })();
