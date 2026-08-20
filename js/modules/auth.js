@@ -382,16 +382,45 @@ export async function openAccountSwitcherModal() {
     });
 }
 
-export async function openLoginApprovalModal(requestData) {
+export async function openLoginApprovalModal(approvalRequest) {
     const modal = document.getElementById('login-approval-modal');
     const body = document.getElementById('login-approval-modal-body');
     if (!modal || !body) return;
+
+    let requestData = approvalRequest;
+    if (typeof approvalRequest === 'string') {
+        const approvalId = approvalRequest.trim();
+        if (!approvalId) return;
+        const { data, error } = await apiRequest(
+            `/server/auth/login-approvals/${encodeURIComponent(approvalId)}`,
+        );
+        if (error || !data?.approval) {
+            await showAppAlert(error?.message || 'ログイン承認依頼を取得できませんでした。');
+            return;
+        }
+        requestData = data.approval;
+    }
+    if (!requestData?.id) {
+        await showAppAlert('ログイン承認依頼が無効です。');
+        return;
+    }
+
+    const closeModal = () => {
+        modal.classList.add('hidden');
+        if (window.location.hash.startsWith('#login-approval/')) {
+            window.history.replaceState(window.history.state, '', '#notifications');
+        }
+    };
+    modal.querySelector('.modal-close-btn').onclick = closeModal;
+    modal.onclick = (event) => {
+        if (event.target === modal) closeModal();
+    };
 
     body.innerHTML = `
         <h3 id="login-approval-modal-title">新しい端末からのログイン確認</h3>
         <p class="settings-help-text">以下の端末からログインの許可がリクエストされています。</p>
         <div class="login-approval-details">
-            <p><strong>IPアドレス:</strong> ${escapeHTML(requestData.ip || '不明')}</p>
+            <p><strong>IPアドレス:</strong> ${escapeHTML(requestData.ip_masked || requestData.ip || '不明')}</p>
             <p><strong>端末情報:</strong> ${escapeHTML(requestData.user_agent || '不明')}</p>
             <p><strong>リクエスト日時:</strong> ${new Date(requestData.created_at).toLocaleString()}</p>
         </div>
@@ -412,7 +441,7 @@ export async function openLoginApprovalModal(requestData) {
                 },
             );
             if (error) throw error;
-            modal.classList.add('hidden');
+            closeModal();
         } catch (error) {
             console.error('ログイン許可の送信に失敗:', error);
             await showAppAlert('処理に失敗しました。');
