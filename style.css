@@ -5575,8 +5575,8 @@ body.pull-to-refresh-enabled {
 }
 
 .post-form-actions .post-group-button svg {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 20px;
+    height: 20px;
     stroke-width: 1.5;
 }
 .post-group-menu {
