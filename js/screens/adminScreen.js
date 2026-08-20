@@ -443,13 +443,16 @@ export async function adminToggleShadow(targetUser) {
     const actionText = newShadowStatus ? '有効' : '無効';
 
     if (await showAppConfirm(`本当にこのユーザーの検索除外を${actionText}にしますか?`)) {
-        const { error } = await api.rpc('admin_set_status', {
+        const { data, error } = await api.rpc('admin_set_status', {
             p_id: targetUser.id,
             p_shadow: newShadowStatus,
         });
         if (error) {
             showAppAlert(`${actionText}に失敗しました: ${error.message}`);
         } else {
+            targetUser.shadow = data?.status?.shadow === undefined
+                ? newShadowStatus
+                : Boolean(data.status.shadow);
             await showAppAlert(`ユーザーの検索除外の${actionText}化が完了しました。\nページをリロードします。`);
             window.location.reload();
         }
