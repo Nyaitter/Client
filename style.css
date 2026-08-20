@@ -5581,6 +5581,7 @@ body.pull-to-refresh-enabled {
 .post-form-actions .post-group-announcement-button svg {
     width: 1.5rem;
     height: 1.5rem;
+    stroke-width: 1.5;
 }
 .post-group-menu {
     position: absolute;
@@ -6763,7 +6764,6 @@ body.pull-to-refresh-enabled {
 .post-form-actions .post-group-button svg {
     fill: none;
     stroke: currentColor;
-    stroke-width: 2;
 }
 
 .post-form-actions .post-group-button.active svg,
