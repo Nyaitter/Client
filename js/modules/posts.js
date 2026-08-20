@@ -48,16 +48,24 @@ import {
 
 export const METRICS_FALLBACK = '?';
 
-export async function uploadFileViaEdgeFunction(file) {
+export async function uploadFileViaEdgeFunction(file, { asUserId = null } = {}) {
     const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result).split(',')[1]);
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
     });
+    const normalizedAsUserId = Number(asUserId);
     const { data, error } = await apiRequest('/server/api/uploads', {
         method: 'POST',
-        body: { file: base64, fileName: file.name, contentType: file.type },
+        body: {
+            file: base64,
+            fileName: file.name,
+            contentType: file.type,
+            ...(Number.isInteger(normalizedAsUserId) && normalizedAsUserId > 0
+                ? { as_user_id: normalizedAsUserId }
+                : {}),
+        },
     });
 
     if (error) {
@@ -72,11 +80,17 @@ export async function uploadFileViaEdgeFunction(file) {
     return responseData.id;
 }
 
-export async function deleteFilesViaEdgeFunction(fileIds) {
+export async function deleteFilesViaEdgeFunction(fileIds, { asUserId = null } = {}) {
     if (!fileIds || fileIds.length === 0) return;
+    const normalizedAsUserId = Number(asUserId);
     const { error } = await apiRequest('/server/api/uploads', {
         method: 'DELETE',
-        body: { fileIds },
+        body: {
+            fileIds,
+            ...(Number.isInteger(normalizedAsUserId) && normalizedAsUserId > 0
+                ? { as_user_id: normalizedAsUserId }
+                : {}),
+        },
     });
     if (error) {
         console.error('ファイルの削除に失敗しました:', error.message);
@@ -631,10 +645,111 @@ export async function renderPost(post, author, options = {}) {
     return postEl;
 }
 
+function getPostingAccountId(container) {
+    const selectedId = Number(container?.dataset.postAsUserId);
+    if (Number.isInteger(selectedId) && selectedId > 0) return selectedId;
+    return Number(getCurrentUser()?.id) || null;
+}
+
+function closePostAccountMenu(container) {
+    const menu = container.querySelector('.post-account-menu');
+    if (!menu) return;
+    menu.classList.add('hidden');
+    menu.innerHTML = '';
+    container.querySelector('.post-account-selector')?.setAttribute('aria-expanded', 'false');
+    if (container._postAccountMenuOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postAccountMenuOutsideHandler, true);
+        delete container._postAccountMenuOutsideHandler;
+    }
+}
+
+function setPostingAccount(container, account) {
+    const accountId = Number(account?.id);
+    if (!Number.isInteger(accountId) || accountId <= 0) return;
+    container.dataset.postAsUserId = String(accountId);
+    const selector = container.querySelector('.post-account-selector');
+    const icon = selector?.querySelector('.user-icon');
+    if (icon) {
+        icon.src = getUserIconUrl(account);
+        icon.alt = `${account.name || 'アカウント'}のアイコン`;
+    }
+    if (selector) {
+        selector.title = `投稿アカウント: ${account.name || '不明なユーザー'}`;
+        selector.setAttribute('aria-label', selector.title);
+    }
+    const announcementButton = container.querySelector('.post-announcement-button');
+    if (announcementButton) announcementButton.hidden = !account.admin;
+}
+
+async function openPostAccountMenu(container) {
+    const menu = container.querySelector('.post-account-menu');
+    const selector = container.querySelector('.post-account-selector');
+    const form = container.querySelector('.post-form');
+    if (!menu || !selector || !form) return;
+    if (!menu.classList.contains('hidden')) {
+        closePostAccountMenu(container);
+        return;
+    }
+
+    menu.classList.remove('hidden');
+    menu.innerHTML = '<div class="post-account-menu-loading"><span class="spinner" aria-label="アカウント一覧を読み込み中"></span></div>';
+    selector.setAttribute('aria-expanded', 'true');
+    const outsideHandler = (event) => {
+        if (!form.contains(event.target)) closePostAccountMenu(container);
+    };
+    container._postAccountMenuOutsideHandler = outsideHandler;
+    document.addEventListener('pointerdown', outsideHandler, true);
+
+    try {
+        const { data, error } = await apiRequest('/server/auth/accounts');
+        if (menu.classList.contains('hidden')) return;
+        const accounts = !error && Array.isArray(data?.accounts)
+            ? data.accounts
+            : (getCurrentUser() ? [getCurrentUser()] : []);
+        const selectedId = getPostingAccountId(container);
+        if (accounts.length === 0) {
+            menu.innerHTML = '<p class="post-account-menu-empty">利用可能なアカウントがありません。</p>';
+            return;
+        }
+
+        menu.innerHTML = '';
+        accounts.forEach((account) => {
+            const accountId = Number(account.id);
+            if (!Number.isInteger(accountId) || accountId <= 0) return;
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'post-account-menu-item';
+            item.classList.toggle('active', accountId === selectedId);
+            item.setAttribute('aria-pressed', String(accountId === selectedId));
+            item.innerHTML = `
+                <img src="${escapeHTML(getUserIconUrl(account))}" alt="" class="post-account-menu-icon">
+                <span class="post-account-menu-user">
+                    <strong>${getEmoji(escapeHTML(account.name || '不明なユーザー'))}</strong>
+                    <small>${escapeHTML(getNyaitterId(account))}</small>
+                </span>
+                ${account.is_imposter ? '<span class="settings-session-current">インポスター</span>' : ''}
+            `;
+            item.addEventListener('click', () => {
+                setPostingAccount(container, account);
+                closePostAccountMenu(container);
+            });
+            menu.appendChild(item);
+        });
+    } catch (error) {
+        if (!menu.classList.contains('hidden')) {
+            menu.innerHTML = '<p class="post-account-menu-empty">アカウント一覧を読み込めませんでした。</p>';
+        }
+    }
+}
+
 export function createPostFormHTML(isModal = false) {
+    const currentUser = getCurrentUser();
     return `
         <div class="post-form">
-            <img src="${getUserIconUrl(getCurrentUser())}" class="user-icon" alt="your icon">
+            <button type="button" class="post-account-selector" title="投稿アカウント: ${escapeHTML(currentUser?.name || '不明なユーザー')}" aria-label="投稿アカウント: ${escapeHTML(currentUser?.name || '不明なユーザー')}" aria-haspopup="menu" aria-expanded="false">
+                <img src="${getUserIconUrl(currentUser)}" class="user-icon" alt="${escapeHTML(currentUser?.name || 'アカウント')}のアイコン">
+            </button>
+            <div class="post-account-menu hidden" role="menu"></div>
             ${isModal ? '<button class="modal-close-btn">×</button>' : ''}
             <div class="form-content">
                 <div id="reply-info" class="hidden" style="margin-bottom: 0.5rem; color: var(--secondary-text-color);"></div>
@@ -679,6 +794,11 @@ export function handleCtrlEnter(e) {
 }
 
 export function attachPostFormListeners(container, onPostSuccess = null) {
+    const currentUser = getCurrentUser();
+    if (currentUser) setPostingAccount(container, currentUser);
+    container.querySelector('.post-account-selector')?.addEventListener('click', () => {
+        void openPostAccountMenu(container);
+    });
     container.querySelector('.attachment-button')?.addEventListener('click', () => {
         container.querySelector('#file-input')?.click();
     });
@@ -829,6 +949,8 @@ export function handlePostAnnouncement(container) {
 
 export async function handlePostSubmit(container, onPostSuccess = null) {
     if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+    const postingAccountId = getPostingAccountId(container);
+    if (!postingAccountId) return showAppAlert('投稿アカウントを確認できません。');
     const contentEl = container.querySelector('#post-content');
     const content = getMarkdownEditorValue(contentEl).trim();
     if (!content && getSelectedFiles().length === 0 && !getQuotingPost()) {
@@ -851,7 +973,9 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
 
     try {
         for (const file of getSelectedFiles()) {
-            const fileId = await uploadFileViaEdgeFunction(file);
+            const fileId = await uploadFileViaEdgeFunction(file, {
+                asUserId: postingAccountId,
+            });
             uploadedFileIds.push(fileId);
             const fileType = file.type.startsWith('image/')
                 ? 'image'
@@ -876,6 +1000,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 p_mask: maskActive,
                 p_lock: lockActive,
                 p_announcement: announcementActive,
+                p_as_user_id: postingAccountId,
             })
             .single();
 
@@ -888,7 +1013,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 .select('userid')
                 .eq('id', getReplyingTo().id)
                 .single();
-            if (parentPost && parentPost.userid !== getCurrentUser().id) {
+            if (parentPost && Number(parentPost.userid) !== postingAccountId) {
                 repliedUserId = parentPost.userid;
             }
         }
@@ -899,7 +1024,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
         const mentionedIds = new Set();
         for (const match of content.matchAll(/@(\d+)/g)) {
             const mentionedId = parseInt(match[1], 10);
-            if (mentionedId !== getCurrentUser().id && mentionedId !== repliedUserId) {
+            if (mentionedId !== postingAccountId && mentionedId !== repliedUserId) {
                 mentionedIds.add(mentionedId);
             }
         }
@@ -928,7 +1053,9 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     } catch (e) {
         console.error('ポスト送信に失敗しました:', e);
         if (uploadedFileIds.length > 0) {
-            await deleteFilesViaEdgeFunction(uploadedFileIds);
+            await deleteFilesViaEdgeFunction(uploadedFileIds, {
+                asUserId: postingAccountId,
+            });
         }
         showAppAlert(`投稿に失敗しました: ${e.message || '不明なエラー'}`);
     } finally {
@@ -991,8 +1118,7 @@ export function openRepostModal(post, triggerButton) {
     quotePostBtn.textContent = '引用ポスト';
     quotePostBtn.onclick = (e) => {
         e.stopPropagation();
-        setQuotingPost(post);
-        openPostModal();
+        openPostModal(null, post);
         menu.remove();
     };
 

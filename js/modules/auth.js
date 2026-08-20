@@ -215,6 +215,23 @@ export async function openAccountSwitcherModal() {
     if (!modal || !content) return;
 
     const closeModal = () => modal.classList.add('hidden');
+    const openLoginFromSwitcher = () => {
+        closeModal();
+        goToLoginPage();
+    };
+
+    modal.classList.remove('hidden');
+    modal.querySelector('.modal-close-btn').onclick = closeModal;
+    modal.onclick = (event) => {
+        if (event.target === modal) closeModal();
+    };
+    content.innerHTML = `
+        <button type="button" class="account-switcher-add-btn">＋ アカウント追加</button>
+        <ul class="account-switcher-list">
+            <li class="account-switcher-empty"><div class="spinner" aria-label="アカウント一覧を読み込み中"></div></li>
+        </ul>
+    `;
+    content.querySelector('.account-switcher-add-btn').onclick = openLoginFromSwitcher;
 
     const { data: accountPayload, error } = await apiRequest(
         '/server/auth/accounts',
@@ -265,15 +282,7 @@ export async function openAccountSwitcherModal() {
         </ul>
     `;
 
-    modal.classList.remove('hidden');
-    modal.querySelector('.modal-close-btn').onclick = closeModal;
-    modal.onclick = (event) => {
-        if (event.target === modal) closeModal();
-    };
-    content.querySelector('.account-switcher-add-btn').onclick = () => {
-        closeModal();
-        goToLoginPage();
-    };
+    content.querySelector('.account-switcher-add-btn').onclick = openLoginFromSwitcher;
 
     content.querySelectorAll('.account-switcher-item').forEach((item) => {
         const userId = Number(item.dataset.id);
@@ -334,8 +343,12 @@ export async function openAccountSwitcherModal() {
                 await openAccountSwitcherModal();
                 return;
             }
-            if (userId === currentId) return;
+            if (userId === currentId) {
+                closeModal();
+                return;
+            }
 
+            closeModal();
             const releaseLoadingScreen = holdLoadingScreen();
             let switchError = null;
             try {
@@ -349,7 +362,6 @@ export async function openAccountSwitcherModal() {
                 );
                 switchError = result.error;
                 if (!switchError) {
-                    closeModal();
                     unsubscribeFromChanges();
                     const switchedUser = await checkSession({ route: false });
                     if (!switchedUser) {
