@@ -53,6 +53,43 @@ function closeMobileSidebar({ fromHistory = false } = {}) {
     }
 }
 
+function setupMobileSidebarOverflow(overlay, signal) {
+    const menu = overlay.querySelector('.mobile-sidebar-menu');
+    const postButton = menu?.querySelector('.nav-item-post');
+    const menuLinks = menu
+        ? [...menu.querySelectorAll(':scope > a.nav-item')]
+        : [];
+    if (!menu || menuLinks.length === 0) return;
+
+    const overflow = document.createElement('div');
+    overflow.className = 'mobile-nav-overflow-menu';
+    overflow.innerHTML = `
+        <button type="button" class="nav-item mobile-nav-overflow-toggle" aria-expanded="false">
+            <span class="nav-item-icon-container">${ICONS.more}</span>
+            <span class="nav-item-text">その他</span>
+        </button>
+        <div class="mobile-nav-overflow-panel hidden" role="menu"></div>`;
+    const toggle = overflow.querySelector('.mobile-nav-overflow-toggle');
+    const panel = overflow.querySelector('.mobile-nav-overflow-panel');
+
+    const applyOverflow = () => {
+        if (!menu.isConnected) return;
+        menu.insertBefore(overflow, postButton || null);
+        let visibleCount = menuLinks.length;
+        while (menu.scrollHeight > menu.clientHeight && visibleCount > 0) {
+            visibleCount -= 1;
+            panel.prepend(menuLinks[visibleCount]);
+        }
+        if (visibleCount === menuLinks.length) overflow.remove();
+    };
+
+    window.requestAnimationFrame(applyOverflow);
+    toggle?.addEventListener('click', () => {
+        const isOpen = !panel.classList.toggle('hidden');
+        toggle.setAttribute('aria-expanded', String(isOpen));
+    }, { signal });
+}
+
 function openMobileSidebar() {
     if (!isMobileSidebarViewport()) {
         void openAccountSwitcherModal();
@@ -103,6 +140,7 @@ function openMobileSidebar() {
         closeMobileSidebar();
         void openAccountSwitcherModal();
     }, { signal });
+    setupMobileSidebarOverflow(overlay, signal);
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') closeMobileSidebar();
     }, { signal });

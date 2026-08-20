@@ -5812,14 +5812,32 @@ body.pull-to-refresh-enabled {
         display: inline;
     }
 
+    .mobile-nav-overflow-menu {
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .mobile-nav-overflow-panel {
+        display: grid;
+        gap: 0.35rem;
+        padding: 0.25rem 0 0.25rem 0.75rem;
+        border-left: 2px solid var(--border-color);
+    }
+
+    .mobile-nav-overflow-panel.hidden {
+        display: none;
+    }
+
     .mobile-sidebar-menu .nav-item-post {
         position: static;
         right: auto;
         bottom: auto;
         width: 100%;
         height: auto;
+        justify-content: center;
         margin-top: 0.5rem;
         padding: 1rem;
+        text-align: center;
     }
 
     .mobile-sidebar-menu .nav-item-post .nav-item-text {
