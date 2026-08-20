@@ -122,6 +122,12 @@ export function getActivePullToRefreshContext() {
             return { type: 'timeline', key: 'main' };
         }
     }
+    if (currentHash === '#notifications') {
+        const notificationsScreen = document.getElementById('notifications-screen');
+        if (notificationsScreen && !notificationsScreen.classList.contains('hidden')) {
+            return { type: 'notifications' };
+        }
+    }
     const profileMatch = currentHash.match(/^#profile\/(\d+)(?:\/([a-z]+))?$/);
     if (profileMatch) {
         const profileScreen = document.getElementById('profile-screen');
@@ -155,9 +161,12 @@ export function updatePullToRefreshAvailability() {
 let ptrInitialized = false;
 let ptrOnRefresh = null;
 export function setupTimelinePullToRefresh(onRefresh) {
-    if (ptrInitialized) return;
-    ptrInitialized = true;
     ptrOnRefresh = typeof onRefresh === 'function' ? onRefresh : null;
+    if (ptrInitialized) {
+        updatePullToRefreshAvailability();
+        return;
+    }
+    ptrInitialized = true;
 
     const indicator = document.getElementById('pull-to-refresh-indicator');
     if (!indicator) return;
