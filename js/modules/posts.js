@@ -991,8 +991,7 @@ export function openRepostModal(post, triggerButton) {
     quotePostBtn.textContent = '引用ポスト';
     quotePostBtn.onclick = (e) => {
         e.stopPropagation();
-        setQuotingPost(post);
-        openPostModal();
+        openPostModal(null, post);
         menu.remove();
     };
 
