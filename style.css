@@ -511,9 +511,15 @@ img.emoji {
     backdrop-filter: blur(12px);
     z-index: 9;
     border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
 }
 .timeline-tabs {
     display: flex;
+    flex-wrap: nowrap;
+    min-width: max-content;
 }
 .post-form-sticky-container {
     background-color: var(
@@ -523,7 +529,9 @@ img.emoji {
     border-bottom: 1px solid var(--border-color);
 }
 .timeline-tab-button {
-    flex-grow: 1;
+    flex: 0 0 8rem;
+    min-width: 8rem;
+    white-space: nowrap;
     padding: 1rem;
     border: none;
     background: none;
@@ -2432,6 +2440,11 @@ body.dark .recommend-user button {
 
 #profile-tabs {
     display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -2446,16 +2459,32 @@ body.dark .recommend-user button {
 }
 .profile-sub-tabs {
     display: flex;
+    flex-wrap: nowrap;
+    min-width: max-content;
 }
 /* ▲▲▲ 追加ここまで ▲▲▲ */
 
 .search-tabs {
     display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
     border-bottom: 1px solid var(--border-color);
 }
 
+#profile-sub-tabs-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
 .tab-button {
-    flex-grow: 1;
+    flex: 0 0 8rem;
+    min-width: 8rem;
+    white-space: nowrap;
     padding: 1rem;
     border: none;
     background: none;
@@ -2533,6 +2562,8 @@ body.dark .recommend-user button {
 
 .profile-sub-tabs {
     display: flex;
+    flex-wrap: nowrap;
+    min-width: max-content;
 }
 
 .scidlink {
@@ -3844,7 +3875,7 @@ body.dark .recommend-user button {
         right: 4.5rem;
     }
     #profile-tabs .tab-button.mobile-hidden {
-        display: none;
+        display: block;
     }
     .dm-message-form {
         bottom: 4em;
