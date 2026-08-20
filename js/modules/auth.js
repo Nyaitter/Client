@@ -343,8 +343,12 @@ export async function openAccountSwitcherModal() {
                 await openAccountSwitcherModal();
                 return;
             }
-            if (userId === currentId) return;
+            if (userId === currentId) {
+                closeModal();
+                return;
+            }
 
+            closeModal();
             const releaseLoadingScreen = holdLoadingScreen();
             let switchError = null;
             try {
@@ -358,7 +362,6 @@ export async function openAccountSwitcherModal() {
                 );
                 switchError = result.error;
                 if (!switchError) {
-                    closeModal();
                     unsubscribeFromChanges();
                     const switchedUser = await checkSession({ route: false });
                     if (!switchedUser) {
