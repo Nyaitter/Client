@@ -514,12 +514,22 @@ img.emoji {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 .timeline-tabs {
     display: flex;
     flex-wrap: nowrap;
     min-width: max-content;
+}
+
+.timeline-tabs-sticky-container::-webkit-scrollbar,
+#profile-tabs::-webkit-scrollbar,
+.search-tabs::-webkit-scrollbar,
+#profile-sub-tabs-container::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
 }
 .post-form-sticky-container {
     background-color: var(
@@ -2446,7 +2456,8 @@ body.dark .recommend-user button {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -2472,7 +2483,8 @@ body.dark .recommend-user button {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -2480,7 +2492,8 @@ body.dark .recommend-user button {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .tab-button {
