@@ -6869,3 +6869,38 @@ body.pull-to-refresh-enabled {
     color: var(--secondary-text-color);
     text-align: center;
 }
+
+/* グループ管理の見出しと操作メニューは、長い管理項目をスクロールしても常に参照できるよう固定する。 */
+.group-ui-manage-page > .group-ui-page-heading {
+    position: sticky;
+    top: 0;
+    z-index: 35;
+    margin: -1rem -1rem 0;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--main-bg-color);
+}
+
+.group-ui-manage-layout .settings-group-list {
+    top: 5.25rem;
+    z-index: 30;
+    max-height: calc(100dvh - 6rem);
+    overflow-y: auto;
+}
+
+@media (max-width: 760px) {
+    .group-ui-manage-page > .group-ui-page-heading {
+        top: 0;
+        margin: -1rem -1rem 0;
+        padding: 0.7rem 1rem;
+    }
+
+    .group-ui-manage-layout .settings-group-list {
+        position: sticky;
+        top: 5.1rem;
+        z-index: 30;
+        max-height: none;
+        margin-top: 0;
+        background: var(--main-bg-color);
+    }
+}
