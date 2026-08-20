@@ -133,4 +133,41 @@
         userFileUrl,
         apiWebSocketUrl,
     });
+
+    function installLoginApprovalFailureReset() {
+        const loginModal = document.getElementById('login-modal');
+        const approvalWaitModal = document.getElementById('login-approval-wait-modal');
+        const authStep1 = document.getElementById('auth-step1');
+        const authStep2 = document.getElementById('auth-step2');
+        const usernameInput = document.getElementById('username-input');
+        const verificationCode = document.getElementById('verification-code');
+        const profileLink = document.getElementById('pflink');
+        const copyMessage = document.getElementById('copy-message');
+        if (!loginModal || !approvalWaitModal || !authStep1 || !authStep2 || !usernameInput) return;
+
+        let wasWaitingForApproval = false;
+        const resetLoginFlow = () => {
+            usernameInput.value = '';
+            if (verificationCode) verificationCode.textContent = '';
+            if (profileLink) profileLink.href = 'https://scratch.mit.edu/';
+            copyMessage?.classList.add('hidden');
+            authStep2.classList.add('hidden');
+            authStep1.classList.remove('hidden');
+            usernameInput.dispatchEvent(new Event('input', { bubbles: true }));
+            window.setTimeout(() => usernameInput.focus(), 0);
+        };
+
+        const observer = new MutationObserver(() => {
+            const waitingForApproval = !approvalWaitModal.classList.contains('hidden');
+            const returnedToLogin = !loginModal.classList.contains('hidden');
+            if (wasWaitingForApproval && !waitingForApproval && returnedToLogin) {
+                // Defer until the login flow has shown its failure message.
+                window.setTimeout(resetLoginFlow, 0);
+            }
+            wasWaitingForApproval = waitingForApproval;
+        });
+        observer.observe(approvalWaitModal, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    document.addEventListener('DOMContentLoaded', installLoginApprovalFailureReset, { once: true });
 })();
