@@ -126,7 +126,7 @@ export async function router() {
             const subpage = subpageMatch ? subpageMatch[1] : 'posts';
             await showProfileScreen(userId, subpage, showScreen);
         } else if (hash.startsWith('#search/')) {
-            await showSearchResults(decodeURIComponent(hash.substring(8)), showScreen);
+            await showSearchResults(decodeURIComponent(hash.substring(8)), 'posts', showScreen);
         } else if (hash.startsWith('#admin/reports/') && getCurrentUser()?.admin) {
             await showAdminReportDetailScreen(
                 hash.substring('#admin/reports/'.length),

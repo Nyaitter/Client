@@ -518,7 +518,7 @@ function renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, 
     if (canMembers) tabs.push({ id: 'members', label: 'メンバー', description: 'メンバーのロール変更と参加禁止を管理します。' });
     if (canInvite) tabs.push({ id: 'invites', label: '招待・申請', description: 'ユーザーの招待と参加申請を管理します。' });
     if (canAdmin) tabs.push({ id: 'roles', label: 'ロール', description: 'ロールと権限を管理します。' });
-    if (canTransfer) tabs.push({ id: 'danger', label: '危険ゾーン', description: 'オーナー権限の移譲は取り消せません。' });
+    if (canTransfer) tabs.push({ id: 'danger', label: '危険ゾーン', description: 'オーナー権限の移譲とグループ削除は取り消せません。' });
     return tabs;
 }
 
@@ -559,7 +559,7 @@ async function renderGroupManage(content, group) {
                 }).join('') || '<p class="settings-help-text">メンバーがいません。</p>'}</div>`)}</section>` : ''}
                 ${canInvite ? `<section class="settings-group-panel" data-group-manage-panel="invites" ${selectedTab === 'invites' ? '' : 'hidden'}>${renderGroupSection('ユーザーを招待', `<form id="group-invite-form" class="group-ui-inline-form"><label>NyaitterID<input name="user_id" inputmode="numeric" required placeholder="#0000の数字部分"></label><button type="submit" class="settings-primary-button">招待を送信</button></form>`)}${renderGroupSection('参加申請', joinRequests.length ? `<div class="settings-sessions-list">${joinRequests.map((item) => `<article class="settings-session-item"><div class="settings-session-details"><span class="settings-session-title">ユーザー #${Number(item.userId ?? item.user_id)}</span><p>参加申請を確認してください。</p></div><div class="settings-session-actions"><button type="button" class="settings-primary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="approve">承認</button><button type="button" class="group-ui-secondary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>` : '<p class="settings-help-text">保留中の参加申請はありません。</p>')}</section>` : ''}
                 ${canAdmin ? `<section class="settings-group-panel" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロール', `<div id="group-role-list" class="settings-sessions-list">${roles.map((role) => `<article class="settings-session-item"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(role.name)}${role.is_system ? '<span class="settings-session-current">システム</span>' : ''}</span><p>${(role.permissions || []).map((permission) => escapeHTML(PERMISSION_LABELS[permission] || permission)).join('、') || '権限なし'}</p></div>${role.is_system ? '' : `<div class="settings-session-actions"><button type="button" class="settings-session-revoke-button" data-delete-role="${escapeHTML(String(role.id))}">削除</button></div>`}</article>`).join('')}</div><form id="group-role-form" class="group-role-form"><div class="group-role-form-heading"><h5>ロールを追加</h5><p class="settings-help-text">ロール名と許可する操作を選択してください。</p></div><label class="group-role-name-field">ロール名<input name="name" maxlength="50" required></label><fieldset class="group-role-permissions"><legend>権限</legend><div>${Object.entries(PERMISSION_LABELS).map(([key, label]) => `<label><input type="checkbox" name="permissions" value="${key}"> <span>${label}</span></label>`).join('')}</div></fieldset><div class="settings-save-row"><button type="submit" class="settings-primary-button">ロールを追加</button></div></form>`)}</section>` : ''}
-                ${canTransfer ? `<section class="settings-group-panel" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>${renderGroupSection('オーナー権限を移譲', `<form id="group-transfer-owner-form" class="group-ui-inline-form"><label>新しいオーナーのNyaitterID<input name="user_id" inputmode="numeric" required></label><button type="submit" class="settings-danger-button">権限を移譲</button></form>`, 'この操作は取り消せません。')}</section>` : ''}
+                ${canTransfer ? `<section class="settings-group-panel" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>${renderGroupSection('オーナー権限を移譲', `<form id="group-transfer-owner-form" class="group-ui-inline-form"><label>新しいオーナーのNyaitterID<input name="user_id" inputmode="numeric" required></label><button type="submit" class="settings-danger-button">権限を移譲</button></form>`, 'この操作は取り消せません。')}${renderGroupSection('グループを削除', '<button type="button" id="delete-group-button" class="settings-danger-button">グループを削除</button>', 'グループと紐づくすべてのポストを完全に削除します。この操作は取り消せません。')}</section>` : ''}
             </div>
         </div>
     </main>`;
@@ -822,6 +822,19 @@ function bindGroupManageEvents(group) {
             window.location.hash = `#group/${group.id}`;
         } catch (error) {
             showAppAlert(error.message || 'オーナー権限を移譲できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    });
+    document.getElementById('delete-group-button')?.addEventListener('click', async () => {
+        if (!await showAppConfirm(`「${group.name || 'このグループ'}」を削除しますか？紐づくポストもすべて削除されます。`)) return;
+        if (!await showAppConfirm('この操作は取り消せません。本当にグループを削除しますか？')) return;
+        try {
+            showLoading(true);
+            await request(groupPath(group.id), { method: 'DELETE' });
+            window.location.hash = '#groups';
+        } catch (error) {
+            showAppAlert(error.message || 'グループを削除できませんでした。');
         } finally {
             showLoading(false);
         }

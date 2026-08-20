@@ -1,3 +1,4 @@
+import { apiRequest } from '../api.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import {
@@ -26,6 +27,40 @@ import { escapeHTML, showLoading } from '../utils/helpers.js';
 
 let activeSearchRequestVersion = 0;
 
+const GROUP_VISIBILITY_LABELS = {
+    open: 'Open',
+    open_invite: 'OpenInvite',
+};
+
+function getGroupImageUrl(value) {
+    const image = typeof value === 'string' ? value.trim() : '';
+    if (!image) return '';
+    if (/^data:image\//i.test(image) || /^https?:\/\//i.test(image)) return image;
+    const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(image);
+    return typeof configuredUrl === 'string' ? configuredUrl : image;
+}
+
+function renderGroupSearchResult(group) {
+    const id = encodeURIComponent(String(group?.id || ''));
+    const name = escapeHTML(group?.name || '無題のグループ');
+    const description = escapeHTML(group?.description || '説明はありません。');
+    const visibility = escapeHTML(GROUP_VISIBILITY_LABELS[group?.visibility] || group?.visibility || 'Open');
+    const memberCount = Math.max(0, Number(group?.member_count || 0));
+    const imageUrl = getGroupImageUrl(group?.icon_data);
+    const avatar = imageUrl
+        ? `<img class="group-ui-avatar" src="${escapeHTML(imageUrl)}" alt="">`
+        : `<div class="group-ui-avatar group-ui-avatar-fallback" aria-hidden="true">${ICONS.group}</div>`;
+    return `<article class="settings-session-item group-ui-list-item">
+        <a class="group-ui-list-link" href="#group/${id}">
+            ${avatar}
+            <div class="settings-session-details">
+                <span class="settings-session-title">${name}</span>
+                <p>${visibility} ・ ${memberCount}人<br>${description}</p>
+            </div>
+        </a>
+    </article>`;
+}
+
 export async function showSearchResults(query, tab = 'posts', showScreenFn = null) {
     DOM.pageHeader.innerHTML = `
         <div class="header-search-bar">
@@ -37,6 +72,7 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
         <div class="search-tabs" id="search-tabs-container">
             <button class="tab-button ${tab === 'posts' ? 'active' : ''}" data-search-tab="posts">ポスト</button>
             <button class="tab-button ${tab === 'users' ? 'active' : ''}" data-search-tab="users">ユーザー</button>
+            <button class="tab-button ${tab === 'groups' ? 'active' : ''}" data-search-tab="groups">グループ</button>
         </div>
     `;
 
@@ -86,7 +122,19 @@ export async function loadSearchTabContent(query, tab) {
     const contentDiv = DOM.searchResultsContent;
     contentDiv.innerHTML = '';
 
-    if (tab === 'users') {
+    if (tab === 'groups') {
+        const { data, error } = await apiRequest(`/server/api/groups?q=${encodeURIComponent(String(query || ''))}&limit=100`);
+        if (searchRequestVersion !== activeSearchRequestVersion || getCurrentSearchTab() !== 'groups') return;
+        if (error) {
+            contentDiv.innerHTML = `<p class="error-message">グループの検索に失敗しました。${escapeHTML(error.message || '')}</p>`;
+        } else {
+            const groups = Array.isArray(data?.groups) ? data.groups : [];
+            contentDiv.innerHTML = groups.length
+                ? `<div class="settings-sessions-list">${groups.map(renderGroupSearchResult).join('')}</div>`
+                : '<p class="settings-help-text">該当する公開グループはありません。</p>';
+        }
+        showLoading(false);
+    } else if (tab === 'users') {
         const normalizedQuery = String(query || '')
             .normalize('NFKC')
             .trim()
