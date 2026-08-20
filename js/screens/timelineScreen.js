@@ -13,6 +13,7 @@ import {
 import {
     createPostFormHTML,
     attachPostFormListeners,
+    syncPostFormDestinationWithTimeline,
 } from '../modules/posts.js';
 import { setupTimelinePullToRefresh } from '../modules/theme.js';
 import { loadPostsWithPagination } from '../modules/pagination.js';
@@ -101,6 +102,12 @@ export async function switchTimelineTab(
     document
         .querySelectorAll('.timeline-tab-button')
         .forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab));
+    const groupName = groupId
+        ? [...document.querySelectorAll('.timeline-tab-button')]
+            .find((button) => button.dataset.tab === tab)
+            ?.textContent?.trim()
+        : '';
+    syncPostFormDestinationWithTimeline(DOM.postFormContainer, groupId, groupName);
 
     if (getPostLoadObserver()) getPostLoadObserver().disconnect();
     DOM.timeline.innerHTML = '';

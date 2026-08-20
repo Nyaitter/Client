@@ -136,7 +136,7 @@ export function getActivePullToRefreshContext() {
             return { type: 'post-detail', postId: Number(postDetailMatch[1]) };
         }
     }
-    const profileMatch = currentHash.match(/^#profile\/(\d+)(?:\/([a-z]+))?$/);
+    const profileMatch = currentHash.match(/^#profile\/(\d+)(?:\/([^/]+))?$/);
     if (profileMatch) {
         const profileScreen = document.getElementById('profile-screen');
         if (profileScreen && !profileScreen.classList.contains('hidden')) {

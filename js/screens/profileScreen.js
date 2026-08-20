@@ -310,13 +310,18 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
             }
         }
 
-        let sharedGroups = [];
-        if (getCurrentUser()) {
-            try {
-                const { data, error } = await apiRequest(`/server/api/groups/shared/${encodeURIComponent(user.id)}`);
-                if (!error) sharedGroups = Array.isArray(data?.groups) ? data.groups : [];
-            } catch (_) {}
+        const sharedGroups = Array.isArray(user.groups) ? user.groups : [];
+        const requestedGroupId = String(subpage || '').startsWith('group:')
+            ? String(subpage).slice('group:'.length)
+            : '';
+        if (
+            requestedGroupId &&
+            !sharedGroups.some((group) => String(group.id) === requestedGroupId)
+        ) {
+            resetProfileTabNavigation(user.id, 'posts');
+            return;
         }
+
         const mainTabs = [
             { key: 'posts', name: 'ポスト' },
             { key: 'replies', name: '返信' },

@@ -59,22 +59,64 @@ function setupMobileSidebarOverflow(overlay, signal) {
     const menuLinks = menu
         ? [...menu.querySelectorAll(':scope > a.nav-item')]
         : [];
-    if (!menu || menuLinks.length === 0) return;
+    if (!menu || menuLinks.length === 0) return () => false;
 
     const overflow = document.createElement('div');
-    overflow.className = 'mobile-nav-overflow-menu';
+    overflow.className = 'nav-overflow-menu mobile-nav-overflow-menu';
     overflow.innerHTML = `
-        <button type="button" class="nav-item mobile-nav-overflow-toggle" aria-expanded="false">
+        <button type="button" class="nav-item nav-overflow-toggle" aria-expanded="false" aria-controls="mobile-nav-overflow-panel">
             <span class="nav-item-icon-container">${ICONS.more}</span>
             <span class="nav-item-text">その他</span>
         </button>
-        <div class="mobile-nav-overflow-panel hidden" role="menu"></div>`;
-    const toggle = overflow.querySelector('.mobile-nav-overflow-toggle');
-    const panel = overflow.querySelector('.mobile-nav-overflow-panel');
+        <div id="mobile-nav-overflow-panel" class="nav-overflow-panel hidden" role="menu"></div>`;
+    const toggle = overflow.querySelector('.nav-overflow-toggle');
+    const panel = overflow.querySelector('.nav-overflow-panel');
+    let scheduled = false;
 
+    const closeOverflow = () => {
+        const wasOpen = overflow.classList.contains('is-open');
+        overflow.classList.remove('is-open');
+        panel.classList.add('hidden');
+        toggle?.setAttribute('aria-expanded', 'false');
+        return wasOpen;
+    };
+    const positionOverflowPanel = () => {
+        if (!toggle || panel.classList.contains('hidden')) return;
+        const edgeMargin = 8;
+        const gap = 6;
+        const toggleRect = toggle.getBoundingClientRect();
+        const panelWidth = Math.min(240, Math.max(0, window.innerWidth - edgeMargin * 2));
+        panel.style.width = `${panelWidth}px`;
+        panel.style.maxHeight = `${Math.max(0, window.innerHeight - edgeMargin * 2)}px`;
+
+        const panelHeight = panel.offsetHeight;
+        const panelWidthAfterLayout = panel.offsetWidth;
+        let top = toggleRect.bottom + gap;
+        if (top + panelHeight > window.innerHeight - edgeMargin) {
+            top = toggleRect.top - panelHeight - gap;
+        }
+        top = Math.max(edgeMargin, Math.min(top, window.innerHeight - panelHeight - edgeMargin));
+        const left = Math.max(
+            edgeMargin,
+            Math.min(toggleRect.left, window.innerWidth - panelWidthAfterLayout - edgeMargin),
+        );
+        panel.style.top = `${top}px`;
+        panel.style.left = `${left}px`;
+    };
+    const toggleOverflow = () => {
+        const isOpen = overflow.classList.toggle('is-open');
+        panel.classList.toggle('hidden', !isOpen);
+        toggle?.setAttribute('aria-expanded', String(isOpen));
+        if (isOpen) positionOverflowPanel();
+    };
     const applyOverflow = () => {
+        scheduled = false;
         if (!menu.isConnected) return;
         menu.insertBefore(overflow, postButton || null);
+        menuLinks.forEach((item) => menu.insertBefore(item, overflow));
+        panel.replaceChildren();
+        closeOverflow();
+
         let visibleCount = menuLinks.length;
         while (menu.scrollHeight > menu.clientHeight && visibleCount > 0) {
             visibleCount -= 1;
@@ -82,12 +124,22 @@ function setupMobileSidebarOverflow(overlay, signal) {
         }
         if (visibleCount === menuLinks.length) overflow.remove();
     };
+    const scheduleOverflow = () => {
+        if (scheduled) return;
+        scheduled = true;
+        window.requestAnimationFrame(applyOverflow);
+    };
 
-    window.requestAnimationFrame(applyOverflow);
-    toggle?.addEventListener('click', () => {
-        const isOpen = !panel.classList.toggle('hidden');
-        toggle.setAttribute('aria-expanded', String(isOpen));
+    scheduleOverflow();
+    window.addEventListener('resize', scheduleOverflow, { passive: true, signal });
+    toggle?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleOverflow();
     }, { signal });
+    document.addEventListener('click', (event) => {
+        if (!overflow.contains(event.target)) closeOverflow();
+    }, { signal });
+    return closeOverflow;
 }
 
 function openMobileSidebar() {
@@ -146,14 +198,26 @@ function openMobileSidebar() {
             void openAccountSwitcherModal();
             return;
         }
-        if (target.closest('a.nav-item')) {
-            // その他パネルへ移動した項目を含め、全ナビゲーション項目で閉じる。
-            closeMobileSidebar();
+        const navigationItem = target.closest('a.nav-item');
+        if (navigationItem) {
+            event.preventDefault();
+            event.stopPropagation();
+            const destinationHash = navigationItem.getAttribute('href') || '#';
+            closeMobileSidebar({ fromHistory: true });
+            window.history.replaceState(
+                { ...(window.history.state || {}), nyaitterMobileSidebar: false },
+                '',
+                window.location.href,
+            );
+            if (destinationHash !== (window.location.hash || '#')) {
+                window.location.hash = destinationHash;
+            }
         }
     }, { signal });
-    setupMobileSidebarOverflow(overlay, signal);
+    const closeMobileSidebarOverflow = setupMobileSidebarOverflow(overlay, signal);
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeMobileSidebar();
+        if (event.key !== 'Escape') return;
+        if (!closeMobileSidebarOverflow()) closeMobileSidebar();
     }, { signal });
 
     let startX = null;

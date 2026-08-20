@@ -409,7 +409,7 @@ export async function showGroupDetailScreen(groupId, section = 'overview', showS
         document.getElementById('page-header').innerHTML = `<div class="header-with-back-button"><button class="header-back-btn" type="button" id="group-back-btn">${ICONS.back}</button><h2 id="page-title">${escapeHTML(group.name || 'グループ')}</h2></div>`;
         document.getElementById('group-back-btn')?.addEventListener('click', () => { window.location.hash = '#groups'; });
         if (section === 'manage') await renderGroupManage(content, group);
-        else renderGroupOverview(content, group);
+        else renderGroupOverview(content, group, data.join_request || null);
     } catch (error) {
         content.innerHTML = `<p class="error-message">グループを読み込めませんでした。${escapeHTML(error.message || '')}</p>`;
     } finally {
@@ -417,9 +417,11 @@ export async function showGroupDetailScreen(groupId, section = 'overview', showS
     }
 }
 
-function renderGroupOverview(content, group) {
+function renderGroupOverview(content, group, pendingJoinRequest = null) {
     const membership = group.membership;
     const isActive = membership?.status === 'active';
+    const hasPendingJoinRequest = Boolean(pendingJoinRequest);
+    const canJoin = !membership || (membership.status === 'pending' && group.visibility === 'open');
     const canManage = isGroupAdmin(group) || hasGroupPermission(group, 'profile') || hasGroupPermission(group, 'invite') || hasGroupPermission(group, 'ban');
     const groupId = escapeHTML(String(group.id));
     content.innerHTML = `<main class="group-ui-page">
@@ -429,8 +431,8 @@ function renderGroupOverview(content, group) {
                 ${groupAvatar(group, 'group-ui-profile-avatar')}
                 <div class="group-ui-profile-copy"><h3>${escapeHTML(group.name || '')}</h3><p class="settings-group-description">${groupMeta(group)}</p><p>${escapeHTML(group.description || '説明はありません。')}</p></div>
                 <div class="group-ui-profile-actions">
-                    ${!membership ? '<button type="button" class="settings-primary-button" id="join-group-btn">参加する</button>' : ''}
-                    ${membership?.status === 'pending' ? '<span class="settings-session-current">参加申請を確認中</span>' : ''}
+                    ${canJoin && !hasPendingJoinRequest ? '<button type="button" class="settings-primary-button" id="join-group-btn">参加する</button>' : ''}
+                    ${hasPendingJoinRequest ? '<button type="button" class="settings-primary-button" disabled aria-disabled="true">承認待ち</button>' : ''}
                     ${membership?.status === 'invited' ? '<span class="settings-session-current">招待に応答してください</span>' : ''}
                     ${isActive && !isGroupOwner(group) ? '<button type="button" class="group-ui-secondary-button" id="leave-group-btn">退出する</button>' : ''}
                     ${canManage ? `<a class="group-ui-secondary-button" href="#group/${groupId}/manage">管理</a>` : ''}
@@ -464,7 +466,7 @@ async function joinGroup(group) {
         showLoading(true);
         const data = await request(groupPath(group.id, '/join'), { method: 'POST', body: {} });
         if (data.pending) await showAppAlert('参加申請を送信しました。');
-        window.location.hash = `#group/${group.id}`;
+        await showGroupDetailScreen(group.id);
     } catch (error) {
         showAppAlert(error.message || '参加できませんでした。');
     } finally {
@@ -477,7 +479,7 @@ async function leaveGroup(group) {
     try {
         showLoading(true);
         await request(groupPath(group.id, '/leave'), { method: 'POST', body: {} });
-        window.location.hash = '#groups';
+        await showGroupDetailScreen(group.id);
     } catch (error) {
         showAppAlert(error.message || '退出できませんでした。');
     } finally {
