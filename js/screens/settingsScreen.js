@@ -1160,19 +1160,22 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
 
     const dangerZone = document.querySelector('.settings-danger-zone');
     if (dangerZone) {
+        const isImposter = Boolean(getCurrentUser()?.is_imposter);
         let dangerZoneHTML = `
             <section class="settings-account-identity" aria-labelledby="settings-nyaitter-id-title">
                 <h4 id="settings-nyaitter-id-title">NyaitterID</h4>
                 <p class="settings-help-text">再割り当てをした場合元のIDに戻すことはできません。</p>
                 <button type="button" id="settings-reassign-nyaitter-id-btn">NyaitterIDを再割り当て</button>
             </section>
-            <section class="settings-account-delete" aria-labelledby="settings-account-delete-title">
-                <h4 id="settings-account-delete-title">NyaitterIDの破棄</h4>
-                <p class="settings-help-text">あなたのNyaitterIDを破棄し、全てのデータを削除します。この操作は取り消せません。</p>
-                <button type="button" id="settings-delete-account-btn" class="settings-danger-button">NyaitterIDを破棄</button>
-            </section>
+            ${isImposter ? '' : `
+                <section class="settings-account-delete" aria-labelledby="settings-account-delete-title">
+                    <h4 id="settings-account-delete-title">NyaitterIDの破棄</h4>
+                    <p class="settings-help-text">あなたのNyaitterIDを破棄し、全てのデータを削除します。この操作は取り消せません。</p>
+                    <button type="button" id="settings-delete-account-btn" class="settings-danger-button">NyaitterIDを破棄</button>
+                </section>
+            `}
             <button type="button" id="settings-account-switcher-btn">アカウント切替</button>
-            <button type="button" id="settings-logout-btn">ログアウト</button>
+            ${isImposter ? '' : '<button type="button" id="settings-logout-btn">ログアウト</button>'}
         `;
         if (getCurrentUser().admin) {
             dangerZoneHTML += `<a href="#admin/logs" id="settings-showlog-btn" style="display:block;margin-top:0.5rem;">アクセスログ</a>`;
