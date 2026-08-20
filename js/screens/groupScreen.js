@@ -507,7 +507,6 @@ function renderGroupProfileForm(group) {
         <textarea id="group-profile-description" name="description" maxlength="2000" rows="4">${escapeHTML(group?.description || '')}</textarea>
         <label for="group-profile-visibility">公開レベル</label>
         <select id="group-profile-visibility" name="visibility" class="settings-select">${visibilityOptions(group?.visibility || 'open')}</select>
-        <div class="settings-save-row"><button type="submit" class="settings-primary-button">変更を保存</button></div>
     </form>`;
 }
 
@@ -573,6 +572,9 @@ function bindGroupProfileForm(group) {
     const form = document.getElementById('group-profile-form');
     if (!form) return;
 
+    const nameInput = document.getElementById('group-profile-name');
+    const descriptionInput = document.getElementById('group-profile-description');
+    const visibilityInput = document.getElementById('group-profile-visibility');
     const iconInput = document.getElementById('group-profile-icon-input');
     const headerInput = document.getElementById('group-profile-header-input');
     const iconPreview = document.getElementById('group-profile-icon-picker');
@@ -581,47 +583,39 @@ function bindGroupProfileForm(group) {
     let newHeaderDataUrl = null;
     let resetIcon = false;
     let resetHeader = false;
+    let saveInFlight = false;
+    let saveQueued = false;
+    let savedName = String(group?.name || '');
+    let savedDescription = String(group?.description || '');
+    let savedVisibility = String(group?.visibility || 'open');
 
-    iconPreview?.addEventListener('click', () => iconInput?.click());
-    headerPreview?.addEventListener('click', () => headerInput?.click());
-    iconInput?.addEventListener('change', async (event) => {
-        try {
-            const file = event.target.files?.[0];
-            if (!file) return;
-            newIconDataUrl = await resizeImageToDataUrl(file, 300, 300);
-            resetIcon = false;
-            setModalIconPreview(iconPreview, newIconDataUrl);
-        } catch (error) {
-            showAppAlert(error.message || 'アイコン画像を選択できませんでした。');
-        }
-    });
-    headerInput?.addEventListener('change', async (event) => {
-        try {
-            const file = event.target.files?.[0];
-            if (!file) return;
-            newHeaderDataUrl = await resizeImageToDataUrl(file, 1500, 600);
-            resetHeader = false;
-            setModalHeaderPreview(headerPreview, newHeaderDataUrl);
-        } catch (error) {
-            showAppAlert(error.message || 'ヘッダー画像を選択できませんでした。');
-        }
-    });
-    document.getElementById('reset-group-profile-icon')?.addEventListener('click', () => {
-        resetIcon = true;
-        newIconDataUrl = null;
-        if (iconInput) iconInput.value = '';
-        setModalIconPreview(iconPreview);
-    });
-    document.getElementById('reset-group-profile-header')?.addEventListener('click', () => {
-        resetHeader = true;
-        newHeaderDataUrl = null;
-        if (headerInput) headerInput.value = '';
-        setModalHeaderPreview(headerPreview);
-    });
+    const hasPendingChanges = () => (
+        String(nameInput?.value || '') !== savedName
+        || String(descriptionInput?.value || '') !== savedDescription
+        || String(visibilityInput?.value || '') !== savedVisibility
+        || resetIcon
+        || resetHeader
+        || Boolean(newIconDataUrl)
+        || Boolean(newHeaderDataUrl)
+    );
 
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        if (!form.reportValidity()) return;
+    const updateSavedGroup = (updatedGroup = {}) => {
+        Object.assign(group, updatedGroup);
+        savedName = String(group?.name || '');
+        savedDescription = String(group?.description || '');
+        savedVisibility = String(group?.visibility || 'open');
+        document.getElementById('page-title')?.replaceChildren(document.createTextNode(savedName || 'グループ'));
+        const heading = document.querySelector('.group-ui-page-heading h3');
+        if (heading) heading.textContent = `${savedName} の${document.querySelector('[data-group-manage-tab].active')?.dataset.groupManageTitle || '管理'}`;
+    };
+
+    const saveProfile = async () => {
+        if (saveInFlight) {
+            saveQueued = true;
+            return;
+        }
+        if (!hasPendingChanges() || !form.reportValidity()) return;
+        saveInFlight = true;
         const values = new FormData(form);
         const body = {
             name: values.get('name'),
@@ -633,7 +627,6 @@ function bindGroupProfileForm(group) {
         const shouldReplaceIcon = resetIcon || Boolean(newIconDataUrl);
         const shouldReplaceHeader = resetHeader || Boolean(newHeaderDataUrl);
         try {
-            showLoading(true);
             if (resetIcon) {
                 body.icon_data = null;
             } else if (newIconDataUrl) {
@@ -651,21 +644,83 @@ function bindGroupProfileForm(group) {
             if (shouldReplaceIcon && isStoredImageId(group?.icon_data)) previousFileIds.add(group.icon_data);
             if (shouldReplaceHeader && isStoredImageId(group?.header_image)) previousFileIds.add(group.header_image);
 
-            await request(groupPath(group.id), { method: 'PATCH', body });
+            const data = await request(groupPath(group.id), { method: 'PATCH', body });
+            if (shouldReplaceIcon) {
+                group.icon_data = body.icon_data;
+                newIconDataUrl = null;
+                resetIcon = false;
+            }
+            if (shouldReplaceHeader) {
+                group.header_image = body.header_image;
+                newHeaderDataUrl = null;
+                resetHeader = false;
+            }
+            updateSavedGroup(data.group || {});
             if (previousFileIds.size > 0) {
                 void deleteFilesViaEdgeFunction([...previousFileIds]).catch((error) => {
                     console.warn('グループの古い画像を削除できませんでした。', error);
                 });
             }
-            await refreshGroupManage(group);
         } catch (error) {
             if (uploadedFileIds.length > 0) {
                 await deleteFilesViaEdgeFunction(uploadedFileIds).catch(() => {});
             }
             showAppAlert(error.message || 'プロフィールを更新できませんでした。');
         } finally {
-            showLoading(false);
+            saveInFlight = false;
+            if (saveQueued) {
+                saveQueued = false;
+                void saveProfile();
+            }
         }
+    };
+
+    iconPreview?.addEventListener('click', () => iconInput?.click());
+    headerPreview?.addEventListener('click', () => headerInput?.click());
+    iconInput?.addEventListener('change', async (event) => {
+        try {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            newIconDataUrl = await resizeImageToDataUrl(file, 300, 300);
+            resetIcon = false;
+            setModalIconPreview(iconPreview, newIconDataUrl);
+            void saveProfile();
+        } catch (error) {
+            showAppAlert(error.message || 'アイコン画像を選択できませんでした。');
+        }
+    });
+    headerInput?.addEventListener('change', async (event) => {
+        try {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            newHeaderDataUrl = await resizeImageToDataUrl(file, 1500, 600);
+            resetHeader = false;
+            setModalHeaderPreview(headerPreview, newHeaderDataUrl);
+            void saveProfile();
+        } catch (error) {
+            showAppAlert(error.message || 'ヘッダー画像を選択できませんでした。');
+        }
+    });
+    document.getElementById('reset-group-profile-icon')?.addEventListener('click', () => {
+        resetIcon = true;
+        newIconDataUrl = null;
+        if (iconInput) iconInput.value = '';
+        setModalIconPreview(iconPreview);
+        void saveProfile();
+    });
+    document.getElementById('reset-group-profile-header')?.addEventListener('click', () => {
+        resetHeader = true;
+        newHeaderDataUrl = null;
+        if (headerInput) headerInput.value = '';
+        setModalHeaderPreview(headerPreview);
+        void saveProfile();
+    });
+    nameInput?.addEventListener('blur', () => { void saveProfile(); });
+    descriptionInput?.addEventListener('blur', () => { void saveProfile(); });
+    visibilityInput?.addEventListener('change', () => { void saveProfile(); });
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        void saveProfile();
     });
 }
 
