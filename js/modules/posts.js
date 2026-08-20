@@ -1102,6 +1102,12 @@ export function openPostModal(replyTo = null, quotingPost = null) {
     modalFormContainer.innerHTML = createPostFormHTML(true);
     attachPostFormListeners(modalFormContainer);
 
+    if (replyTo?.isPrivate || replyTo?.lock) {
+        const lockButton = modalFormContainer.querySelector('.post-lock-button');
+        lockButton?.classList.add('active');
+        lockButton?.setAttribute('aria-pressed', 'true');
+    }
+
     const replyInfo = modalFormContainer.querySelector('#reply-info');
     if (replyTo && replyInfo) {
         replyInfo.innerHTML = `返信先: <strong>@${escapeHTML(replyTo.username || replyTo.name || '')}</strong>`;
