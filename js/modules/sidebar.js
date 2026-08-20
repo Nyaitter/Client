@@ -313,7 +313,7 @@ export async function updateNavAndSidebars() {
             {
                 name: 'グループ',
                 hash: '#groups',
-                icon: ICONS.profile,
+                icon: ICONS.group,
             },
         );
         if (getCurrentUser().admin) {
