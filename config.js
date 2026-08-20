@@ -134,6 +134,31 @@
         apiWebSocketUrl,
     });
 
+    function installGetCodeButtonFailureRecovery() {
+        const getCodeButton = document.getElementById('get-code-btn');
+        const errorMessage = document.getElementById('error-message');
+        if (!getCodeButton || !errorMessage) return;
+
+        const restoreAfterVisibleError = () => {
+            if (errorMessage.classList.contains('hidden')) return;
+            // login.jsの取得処理がfinallyを終えた後に復元する。Turnstileが必要な場合も、
+            // 次回クリック時の既存検証でトークン未完了を拒否するため認証要件は維持される。
+            window.setTimeout(() => {
+                if (!errorMessage.classList.contains('hidden')) {
+                    getCodeButton.disabled = false;
+                }
+            }, 0);
+        };
+
+        new MutationObserver(restoreAfterVisibleError).observe(errorMessage, {
+            attributes: true,
+            attributeFilter: ['class'],
+            childList: true,
+            characterData: true,
+            subtree: true,
+        });
+    }
+
     function installLoginApprovalFailureReset() {
         const loginModal = document.getElementById('login-modal');
         const approvalWaitModal = document.getElementById('login-approval-wait-modal');
@@ -169,5 +194,8 @@
         observer.observe(approvalWaitModal, { attributes: true, attributeFilter: ['class'] });
     }
 
-    document.addEventListener('DOMContentLoaded', installLoginApprovalFailureReset, { once: true });
+    document.addEventListener('DOMContentLoaded', () => {
+        installGetCodeButtonFailureRecovery();
+        installLoginApprovalFailureReset();
+    }, { once: true });
 })();
