@@ -691,7 +691,11 @@ function setPostingAccount(container, account) {
         selector.setAttribute('aria-label', selector.title);
     }
     const announcementButton = container.querySelector('.post-announcement-button');
-    if (announcementButton) announcementButton.hidden = !account.admin;
+    if (announcementButton && !getPostingGroup(container)) {
+        announcementButton.hidden = !account.admin;
+        announcementButton.title = 'Nyaitterアナウンス';
+        announcementButton.setAttribute('aria-label', announcementButton.title);
+    }
 }
 
 async function openPostAccountMenu(container) {
@@ -790,14 +794,7 @@ export function createPostFormHTML(isModal = false) {
                     <button type="button" class="post-lock-button float-right" title="プライベート" aria-pressed="false">
                         ${ICONS.lock}
                     </button>
-                    ${
-                        getCurrentUser()?.admin
-                            ? `<button type="button" class="post-announcement-button float-right" title="Nyaitterアナウンス" aria-pressed="false">
-                        ${ICONS.megaphone}
-                    </button>`
-                            : ''
-                    }
-                    <button type="button" class="post-group-announcement-button float-right hidden" title="グループアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
+                    <button type="button" class="post-announcement-button float-right hidden" title="Nyaitterアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
                     <span class="float-clear"></span>
                 </div>
             </div>
@@ -831,8 +828,7 @@ function setPostingGroup(container, group = null, { locked = false } = {}) {
     container._postGroupLocked = locked;
     const destinationButton = container.querySelector('.post-group-button');
     const lockButton = container.querySelector('.post-lock-button');
-    const globalAnnouncementButton = container.querySelector('.post-announcement-button');
-    const groupAnnouncementButton = container.querySelector('.post-group-announcement-button');
+    const announcementButton = container.querySelector('.post-announcement-button');
     const groupName = group?.name || 'Nyaitter';
     if (destinationButton) {
         destinationButton.disabled = locked;
@@ -849,20 +845,13 @@ function setPostingGroup(container, group = null, { locked = false } = {}) {
             lockButton.setAttribute('aria-pressed', 'false');
         }
     }
-    if (globalAnnouncementButton) {
-        globalAnnouncementButton.classList.toggle('hidden', Boolean(group));
-        if (group) {
-            globalAnnouncementButton.classList.remove('active');
-            globalAnnouncementButton.setAttribute('aria-pressed', 'false');
-        }
-    }
-    if (groupAnnouncementButton) {
-        const visible = Boolean(group?.canAnnounce);
-        groupAnnouncementButton.classList.toggle('hidden', !visible);
-        if (!visible) {
-            groupAnnouncementButton.classList.remove('active');
-            groupAnnouncementButton.setAttribute('aria-pressed', 'false');
-        }
+    if (announcementButton) {
+        const visible = group ? Boolean(group.canAnnounce) : Boolean(getCurrentUser()?.admin);
+        announcementButton.hidden = !visible;
+        announcementButton.title = group ? 'グループアナウンス' : 'Nyaitterアナウンス';
+        announcementButton.setAttribute('aria-label', announcementButton.title);
+        announcementButton.classList.remove('active');
+        announcementButton.setAttribute('aria-pressed', 'false');
     }
 }
 
@@ -926,13 +915,6 @@ async function openPostGroupMenu(container) {
     }
 }
 
-function toggleGroupAnnouncement(container) {
-    const button = container?.querySelector('.post-group-announcement-button');
-    if (!button || button.classList.contains('hidden')) return;
-    button.classList.toggle('active');
-    button.setAttribute('aria-pressed', String(button.classList.contains('active')));
-}
-
 export function handleCtrlEnter(e) {
     if (e.ctrlKey && e.key === 'Enter') {
         e.target
@@ -965,9 +947,6 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
     });
     container.querySelector('.post-group-button')?.addEventListener('click', () => {
         void openPostGroupMenu(container);
-    });
-    container.querySelector('.post-group-announcement-button')?.addEventListener('click', () => {
-        toggleGroupAnnouncement(container);
     });
     container.querySelector('#post-submit-button')?.addEventListener('click', () => {
         handlePostSubmit(container, onPostSuccess);
@@ -1115,8 +1094,8 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     const maskActive = container.querySelector('.post-mask-button')?.classList.contains('active') || false;
     const lockActive = container.querySelector('.post-lock-button')?.classList.contains('active') || false;
     const announcementActive = container.querySelector('.post-announcement-button')?.classList.contains('active') || false;
-    const groupAnnouncementActive = container.querySelector('.post-group-announcement-button')?.classList.contains('active') || false;
     const postingGroup = getPostingGroup(container);
+    const groupAnnouncementActive = Boolean(postingGroup && announcementActive);
     if (postingGroup && getQuotingPost()) {
         return showAppAlert('引用・リポストはグループ投稿として送信できません。');
     }
@@ -1159,9 +1138,9 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 p_attachments: attachmentsData.length > 0 ? attachmentsData : null,
                 p_mask: maskActive,
                 p_lock: lockActive,
-                p_announcement: announcementActive,
+                p_announcement: Boolean(!postingGroup && announcementActive),
                 p_group_id: postingGroup?.id || null,
-                p_group_announcement: Boolean(postingGroup && groupAnnouncementActive),
+                p_group_announcement: groupAnnouncementActive,
                 p_as_user_id: postingAccountId,
             })
             .single();

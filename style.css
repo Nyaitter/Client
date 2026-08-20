@@ -772,8 +772,7 @@ img.emoji {
 .post-mask-button,
     .post-lock-button,
     .post-announcement-button,
-    .post-group-button,
-    .post-group-announcement-button {
+    .post-group-button {
     background: none;
     border: none;
     cursor: pointer;
@@ -790,8 +789,7 @@ img.emoji {
 .post-mask-button:hover,
     .post-lock-button:hover,
     .post-announcement-button:hover,
-    .post-group-button:hover,
-    .post-group-announcement-button:hover {
+    .post-group-button:hover {
     background-color: var(--bg-color);
 }
 
@@ -816,9 +814,8 @@ img.emoji {
 
 .post-mask-button.active svg,
 .post-lock-button.active svg,
-.markdown-preview-button.active svg,
-    .post-announcement-button.active svg,
-    .post-group-announcement-button.active svg {
+    .markdown-preview-button.active svg,
+    .post-announcement-button.active svg {
     stroke: var(--primary-color);
 }
 
@@ -5577,8 +5574,7 @@ body.pull-to-refresh-enabled {
     opacity: 0.6;
 }
 
-.post-form-actions .post-group-button svg,
-.post-form-actions .post-group-announcement-button svg {
+.post-form-actions .post-group-button svg {
     width: 1.5rem;
     height: 1.5rem;
     stroke-width: 1.5;
@@ -6768,8 +6764,7 @@ body.pull-to-refresh-enabled {
     stroke: currentColor;
 }
 
-.post-form-actions .post-group-button.active svg,
-.post-form-actions .post-group-announcement-button.active svg {
+.post-form-actions .post-group-button.active svg {
     stroke: var(--primary-color);
 }
 
