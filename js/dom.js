@@ -1,3 +1,5 @@
+import { getSafeHttpUrl } from './utils/helpers.js';
+
 export const DOM = {
     mainContent: document.getElementById('main-content'),
     navMenuTop: document.getElementById('nav-menu-top'),
@@ -48,6 +50,22 @@ export const DOM = {
     },
 };
 
+export function openImageModal(sourceUrl) {
+    const safeUrl = getSafeHttpUrl(sourceUrl);
+    if (!safeUrl || !DOM.imagePreviewModal || !DOM.imagePreviewModalContent) {
+        return false;
+    }
+    DOM.imagePreviewModalContent.src = safeUrl;
+    DOM.imagePreviewModal.classList.remove('hidden');
+    return true;
+}
+
+export function closeImageModal() {
+    if (!DOM.imagePreviewModal || !DOM.imagePreviewModalContent) return;
+    DOM.imagePreviewModal.classList.add('hidden');
+    DOM.imagePreviewModalContent.removeAttribute('src');
+}
+
 export function showMainJsError(message) {
     const overlay = document.getElementById('mainjs-error-overlay');
     const text = document.getElementById('mainjs-error-text');
@@ -76,6 +94,6 @@ DOM.imagePreviewModal?.addEventListener('click', (event) => {
         event.target === DOM.imagePreviewModal ||
         event.target.closest('.modal-close-btn')
     ) {
-        window.closeImageModal?.();
+        closeImageModal();
     }
 });

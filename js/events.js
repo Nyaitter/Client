@@ -5,7 +5,7 @@
  */
 
 import { api, apiRequest } from './api.js';
-import { DOM } from './dom.js';
+import { DOM, openImageModal, closeImageModal } from './dom.js';
 import { getCurrentUser, getCurrentTimelineTab } from './state.js';
 import { router } from './router.js';
 import { clearRealtimeTimelineUpdate } from './modules/cache.js';
@@ -61,7 +61,7 @@ export function setupGlobalEventListeners() {
     // ---- Image modal close ----
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            document.getElementById('image-modal')?.classList.add('hidden');
+            closeImageModal();
             document.getElementById('report-modal')?.classList.add('hidden');
         }
     });
@@ -134,7 +134,7 @@ function handleGlobalClick(e) {
         if (imageUrl) {
             e.preventDefault();
             e.stopPropagation();
-            window.openImageModal?.(imageUrl);
+            openImageModal(imageUrl);
         }
         return;
     }
