@@ -404,10 +404,14 @@ export async function openLoginApprovalModal(requestData) {
     const decide = async (action) => {
         showLoading(true);
         try {
-            await apiRequest('/server/auth/login-approval/decide', {
-                method: 'POST',
-                body: { request_id: requestData.id, action },
-            });
+            const { error } = await apiRequest(
+                `/server/auth/login-approvals/${encodeURIComponent(requestData.id)}/decision`,
+                {
+                    method: 'POST',
+                    body: { decision: action },
+                },
+            );
+            if (error) throw error;
             modal.classList.add('hidden');
         } catch (error) {
             console.error('ログイン許可の送信に失敗:', error);
