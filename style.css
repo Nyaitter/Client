@@ -770,8 +770,10 @@ img.emoji {
 .emoji-pic-button,
 .markdown-preview-button,
 .post-mask-button,
-.post-lock-button,
-.post-announcement-button {
+    .post-lock-button,
+    .post-announcement-button,
+    .post-group-button,
+    .post-group-announcement-button {
     background: none;
     border: none;
     cursor: pointer;
@@ -786,8 +788,10 @@ img.emoji {
 .emoji-pic-button:hover,
 .markdown-preview-button:hover,
 .post-mask-button:hover,
-.post-lock-button:hover,
-.post-announcement-button:hover {
+    .post-lock-button:hover,
+    .post-announcement-button:hover,
+    .post-group-button:hover,
+    .post-group-announcement-button:hover {
     background-color: var(--bg-color);
 }
 
@@ -813,7 +817,8 @@ img.emoji {
 .post-mask-button.active svg,
 .post-lock-button.active svg,
 .markdown-preview-button.active svg,
-.post-announcement-button.active svg {
+    .post-announcement-button.active svg,
+    .post-group-announcement-button.active svg {
     stroke: var(--primary-color);
 }
 
@@ -5567,37 +5572,15 @@ body.pull-to-refresh-enabled {
     background: var(--main-bg-color);
     box-shadow: 0 0.5rem 1.4rem rgba(0, 0, 0, 0.18);
 }
-.post-group-button,
-.post-group-announcement-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.3rem;
-    height: 2.3rem;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--secondary-text-color);
-    cursor: pointer;
-}
-.post-group-button:hover,
-.post-group-button.active,
-.post-group-announcement-button:hover,
-.post-group-announcement-button.active {
-    background: var(--light-primary-color);
-    color: var(--primary-color);
-}
 .post-group-button:disabled {
     cursor: not-allowed;
     opacity: 0.6;
 }
-.post-group-button svg,
-.post-group-announcement-button svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    fill: none;
-    stroke: currentColor;
+
+.post-form-actions .post-group-button svg,
+.post-form-actions .post-group-announcement-button svg {
+    width: 1.5rem;
+    height: 1.5rem;
 }
 .post-group-menu {
     position: absolute;
@@ -6146,24 +6129,6 @@ body.pull-to-refresh-enabled {
     color: var(--secondary-text-color);
     font-size: 0.72rem;
     font-weight: 700;
-}
-
-.post-group-button,
-.post-group-announcement-button {
-    border: 1px solid transparent;
-    color: var(--secondary-text-color);
-}
-
-.post-group-button:hover,
-.post-group-button:focus-visible,
-.post-group-button.active,
-.post-group-announcement-button:hover,
-.post-group-announcement-button:focus-visible,
-.post-group-announcement-button.active {
-    border-color: var(--border-color);
-    background: var(--main-bg-color);
-    color: var(--primary-color);
-    outline: none;
 }
 
 .post-group-menu {
@@ -6793,4 +6758,15 @@ body.pull-to-refresh-enabled {
     .group-role-form .settings-save-row .settings-primary-button {
         width: 100%;
     }
+}
+
+.post-form-actions .post-group-button svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.post-form-actions .post-group-button.active svg,
+.post-form-actions .post-group-announcement-button.active svg {
+    stroke: var(--primary-color);
 }
