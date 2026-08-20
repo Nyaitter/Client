@@ -4681,6 +4681,21 @@ body.dark .settings-bot-new-key-box {
     .settings-bot-create-form {
         flex-direction: column;
     }
+    .settings-imposter .settings-bot-create-form input[type='search'],
+    .settings-imposter .settings-bot-create-form input[type='number'],
+    .settings-imposter .settings-bot-create-form select {
+        box-sizing: border-box;
+        flex: 0 0 auto;
+        width: 100%;
+        min-height: 2.75rem;
+        height: auto;
+    }
+    .settings-imposter .settings-session-actions select {
+        box-sizing: border-box;
+        flex: 0 0 auto;
+        min-height: 2.75rem;
+        height: auto;
+    }
     .settings-bot-create-form button {
         width: 100%;
     }
