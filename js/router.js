@@ -31,6 +31,7 @@ import {
     refreshActiveProfileTab,
 } from './screens/profileScreen.js';
 import { showSettingsScreen, getSettingsGroupFromHash } from './screens/settingsScreen.js';
+import { showGroupsScreen, showGroupDetailScreen } from './screens/groupScreen.js';
 import {
     showAdminReportsScreen,
     showAdminReportDetailScreen,
@@ -135,6 +136,16 @@ export async function router() {
             await showAdminReportsScreen(showScreen);
         } else if (hash === '#admin/logs' && getCurrentUser()?.admin) {
             await showAdminLogsScreen(showScreen);
+        } else if (hash === '#groups' && getCurrentUser()) {
+            await showGroupsScreen(showScreen);
+        } else if (hash.startsWith('#group/') && getCurrentUser()) {
+            const groupPath = hash.substring('#group/'.length);
+            const [groupId, section = 'overview'] = groupPath.split('/');
+            if (!groupId) {
+                window.location.hash = '#groups';
+                return;
+            }
+            await showGroupDetailScreen(groupId, section, showScreen);
         } else if (hash.startsWith('#dm/') && getCurrentUser()) {
             await showDmScreen(hash.substring(4), showScreen);
         } else if (hash === '#dm' && getCurrentUser()) {

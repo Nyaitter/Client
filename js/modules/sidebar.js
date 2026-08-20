@@ -310,6 +310,11 @@ export async function updateNavAndSidebars() {
                 hash: '#settings/profile',
                 icon: ICONS.settings,
             },
+            {
+                name: 'グループ',
+                hash: '#groups',
+                icon: ICONS.profile,
+            },
         );
         if (getCurrentUser().admin) {
             menuItems.push({
