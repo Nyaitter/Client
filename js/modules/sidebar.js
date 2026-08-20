@@ -28,6 +28,107 @@ let recommendedUsersRequest = null;
 let sidebarOverflowResizeHandler = null;
 let sidebarOverflowResizeTimer = null;
 let sidebarOverflowAbortController = null;
+let mobileSidebarOpen = false;
+let mobileSidebarHistoryEntry = false;
+let mobileSidebarAbortController = null;
+
+function isMobileSidebarViewport() {
+    return matchesMedia('(max-width: 680px)');
+}
+
+function closeMobileSidebar({ fromHistory = false } = {}) {
+    const overlay = document.getElementById('mobile-sidebar-overlay');
+    if (!mobileSidebarOpen && !overlay) return;
+    mobileSidebarOpen = false;
+    document.body.classList.remove('mobile-sidebar-open');
+    mobileSidebarAbortController?.abort();
+    mobileSidebarAbortController = null;
+    overlay?.remove();
+
+    if (mobileSidebarHistoryEntry && !fromHistory) {
+        mobileSidebarHistoryEntry = false;
+        window.history.back();
+    } else {
+        mobileSidebarHistoryEntry = false;
+    }
+}
+
+function openMobileSidebar() {
+    if (!isMobileSidebarViewport()) {
+        void openAccountSwitcherModal();
+        return;
+    }
+    if (mobileSidebarOpen) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'mobile-sidebar-overlay';
+    overlay.className = 'mobile-sidebar-overlay';
+    overlay.innerHTML = `
+        <aside class="mobile-sidebar-panel" aria-label="サイドメニュー" role="dialog" aria-modal="true">
+            <div class="mobile-sidebar-header">
+                <div class="mobile-sidebar-account">
+                    <img src="${escapeHTML(getUserIconUrl(getCurrentUser()))}" class="user-icon" alt="">
+                    <div>
+                        <strong>${getEmoji(escapeHTML(getCurrentUser()?.name || ''))}</strong>
+                        <span>${formatNyaitterId(getCurrentUser())}</span>
+                    </div>
+                </div>
+                <button type="button" class="mobile-sidebar-close" aria-label="メニューを閉じる">×</button>
+            </div>
+            <nav class="mobile-sidebar-menu">${DOM.navMenuTop.innerHTML}</nav>
+        </aside>`;
+    document.body.appendChild(overlay);
+    mobileSidebarOpen = true;
+    document.body.classList.add('mobile-sidebar-open');
+    mobileSidebarAbortController = new AbortController();
+    const { signal } = mobileSidebarAbortController;
+
+    mobileSidebarHistoryEntry = true;
+    window.history.pushState(
+        { ...(window.history.state || {}), nyaitterMobileSidebar: true },
+        '',
+        window.location.href,
+    );
+
+    overlay.querySelector('.mobile-sidebar-close')?.addEventListener('click', () => {
+        closeMobileSidebar();
+    }, { signal });
+    overlay.querySelectorAll('a.nav-item').forEach((item) => {
+        item.addEventListener('click', () => closeMobileSidebar(), { signal });
+    });
+    overlay.querySelector('.nav-item-post')?.addEventListener('click', () => {
+        closeMobileSidebar();
+        openPostModal();
+    }, { signal });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeMobileSidebar();
+    }, { signal });
+
+    let startX = null;
+    let startY = null;
+    overlay.addEventListener('pointerdown', (event) => {
+        startX = event.clientX;
+        startY = event.clientY;
+    }, { signal });
+    overlay.addEventListener('pointerup', (event) => {
+        if (startX === null || startY === null) return;
+        const horizontalDistance = event.clientX - startX;
+        const verticalDistance = event.clientY - startY;
+        startX = null;
+        startY = null;
+        if (horizontalDistance <= -64 && Math.abs(verticalDistance) <= 72) {
+            closeMobileSidebar();
+        }
+    }, { signal });
+    overlay.addEventListener('pointercancel', () => {
+        startX = null;
+        startY = null;
+    }, { signal });
+}
+
+window.addEventListener('popstate', () => {
+    if (mobileSidebarOpen) closeMobileSidebar({ fromHistory: true });
+});
 
 export async function loadRightSidebar() {
     if (DOM.rightSidebar.searchWidget) {
@@ -366,7 +467,10 @@ export async function updateNavAndSidebars() {
 
     DOM.navMenuBottom
         .querySelector('#account-button')
-        ?.addEventListener('click', openAccountSwitcherModal);
+        ?.addEventListener('click', () => {
+            if (isMobileSidebarViewport()) openMobileSidebar();
+            else void openAccountSwitcherModal();
+        });
     DOM.navMenuTop
         .querySelector('.nav-item-post')
         ?.addEventListener('click', () => openPostModal());
@@ -381,11 +485,8 @@ export async function updateNavAndSidebars() {
         }
     }
     if (accountButton) {
-        if (matchesMedia('(max-width:680px)') && location.hash.startsWith('#dm')) {
-            accountButton.classList.add('hidden');
-        } else {
-            accountButton.classList.remove('hidden');
-        }
+        // モバイルでは全画面サイドメニューの入口として常に表示する。
+        accountButton.classList.remove('hidden');
     }
 
     scheduleNextFrame(setupSidebarOverflowMenu);

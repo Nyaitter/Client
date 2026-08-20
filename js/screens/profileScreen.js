@@ -319,7 +319,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         }
         const mainTabs = [
             { key: 'posts', name: 'ポスト' },
-            { key: 'replies', name: '返信', className: 'mobile-hidden' },
+            { key: 'replies', name: '返信' },
             { key: 'media', name: 'メディア' },
             { key: 'likes', name: 'いいね' },
             { key: 'stars', name: 'お気に入り' },
