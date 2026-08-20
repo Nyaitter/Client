@@ -21,6 +21,12 @@ import {
 } from './posts.js';
 import { createViewportObserver } from '../utils/viewport.js';
 import { getPostsPerPage, isDataSaverEnabled } from './theme.js';
+import { getEmoji } from './format.js';
+import {
+    escapeHTML,
+    getNyaitterId,
+    getUserIconUrl,
+} from '../utils/helpers.js';
 
 export let currentRouterGeneration = 0;
 export function incrementRouterGeneration() {
