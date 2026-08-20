@@ -14,7 +14,8 @@
         apiEndpoint: '/server',
 
         // nullなら、設定済みapiEndpointへ /uploads を追加したURLを自動利用します。
-        // R2の公開ドメインなどを使う場合は、相対パスまたは絶対URLへ変更できます。
+        // Serverがユーザーファイルを専用ポートで配信する場合は、その絶対URLへ変更します。
+        // R2の公開ドメインなどを使う場合も、相対パスまたは絶対URLへ変更できます。
         // 空文字列を明示すると、Client側のユーザーファイルURL生成を無効にします。
         userFileEndpoint: null,
 
