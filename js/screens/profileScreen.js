@@ -637,7 +637,7 @@ export function openProfileMenu(targetUser) {
         sendNoticeBtn.onclick = () => window.adminSendNotice?.(targetUser.id);
 
         const shadowBtn = document.createElement('button');
-        shadowBtn.textContent = targetUser.shadow ? 'シャドウBAN解除' : 'シャドウBAN';
+        shadowBtn.textContent = targetUser.shadow ? '検索除外を解除' : '検索除外';
         shadowBtn.onclick = () => window.adminToggleShadow?.(targetUser);
 
         const freezeBtn = document.createElement('button');
