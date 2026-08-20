@@ -25,7 +25,8 @@ import {
     updateFollowButtonState,
 } from '../modules/posts.js';
 import { handleDmButtonClick } from '../modules/dm.js';
-import { formatPostContent, getEmoji } from '../modules/format.js';
+import { getEmoji } from '../modules/format.js';
+import { renderNyarkDown } from '../modules/nyarkdown.js';
 import {
     loadPostsWithPagination,
     loadUsersWithPagination,
@@ -219,7 +220,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         }
 
         const headerImageUrl = getUserHeaderImageUrl(user);
-        const userMeHtml = formatPostContent(user.me || '', getAllUsersCache());
+        const userMeHtml = renderNyarkDown(user.me || '', getAllUsersCache());
         profileHeader.classList.toggle('has-profile-banner', Boolean(headerImageUrl));
         const profileBannerHtml = headerImageUrl
             ? `<div class="profile-banner"><img src="${escapeHTML(headerImageUrl)}" alt="${escapeHTML(user.name)}のヘッダー画像"></div>`
@@ -637,7 +638,7 @@ export function openProfileMenu(targetUser) {
         sendNoticeBtn.onclick = () => window.adminSendNotice?.(targetUser.id);
 
         const shadowBtn = document.createElement('button');
-        shadowBtn.textContent = targetUser.shadow ? 'シャドウBAN解除' : 'シャドウBAN';
+        shadowBtn.textContent = targetUser.shadow ? '検索除外を解除' : '検索除外';
         shadowBtn.onclick = () => window.adminToggleShadow?.(targetUser);
 
         const freezeBtn = document.createElement('button');
