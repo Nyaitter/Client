@@ -492,13 +492,14 @@ export function getUserIconUrl(user) {
     }
 
     const userId = Number(user?.id);
+    const scratchId = typeof user?.scid === 'string' ? user.scid.trim() : '';
     const fallbackUrl =
-        Number.isSafeInteger(userId) && userId > 0
+        scratchId && Number.isSafeInteger(userId) && userId > 0
             ? globalThis.NyaitterClientConfig?.apiUrl?.(
                   `/server/api/users/${encodeURIComponent(String(userId))}/icon`,
               )
             : null;
-    return fallbackUrl || '/logo.png';
+    return fallbackUrl || '/emoji/neko.svg';
 }
 
 export function getUserHeaderImageUrl(user) {
