@@ -109,7 +109,7 @@ function openMobileSidebar() {
         <aside class="mobile-sidebar-panel" aria-label="サイドメニュー" role="dialog" aria-modal="true">
             <div class="mobile-sidebar-content">
                 <div class="mobile-sidebar-logo">${DOM.navLogo.innerHTML}</div>
-                <nav class="mobile-sidebar-menu">${DOM.navMenuTop.innerHTML}</nav>
+                <nav class="mobile-sidebar-menu">${DOM.navMenuTop.dataset.fullMenuMarkup || DOM.navMenuTop.innerHTML}</nav>
                 <div class="mobile-sidebar-bottom">${mobileAccountMarkup}</div>
             </div>
         </aside>`;
@@ -127,18 +127,29 @@ function openMobileSidebar() {
     );
 
     overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) closeMobileSidebar();
-    }, { signal });
-    overlay.querySelectorAll('a.nav-item').forEach((item) => {
-        item.addEventListener('click', () => closeMobileSidebar(), { signal });
-    });
-    overlay.querySelector('.nav-item-post')?.addEventListener('click', () => {
-        closeMobileSidebar();
-        openPostModal();
-    }, { signal });
-    overlay.querySelector('.mobile-sidebar-account-button')?.addEventListener('click', () => {
-        closeMobileSidebar();
-        void openAccountSwitcherModal();
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        if (target === overlay) {
+            closeMobileSidebar();
+            return;
+        }
+
+        if (target.closest('.nav-item-post')) {
+            event.preventDefault();
+            closeMobileSidebar();
+            openPostModal();
+            return;
+        }
+        if (target.closest('.mobile-sidebar-account-button')) {
+            event.preventDefault();
+            closeMobileSidebar();
+            void openAccountSwitcherModal();
+            return;
+        }
+        if (target.closest('a.nav-item')) {
+            // その他パネルへ移動した項目を含め、全ナビゲーション項目で閉じる。
+            closeMobileSidebar();
+        }
     }, { signal });
     setupMobileSidebarOverflow(overlay, signal);
     document.addEventListener('keydown', (event) => {
@@ -488,7 +499,7 @@ export async function updateNavAndSidebars() {
 
     DOM.navLogo.innerHTML = `<a href="#" class="nav-logo-img">${ICONS.nyaitter_logo}</a>`;
 
-    DOM.navMenuTop.innerHTML = menuItems
+    const fullMenuMarkup = `${menuItems
         .map((item) => {
             let isActive = false;
             if (item.hash === '#') {
@@ -507,11 +518,14 @@ export async function updateNavAndSidebars() {
                     <span class="nav-item-text">${item.name}</span>
                 </a>`;
         })
-        .join('');
-
-    if (getCurrentUser()) {
-        DOM.navMenuTop.innerHTML += `<button class="nav-item nav-item-post"><span class="nav-item-text">ポスト</span><span class="nav-item-icon">${ICONS.send}</span></button>`;
-    }
+        .join('')}${
+            getCurrentUser()
+                ? `<button class="nav-item nav-item-post"><span class="nav-item-text">ポスト</span><span class="nav-item-icon">${ICONS.send}</span></button>`
+                : ''
+        }`;
+    DOM.navMenuTop.innerHTML = fullMenuMarkup;
+    // PC側の高さ調整でDOMが移動しても、モバイルは常に全候補から組み立てる。
+    DOM.navMenuTop.dataset.fullMenuMarkup = fullMenuMarkup;
 
     DOM.navMenuBottom.innerHTML = getCurrentUser()
         ? `<button id="account-button" class="nav-item account-button">
