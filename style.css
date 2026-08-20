@@ -3865,7 +3865,9 @@ body.dark .recommend-user button {
         display: none;
     }
     .nav-item[href='#likes'],
-    .nav-item[href='#stars'] {
+    .nav-item[href='#stars'],
+    .nav-item[href='#groups'],
+    .nav-item[href='#admin/reports'] {
         display: none;
     }
     .nav-item-post {
