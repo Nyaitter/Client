@@ -604,6 +604,113 @@ img.emoji {
     border-radius: 50%;
 }
 
+.post-account-selector {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+}
+
+.post-account-selector:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 3px;
+}
+
+.post-account-selector .user-icon {
+    display: block;
+    object-fit: cover;
+}
+
+.post-account-menu {
+    position: absolute;
+    z-index: 30;
+    top: 4.4rem;
+    left: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    min-width: min(17rem, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+    max-height: min(22rem, calc(100vh - 7rem));
+    overflow: auto;
+    padding: 0.35rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-color);
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 22%, transparent);
+}
+
+.post-account-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.55rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+}
+
+.post-account-menu-item:hover,
+.post-account-menu-item:focus-visible,
+.post-account-menu-item.active {
+    background: var(--hover-bg-color, var(--main-bg-color));
+}
+
+.post-account-menu-item:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+.post-account-menu-icon {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.post-account-menu-user {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.post-account-menu-user strong,
+.post-account-menu-user small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.post-account-menu-user small {
+    color: var(--secondary-text-color);
+}
+
+.post-account-menu-loading,
+.post-account-menu-empty {
+    display: grid;
+    min-height: 4rem;
+    margin: 0;
+    place-items: center;
+    color: var(--secondary-text-color);
+    text-align: center;
+}
+
+.post-account-menu-loading .spinner {
+    width: 1.4rem;
+    height: 1.4rem;
+    margin: 0;
+}
+
 .post-form .form-content {
     flex-grow: 1;
 }
