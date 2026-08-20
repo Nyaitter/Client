@@ -3864,10 +3864,10 @@ body.dark .recommend-user button {
     .nav-overflow-menu {
         display: none;
     }
-    .nav-item[href='#likes'],
-    .nav-item[href='#stars'],
-    .nav-item[href='#groups'],
-    .nav-item[href='#admin/reports'] {
+    #left-nav .nav-item[href='#likes'],
+    #left-nav .nav-item[href='#stars'],
+    #left-nav .nav-item[href='#groups'],
+    #left-nav .nav-item[href='#admin/reports'] {
         display: none;
     }
     .nav-item-post {
