@@ -693,6 +693,7 @@ function setPostingAccount(container, account) {
     const announcementButton = container.querySelector('.post-announcement-button');
     if (announcementButton && !getPostingGroup(container)) {
         announcementButton.hidden = !account.admin;
+        announcementButton.classList.toggle('hidden', !account.admin);
         announcementButton.title = 'Nyaitterアナウンス';
         announcementButton.setAttribute('aria-label', announcementButton.title);
     }
@@ -786,8 +787,8 @@ export function createPostFormHTML(isModal = false) {
                     <input type="file" id="file-input" class="hidden" multiple>
                     <div id="emoji-picker" class="hidden"></div>
                     <div class="post-group-menu hidden" role="menu"></div>
-                    <button type="button" class="post-group-button float-right" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
                     <button id="post-submit-button" class="float-right">ポスト</button>
+                    <button type="button" class="post-group-button float-right" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
                     <button type="button" class="post-mask-button float-right" title="ワンクッション">
                         ${ICONS.mask}
                     </button>
@@ -840,6 +841,7 @@ function setPostingGroup(container, group = null, { locked = false } = {}) {
     }
     if (lockButton) {
         lockButton.disabled = Boolean(group);
+        lockButton.classList.toggle('hidden', Boolean(group));
         if (group) {
             lockButton.classList.remove('active');
             lockButton.setAttribute('aria-pressed', 'false');
@@ -848,6 +850,7 @@ function setPostingGroup(container, group = null, { locked = false } = {}) {
     if (announcementButton) {
         const visible = group ? Boolean(group.canAnnounce) : Boolean(getCurrentUser()?.admin);
         announcementButton.hidden = !visible;
+        announcementButton.classList.toggle('hidden', !visible);
         announcementButton.title = group ? 'グループアナウンス' : 'Nyaitterアナウンス';
         announcementButton.setAttribute('aria-label', announcementButton.title);
         announcementButton.classList.remove('active');
