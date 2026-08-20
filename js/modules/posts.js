@@ -567,10 +567,14 @@ export async function renderPost(post, author, options = {}) {
         if (actionTargetPost) {
             const replyBtn = document.createElement('button');
             replyBtn.className = 'reply-button';
-            replyBtn.dataset.username = escapeHTML(actionTargetPost.user?.name || displayAuthor.name);
+            const replyAuthor = actionTargetPost.author
+                || actionTargetPost.user
+                || displayAuthor;
+            replyBtn.dataset.username = String(replyAuthor?.name || '');
             replyBtn.dataset.isPrivate = String(
-                Boolean(actionTargetPost.private || actionTargetPost.lock || actionTargetPost.user?.settings?.lock),
+                Boolean(actionTargetPost.private || actionTargetPost.lock || replyAuthor?.settings?.lock),
             );
+            replyBtn._nyaitterPost = actionTargetPost;
             replyBtn.innerHTML = `${ICONS.reply} <span>---</span>`;
             actionsDiv.appendChild(replyBtn);
 

@@ -294,9 +294,11 @@ function handleGlobalClick(e) {
         }
         if (target.closest('.reply-button')) {
             const replyBtn = target.closest('.reply-button');
+            const replyPost = replyBtn._nyaitterPost;
+            const replyAuthor = replyPost?.author || replyPost?.user;
             handleReplyClick(
                 actionTargetPostId,
-                replyBtn.dataset.username,
+                replyAuthor?.name || replyBtn.dataset.username || '',
                 replyBtn.dataset.isPrivate === 'true',
             );
             return;
