@@ -13,10 +13,10 @@
         // Nyaitter ServerのAPIルート。静的サイトと同一オリジンで配信する場合は変更不要です。
         apiEndpoint: '/server',
 
-        // Nyaitter Serverが既定で配信するユーザーファイルの公開URLです。
-        // R2の公開ドメインなどを使う場合は、絶対URLへ変更できます。
+        // nullなら、設定済みapiEndpointへ /uploads を追加したURLを自動利用します。
+        // R2の公開ドメインなどを使う場合は、相対パスまたは絶対URLへ変更できます。
         // 空文字列を明示すると、Client側のユーザーファイルURL生成を無効にします。
-        userFileEndpoint: '/uploads',
+        userFileEndpoint: null,
 
         // 設定画面の「リンク」に表示するリソースです。
         resourceLinks: [
@@ -60,8 +60,25 @@
         return url;
     }
 
+    function getUserFileEndpoint() {
+        if (CLIENT_CONFIG.userFileEndpoint !== null && CLIENT_CONFIG.userFileEndpoint !== undefined) {
+            return String(CLIENT_CONFIG.userFileEndpoint).trim();
+        }
+
+        const apiEndpoint = normalizeEndpoint(CLIENT_CONFIG.apiEndpoint);
+        const basePath = apiEndpoint.pathname.replace(/\/+$/, '');
+        apiEndpoint.pathname = `${basePath}/uploads`.replace(/\/{2,}/g, '/');
+        apiEndpoint.search = '';
+        apiEndpoint.hash = '';
+        const configuredApiEndpoint = String(CLIENT_CONFIG.apiEndpoint || '').trim();
+        return /^https?:\/\//i.test(configuredApiEndpoint)
+            ? apiEndpoint.href
+            : apiEndpoint.pathname;
+    }
+
     function userFileUrl(fileId = '') {
-        const endpoint = normalizeUserFileEndpoint(CLIENT_CONFIG.userFileEndpoint);
+        const configuredEndpoint = getUserFileEndpoint();
+        const endpoint = normalizeUserFileEndpoint(configuredEndpoint);
         if (!endpoint) return null;
         const encodedKey = String(fileId || '')
             .split('/')
@@ -75,8 +92,7 @@
         endpoint.search = '';
         endpoint.hash = '';
 
-        const configured = String(CLIENT_CONFIG.userFileEndpoint || '').trim();
-        if (/^https?:\/\//i.test(configured)) return endpoint.href;
+        if (/^https?:\/\//i.test(configuredEndpoint)) return endpoint.href;
         return endpoint.pathname;
     }
 
