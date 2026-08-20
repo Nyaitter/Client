@@ -6367,6 +6367,7 @@ body.pull-to-refresh-enabled {
 .group-ui-profile-main {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
+    justify-content: flex-end;
     align-items: center;
     gap: 1rem;
     padding: 1rem;
