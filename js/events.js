@@ -25,6 +25,7 @@ import {
 } from './modules/posts.js';
 import {
     openDmEditModal,
+    openDmManageModal,
     handleDeleteDmMessage,
     positionDmMessageMenu,
 } from './modules/dm.js';
@@ -124,7 +125,7 @@ function handleGlobalClick(e) {
         if (dmId && dmId.length <= 128) {
             e.preventDefault();
             e.stopPropagation();
-            window.openDmManageModal?.(dmId);
+            void openDmManageModal(dmId);
         }
         return;
     }
