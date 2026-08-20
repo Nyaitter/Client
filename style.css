@@ -529,7 +529,7 @@ img.emoji {
     border-bottom: 1px solid var(--border-color);
 }
 .timeline-tab-button {
-    flex: 0 0 8rem;
+    flex: 1 0 8rem;
     min-width: 8rem;
     white-space: nowrap;
     padding: 1rem;
@@ -2482,7 +2482,7 @@ body.dark .recommend-user button {
 }
 
 .tab-button {
-    flex: 0 0 8rem;
+    flex: 1 0 8rem;
     min-width: 8rem;
     white-space: nowrap;
     padding: 1rem;
