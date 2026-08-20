@@ -98,9 +98,7 @@ export async function showMainScreen(showScreenFn) {
 
     if (getCurrentUser()) {
         DOM.postFormContainer.innerHTML = createPostFormHTML(false);
-        attachPostFormListeners(DOM.postFormContainer, async () => {
-            await switchTimelineTab(getCurrentTimelineTab(), { forceRefresh: true, resetScroll: true });
-        });
+        attachPostFormListeners(DOM.postFormContainer);
     } else {
         DOM.postFormContainer.innerHTML = '';
     }

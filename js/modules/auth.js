@@ -77,6 +77,23 @@ export function setAccountList(accounts) {
     localStorage.setItem(ACCOUNT_LIST_STORAGE_KEY, JSON.stringify(valid));
 }
 
+export async function refreshAccountList() {
+    try {
+        const { data, error } = await apiRequest('/server/auth/accounts');
+        if (error || !Array.isArray(data?.accounts)) {
+            return getAccountList();
+        }
+
+        const accounts = data.accounts.filter(
+            (account) => account && Number.isInteger(Number(account.id)),
+        );
+        setAccountList(accounts);
+        return accounts;
+    } catch (_) {
+        return getAccountList();
+    }
+}
+
 export function addAccountToList(user) {
     if (!user || !Number.isInteger(Number(user.id))) return;
     const list = getAccountList().filter(
@@ -233,27 +250,10 @@ export async function openAccountSwitcherModal() {
     `;
     content.querySelector('.account-switcher-add-btn').onclick = openLoginFromSwitcher;
 
-    const { data: accountPayload, error } = await apiRequest(
-        '/server/auth/accounts',
-    );
-    const accounts = error
-        ? getAccountList()
-        : Array.isArray(accountPayload?.accounts)
-          ? accountPayload.accounts
-          : [];
-    if (!error) {
-        setAccountList(
-            accounts
-                .filter((account) => !account.automatic_imposter)
-                .map(({ id, name, icon_data, scid, nyaitter_id, is_imposter }) => ({
-                    id: Number(id),
-                    name: String(name || ''),
-                    icon_data: icon_data || null,
-                    scid: scid || null,
-                    nyaitter_id: nyaitter_id ?? Number(id),
-                    is_imposter: Boolean(is_imposter),
-                })),
-        );
+    let accounts = getAccountList();
+    if (accounts.length === 0) {
+        accounts = await refreshAccountList();
+        if (modal.classList.contains('hidden')) return;
     }
     const current = getCurrentUser();
     const currentId = current ? Number(current.id) : null;
@@ -313,16 +313,7 @@ export async function openAccountSwitcherModal() {
                     // 自動で切り替え、モーダルを再読み込みして最新の一覧を表示する。
                     setCurrentUser(null);
                     unsubscribeFromChanges();
-                    window.location.hash = '#';
-                    const {
-                        data: remainingPayload,
-                        error: remainingError,
-                    } = await apiRequest('/server/auth/accounts');
-                    const remainingAccounts =
-                        !remainingError &&
-                        Array.isArray(remainingPayload?.accounts)
-                            ? remainingPayload.accounts
-                            : getAccountList();
+                    const remainingAccounts = await refreshAccountList();
                     if (remainingAccounts.length > 0) {
                         const nextAccount = remainingAccounts[0];
                         const { error: switchError } = await apiRequest(
@@ -363,11 +354,13 @@ export async function openAccountSwitcherModal() {
                 switchError = result.error;
                 if (!switchError) {
                     unsubscribeFromChanges();
-                    const switchedUser = await checkSession({ route: false });
+                    const switchedUser = await checkSession({
+                        route: false,
+                        refreshAccounts: false,
+                    });
                     if (!switchedUser) {
                         switchError = new Error('切替後のアカウント情報を確認できませんでした。');
                     } else {
-                        window.location.hash = '#';
                         await router();
                     }
                 }
@@ -428,7 +421,11 @@ export async function openLoginApprovalModal(requestData) {
     modal.classList.remove('hidden');
 }
 
-export async function checkSession({ route = true, onSessionReady = null } = {}) {
+export async function checkSession({
+    route = true,
+    onSessionReady = null,
+    refreshAccounts = true,
+} = {}) {
     showLoading(true);
     try {
         const { data: sessionData, error: sessionError } = await api.auth.getSession();
@@ -477,6 +474,7 @@ export async function checkSession({ route = true, onSessionReady = null } = {})
 
         DOM.loginBanner?.classList.add('hidden');
         addAccountToList(userData);
+        if (refreshAccounts) await refreshAccountList();
         applyInterfaceTheme();
         subscribeToChanges();
 

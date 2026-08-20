@@ -28,9 +28,9 @@ import {
     setMarkdownEditorValue,
     setupMarkdownEditorPreviewButton,
 } from './editor.js';
-import { sendNotification } from './notifications.js';
 import { isDataSaverEnabled } from './theme.js';
 import { router } from '../router.js';
+import { getAccountList, refreshAccountList } from './auth.js';
 import {
     escapeHTML,
     getUserIconUrl,
@@ -566,10 +566,14 @@ export async function renderPost(post, author, options = {}) {
         if (actionTargetPost) {
             const replyBtn = document.createElement('button');
             replyBtn.className = 'reply-button';
-            replyBtn.dataset.username = escapeHTML(actionTargetPost.user?.name || displayAuthor.name);
+            const replyAuthor = actionTargetPost.author
+                || actionTargetPost.user
+                || displayAuthor;
+            replyBtn.dataset.username = String(replyAuthor?.name || '');
             replyBtn.dataset.isPrivate = String(
-                Boolean(actionTargetPost.private || actionTargetPost.lock || actionTargetPost.user?.settings?.lock),
+                Boolean(actionTargetPost.private || actionTargetPost.lock || replyAuthor?.settings?.lock),
             );
+            replyBtn._nyaitterPost = actionTargetPost;
             replyBtn.innerHTML = `${ICONS.reply} <span>---</span>`;
             actionsDiv.appendChild(replyBtn);
 
@@ -701,11 +705,14 @@ async function openPostAccountMenu(container) {
     document.addEventListener('pointerdown', outsideHandler, true);
 
     try {
-        const { data, error } = await apiRequest('/server/auth/accounts');
-        if (menu.classList.contains('hidden')) return;
-        const accounts = !error && Array.isArray(data?.accounts)
-            ? data.accounts
-            : (getCurrentUser() ? [getCurrentUser()] : []);
+        let accounts = getAccountList();
+        if (accounts.length === 0) {
+            accounts = await refreshAccountList();
+            if (menu.classList.contains('hidden')) return;
+        }
+        if (accounts.length === 0 && getCurrentUser()) {
+            accounts = [getCurrentUser()];
+        }
         const selectedId = getPostingAccountId(container);
         if (accounts.length === 0) {
             menu.innerHTML = '<p class="post-account-menu-empty">利用可能なアカウントがありません。</p>';
@@ -755,6 +762,7 @@ export function createPostFormHTML(isModal = false) {
                 <div id="reply-info" class="hidden" style="margin-bottom: 0.5rem; color: var(--secondary-text-color);"></div>
                 <div class="markdown-textarea-editor post-content-editor"><textarea id="post-content" class="markdown-content-editor" rows="3" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length" placeholder="いまどうしてる？"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
                 <div class="file-preview-container"></div>
+                ${isModal ? '<div id="quoting-preview-container"></div>' : ''}
                 <div class="post-form-actions">
                     <button type="button" class="attachment-button float-left" title="ファイルを添付">
                         ${ICONS.attachment}
@@ -1006,32 +1014,6 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
 
         if (rpcError) throw rpcError;
 
-        let repliedUserId = null;
-        if (getReplyingTo()) {
-            const { data: parentPost } = await api
-                .from('post')
-                .select('userid')
-                .eq('id', getReplyingTo().id)
-                .single();
-            if (parentPost && Number(parentPost.userid) !== postingAccountId) {
-                repliedUserId = parentPost.userid;
-            }
-        }
-        if (getQuotingPost()) {
-            repliedUserId = getQuotingPost().userid;
-        }
-
-        const mentionedIds = new Set();
-        for (const match of content.matchAll(/@(\d+)/g)) {
-            const mentionedId = parseInt(match[1], 10);
-            if (mentionedId !== postingAccountId && mentionedId !== repliedUserId) {
-                mentionedIds.add(mentionedId);
-            }
-        }
-        mentionedIds.forEach((id) => {
-            void sendNotification(id, 'mention', { kind: 'post', id: newPost.id });
-        });
-
         const replyTargetId = getReplyingTo()?.id || null;
         invalidateTimelinePageCache();
         setSelectedFiles([]);
@@ -1047,8 +1029,6 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
             await onPostSuccess({ replyTargetId, newPost });
         } else if (replyTargetId) {
             window.location.hash = `#post/${replyTargetId}`;
-        } else if (window.location.hash === '#' || window.location.hash === '') {
-            window.location.reload();
         }
     } catch (e) {
         console.error('ポスト送信に失敗しました:', e);
@@ -1067,6 +1047,50 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     }
 }
 
+function renderQuotingPostPreview(container, quotingPost) {
+    const previewContainer = container.querySelector('#quoting-preview-container');
+    if (!previewContainer || !quotingPost) return;
+
+    const author = quotingPost.author
+        || quotingPost.user
+        || getCachedUser(quotingPost.userid)
+        || { name: '不明なユーザー' };
+    const nestedPost = document.createElement('div');
+    nestedPost.className = 'nested-repost-container quoting-post-preview';
+
+    const header = document.createElement('div');
+    header.className = 'post-header';
+    const icon = document.createElement('img');
+    icon.className = 'user-icon';
+    icon.src = getUserIconUrl(author);
+    icon.alt = `${author.name || '不明なユーザー'}のアイコン`;
+    header.appendChild(icon);
+
+    const authorName = document.createElement('span');
+    authorName.className = 'post-author';
+    authorName.innerHTML = getEmoji(escapeHTML(author.name || '不明なユーザー'));
+    header.appendChild(authorName);
+    nestedPost.appendChild(header);
+
+    const content = document.createElement('div');
+    content.className = 'post-content';
+    content.innerHTML = renderNyarkDown(
+        String(quotingPost.content || ''),
+        new Map(),
+        { allowMarkdown: true, allowContentDecorations: true },
+    );
+    nestedPost.appendChild(content);
+
+    if (Array.isArray(quotingPost.attachments) && quotingPost.attachments.length > 0) {
+        const attachmentInfo = document.createElement('div');
+        attachmentInfo.className = 'attachment-fileinfo';
+        attachmentInfo.textContent = `添付ファイル ${quotingPost.attachments.length}件`;
+        nestedPost.appendChild(attachmentInfo);
+    }
+
+    previewContainer.replaceChildren(nestedPost);
+}
+
 export function openPostModal(replyTo = null, quotingPost = null) {
     setReplyingTo(replyTo);
     setQuotingPost(quotingPost);
@@ -1080,8 +1104,12 @@ export function openPostModal(replyTo = null, quotingPost = null) {
 
     const replyInfo = modalFormContainer.querySelector('#reply-info');
     if (replyTo && replyInfo) {
-        replyInfo.innerHTML = `返信先: <strong>@${escapeHTML(replyTo.username || '')}</strong>`;
+        replyInfo.innerHTML = `返信先: <strong>@${escapeHTML(replyTo.username || replyTo.name || '')}</strong>`;
         replyInfo.classList.remove('hidden');
+    } else if (quotingPost && replyInfo) {
+        replyInfo.textContent = '注意: 引用を返信代わりに使用する行為は推奨されていません。';
+        replyInfo.classList.remove('hidden');
+        renderQuotingPostPreview(modalFormContainer, quotingPost);
     } else if (replyInfo) {
         replyInfo.classList.add('hidden');
     }
@@ -1143,14 +1171,6 @@ export async function handleSimpleRepost(postId, onComplete = null) {
     if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
     showLoading(true);
     try {
-        const { data: originalPost, error: fetchError } = await api
-            .from('post')
-            .select('userid')
-            .eq('id', postId)
-            .single();
-
-        if (fetchError) throw fetchError;
-
         const { error: rpcError } = await api.rpc('create_post_new', {
             p_content: null,
             p_reply_id: null,
@@ -1161,7 +1181,6 @@ export async function handleSimpleRepost(postId, onComplete = null) {
 
         if (rpcError) throw rpcError;
 
-        await sendNotification(originalPost.userid, 'repost', { kind: 'post', id: postId });
         invalidateTimelinePageCache();
         if (typeof onComplete === 'function') {
             await onComplete();
@@ -1438,35 +1457,28 @@ export async function pinPost(postId) {
     }
 }
 
+export function removePostFromTimeline(postId) {
+    const normalizedPostId = Number(postId);
+    if (!Number.isInteger(normalizedPostId) || normalizedPostId <= 0) return;
+
+    document
+        .querySelectorAll(`.post[data-post-id="${normalizedPostId}"]`)
+        .forEach((postElement) => postElement.remove());
+}
+
 export async function deletePost(postId) {
     if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
     if (!(await showAppConfirm('このポストを削除しますか?'))) return;
     showLoading(true);
     try {
-        const { data: postData, error: fetchError } = await api
-            .from('post')
-            .select('attachments')
-            .eq('id', postId)
-            .single();
-        if (fetchError) throw new Error(`ポスト情報の取得に失敗: ${fetchError.message}`);
-
         const currentUser = getCurrentUser();
-        const isAdminDeletingOtherPost =
-            Boolean(currentUser?.admin) &&
-            Number(postData.userid ?? postData.author?.id) !== Number(currentUser.id);
-
-        if (isAdminDeletingOtherPost) {
+        if (currentUser?.admin) {
             const { error: adminDeleteError } = await apiRequest(
                 `/server/api/posts/admin/${encodeURIComponent(String(postId))}`,
                 { method: 'DELETE' },
             );
             if (adminDeleteError) throw adminDeleteError;
         } else {
-            if (postData.attachments && postData.attachments.length > 0) {
-                const fileIds = postData.attachments.map((file) => file.id);
-                await deleteFilesViaEdgeFunction(fileIds);
-            }
-
             const { error: deleteError } = await api
                 .from('post')
                 .delete()
@@ -1475,7 +1487,7 @@ export async function deletePost(postId) {
         }
 
         invalidateTimelinePageCache();
-        await router();
+        removePostFromTimeline(postId);
     } catch (e) {
         console.error(e);
         showAppAlert('削除に失敗しました。');

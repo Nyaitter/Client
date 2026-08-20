@@ -25,6 +25,14 @@ import {
     updateFollowButtonState,
 } from '../modules/posts.js';
 import { handleDmButtonClick } from '../modules/dm.js';
+import {
+    adminToggleVerify,
+    adminSendNotice,
+    adminToggleShadow,
+    adminFreezeAccount,
+    adminUnfreezeAccount,
+    openReportModal,
+} from './adminScreen.js';
 import { getEmoji } from '../modules/format.js';
 import { renderNyarkDown } from '../modules/nyarkdown.js';
 import {
@@ -49,6 +57,7 @@ import {
     configureAttachmentImage,
     showLoading,
     showAppAlert,
+    showAppConfirm,
 } from '../utils/helpers.js';
 
 let activeProfilePullRefreshUser = null;
@@ -586,10 +595,14 @@ export function openProfileMenu(targetUser) {
         const blockBtn = document.createElement('button');
         blockBtn.textContent = isBlocked ? 'ブロック解除' : 'ブロック';
         blockBtn.onclick = async () => {
+            const actionLabel = isBlocked ? 'ブロックを解除' : 'ブロック';
+            if (!(await showAppConfirm(`このユーザーを${actionLabel}しますか？`))) return;
+
             blockBtn.disabled = true;
-            let updatedBlock = isBlocked
-                ? getCurrentUser().block.filter((id) => Number(id) !== Number(targetUser.id))
-                : [...(getCurrentUser().block || []), targetUser.id];
+            const currentUser = getCurrentUser();
+            const updatedBlock = isBlocked
+                ? (currentUser?.block || []).filter((id) => Number(id) !== Number(targetUser.id))
+                : [...(currentUser?.block || []), targetUser.id];
             const { data: updatePayload, error } = await apiRequest('/server/api/users/me', {
                 method: 'PUT',
                 body: { block: updatedBlock },
@@ -597,7 +610,7 @@ export function openProfileMenu(targetUser) {
             if (!error) {
                 setCurrentUser(
                     updatePayload?.user || {
-                        ...getCurrentUser(),
+                        ...currentUser,
                         block: updatedBlock,
                     },
                 );
@@ -606,7 +619,8 @@ export function openProfileMenu(targetUser) {
                 invalidateDmCaches();
                 getPublicProfileCache().clear();
                 menu.remove();
-                window.location.reload();
+                const { router } = await import('../router.js');
+                await router();
             } else {
                 showAppAlert('ブロック操作に失敗しました');
                 blockBtn.disabled = false;
@@ -618,7 +632,7 @@ export function openProfileMenu(targetUser) {
         reportBtn.className = 'report-btn';
         reportBtn.textContent = '報告する';
         reportBtn.onclick = () => {
-            window.openReportModal?.({
+            openReportModal({
                 targetKind: 'user',
                 targetId: targetUser.id,
                 targetLabel: `ユーザー @${targetUser.scid || targetUser.id}`,
@@ -631,25 +645,26 @@ export function openProfileMenu(targetUser) {
     if (getCurrentUser()?.admin) {
         const verifyBtn = document.createElement('button');
         verifyBtn.textContent = targetUser.verify ? '認証を取り消す' : 'このユーザーを認証';
-        verifyBtn.onclick = () => window.adminToggleVerify?.(targetUser);
+        verifyBtn.onclick = () => void adminToggleVerify(targetUser);
 
         const sendNoticeBtn = document.createElement('button');
         sendNoticeBtn.textContent = '通知を送信';
-        sendNoticeBtn.onclick = () => window.adminSendNotice?.(targetUser.id);
+        sendNoticeBtn.onclick = () => void adminSendNotice(targetUser.id);
 
         const shadowBtn = document.createElement('button');
+        shadowBtn.className = 'delete-btn';
         shadowBtn.textContent = targetUser.shadow ? '検索除外を解除' : '検索除外';
-        shadowBtn.onclick = () => window.adminToggleShadow?.(targetUser);
+        shadowBtn.onclick = () => void adminToggleShadow(targetUser);
 
+        const isFrozen = targetUser.account_state === 'frozen' || Boolean(targetUser.freeze);
         const freezeBtn = document.createElement('button');
-        freezeBtn.className = 'delete-btn';
-        freezeBtn.textContent =
-            targetUser.account_state === 'frozen' ? '凍結解除' : 'アカウントを凍結';
+        freezeBtn.className = isFrozen ? '' : 'delete-btn';
+        freezeBtn.textContent = isFrozen ? '凍結を解除' : 'アカウントを凍結';
         freezeBtn.onclick = () => {
-            if (targetUser.account_state === 'frozen') {
-                window.adminUnfreezeAccount?.(targetUser.id);
+            if (isFrozen) {
+                void adminUnfreezeAccount(targetUser.id);
             } else {
-                window.adminFreezeAccount?.(targetUser.id);
+                void adminFreezeAccount(targetUser.id);
             }
         };
 

@@ -10,6 +10,7 @@ import { getCurrentUser, getCurrentTimelineTab } from './state.js';
 import { router } from './router.js';
 import { clearRealtimeTimelineUpdate } from './modules/cache.js';
 import { switchTimelineTab } from './screens/timelineScreen.js';
+import { openCreateDmModal } from './screens/dmScreen.js';
 import { openReportModal, closeReportModal } from './screens/adminScreen.js';
 import {
     openEditPostModal,
@@ -114,7 +115,7 @@ function handleGlobalClick(e) {
 
     if (action === 'open-create-dm') {
         e.preventDefault();
-        window.openCreateDmModal?.();
+        openCreateDmModal();
         return;
     }
 
@@ -294,9 +295,11 @@ function handleGlobalClick(e) {
         }
         if (target.closest('.reply-button')) {
             const replyBtn = target.closest('.reply-button');
+            const replyPost = replyBtn._nyaitterPost;
+            const replyAuthor = replyPost?.author || replyPost?.user;
             handleReplyClick(
                 actionTargetPostId,
-                replyBtn.dataset.username,
+                replyAuthor?.name || replyBtn.dataset.username || '',
                 replyBtn.dataset.isPrivate === 'true',
             );
             return;
