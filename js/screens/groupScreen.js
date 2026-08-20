@@ -215,7 +215,7 @@ function openGroupModal(group = null) {
             <label>グループ名<input name="name" maxlength="100" required value="${escapeHTML(group?.name || '')}" placeholder="グループ名"></label>
             <label>説明<textarea name="description" maxlength="2000" rows="4" placeholder="グループの説明">${escapeHTML(group?.description || '')}</textarea></label>
             <label>公開レベル<select name="visibility" class="settings-select">${visibilityOptions(group?.visibility || 'open')}</select></label>
-            <div class="settings-save-row"><button type="button" class="group-ui-secondary-button" data-close-group-modal>キャンセル</button><button type="submit" class="settings-primary-button">${editing ? '変更を保存' : '作成'}</button></div>
+            <div class="settings-save-row"><button type="button" class="group-ui-secondary-button group-modal-cancel-button" data-close-group-modal>キャンセル</button><button type="submit" class="settings-primary-button">${editing ? '変更を保存' : '作成'}</button></div>
         </form>
     </div>`;
     document.body.append(modal);

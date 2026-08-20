@@ -6906,3 +6906,8 @@ body.pull-to-refresh-enabled {
         background: var(--main-bg-color);
     }
 }
+
+.group-modal-cancel-button {
+    min-width: 5.5rem;
+    border-radius: 9999px;
+}
