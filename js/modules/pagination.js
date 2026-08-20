@@ -76,6 +76,22 @@ export async function fetchOptimizedPostPage(
             params.set('pin_id', String(options.pinId));
             showPinPost = true;
         }
+    } else if (type === 'group_posts') {
+        const groupId = String(options.groupId || '');
+        if (!groupId) throw new Error('グループIDが必要です。');
+        if (options.mode) params.set('mode', options.mode);
+        if (options.authorId != null) params.set('author_id', String(options.authorId));
+        const { data, error } = await apiRequest(
+            `/server/api/groups/${encodeURIComponent(groupId)}/posts?${params.toString()}`,
+        );
+        if (error) throw error;
+        return {
+            posts: data.posts || [],
+            hasMore: !!data.has_next,
+            nextCursor: data.next_cursor ?? null,
+            showPinPost: false,
+            context: null,
+        };
     } else if (type === 'likes' || type === 'stars') {
         const from = page * pageSize;
         if (options.userId) {
@@ -279,6 +295,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                     search: '該当するポストはありません。',
                     likes: 'いいねしたポストはありません。',
                     stars: 'お気に入りに登録したポストはありません。',
+                    group_posts: 'このグループにはまだポストがありません。',
                 };
                 const emptyMessageKey =
                     options.subType === 'replies_only' ? 'replies' : type;

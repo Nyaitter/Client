@@ -346,6 +346,15 @@ export async function renderPost(post, author, options = {}) {
     postTime.textContent = `${getNyaitterId(displayAuthor)} · ${formatPostTimestamp(post)}`;
     postHeader.appendChild(postTime);
 
+    if (post.groupId || post.group_id) {
+        const groupIndicator = document.createElement('span');
+        groupIndicator.className = 'group-post-indicator';
+        groupIndicator.textContent = post.group_announcement || post.groupAnnouncement
+            ? 'グループアナウンス'
+            : 'グループ投稿';
+        postHeader.appendChild(groupIndicator);
+    }
+
     if (post.private || post.lock) {
         const lockIndicator = document.createElement('span');
         lockIndicator.className = 'post-lock-indicator';
@@ -772,6 +781,8 @@ export function createPostFormHTML(isModal = false) {
                     </button>
                     <input type="file" id="file-input" class="hidden" multiple>
                     <div id="emoji-picker" class="hidden"></div>
+                    <div class="post-group-menu hidden" role="menu"></div>
+                    <button type="button" class="post-group-button float-right" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.profile}</button>
                     <button id="post-submit-button" class="float-right">ポスト</button>
                     <button type="button" class="post-mask-button float-right" title="ワンクッション">
                         ${ICONS.mask}
@@ -781,15 +792,123 @@ export function createPostFormHTML(isModal = false) {
                     </button>
                     ${
                         getCurrentUser()?.admin
-                            ? `<button type="button" class="post-announcement-button float-right" title="アナウンス" aria-pressed="false">
+                            ? `<button type="button" class="post-announcement-button float-right" title="Nyaitterアナウンス" aria-pressed="false">
                         ${ICONS.megaphone}
                     </button>`
                             : ''
                     }
+                    <button type="button" class="post-group-announcement-button float-right hidden" title="グループアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
                     <span class="float-clear"></span>
                 </div>
             </div>
         </div>`;
+}
+
+function getPostingGroup(container) {
+    return container?._postingGroup || null;
+}
+
+function setPostingGroup(container, group = null, { locked = false } = {}) {
+    if (!container) return;
+    container._postingGroup = group;
+    container._postGroupLocked = locked;
+    const destinationButton = container.querySelector('.post-group-button');
+    const lockButton = container.querySelector('.post-lock-button');
+    const globalAnnouncementButton = container.querySelector('.post-announcement-button');
+    const groupAnnouncementButton = container.querySelector('.post-group-announcement-button');
+    const groupName = group?.name || 'Nyaitter';
+    if (destinationButton) {
+        destinationButton.disabled = locked;
+        destinationButton.title = locked
+            ? `返信先グループ: ${groupName}`
+            : `投稿先: ${groupName}`;
+        destinationButton.setAttribute('aria-label', destinationButton.title);
+        destinationButton.classList.toggle('active', Boolean(group));
+    }
+    if (lockButton) {
+        lockButton.disabled = Boolean(group);
+        if (group) {
+            lockButton.classList.remove('active');
+            lockButton.setAttribute('aria-pressed', 'false');
+        }
+    }
+    if (globalAnnouncementButton) {
+        globalAnnouncementButton.classList.toggle('hidden', Boolean(group));
+        if (group) {
+            globalAnnouncementButton.classList.remove('active');
+            globalAnnouncementButton.setAttribute('aria-pressed', 'false');
+        }
+    }
+    if (groupAnnouncementButton) {
+        const visible = Boolean(group?.canAnnounce);
+        groupAnnouncementButton.classList.toggle('hidden', !visible);
+        if (!visible) {
+            groupAnnouncementButton.classList.remove('active');
+            groupAnnouncementButton.setAttribute('aria-pressed', 'false');
+        }
+    }
+}
+
+function closePostGroupMenu(container) {
+    const menu = container?.querySelector('.post-group-menu');
+    const button = container?.querySelector('.post-group-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+}
+
+async function applyPostGroupSelection(container, groupId) {
+    const { data, error } = await apiRequest(`/server/api/groups/${encodeURIComponent(groupId)}`);
+    if (error || !data?.group?.membership || data.group.membership.status !== 'active') {
+        throw error || new Error('参加中のグループを確認できません。');
+    }
+    const group = data.group;
+    const role = (group.roles || []).find((candidate) => String(candidate.id) === String(group.membership.role_id));
+    const permissions = role?.permissions || [];
+    setPostingGroup(container, {
+        id: group.id,
+        name: group.name || 'グループ',
+        canAnnounce: Number(group.owner_id) === Number(getPostingAccountId(container))
+            || permissions.includes('admin')
+            || permissions.includes('announce'),
+    }, { locked: Boolean(container?._postGroupLocked) });
+}
+
+async function openPostGroupMenu(container) {
+    const menu = container?.querySelector('.post-group-menu');
+    const button = container?.querySelector('.post-group-button');
+    if (!menu || !button || container?._postGroupLocked) return;
+    if (!menu.classList.contains('hidden')) {
+        closePostGroupMenu(container);
+        return;
+    }
+    menu.classList.remove('hidden');
+    button.setAttribute('aria-expanded', 'true');
+    menu.innerHTML = '<div class="post-group-menu-loading"><div class="spinner"></div></div>';
+    try {
+        const { data, error } = await apiRequest('/server/api/groups/mine?limit=200');
+        if (error) throw error;
+        const groups = Array.isArray(data?.groups) ? data.groups : [];
+        menu.innerHTML = `<button type="button" class="post-group-menu-item ${!getPostingGroup(container) ? 'active' : ''}" data-group-id="">Nyaitter <small>通常ポスト</small></button>${groups.map((group) => `<button type="button" class="post-group-menu-item ${String(group.id) === String(getPostingGroup(container)?.id) ? 'active' : ''}" data-group-id="${escapeHTML(String(group.id))}"><strong>${escapeHTML(group.name || '無題のグループ')}</strong><small>グループ投稿</small></button>`).join('') || '<p class="post-group-menu-empty">参加中のグループはありません。</p>'}`;
+        menu.querySelectorAll('[data-group-id]').forEach((item) => item.addEventListener('click', async () => {
+            try {
+                const groupId = item.dataset.groupId;
+                if (groupId) await applyPostGroupSelection(container, groupId);
+                else setPostingGroup(container, null);
+                closePostGroupMenu(container);
+            } catch (error) {
+                showAppAlert(error.message || '投稿先グループを選択できませんでした。');
+            }
+        }));
+    } catch (error) {
+        menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
+    }
+}
+
+function toggleGroupAnnouncement(container) {
+    const button = container?.querySelector('.post-group-announcement-button');
+    if (!button || button.classList.contains('hidden')) return;
+    button.classList.toggle('active');
+    button.setAttribute('aria-pressed', String(button.classList.contains('active')));
 }
 
 export function handleCtrlEnter(e) {
@@ -821,6 +940,12 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
     });
     container.querySelector('.post-announcement-button')?.addEventListener('click', () => {
         handlePostAnnouncement(container);
+    });
+    container.querySelector('.post-group-button')?.addEventListener('click', () => {
+        void openPostGroupMenu(container);
+    });
+    container.querySelector('.post-group-announcement-button')?.addEventListener('click', () => {
+        toggleGroupAnnouncement(container);
     });
     container.querySelector('#post-submit-button')?.addEventListener('click', () => {
         handlePostSubmit(container, onPostSuccess);
@@ -968,6 +1093,11 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     const maskActive = container.querySelector('.post-mask-button')?.classList.contains('active') || false;
     const lockActive = container.querySelector('.post-lock-button')?.classList.contains('active') || false;
     const announcementActive = container.querySelector('.post-announcement-button')?.classList.contains('active') || false;
+    const groupAnnouncementActive = container.querySelector('.post-group-announcement-button')?.classList.contains('active') || false;
+    const postingGroup = getPostingGroup(container);
+    if (postingGroup && getQuotingPost()) {
+        return showAppAlert('引用・リポストはグループ投稿として送信できません。');
+    }
 
     const button = container.querySelector('#post-submit-button');
     if (button) {
@@ -1008,6 +1138,8 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 p_mask: maskActive,
                 p_lock: lockActive,
                 p_announcement: announcementActive,
+                p_group_id: postingGroup?.id || null,
+                p_group_announcement: Boolean(postingGroup && groupAnnouncementActive),
                 p_as_user_id: postingAccountId,
             })
             .single();
@@ -1018,6 +1150,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
         invalidateTimelinePageCache();
         setSelectedFiles([]);
         setMarkdownEditorValue(contentEl, '');
+        setPostingGroup(container, null);
         const previewContainer = container.querySelector('.file-preview-container');
         if (previewContainer) previewContainer.innerHTML = '';
 
@@ -1101,6 +1234,18 @@ export function openPostModal(replyTo = null, quotingPost = null) {
 
     modalFormContainer.innerHTML = createPostFormHTML(true);
     attachPostFormListeners(modalFormContainer);
+
+    const replyGroupId = replyTo?.groupId || replyTo?.group_id || null;
+    if (replyGroupId) {
+        setPostingGroup(modalFormContainer, {
+            id: replyGroupId,
+            name: replyTo?.group_name || 'グループ',
+            canAnnounce: false,
+        }, { locked: true });
+        void applyPostGroupSelection(modalFormContainer, replyGroupId).catch(() => {});
+    } else if (quotingPost) {
+        setPostingGroup(modalFormContainer, null, { locked: true });
+    }
 
     if (replyTo?.isPrivate || replyTo?.lock) {
         const lockButton = modalFormContainer.querySelector('.post-lock-button');

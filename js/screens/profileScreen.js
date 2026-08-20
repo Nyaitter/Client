@@ -310,18 +310,31 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
             }
         }
 
+        let sharedGroups = [];
+        if (getCurrentUser()) {
+            try {
+                const { data, error } = await apiRequest(`/server/api/groups/shared/${encodeURIComponent(user.id)}`);
+                if (!error) sharedGroups = Array.isArray(data?.groups) ? data.groups : [];
+            } catch (_) {}
+        }
         const mainTabs = [
             { key: 'posts', name: 'ポスト' },
             { key: 'replies', name: '返信', className: 'mobile-hidden' },
             { key: 'media', name: 'メディア' },
             { key: 'likes', name: 'いいね' },
             { key: 'stars', name: 'お気に入り' },
+            ...sharedGroups.map((group) => ({
+                key: `group:${group.id}`,
+                name: group.name || 'グループ',
+                className: 'profile-group-tab',
+                title: group.name || 'グループ',
+            })),
         ];
 
         profileTabs.innerHTML = mainTabs
             .map(
                 (tab) =>
-                    `<button class="tab-button ${tab.className || ''} ${tab.key === subpage ? 'active' : ''}" data-tab="${tab.key}">${tab.name}</button>`,
+                    `<button class="tab-button ${tab.className || ''} ${tab.key === subpage ? 'active' : ''}" data-tab="${escapeHTML(tab.key)}" title="${escapeHTML(tab.title || tab.name)}">${escapeHTML(tab.name)}</button>`,
             )
             .join('');
 
@@ -472,6 +485,17 @@ export async function loadProfileTabContent(user, subpage) {
                 break;
             case 'media':
                 await loadMediaGrid(contentDiv, { userId: user.id });
+                break;
+            default:
+                if (String(subpage).startsWith('group:')) {
+                    const groupId = String(subpage).slice('group:'.length);
+                    if (!groupId) throw new Error('グループIDが正しくありません。');
+                    await loadPostsWithPagination(contentDiv, 'group_posts', {
+                        groupId,
+                        authorId: user.id,
+                        pageCache: getProfilePostPageCache(user.id, `group:${groupId}`),
+                    });
+                }
                 break;
         }
     } catch (err) {

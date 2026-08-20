@@ -1,6 +1,7 @@
 import { apiRequest } from '../api.js';
 import { ICONS } from '../icons.js';
 import { getCurrentUser } from '../state.js';
+import { loadPostsWithPagination } from '../modules/pagination.js';
 import { escapeHTML, getNyaitterId, showAppAlert, showAppConfirm, showLoading } from '../utils/helpers.js';
 
 const VISIBILITY_LABELS = {
@@ -208,8 +209,19 @@ function renderGroupOverview(content, group) {
             ${isActive && Number(group.owner_id) !== Number(getCurrentUser()?.id) ? '<button type="button" class="login-secondary-button" id="leave-group-btn">退出する</button>' : ''}
             ${canManage ? `<a class="settings-primary-button" href="#group/${groupId}/manage">管理</a>` : ''}
         </div>
-        <section class="group-posts-placeholder"><h4>グループ投稿</h4>${isActive ? '<p>このグループの投稿は、ホームのグループタブから閲覧できます。</p>' : '<p>グループ投稿は参加者だけが閲覧できます。</p>'}</section>
+        <section class="group-posts-placeholder"><h4>グループ投稿</h4>${isActive ? '<div class="group-post-mode-tabs"><button type="button" class="active" data-group-post-mode="all">すべて</button><button type="button" data-group-post-mode="recommended">おすすめ</button><button type="button" data-group-post-mode="announcements">アナウンス</button></div><div id="group-detail-posts"></div>' : '<p>グループ投稿は参加者だけが閲覧できます。</p>'}</section>
     </section>`;
+    if (isActive) {
+        const postContainer = document.getElementById('group-detail-posts');
+        const loadGroupPosts = (mode = 'all') => {
+            if (!postContainer) return;
+            postContainer.innerHTML = '';
+            document.querySelectorAll('[data-group-post-mode]').forEach((button) => button.classList.toggle('active', button.dataset.groupPostMode === mode));
+            void loadPostsWithPagination(postContainer, 'group_posts', { groupId: group.id, mode });
+        };
+        document.querySelectorAll('[data-group-post-mode]').forEach((button) => button.addEventListener('click', () => loadGroupPosts(button.dataset.groupPostMode || 'all')));
+        loadGroupPosts('all');
+    }
     document.getElementById('join-group-btn')?.addEventListener('click', () => joinGroup(group));
     document.getElementById('leave-group-btn')?.addEventListener('click', () => leaveGroup(group));
 }
