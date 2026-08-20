@@ -21,10 +21,10 @@ import {
     uploadFileViaEdgeFunction,
 } from './posts.js';
 import {
-    formatPostContent,
     getEmoji,
     emoji_picker_create,
 } from './format.js';
+import { renderNyarkDown } from './nyarkdown.js';
 import {
     attachMarkdownContentEditor,
     getMarkdownEditorValue,
@@ -56,7 +56,7 @@ export async function renderDmMessage(msg, dmId = null) {
     await ensureMentionedUsersCached([plaintext]);
 
     if (msg.type === 'system') {
-        const formattedContent = formatPostContent(
+        const formattedContent = renderNyarkDown(
             plaintext,
             getAllUsersCache(),
             { allowMarkdown: true },
@@ -98,7 +98,7 @@ export async function renderDmMessage(msg, dmId = null) {
     }
 
     const formattedContent = plaintext
-        ? formatPostContent(plaintext, getAllUsersCache(), { allowMarkdown: true })
+        ? renderNyarkDown(plaintext, getAllUsersCache(), { allowMarkdown: true })
         : '';
     const sent = Number(msg.userid) === Number(currentUserId);
 

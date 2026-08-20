@@ -33,7 +33,7 @@ import {
     sendSystemDmMessage,
 } from '../modules/dm.js';
 import { filterBlockedPosts, uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
-import { formatPostContent, getEmoji } from '../modules/format.js';
+import { getEmoji } from '../modules/format.js';
 import { attachMarkdownContentEditor, getMarkdownEditorValue, setMarkdownEditorValue, setupMarkdownEditorPreviewButton } from '../modules/editor.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { sendNotification } from '../modules/notifications.js';

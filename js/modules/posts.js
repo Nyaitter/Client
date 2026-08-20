@@ -20,7 +20,8 @@ import {
     invalidateProfileTabPageCache,
     normalizePostId,
 } from './cache.js';
-import { formatPostContent, getEmoji, emoji_picker_create } from './format.js';
+import { getEmoji, emoji_picker_create } from './format.js';
+import { renderNyarkDown } from './nyarkdown.js';
 import {
     attachMarkdownContentEditor,
     getMarkdownEditorValue,
@@ -412,26 +413,26 @@ export async function renderPost(post, author, options = {}) {
             if (post.content.startsWith('!')) {
                 const masktitle = document.createElement('div');
                 masktitle.className = 'post-content post-mask-title';
-                masktitle.innerHTML = formatPostContent(
+                masktitle.innerHTML = renderNyarkDown(
                     post.content.split('\n')[0].slice(1),
                     userCache,
                     { allowMarkdown: true, allowContentDecorations: true },
                 );
                 postMain.appendChild(masktitle);
-                postContent.innerHTML = formatPostContent(
+                postContent.innerHTML = renderNyarkDown(
                     post.content.slice(1),
                     userCache,
                     { allowMarkdown: true, allowContentDecorations: true },
                 );
             } else {
-                postContent.innerHTML = formatPostContent(
+                postContent.innerHTML = renderNyarkDown(
                     post.content,
                     userCache,
                     { allowMarkdown: true, allowContentDecorations: true },
                 );
             }
         } else {
-            postContent.innerHTML = formatPostContent(
+            postContent.innerHTML = renderNyarkDown(
                 post.content,
                 userCache,
                 { allowMarkdown: true, allowContentDecorations: true },

@@ -1,5 +1,5 @@
 import { getCurrentUser } from '../state.js';
-import { formatPostContent, customEmojiPromise } from './format.js';
+import { customEmojiPromise, renderNyarkDown } from './nyarkdown.js';
 import { applyServerInputLimits, scheduleNextFrame } from '../utils/helpers.js';
 import { ICONS } from '../icons.js';
 
@@ -411,7 +411,7 @@ export function updateMarkdownEditorPreview(
         preview.textContent = rawValue;
     } else {
         preview.innerHTML = rawValue
-            ? formatPostContent(rawValue, new Map(), {
+            ? renderNyarkDown(rawValue, new Map(), {
                   allowMarkdown: true,
                   editorSyntax: !published,
                   allowContentDecorations: published,
