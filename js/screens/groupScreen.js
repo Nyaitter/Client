@@ -200,7 +200,7 @@ function openGroupModal(group = null) {
                     <div class="group-modal-image-actions">
                         <button type="button" class="group-modal-icon-preview" id="group-icon-picker" title="アイコン画像を選択"></button>
                         <input type="file" id="group-icon-input" accept="image/*" class="hidden">
-                        ${editing ? '<button type="button" class="login-secondary-button" id="reset-group-icon">アイコンを削除</button>' : ''}
+                        ${editing ? '<button type="button" class="group-ui-secondary-button" id="reset-group-icon">アイコンを削除</button>' : ''}
                     </div>
                 </div>
                 <div class="group-modal-image-field group-modal-header-field">
@@ -208,14 +208,14 @@ function openGroupModal(group = null) {
                     <div class="group-modal-image-actions">
                         <button type="button" class="group-modal-header-preview" id="group-header-picker" title="ヘッダー画像を選択"></button>
                         <input type="file" id="group-header-input" accept="image/*" class="hidden">
-                        ${editing ? '<button type="button" class="login-secondary-button" id="reset-group-header">ヘッダー画像を削除</button>' : ''}
+                        ${editing ? '<button type="button" class="group-ui-secondary-button" id="reset-group-header">ヘッダー画像を削除</button>' : ''}
                     </div>
                 </div>
             </div>
             <label>グループ名<input name="name" maxlength="100" required value="${escapeHTML(group?.name || '')}" placeholder="グループ名"></label>
             <label>説明<textarea name="description" maxlength="2000" rows="4" placeholder="グループの説明">${escapeHTML(group?.description || '')}</textarea></label>
             <label>公開レベル<select name="visibility" class="settings-select">${visibilityOptions(group?.visibility || 'open')}</select></label>
-            <div class="settings-save-row"><button type="button" class="login-secondary-button" data-close-group-modal>キャンセル</button><button type="submit" class="settings-primary-button">${editing ? '変更を保存' : '作成'}</button></div>
+            <div class="settings-save-row"><button type="button" class="group-ui-secondary-button" data-close-group-modal>キャンセル</button><button type="submit" class="settings-primary-button">${editing ? '変更を保存' : '作成'}</button></div>
         </form>
     </div>`;
     document.body.append(modal);
@@ -366,7 +366,7 @@ export async function showGroupsScreen(showScreenFn = null) {
                 <div><h3>グループ</h3><p class="settings-group-description">投稿は参加者だけが閲覧できます。</p></div>
                 <button type="button" class="settings-primary-button" id="open-create-group">グループを作成</button>
             </header>
-            ${invites.length ? renderGroupSection('グループ招待', `<div class="settings-sessions-list">${invites.map((invite) => `<article class="settings-session-item group-ui-invite-item"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(invite.group?.name || 'グループ')}</span><p>グループへの招待が届いています。</p></div><div class="settings-session-actions"><button type="button" class="settings-primary-button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="accept">参加</button><button type="button" class="login-secondary-button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>`) : ''}
+            ${invites.length ? renderGroupSection('グループ招待', `<div class="settings-sessions-list">${invites.map((invite) => `<article class="settings-session-item group-ui-invite-item"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(invite.group?.name || 'グループ')}</span><p>グループへの招待が届いています。</p></div><div class="settings-session-actions"><button type="button" class="settings-primary-button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="accept">参加</button><button type="button" class="group-ui-secondary-button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>`) : ''}
             ${renderGroupSection('参加中のグループ', joinedGroups.length ? `<div class="settings-sessions-list">${joinedGroups.map((group) => renderGroupCard(group, { joined: true })).join('')}</div>` : '<p class="settings-help-text">参加中のグループはありません。</p>')}
             ${renderGroupSection('見つける', publicGroups.length ? `<div class="settings-sessions-list">${publicGroups.map((group) => renderGroupCard(group, { joined: joinedIds.has(String(group.id)) })).join('')}</div>` : '<p class="settings-help-text">公開グループはまだありません。</p>')}
         </main>`;
@@ -432,26 +432,27 @@ function renderGroupOverview(content, group) {
                     ${!membership ? '<button type="button" class="settings-primary-button" id="join-group-btn">参加する</button>' : ''}
                     ${membership?.status === 'pending' ? '<span class="settings-session-current">参加申請を確認中</span>' : ''}
                     ${membership?.status === 'invited' ? '<span class="settings-session-current">招待に応答してください</span>' : ''}
-                    ${isActive && !isGroupOwner(group) ? '<button type="button" class="login-secondary-button" id="leave-group-btn">退出する</button>' : ''}
-                    ${canManage ? `<a class="login-secondary-button" href="#group/${groupId}/manage">管理</a>` : ''}
+                    ${isActive && !isGroupOwner(group) ? '<button type="button" class="group-ui-secondary-button" id="leave-group-btn">退出する</button>' : ''}
+                    ${canManage ? `<a class="group-ui-secondary-button" href="#group/${groupId}/manage">管理</a>` : ''}
                 </div>
             </div>
         </section>
-        ${isActive ? `<section class="group-ui-posts"><div class="timeline-tabs-sticky-container group-ui-post-tabs"><div class="timeline-tabs" role="tablist" aria-label="投稿の表示"><button type="button" class="timeline-tab-button active" data-group-post-mode="all" role="tab" aria-selected="true">すべて</button><button type="button" class="timeline-tab-button" data-group-post-mode="recommended" role="tab" aria-selected="false">おすすめ</button><button type="button" class="timeline-tab-button" data-group-post-mode="announcements" role="tab" aria-selected="false">アナウンス</button></div></div><div id="group-detail-posts"></div></section>` : '<p class="settings-help-text">投稿は参加者だけが閲覧できます。</p>'}
+        ${isActive ? `<section class="group-ui-posts"><div class="timeline-tabs-sticky-container group-ui-post-tabs"><div class="timeline-tabs" role="tablist" aria-label="投稿の表示"><button type="button" class="group-post-tab-button active" data-group-post-mode="all" role="tab" aria-selected="true">すべて</button><button type="button" class="group-post-tab-button" data-group-post-mode="recommended" role="tab" aria-selected="false">おすすめ</button><button type="button" class="group-post-tab-button" data-group-post-mode="announcements" role="tab" aria-selected="false">アナウンス</button></div></div><div id="group-detail-posts"></div></section>` : '<p class="settings-help-text">投稿は参加者だけが閲覧できます。</p>'}
     </main>`;
     if (isActive) {
-        const postContainer = document.getElementById('group-detail-posts');
+        const postContainer = content.querySelector('#group-detail-posts');
+        const tabButtons = [...content.querySelectorAll('[data-group-post-mode]')];
         const loadGroupPosts = (mode = 'all') => {
             if (!postContainer) return;
-            postContainer.innerHTML = '';
-            document.querySelectorAll('[data-group-post-mode]').forEach((button) => {
+            postContainer.replaceChildren();
+            tabButtons.forEach((button) => {
                 const active = button.dataset.groupPostMode === mode;
                 button.classList.toggle('active', active);
                 button.setAttribute('aria-selected', String(active));
             });
             void loadPostsWithPagination(postContainer, 'group_posts', { groupId: group.id, mode });
         };
-        document.querySelectorAll('[data-group-post-mode]').forEach((button) => button.addEventListener('click', () => loadGroupPosts(button.dataset.groupPostMode || 'all')));
+        tabButtons.forEach((button) => button.addEventListener('click', () => loadGroupPosts(button.dataset.groupPostMode || 'all')));
         loadGroupPosts('all');
     }
     document.getElementById('join-group-btn')?.addEventListener('click', () => joinGroup(group));
@@ -482,6 +483,32 @@ async function leaveGroup(group) {
     } finally {
         showLoading(false);
     }
+}
+
+function renderGroupProfileForm(group) {
+    const iconUrl = getGroupImageUrl(group?.icon_data);
+    const headerUrl = getGroupImageUrl(group?.header_image);
+    return `<form id="group-profile-form" class="group-ui-form group-profile-form">
+        <label for="group-profile-name">グループ名</label>
+        <input id="group-profile-name" name="name" maxlength="100" required value="${escapeHTML(group?.name || '')}">
+        <label for="group-profile-icon-input">アイコン</label>
+        <div class="group-profile-image-actions">
+            <button type="button" class="group-profile-icon-preview" id="group-profile-icon-picker" title="クリックして画像を選択">${iconUrl ? `<img src="${escapeHTML(iconUrl)}" alt="アイコンのプレビュー">` : `<span aria-hidden="true">${ICONS.group}</span>`}</button>
+            <button type="button" class="group-ui-secondary-button" id="reset-group-profile-icon">アイコンを削除</button>
+        </div>
+        <input type="file" id="group-profile-icon-input" accept="image/*" class="hidden">
+        <label for="group-profile-header-input">ヘッダー画像</label>
+        <div class="group-profile-image-actions group-profile-header-actions">
+            <button type="button" class="group-profile-header-preview ${headerUrl ? '' : 'is-empty'}" id="group-profile-header-picker" title="クリックして画像を選択">${headerUrl ? `<img src="${escapeHTML(headerUrl)}" alt="ヘッダー画像のプレビュー">` : '<span>ヘッダー画像を選択</span>'}</button>
+            <button type="button" class="group-ui-secondary-button" id="reset-group-profile-header">ヘッダー画像を削除</button>
+        </div>
+        <input type="file" id="group-profile-header-input" accept="image/*" class="hidden">
+        <label for="group-profile-description">説明</label>
+        <textarea id="group-profile-description" name="description" maxlength="2000" rows="4">${escapeHTML(group?.description || '')}</textarea>
+        <label for="group-profile-visibility">公開レベル</label>
+        <select id="group-profile-visibility" name="visibility" class="settings-select">${visibilityOptions(group?.visibility || 'open')}</select>
+        <div class="settings-save-row"><button type="submit" class="settings-primary-button">変更を保存</button></div>
+    </form>`;
 }
 
 function renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, canTransfer }) {
@@ -516,21 +543,21 @@ async function renderGroupManage(content, group) {
     const tabs = renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, canTransfer });
     const selectedTab = tabs[0]?.id || 'profile';
     content.innerHTML = `<main class="group-ui-page group-ui-manage-page">
-        <header class="settings-detail-heading group-ui-page-heading"><div><h3>${escapeHTML(group.name || '')} の管理</h3><p class="settings-group-description">${escapeHTML(tabs.find((tab) => tab.id === selectedTab)?.description || '')}</p></div><a href="#group/${groupId}" class="login-secondary-button">グループへ戻る</a></header>
+        <header class="settings-detail-heading group-ui-page-heading"><div><h3>${escapeHTML(group.name || '')} の管理</h3><p class="settings-group-description">${escapeHTML(tabs.find((tab) => tab.id === selectedTab)?.description || '')}</p></div><a href="#group/${groupId}" class="group-ui-secondary-button">グループへ戻る</a></header>
         <div class="settings-layout group-ui-manage-layout">
             <nav class="settings-group-list" aria-label="グループ管理項目">
                 ${tabs.map((tab) => `<button type="button" class="settings-group-button ${tab.id === selectedTab ? 'active' : ''}" data-group-manage-tab="${tab.id}" data-group-manage-title="${escapeHTML(tab.label)}" data-group-manage-description="${escapeHTML(tab.description)}">${escapeHTML(tab.label)}</button>`).join('')}
             </nav>
             <div class="group-ui-manage-detail">
-                ${canProfile ? `<section class="settings-group-panel" data-group-manage-panel="profile" ${selectedTab === 'profile' ? '' : 'hidden'}>${renderGroupSection('プロフィール', `<p class="settings-help-text">グループのアイコン、ヘッダー画像、名前、説明、公開レベルを編集します。</p><div class="settings-save-row"><button type="button" class="settings-primary-button" id="open-edit-group">プロフィールを編集</button></div>`)}</section>` : ''}
+                ${canProfile ? `<section class="settings-group-panel" data-group-manage-panel="profile" ${selectedTab === 'profile' ? '' : 'hidden'}>${renderGroupSection('プロフィール', renderGroupProfileForm(group), 'グループのアイコン、ヘッダー画像、名前、説明、公開レベルを編集します。')}</section>` : ''}
                 ${canMembers ? `<section class="settings-group-panel" data-group-manage-panel="members" ${selectedTab === 'members' ? '' : 'hidden'}>${renderGroupSection('メンバー', `<div class="settings-sessions-list">${members.map((entry) => {
                     const member = entry.membership || {};
                     const user = entry.user || {};
                     const owner = Number(member.user_id) === Number(group.owner_id);
                     return `<article class="settings-session-item group-ui-member-row"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(user.name || `#${member.user_id}`)}${owner ? '<span class="settings-session-current">オーナー</span>' : ''}</span><p>${escapeHTML(getNyaitterId(user) || `#${member.user_id}`)}</p></div><div class="settings-session-actions">${canAdmin && !owner ? `<select class="settings-select group-ui-role-select" data-member-role="${Number(member.user_id)}" aria-label="${escapeHTML(user.name || `#${member.user_id}`)}のロール">${roles.map((role) => `<option value="${escapeHTML(String(role.id))}" ${String(role.id) === String(member.role_id) ? 'selected' : ''}>${escapeHTML(role.name)}</option>`).join('')}</select>` : ''}${canBan && !owner ? `<button type="button" class="settings-session-revoke-button" data-ban-member="${Number(member.user_id)}">禁止</button>` : ''}</div></article>`;
                 }).join('') || '<p class="settings-help-text">メンバーがいません。</p>'}</div>`)}</section>` : ''}
-                ${canInvite ? `<section class="settings-group-panel" data-group-manage-panel="invites" ${selectedTab === 'invites' ? '' : 'hidden'}>${renderGroupSection('ユーザーを招待', `<form id="group-invite-form" class="group-ui-inline-form"><label>NyaitterID<input name="user_id" inputmode="numeric" required placeholder="#0000の数字部分"></label><button type="submit" class="settings-primary-button">招待を送信</button></form>`)}${renderGroupSection('参加申請', joinRequests.length ? `<div class="settings-sessions-list">${joinRequests.map((item) => `<article class="settings-session-item"><div class="settings-session-details"><span class="settings-session-title">ユーザー #${Number(item.userId ?? item.user_id)}</span><p>参加申請を確認してください。</p></div><div class="settings-session-actions"><button type="button" class="settings-primary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="approve">承認</button><button type="button" class="login-secondary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>` : '<p class="settings-help-text">保留中の参加申請はありません。</p>')}</section>` : ''}
-                ${canAdmin ? `<section class="settings-group-panel" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロール', `<div id="group-role-list" class="settings-sessions-list">${roles.map((role) => `<article class="settings-session-item"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(role.name)}${role.is_system ? '<span class="settings-session-current">システム</span>' : ''}</span><p>${(role.permissions || []).map((permission) => escapeHTML(PERMISSION_LABELS[permission] || permission)).join('、') || '権限なし'}</p></div>${role.is_system ? '' : `<div class="settings-session-actions"><button type="button" class="settings-session-revoke-button" data-delete-role="${escapeHTML(String(role.id))}">削除</button></div>`}</article>`).join('')}</div><details class="group-role-details"><summary>ロールを追加</summary><form id="group-role-form" class="group-role-form"><label>ロール名<input name="name" maxlength="50" required></label><fieldset class="group-role-permissions"><legend>権限</legend><div>${Object.entries(PERMISSION_LABELS).map(([key, label]) => `<label><input type="checkbox" name="permissions" value="${key}"> ${label}</label>`).join('')}</div></fieldset><div class="settings-save-row"><button type="submit" class="settings-primary-button">ロールを追加</button></div></form></details>`)}</section>` : ''}
+                ${canInvite ? `<section class="settings-group-panel" data-group-manage-panel="invites" ${selectedTab === 'invites' ? '' : 'hidden'}>${renderGroupSection('ユーザーを招待', `<form id="group-invite-form" class="group-ui-inline-form"><label>NyaitterID<input name="user_id" inputmode="numeric" required placeholder="#0000の数字部分"></label><button type="submit" class="settings-primary-button">招待を送信</button></form>`)}${renderGroupSection('参加申請', joinRequests.length ? `<div class="settings-sessions-list">${joinRequests.map((item) => `<article class="settings-session-item"><div class="settings-session-details"><span class="settings-session-title">ユーザー #${Number(item.userId ?? item.user_id)}</span><p>参加申請を確認してください。</p></div><div class="settings-session-actions"><button type="button" class="settings-primary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="approve">承認</button><button type="button" class="group-ui-secondary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>` : '<p class="settings-help-text">保留中の参加申請はありません。</p>')}</section>` : ''}
+                ${canAdmin ? `<section class="settings-group-panel" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロール', `<div id="group-role-list" class="settings-sessions-list">${roles.map((role) => `<article class="settings-session-item"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(role.name)}${role.is_system ? '<span class="settings-session-current">システム</span>' : ''}</span><p>${(role.permissions || []).map((permission) => escapeHTML(PERMISSION_LABELS[permission] || permission)).join('、') || '権限なし'}</p></div>${role.is_system ? '' : `<div class="settings-session-actions"><button type="button" class="settings-session-revoke-button" data-delete-role="${escapeHTML(String(role.id))}">削除</button></div>`}</article>`).join('')}</div><form id="group-role-form" class="group-role-form"><div class="group-role-form-heading"><h5>ロールを追加</h5><p class="settings-help-text">ロール名と許可する操作を選択してください。</p></div><label class="group-role-name-field">ロール名<input name="name" maxlength="50" required></label><fieldset class="group-role-permissions"><legend>権限</legend><div>${Object.entries(PERMISSION_LABELS).map(([key, label]) => `<label><input type="checkbox" name="permissions" value="${key}"> <span>${label}</span></label>`).join('')}</div></fieldset><div class="settings-save-row"><button type="submit" class="settings-primary-button">ロールを追加</button></div></form>`)}</section>` : ''}
                 ${canTransfer ? `<section class="settings-group-panel" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>${renderGroupSection('オーナー権限を移譲', `<form id="group-transfer-owner-form" class="group-ui-inline-form"><label>新しいオーナーのNyaitterID<input name="user_id" inputmode="numeric" required></label><button type="submit" class="settings-danger-button">権限を移譲</button></form>`, 'この操作は取り消せません。')}</section>` : ''}
             </div>
         </div>
@@ -540,6 +567,106 @@ async function renderGroupManage(content, group) {
 
 function refreshGroupManage(group) {
     return showGroupDetailScreen(group.id, 'manage');
+}
+
+function bindGroupProfileForm(group) {
+    const form = document.getElementById('group-profile-form');
+    if (!form) return;
+
+    const iconInput = document.getElementById('group-profile-icon-input');
+    const headerInput = document.getElementById('group-profile-header-input');
+    const iconPreview = document.getElementById('group-profile-icon-picker');
+    const headerPreview = document.getElementById('group-profile-header-picker');
+    let newIconDataUrl = null;
+    let newHeaderDataUrl = null;
+    let resetIcon = false;
+    let resetHeader = false;
+
+    iconPreview?.addEventListener('click', () => iconInput?.click());
+    headerPreview?.addEventListener('click', () => headerInput?.click());
+    iconInput?.addEventListener('change', async (event) => {
+        try {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            newIconDataUrl = await resizeImageToDataUrl(file, 300, 300);
+            resetIcon = false;
+            setModalIconPreview(iconPreview, newIconDataUrl);
+        } catch (error) {
+            showAppAlert(error.message || 'アイコン画像を選択できませんでした。');
+        }
+    });
+    headerInput?.addEventListener('change', async (event) => {
+        try {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            newHeaderDataUrl = await resizeImageToDataUrl(file, 1500, 600);
+            resetHeader = false;
+            setModalHeaderPreview(headerPreview, newHeaderDataUrl);
+        } catch (error) {
+            showAppAlert(error.message || 'ヘッダー画像を選択できませんでした。');
+        }
+    });
+    document.getElementById('reset-group-profile-icon')?.addEventListener('click', () => {
+        resetIcon = true;
+        newIconDataUrl = null;
+        if (iconInput) iconInput.value = '';
+        setModalIconPreview(iconPreview);
+    });
+    document.getElementById('reset-group-profile-header')?.addEventListener('click', () => {
+        resetHeader = true;
+        newHeaderDataUrl = null;
+        if (headerInput) headerInput.value = '';
+        setModalHeaderPreview(headerPreview);
+    });
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        const values = new FormData(form);
+        const body = {
+            name: values.get('name'),
+            description: values.get('description'),
+            visibility: values.get('visibility'),
+        };
+        const uploadedFileIds = [];
+        const previousFileIds = new Set();
+        const shouldReplaceIcon = resetIcon || Boolean(newIconDataUrl);
+        const shouldReplaceHeader = resetHeader || Boolean(newHeaderDataUrl);
+        try {
+            showLoading(true);
+            if (resetIcon) {
+                body.icon_data = null;
+            } else if (newIconDataUrl) {
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newIconDataUrl));
+                uploadedFileIds.push(fileId);
+                body.icon_data = fileId;
+            }
+            if (resetHeader) {
+                body.header_image = null;
+            } else if (newHeaderDataUrl) {
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newHeaderDataUrl));
+                uploadedFileIds.push(fileId);
+                body.header_image = fileId;
+            }
+            if (shouldReplaceIcon && isStoredImageId(group?.icon_data)) previousFileIds.add(group.icon_data);
+            if (shouldReplaceHeader && isStoredImageId(group?.header_image)) previousFileIds.add(group.header_image);
+
+            await request(groupPath(group.id), { method: 'PATCH', body });
+            if (previousFileIds.size > 0) {
+                void deleteFilesViaEdgeFunction([...previousFileIds]).catch((error) => {
+                    console.warn('グループの古い画像を削除できませんでした。', error);
+                });
+            }
+            await refreshGroupManage(group);
+        } catch (error) {
+            if (uploadedFileIds.length > 0) {
+                await deleteFilesViaEdgeFunction(uploadedFileIds).catch(() => {});
+            }
+            showAppAlert(error.message || 'プロフィールを更新できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    });
 }
 
 function bindGroupManageEvents(group) {
@@ -554,7 +681,7 @@ function bindGroupManageEvents(group) {
         if (headingTitle) headingTitle.textContent = `${group.name || ''} の${button.dataset.groupManageTitle || '管理'}`;
         if (headingDescription) headingDescription.textContent = button.dataset.groupManageDescription || '';
     }));
-    document.getElementById('open-edit-group')?.addEventListener('click', () => openGroupModal(group));
+    bindGroupProfileForm(group);
     document.getElementById('group-invite-form')?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const userId = Number(new FormData(event.currentTarget).get('user_id'));
