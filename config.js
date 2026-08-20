@@ -13,10 +13,10 @@
         // Nyaitter ServerのAPIルート。静的サイトと同一オリジンで配信する場合は変更不要です。
         apiEndpoint: '/server',
 
-        // ユーザーファイルの公開URLです。R2の公開ドメインなどを使う場合に指定します。
-        // 例: '/uploads'、'https://media.example.com'
-        // 空文字列の場合、ClientはユーザーファイルのURLを生成しません。
-        userFileEndpoint: '',
+        // Nyaitter Serverが既定で配信するユーザーファイルの公開URLです。
+        // R2の公開ドメインなどを使う場合は、絶対URLへ変更できます。
+        // 空文字列を明示すると、Client側のユーザーファイルURL生成を無効にします。
+        userFileEndpoint: '/uploads',
 
         // 設定画面の「リンク」に表示するリソースです。
         resourceLinks: [
