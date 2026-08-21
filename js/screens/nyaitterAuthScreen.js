@@ -2,7 +2,7 @@ import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { getCurrentUser } from '../state.js';
 import { refreshAccountList, checkSession } from '../modules/auth.js';
-import { apiRequest } from '../utils/api.js';
+import { apiRequest } from '../api.js';
 import { escapeHTML, showLoading, getSafeHttpUrl, getUserIconUrl, formatNyaitterId } from '../utils/helpers.js';
 
 const { apiUrl } = globalThis.NyaitterClientConfig || {};
