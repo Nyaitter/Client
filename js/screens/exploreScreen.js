@@ -47,7 +47,7 @@ export async function showExploreScreen(showScreenFn) {
                         <div class="trend-item-meta">
                             <span>${index + 1}</span>位
                         </div>
-                        <div class="trend-item-name">#${escapeHTML(trend.tag_name)}</div>
+                        <div class="trend-item-name">${escapeHTML(trend.tag_name)}</div>
                         <div class="trend-item-count">${trend.occurrence_count}件のポスト</div>
                     </a>
                 `;
