@@ -310,8 +310,8 @@ export function invalidateProfileTabPageCache(userId, subpage) {
 
     const normalizedTab = String(subpage || 'posts');
     const postSubTypesByTab = {
-        posts: ['posts_only'],
-        replies: ['replies_only'],
+        posts: ['posts_only', 'replies_only'],
+        replies: ['posts_only', 'replies_only'],
         likes: ['likes'],
         stars: ['stars'],
     };

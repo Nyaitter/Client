@@ -80,6 +80,7 @@ export async function fetchOptimizedPostPage(
         const groupId = String(options.groupId || '');
         if (!groupId) throw new Error('グループIDが必要です。');
         if (options.mode) params.set('mode', options.mode);
+        if (options.subType) params.set('sub_type', options.subType);
         if (options.authorId != null) params.set('author_id', String(options.authorId));
         const { data, error } = await apiRequest(
             `/server/api/groups/${encodeURIComponent(groupId)}/posts?${params.toString()}`,

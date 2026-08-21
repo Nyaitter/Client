@@ -556,6 +556,9 @@ img.emoji {
     align-items: center;
 
     transition: background-color 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .timeline-tab-button:hover {
@@ -2509,6 +2512,9 @@ body.dark .recommend-user button {
     font-weight: 500;
     position: relative;
     transition: background-color 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .tab-button:hover {
@@ -6560,6 +6566,12 @@ body.pull-to-refresh-enabled {
     cursor: pointer;
     position: relative;
     transition: background-color 0.2s;
+}
+
+.group-post-tab-button {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .group-post-tab-button:hover,

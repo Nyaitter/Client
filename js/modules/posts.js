@@ -875,6 +875,24 @@ function closePostGroupMenu(container) {
     const button = container?.querySelector('.post-group-button');
     menu?.classList.add('hidden');
     button?.setAttribute('aria-expanded', 'false');
+    if (container?._postGroupMenuOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postGroupMenuOutsideHandler, true);
+        container._postGroupMenuOutsideHandler = null;
+    }
+}
+
+function bindPostGroupMenuOutsideHandler(container) {
+    if (!container || container._postGroupMenuOutsideHandler) return;
+    const handler = (event) => {
+        const menu = container.querySelector('.post-group-menu');
+        const button = container.querySelector('.post-group-button');
+        if (!menu || menu.classList.contains('hidden') || menu.contains(event.target) || button?.contains(event.target)) return;
+        closePostGroupMenu(container);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+    container._postGroupMenuOutsideHandler = handler;
+    document.addEventListener('pointerdown', handler, true);
 }
 
 function getPostingGroupListPath(container) {
@@ -999,6 +1017,7 @@ async function openPostGroupMenu(container) {
     const postingAccountVersion = Number(container._postingAccountVersion || 0);
     menu.classList.remove('hidden');
     button.setAttribute('aria-expanded', 'true');
+    bindPostGroupMenuOutsideHandler(container);
     menu.innerHTML = '<div class="post-group-menu-loading"><div class="spinner"></div></div>';
     try {
         const groups = await getPostingAccountGroups(container);

@@ -61,6 +61,38 @@ import {
 } from '../utils/helpers.js';
 
 let activeProfilePullRefreshUser = null;
+const profileTimelineModes = new Map();
+
+function getProfileTimelineMode(userId, tab) {
+    return profileTimelineModes.get(`${Number(userId)}:${String(tab)}`) || 'posts_only';
+}
+
+function setProfileTimelineMode(userId, tab, mode) {
+    if (!['posts_only', 'replies_only'].includes(mode)) return;
+    profileTimelineModes.set(`${Number(userId)}:${String(tab)}`, mode);
+}
+
+function closeProfileTimelineModeMenu() {
+    document.querySelector('.profile-timeline-mode-menu')?.remove();
+}
+
+function openProfileTimelineModeMenu(button, user, tab) {
+    closeProfileTimelineModeMenu();
+    const menu = document.createElement('div');
+    menu.className = 'group-timeline-mode-menu profile-timeline-mode-menu';
+    const mode = getProfileTimelineMode(user.id, tab);
+    menu.innerHTML = ['posts_only', 'replies_only'].map((value) => `<button type="button" class="${value === mode ? 'active' : ''}" data-profile-timeline-mode="${value}">${value === 'posts_only' ? 'ポスト' : '返信'}</button>`).join('');
+    document.body.appendChild(menu);
+    const rect = button.getBoundingClientRect();
+    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+    menu.style.top = `${Math.min(window.innerHeight - menu.offsetHeight - 8, rect.bottom + 6)}px`;
+    menu.querySelectorAll('[data-profile-timeline-mode]').forEach((item) => item.addEventListener('click', () => {
+        setProfileTimelineMode(user.id, tab, item.dataset.profileTimelineMode);
+        closeProfileTimelineModeMenu();
+        void loadProfileTabContent(user, tab);
+    }));
+    setTimeout(() => document.addEventListener('click', closeProfileTimelineModeMenu, { once: true }), 0);
+}
 
 export async function getPublicProfile(userId) {
     const normalizedId = Number(userId);
@@ -87,7 +119,7 @@ export function resetProfileTabNavigation(userId, subpage) {
     const normalizedUserId = Number(userId);
     if (!Number.isInteger(normalizedUserId) || normalizedUserId < 0) return;
 
-    const normalizedTab = String(subpage || 'posts');
+    const normalizedTab = String(subpage || 'posts') === 'replies' ? 'posts' : String(subpage || 'posts');
     const hash =
         normalizedTab === 'posts'
             ? `#profile/${normalizedUserId}`
@@ -125,12 +157,13 @@ export async function refreshActiveProfileTab({ userId, subpage } = {}) {
         return;
     }
 
-    const normalizedTab = String(subpage || 'posts');
+    const normalizedTab = String(subpage || 'posts') === 'replies' ? 'posts' : String(subpage || 'posts');
     invalidateProfileTabPageCache(normalizedUserId, normalizedTab);
     await loadProfileTabContent(activeProfile, normalizedTab);
 }
 
 export async function showProfileScreen(userId, subpage = 'posts', showScreenFn = null) {
+    subpage = subpage === 'replies' ? 'posts' : subpage;
     DOM.pageHeader.innerHTML = `
         <div class="header-with-back-button">
             <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
@@ -324,7 +357,6 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
 
         const mainTabs = [
             { key: 'posts', name: 'ポスト' },
-            { key: 'replies', name: '返信' },
             { key: 'media', name: 'メディア' },
             { key: 'likes', name: 'いいね' },
             { key: 'stars', name: 'お気に入り' },
@@ -344,9 +376,32 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
             .join('');
 
         profileTabs.querySelectorAll('.tab-button').forEach((button) => {
+            const tab = button.dataset.tab;
+            const canSwitchTimelineMode = tab === 'posts' || String(tab).startsWith('group:');
+            let longPressTimer = null;
+            let suppressNextClick = false;
+            const openTimelineModeMenu = (event) => {
+                event?.preventDefault();
+                suppressNextClick = !event || event.type !== 'contextmenu';
+                if (canSwitchTimelineMode) openProfileTimelineModeMenu(button, user, tab);
+            };
+            if (canSwitchTimelineMode) {
+                button.addEventListener('contextmenu', openTimelineModeMenu);
+                button.addEventListener('touchstart', () => {
+                    longPressTimer = window.setTimeout(() => openTimelineModeMenu(), 600);
+                }, { passive: true });
+                ['touchend', 'touchcancel', 'touchmove'].forEach((eventName) => button.addEventListener(eventName, () => {
+                    if (longPressTimer) window.clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }, { passive: true }));
+            }
             button.onclick = (e) => {
                 e.stopPropagation();
-                resetProfileTabNavigation(user.id, button.dataset.tab);
+                if (suppressNextClick) {
+                    suppressNextClick = false;
+                    return;
+                }
+                resetProfileTabNavigation(user.id, tab);
             };
         });
 
@@ -361,6 +416,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
 }
 
 export async function loadProfileTabContent(user, subpage) {
+    subpage = subpage === 'replies' ? 'posts' : subpage;
     const profileHeader = document.getElementById('profile-header');
     const profileTabs = document.getElementById('profile-tabs');
     const contentDiv = document.getElementById('profile-content');
@@ -420,26 +476,18 @@ export async function loadProfileTabContent(user, subpage) {
     try {
         switch (subpage) {
             case 'posts': {
-                const pinnedPostId = normalizePostId(user.pinned_post_id);
+                const subType = getProfileTimelineMode(user.id, 'posts');
+                const pinnedPostId = subType === 'posts_only'
+                    ? normalizePostId(user.pinned_post_id)
+                    : '';
                 await loadPostsWithPagination(contentDiv, 'profile_posts', {
                     userId: user.id,
-                    subType: 'posts_only',
+                    subType,
                     pinId: pinnedPostId,
-                    pageCache: getProfilePostPageCache(
-                        user.id,
-                        'posts_only',
-                        pinnedPostId,
-                    ),
+                    pageCache: getProfilePostPageCache(user.id, subType, pinnedPostId),
                 });
                 break;
             }
-            case 'replies':
-                await loadPostsWithPagination(contentDiv, 'profile_posts', {
-                    userId: user.id,
-                    subType: 'replies_only',
-                    pageCache: getProfilePostPageCache(user.id, 'replies_only'),
-                });
-                break;
             case 'likes':
                 if (user.visibility?.likes !== 'public') {
                     contentDiv.innerHTML =
@@ -495,10 +543,12 @@ export async function loadProfileTabContent(user, subpage) {
                 if (String(subpage).startsWith('group:')) {
                     const groupId = String(subpage).slice('group:'.length);
                     if (!groupId) throw new Error('グループIDが正しくありません。');
+                    const subType = getProfileTimelineMode(user.id, `group:${groupId}`);
                     await loadPostsWithPagination(contentDiv, 'group_posts', {
                         groupId,
                         authorId: user.id,
-                        pageCache: getProfilePostPageCache(user.id, `group:${groupId}`),
+                        subType,
+                        pageCache: getProfilePostPageCache(user.id, `group:${groupId}:${subType}`),
                     });
                 }
                 break;
