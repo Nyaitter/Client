@@ -33,6 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const authPasskeyPanel = document.getElementById('auth-passkey-panel');
   const passkeySigninBtn = document.getElementById('passkey-signin-btn');
 
+  // NyaitterAuth panel elements
+  const authNyaitterPanel = document.getElementById('auth-nyaitter-panel');
+  const loginNyaitterServerInput = document.getElementById('login-nyaitter-server-input');
+  const nyaitterSigninBtn = document.getElementById('nyaitter-signin-btn');
+
   // Common elements
   const loadingOverlay = document.getElementById('login-loading-overlay') || document.getElementById('loading-overlay');
   const errorMessage = document.getElementById('error-message');
@@ -254,6 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
     authScratchPanel?.classList.add('hidden');
     authEmailPanel?.classList.add('hidden');
     authPasskeyPanel?.classList.add('hidden');
+    authNyaitterPanel?.classList.add('hidden');
   }
 
   function showProviderSelect() {
@@ -270,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (usernameInput) usernameInput.value = '';
     if (loginEmailInput) loginEmailInput.value = '';
     if (loginEmailCodeInput) loginEmailCodeInput.value = '';
+    if (loginNyaitterServerInput) loginNyaitterServerInput.value = '';
     if (verificationCodeElem) verificationCodeElem.textContent = '';
     if (profileLink) profileLink.href = 'https://scratch.mit.edu/';
 
@@ -277,6 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     authStep1?.classList.remove('hidden');
     authEmailStep2?.classList.add('hidden');
     authEmailStep1?.classList.remove('hidden');
+    authNyaitterPanel?.classList.add('hidden');
 
     showProviderSelect();
   }
@@ -303,6 +311,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (name === 'passkey') {
       if (loginTitle) loginTitle.textContent = 'パスキーでログイン';
       authPasskeyPanel?.classList.remove('hidden');
+    } else if (name === 'nyaitter' || name === 'nyaitterauth' || name === 'nyaitter-auth') {
+      if (loginTitle) loginTitle.textContent = 'Nyaitterでログイン';
+      authNyaitterPanel?.classList.remove('hidden');
+      window.setTimeout(() => loginNyaitterServerInput?.focus(), 0);
     } else {
       if (loginTitle) loginTitle.textContent = `${provider?.displayName || name}でログイン`;
     }
@@ -676,7 +688,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  void detectTurnstileRequirement().then(() => {
-    if (new URL(window.location.href).searchParams.get('login') === '1') openLoginModal();
+  // --- NyaitterAuth Flow Handlers ---
+  nyaitterSigninBtn?.addEventListener('click', async () => {
+    const serverUrl = (loginNyaitterServerInput?.value || '').trim();
+    if (!serverUrl) {
+      showError('NyaitterサーバーURLを入力してください。');
+      return;
+    }
+    showLoading(true);
+    hideMessages();
+    try {
+      const initiateRes = await fetch(`${AUTH_API}/nyaitter/initiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ serverUrl }),
+      });
+      const initiateData = await initiateRes.json().catch(() => ({}));
+      if (!initiateRes.ok || initiateData.error || !initiateData.auth_url) {
+        throw new Error(initiateData.error || 'NyaitterAuth認証の開始に失敗しました。');
+      }
+
+      // Redirect to authorization URL
+      window.location.href = initiateData.auth_url;
+    } catch (error) {
+      showError(error.message);
+      showLoading(false);
+    }
+  });
+
+  // Handle #login-callback / ?token=... / ?code=...
+  async function processLoginCallback() {
+    const fullUrl = new URL(window.location.href);
+    let token = fullUrl.searchParams.get('token') || fullUrl.searchParams.get('code');
+    let provider = fullUrl.searchParams.get('provider') || 'nyaitter';
+    let serverUrl = fullUrl.searchParams.get('server_url') || '';
+
+    const hash = window.location.hash || '';
+    if (hash.includes('login-callback') || hash.includes('token=') || hash.includes('code=')) {
+      const qIndex = hash.indexOf('?');
+      if (qIndex !== -1) {
+        const hashParams = new URLSearchParams(hash.substring(qIndex + 1));
+        token = token || hashParams.get('token') || hashParams.get('code');
+        provider = hashParams.get('provider') || provider;
+        serverUrl = hashParams.get('server_url') || serverUrl;
+      }
+    }
+
+    if (!token) return false;
+
+    showLoading(true);
+    try {
+      const verifyRes = await fetch(`${AUTH_API}/${encodeURIComponent(provider)}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          code: token,
+          serverUrl: serverUrl || undefined,
+        }),
+      });
+      let data = await verifyRes.json().catch(() => ({}));
+      if (!verifyRes.ok || data.error) {
+        throw new Error(data.error || '認証に失敗しました。');
+      }
+      if (data.approval_required) data = await completeApprovedLogin(data);
+      if (!data.success) throw new Error('セッションの設定に失敗しました。');
+
+      // Clear callback url params
+      window.location.hash = '#';
+      finishLogin();
+      return true;
+    } catch (error) {
+      showLoading(false);
+      await openLoginModal();
+      showError(error.message || 'ログイン処理に失敗しました。');
+      return true;
+    }
+  }
+
+  void detectTurnstileRequirement().then(async () => {
+    const handled = await processLoginCallback();
+    if (!handled && new URL(window.location.href).searchParams.get('login') === '1') {
+      openLoginModal();
+    }
   });
 });

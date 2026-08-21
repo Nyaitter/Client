@@ -137,6 +137,9 @@
 					<div id="rule-screen" class="screen hidden">
 						<div id="rule-content" class="rule-content-container"></div>
 					</div>
+					<div id="nyaitter-auth-screen" class="screen hidden">
+						<div id="nyaitter-auth-content" class="nyaitter-auth-content-container"></div>
+					</div>
 				</div>
 			</main>
 			<!-- 右側サイドバー -->
@@ -216,6 +219,14 @@
 					<div id="auth-passkey-panel" class="hidden">
 						<p class="settings-help-text">端末に保存されているパスキー（生体認証またはセキュリティキー）でサインインします。</p>
 						<button type="button" id="passkey-signin-btn" class="settings-primary-button login-auth-action">パスキーでサインイン</button>
+					</div>
+
+					<!-- NyaitterAuth Flow -->
+					<div id="auth-nyaitter-panel" class="hidden">
+						<p class="settings-help-text">NyaitterサーバーのURLを入力してください。</p>
+						<label class="login-modal-field" for="login-nyaitter-server-input">NyaitterサーバーURL</label>
+						<input type="url" id="login-nyaitter-server-input" placeholder="https://example.com" autocomplete="url" required />
+						<button type="button" id="nyaitter-signin-btn" class="settings-primary-button login-auth-action">ログイン</button>
 					</div>
 
 					<p id="error-message" class="login-modal-message login-modal-error hidden" role="alert"></p>

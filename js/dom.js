@@ -37,6 +37,8 @@ export const DOM = {
     searchResultsContent: document.getElementById('search-results-content'),
     ruleScreen: document.getElementById('rule-screen'),
     ruleContent: document.getElementById('rule-content'),
+    nyaitterAuthScreen: document.getElementById('nyaitter-auth-screen'),
+    nyaitterAuthContent: document.getElementById('nyaitter-auth-content'),
     dmScreen: document.getElementById('dm-screen'),
     dmContent: document.getElementById('dm-content'),
     loadingOverlay: document.getElementById('loading-overlay'),

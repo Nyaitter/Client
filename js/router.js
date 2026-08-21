@@ -38,6 +38,7 @@ import {
     showAdminLogsScreen,
 } from './screens/adminScreen.js';
 import { showRuleScreen } from './screens/ruleScreen.js';
+import { showNyaitterAuthScreen } from './screens/nyaitterAuthScreen.js';
 import { showLoading } from './utils/helpers.js';
 
 let routerGeneration = 0;
@@ -188,6 +189,8 @@ export async function router() {
             await showStarsScreen(showScreen);
         } else if (hash === '#rule' || hash === '#rules') {
             await showRuleScreen(showScreen);
+        } else if (hash.startsWith('#nyaitter-auth') || hash.startsWith('#auth/authorize') || hash.startsWith('#oauth/authorize')) {
+            await showNyaitterAuthScreen(showScreen);
         } else {
             await showMainScreen(showScreen);
         }

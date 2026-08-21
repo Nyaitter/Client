@@ -256,6 +256,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                 <a href="#settings/ui" class="settings-group-button" data-settings-group="ui">UI / フォント</a>
                 <a href="#settings/notifications" class="settings-group-button" data-settings-group="notifications">通知</a>
                 <a href="#settings/storage" class="settings-group-button" data-settings-group="storage">ストレージ</a>
+                <a href="#settings/apps" class="settings-group-button" data-settings-group="apps">連携アプリ</a>
                 <a href="#settings/api" class="settings-group-button" data-settings-group="api">API / Bot</a>
                 <a href="#settings/imposter" class="settings-group-button" data-settings-group="imposter">インポスター</a>
                 <a href="#settings/resources" class="settings-group-button" data-settings-group="resources">リソース</a>
@@ -439,6 +440,13 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         </div>
                     </div>
                 </section>
+                <section class="settings-group-panel" data-settings-panel="apps" hidden>
+                    <section class="settings-authorized-apps" aria-labelledby="settings-authorized-apps-title">
+                        <h4 id="settings-authorized-apps-title">連携中のアプリケーション</h4>
+                        <p class="settings-help-text">NyaitterAuthでアクセスを許可したアプリケーションの一覧です。権限の変更や連携の解除が行えます。</p>
+                        <div id="settings-authorized-apps-list" class="settings-sessions-list" aria-live="polite"></div>
+                    </section>
+                </section>
                 <section class="settings-group-panel" data-settings-panel="resources" hidden>
                     <section class="settings-resource-links" aria-labelledby="settings-resource-links-title">
                         <h4 id="settings-resource-links-title">リンク</h4>
@@ -454,6 +462,18 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                     <div class="verification-application-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
                         <button type="button" class="login-secondary-button" data-action="close-verification-application">キャンセル</button>
                         <button type="button" id="submit-verification-application-btn" class="settings-primary-button">申請する</button>
+                    </div>
+                </section>
+            </div>
+            <div id="edit-app-scopes-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+                <section class="modal-content" style="max-width: 520px;">
+                    <button type="button" class="modal-close-btn">×</button>
+                    <h3 id="edit-app-scopes-title">権限を変更</h3>
+                    <p class="settings-help-text">このアプリケーションに許可する権限を選択してください。</p>
+                    <div id="edit-app-scopes-container" style="margin: 1.25rem 0; max-height: 340px; overflow-y: auto;"></div>
+                    <div style="margin-top: 1.25rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button type="button" id="edit-app-scopes-cancel-btn" class="login-secondary-button">キャンセル</button>
+                        <button type="button" id="edit-app-scopes-save-btn" class="settings-primary-button">保存する</button>
                     </div>
                 </section>
             </div>
@@ -949,6 +969,19 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         }
                         await showAppAlert('パスキーの連携が完了しました！');
                         await loadAuthProvidersSettings();
+                    } else if (provider.name === 'nyaitter') {
+                        const targetUrl = await showAppPrompt('NyaitterサーバーのURLを入力してください:');
+                        if (targetUrl === null) return;
+                        showLoading(true);
+                        const { data: initiateData, error: initError } = await apiRequest('/server/auth/link/nyaitter/initiate', {
+                            method: 'POST',
+                            body: { serverUrl: (targetUrl || '').trim() || undefined },
+                        });
+                        showLoading(false);
+                        if (initError || !initiateData?.auth_url) {
+                            return showAppAlert(`連携の開始に失敗しました: ${initError?.message || '不明なエラー'}`);
+                        }
+                        window.location.href = initiateData.auth_url;
                     } else {
                         showAppAlert(`未対応のプロバイダーです: ${provider.name}`);
                     }
@@ -1087,6 +1120,201 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
             if (newlyCreatedValue) newlyCreatedValue.value = '';
         });
     }
+
+    // ==================== Authorized Apps (NyaitterAuth) ====================
+    const authorizedAppsList = document.getElementById('settings-authorized-apps-list');
+    const openEditAppScopesModal = async (app, onUpdated) => {
+        const modal = document.getElementById('edit-app-scopes-modal');
+        if (!modal) return;
+        const appTitle = document.getElementById('edit-app-scopes-title');
+        const scopesContainer = document.getElementById('edit-app-scopes-container');
+        const saveBtn = document.getElementById('edit-app-scopes-save-btn');
+        const cancelBtn = document.getElementById('edit-app-scopes-cancel-btn');
+        const closeBtn = modal.querySelector('.modal-close-btn');
+
+        if (appTitle) appTitle.textContent = `${app.app_name || 'アプリ'}の権限変更`;
+
+        const availableScopes = [
+            { id: 'profile:read', label: '基本情報の閲覧', desc: 'ユーザー名、アイコンなどの基本情報', required: true },
+            { id: 'posts:read', label: 'タイムライン・ポストの閲覧', desc: 'タイムライン、ポストの閲覧' },
+            { id: 'posts:write', label: 'ポストの投稿・リアクション', desc: 'ポストの投稿、返信、いいね等' },
+            { id: 'dm:read', label: 'ダイレクトメッセージの閲覧', desc: 'DMの閲覧' },
+            { id: 'dm:write', label: 'ダイレクトメッセージの送信', desc: 'DMの送信' },
+            { id: 'notifications:read', label: '通知の閲覧', desc: '通知の確認' },
+            { id: 'continuous_access', label: '継続アクセス', desc: 'バックグラウンドでの継続的なアクセス' },
+        ];
+
+        const currentScopesSet = new Set(Array.isArray(app.scopes) ? app.scopes : []);
+
+        if (scopesContainer) {
+            scopesContainer.innerHTML = availableScopes.map((s) => `
+                <label class="nyauth-scope-item" style="display: flex; gap: 0.75rem; margin: 0.75rem 0; cursor: pointer;">
+                    <input type="checkbox" name="edit_nyauth_scope" value="${s.id}" ${currentScopesSet.has(s.id) || s.required ? 'checked' : ''} ${s.required ? 'disabled data-required="true"' : ''}>
+                    <div>
+                        <strong style="font-size: 0.95rem;">${escapeHTML(s.label)}</strong> ${s.required ? '<span class="nyauth-badge-required">必須</span>' : ''}
+                        <p style="margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--secondary-text-color);">${escapeHTML(s.desc)}</p>
+                    </div>
+                </label>
+            `).join('');
+        }
+
+        const closeModal = () => {
+            modal.classList.add('hidden');
+        };
+
+        const handleSave = async () => {
+            saveBtn.disabled = true;
+            saveBtn.textContent = '保存中…';
+            const selectedScopes = [];
+            modal.querySelectorAll('input[name="edit_nyauth_scope"]').forEach((cb) => {
+                if (cb.checked || cb.dataset.required === 'true') {
+                    selectedScopes.push(cb.value);
+                }
+            });
+
+            try {
+                const { error } = await apiRequest(`/server/auth/nyaitter-auth/authorized-apps/${encodeURIComponent(app.id)}`, {
+                    method: 'PATCH',
+                    body: { scopes: selectedScopes },
+                });
+                if (error) {
+                    showAppAlert(`権限の更新に失敗しました: ${error.message}`);
+                    return;
+                }
+                closeModal();
+                if (typeof onUpdated === 'function') await onUpdated();
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '保存する';
+            }
+        };
+
+        if (closeBtn) closeBtn.onclick = closeModal;
+        if (cancelBtn) cancelBtn.onclick = closeModal;
+        if (saveBtn) saveBtn.onclick = handleSave;
+        modal.classList.remove('hidden');
+    };
+
+    const loadAuthorizedApps = async () => {
+        if (!authorizedAppsList) return;
+        const { data, error } = await apiRequest('/server/auth/nyaitter-auth/authorized-apps');
+        authorizedAppsList.replaceChildren();
+        if (error) {
+            const errP = document.createElement('p');
+            errP.className = 'settings-help-text';
+            errP.textContent = `連携アプリの取得に失敗しました: ${error.message}`;
+            authorizedAppsList.appendChild(errP);
+            return;
+        }
+        const apps = Array.isArray(data?.apps) ? data.apps : [];
+        if (apps.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'settings-help-text';
+            empty.textContent = '連携中のアプリケーションはありません。';
+            authorizedAppsList.appendChild(empty);
+            return;
+        }
+        apps.forEach((app) => {
+            const item = document.createElement('article');
+            item.className = 'settings-session-item nyauth-app-item';
+            item.style.cssText = 'display: flex; gap: 1rem; align-items: center; padding: 0.85rem;';
+
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'nyauth-settings-app-icon';
+            if (app.app_icon_url) {
+                const img = document.createElement('img');
+                img.src = escapeHTML(getSafeHttpUrl(app.app_icon_url));
+                img.alt = app.app_name;
+                img.style.cssText = 'width: 44px; height: 44px; border-radius: 10px; object-fit: cover;';
+                iconDiv.appendChild(img);
+            } else {
+                iconDiv.innerHTML = `<div style="width: 44px; height: 44px; border-radius: 10px; background: color-mix(in srgb, var(--primary-color) 15%, transparent); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">📱</div>`;
+            }
+
+            const details = document.createElement('div');
+            details.className = 'settings-session-details';
+            details.style.flex = '1';
+
+            const title = document.createElement('div');
+            title.className = 'settings-session-title';
+            title.textContent = app.app_name || '名称未設定';
+
+            const idBadge = document.createElement('span');
+            idBadge.className = 'settings-bot-token-id';
+            idBadge.textContent = `ID: ${app.app_id}`;
+            title.appendChild(idBadge);
+
+            if (app.has_continuous_access) {
+                const contBadge = document.createElement('span');
+                contBadge.className = 'nyauth-badge-continuous';
+                contBadge.style.cssText = 'margin-left: 0.5rem; font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 4px; background: color-mix(in srgb, var(--primary-color) 20%, transparent); color: var(--primary-color); font-weight: 600;';
+                contBadge.textContent = '継続アクセス';
+                title.appendChild(contBadge);
+            }
+
+            const scopesDiv = document.createElement('div');
+            scopesDiv.className = 'nyauth-scopes-badges';
+            scopesDiv.style.cssText = 'margin: 0.4rem 0; display: flex; flex-wrap: wrap; gap: 0.35rem;';
+            const scopeLabels = {
+                'profile:read': '基本情報',
+                'posts:read': 'ポスト閲覧',
+                'posts:write': 'ポスト投稿',
+                'dm:read': 'DM閲覧',
+                'dm:write': 'DM送信',
+                'notifications:read': '通知閲覧',
+                'continuous_access': '継続アクセス',
+            };
+            const scopesList = Array.isArray(app.scopes) ? app.scopes : [];
+            scopesList.forEach((sc) => {
+                const badge = document.createElement('span');
+                badge.style.cssText = 'font-size: 0.75rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: color-mix(in srgb, var(--secondary-text-color) 15%, transparent); color: var(--text-color);';
+                badge.textContent = scopeLabels[sc] || sc;
+                scopesDiv.appendChild(badge);
+            });
+
+            const dates = document.createElement('p');
+            dates.className = 'settings-session-dates';
+            const createdStr = app.created_at ? formatSecurityTimestamp(app.created_at) : '日時不明';
+            const lastUsedStr = app.last_used_at ? formatSecurityTimestamp(app.last_used_at) : '未使用';
+            dates.textContent = `連携日: ${createdStr} / 最終使用: ${lastUsedStr}`;
+
+            details.append(title, scopesDiv, dates);
+
+            const actions = document.createElement('div');
+            actions.className = 'settings-session-actions';
+            actions.style.cssText = 'display: flex; gap: 0.5rem; align-items: center;';
+
+            // Edit scopes button
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'settings-bot-secondary-button';
+            editBtn.textContent = '権限を変更';
+            editBtn.addEventListener('click', async () => {
+                await openEditAppScopesModal(app, loadAuthorizedApps);
+            });
+
+            // Revoke button
+            const revokeBtn = document.createElement('button');
+            revokeBtn.type = 'button';
+            revokeBtn.className = 'settings-session-revoke-button';
+            revokeBtn.textContent = '連携を解除';
+            revokeBtn.addEventListener('click', async () => {
+                if (!(await showAppConfirm(`アプリケーション「${app.app_name}」の連携を解除しますか？\n解除するとこのアプリからのアクセス（継続アクセストークンを含む）は直ちに停止されます。`))) return;
+                revokeBtn.disabled = true;
+                const { error: revokeError } = await apiRequest(`/server/auth/nyaitter-auth/authorized-apps/${encodeURIComponent(app.id)}`, { method: 'DELETE' });
+                if (revokeError) {
+                    showAppAlert(`連携の解除に失敗しました: ${revokeError.message}`);
+                    revokeBtn.disabled = false;
+                    return;
+                }
+                await loadAuthorizedApps();
+            });
+
+            actions.append(editBtn, revokeBtn);
+            item.append(iconDiv, details, actions);
+            authorizedAppsList.appendChild(item);
+        });
+    };
 
     const imposterList = document.getElementById('settings-imposter-list');
     const imposterLimit = document.getElementById('settings-imposter-limit');
@@ -1425,6 +1653,10 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
             title: 'ストレージ',
             description: 'アップロード済みのファイルとストレージ使用量を管理します。',
         },
+        apps: {
+            title: '連携アプリ',
+            description: 'NyaitterAuthでアクセスを許可したアプリケーションを管理します。',
+        },
         api: {
             title: 'API / Bot',
             description: 'Bot用APIキーを生成・管理します。',
@@ -1460,6 +1692,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         }
         if (activeGroup === 'notifications') void loadPushSettingsState();
         if (activeGroup === 'storage') void loadUserStorage();
+        if (activeGroup === 'apps') void loadAuthorizedApps();
         if (activeGroup === 'api') void loadUserBotTokens();
         if (activeGroup === 'imposter') void loadImposters();
         if (activeGroup === 'resources') renderResourceLinks();

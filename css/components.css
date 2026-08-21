@@ -780,3 +780,227 @@ overscroll-behavior-y: contain;
     text-align: right;
 }
 
+/* ── NyaitterAuth Screen Styles ──────────────────────────────────────── */
+.nyauth-container {
+    max-width: 540px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.nyauth-card {
+    background: var(--card-bg-color, var(--main-bg-color));
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.nyauth-app-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.nyauth-app-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.nyauth-app-icon-placeholder {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+}
+
+.nyauth-app-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.nyauth-app-id {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: var(--secondary-text-color);
+}
+
+.nyauth-already-authorized-badge {
+    margin-top: 1rem;
+    padding: 0.6rem 0.9rem;
+    background: color-mix(in srgb, #10b981 12%, transparent);
+    border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
+    border-radius: 8px;
+    color: #10b981;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.nyauth-prompt-text {
+    margin: 1.25rem 0 1rem;
+}
+
+.nyauth-prompt-text p {
+    margin: 0.35rem 0;
+}
+
+.nyauth-scopes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+}
+
+.nyauth-scope-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--secondary-text-color) 5%, transparent);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.nyauth-scope-item:hover {
+    background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+    border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+}
+
+.nyauth-scope-item input[type="checkbox"] {
+    margin-top: 0.25rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+}
+
+.nyauth-scope-item.is-continuous {
+    border-color: color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
+}
+
+.nyauth-scope-info {
+    flex: 1;
+}
+
+.nyauth-scope-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    font-size: 0.95rem;
+}
+
+.nyauth-scope-desc {
+    margin: 0.25rem 0 0;
+    font-size: 0.82rem;
+    color: var(--secondary-text-color);
+    line-height: 1.35;
+}
+
+.nyauth-badge-required {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #ef4444;
+}
+
+.nyauth-badge-continuous {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+    color: var(--primary-color);
+}
+
+/* NyaitterAuth Account Selection */
+.nyauth-account-section {
+    margin: 1.25rem 0;
+    padding: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--secondary-text-color) 4%, transparent);
+}
+
+.nyauth-account-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.65rem;
+}
+
+.nyauth-account-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.nyauth-account-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.nyauth-account-option:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 50%, var(--border-color));
+}
+
+.nyauth-account-option.selected {
+    border-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 8%, var(--main-bg-color));
+}
+
+.nyauth-account-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.nyauth-account-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.nyauth-account-name {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.92rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nyauth-account-id {
+    font-size: 0.78rem;
+    color: var(--secondary-text-color);
+}
+
+.nyauth-account-radio input[type="radio"] {
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
