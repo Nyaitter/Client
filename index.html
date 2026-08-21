@@ -213,11 +213,17 @@
 								<button type="button" id="resend-email-code-btn" class="login-secondary-button">認証コードを再送信</button>
 							</div>
 						</div>
+						<div id="auth-email-step3" class="hidden">
+							<p class="settings-help-text">ユーザー名を設定してください。</p>
+							<label class="login-modal-field" for="login-email-name-input">ユーザー名</label>
+							<input type="text" id="login-email-name-input" placeholder="ユーザー名" maxlength="50" autocomplete="nickname" />
+							<button type="button" id="submit-email-signup-btn" class="settings-primary-button login-auth-action">登録を完了</button>
+						</div>
 					</div>
 
 					<!-- Passkey Flow -->
 					<div id="auth-passkey-panel" class="hidden">
-						<p class="settings-help-text">端末に保存されているパスキー（生体認証またはセキュリティキー）でサインインします。</p>
+						<p class="settings-help-text">端末に保存されているパスキーでサインインします。</p>
 						<button type="button" id="passkey-signin-btn" class="settings-primary-button login-auth-action">パスキーでサインイン</button>
 					</div>
 

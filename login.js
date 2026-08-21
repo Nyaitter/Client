@@ -23,10 +23,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const authEmailPanel = document.getElementById('auth-email-panel');
   const authEmailStep1 = document.getElementById('auth-email-step1');
   const authEmailStep2 = document.getElementById('auth-email-step2');
+  const authEmailStep3 = document.getElementById('auth-email-step3');
   const loginEmailInput = document.getElementById('login-email-input');
   const getEmailCodeBtn = document.getElementById('get-email-code-btn');
   const loginEmailCodeInput = document.getElementById('login-email-code-input');
+  const loginEmailNameInput = document.getElementById('login-email-name-input');
   const verifyEmailCodeBtn = document.getElementById('verify-email-code-btn');
+  const submitEmailSignupBtn = document.getElementById('submit-email-signup-btn');
   const resendEmailCodeBtn = document.getElementById('resend-email-code-btn');
 
   // Passkey panel elements
@@ -276,12 +279,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (usernameInput) usernameInput.value = '';
     if (loginEmailInput) loginEmailInput.value = '';
     if (loginEmailCodeInput) loginEmailCodeInput.value = '';
+    if (loginEmailNameInput) loginEmailNameInput.value = '';
     if (loginNyaitterServerInput) loginNyaitterServerInput.value = '';
     if (verificationCodeElem) verificationCodeElem.textContent = '';
     if (profileLink) profileLink.href = 'https://scratch.mit.edu/';
 
     authStep2?.classList.add('hidden');
     authStep1?.classList.remove('hidden');
+    authEmailStep3?.classList.add('hidden');
     authEmailStep2?.classList.add('hidden');
     authEmailStep1?.classList.remove('hidden');
     authNyaitterPanel?.classList.add('hidden');
@@ -307,6 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
       authEmailPanel?.classList.remove('hidden');
       authEmailStep1?.classList.remove('hidden');
       authEmailStep2?.classList.add('hidden');
+      authEmailStep3?.classList.add('hidden');
       window.setTimeout(() => loginEmailInput?.focus(), 0);
     } else if (name === 'passkey') {
       if (loginTitle) loginTitle.textContent = 'パスキーでログイン';
@@ -554,7 +560,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }),
       });
       let data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) throw new Error(data.error || '認証に失敗しました。');
+      if (!response.ok || data.error) {
+        if (data.code === 'username_required') {
+          hideMessages();
+          if (loginTitle) loginTitle.textContent = 'ユーザー名の設定';
+          authEmailStep2?.classList.add('hidden');
+          authEmailStep3?.classList.remove('hidden');
+          window.setTimeout(() => loginEmailNameInput?.focus(), 0);
+          return;
+        }
+        throw new Error(data.error || '認証に失敗しました。');
+      }
       if (data.approval_required) data = await completeApprovedLogin(data);
       if (!data.success) throw new Error('セッションの設定に失敗しました。');
       finishLogin();
@@ -565,10 +581,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  async function submitEmailSignup() {
+    const code = loginEmailCodeInput?.value.trim();
+    const name = loginEmailNameInput?.value.trim();
+    if (!name) {
+      showError('ユーザー名を入力してください。');
+      loginEmailNameInput?.focus();
+      return;
+    }
+
+    showLoading(true);
+    hideMessages();
+    try {
+      const response = await fetch(`${AUTH_API}/email/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: currentEmail,
+          code,
+          name,
+        }),
+      });
+      let data = await response.json().catch(() => ({}));
+      if (!response.ok || data.error) {
+        throw new Error(data.error || '登録に失敗しました。');
+      }
+      if (data.approval_required) data = await completeApprovedLogin(data);
+      if (!data.success) throw new Error('セッションの設定に失敗しました。');
+      finishLogin();
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  submitEmailSignupBtn?.addEventListener('click', submitEmailSignup);
+
   loginEmailCodeInput?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
       verifyEmailCodeBtn?.click();
+    }
+  });
+
+  loginEmailNameInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      submitEmailSignup();
     }
   });
 
