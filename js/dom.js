@@ -35,6 +35,8 @@ export const DOM = {
     postDetailContent: document.getElementById('post-detail-content'),
     searchResultsScreen: document.getElementById('search-results-screen'),
     searchResultsContent: document.getElementById('search-results-content'),
+    ruleScreen: document.getElementById('rule-screen'),
+    ruleContent: document.getElementById('rule-content'),
     dmScreen: document.getElementById('dm-screen'),
     dmContent: document.getElementById('dm-content'),
     loadingOverlay: document.getElementById('loading-overlay'),

@@ -37,6 +37,10 @@
         // 右サイドバーに表示するリンクです。
         widgetLinks: [
             {
+                name: 'ルール',
+                url: '#rule',
+            },
+            {
                 name: 'GitHub',
                 url: 'https://github.com/Nyaitter',
             },

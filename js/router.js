@@ -37,6 +37,7 @@ import {
     showAdminReportDetailScreen,
     showAdminLogsScreen,
 } from './screens/adminScreen.js';
+import { showRuleScreen } from './screens/ruleScreen.js';
 import { showLoading } from './utils/helpers.js';
 
 let routerGeneration = 0;
@@ -185,6 +186,8 @@ export async function router() {
             await showLikesScreen(showScreen);
         } else if (hash === '#stars' && getCurrentUser()) {
             await showStarsScreen(showScreen);
+        } else if (hash === '#rule' || hash === '#rules') {
+            await showRuleScreen(showScreen);
         } else {
             await showMainScreen(showScreen);
         }

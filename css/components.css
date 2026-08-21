@@ -673,3 +673,110 @@ overscroll-behavior-y: contain;
         transform: translateX(0);
     }
 }
+
+/* ==========================================================================
+   Rules Screen
+   ========================================================================== */
+
+.rule-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+    box-sizing: border-box;
+    color: var(--text-color);
+}
+
+.rule-markdown-body {
+    line-height: 1.7;
+    font-size: 1rem;
+    word-break: break-word;
+}
+
+.rule-markdown-body h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin: 0.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.rule-markdown-body h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 1.75rem 0 0.75rem;
+    color: var(--text-color);
+}
+
+.rule-markdown-body h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1.25rem 0 0.5rem;
+    color: var(--text-color);
+}
+
+.rule-markdown-body p {
+    margin: 0.75rem 0;
+    color: var(--text-color);
+}
+
+.rule-markdown-body hr {
+    border: 0;
+    height: 1px;
+    background: var(--border-color);
+    margin: 1.5rem 0;
+}
+
+.rule-markdown-body ul,
+.rule-markdown-body ol {
+    margin: 0.75rem 0 1rem 1.25rem;
+    padding-left: 0.5rem;
+}
+
+.rule-markdown-body li {
+    margin: 0.4rem 0;
+}
+
+.rule-markdown-body blockquote {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    background: color-mix(in srgb, var(--primary-color) 8%, var(--main-bg-color));
+    border-left: 4px solid var(--primary-color);
+    border-radius: 4px;
+    color: var(--text-color);
+}
+
+.rule-markdown-body blockquote p {
+    margin: 0.25rem 0;
+}
+
+.rule-markdown-body code {
+    background: color-mix(in srgb, var(--secondary-text-color) 15%, transparent);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9em;
+}
+
+.rule-markdown-body pre {
+    background: color-mix(in srgb, var(--secondary-text-color) 12%, transparent);
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+.rule-markdown-body pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+.rule-footer-meta {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border-color);
+    color: var(--secondary-text-color);
+    text-align: right;
+}
+
