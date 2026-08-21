@@ -111,16 +111,18 @@ export async function switchTimelineTab(
 
     if (getPostLoadObserver()) getPostLoadObserver().disconnect();
     DOM.timeline.innerHTML = '';
+    const pageCache = getTimelinePageCache(tab, { forceRefresh });
     if (groupId) {
         await loadPostsWithPagination(DOM.timeline, 'group_posts', {
             groupId,
             mode: getGroupTimelineMode(groupId),
+            pageCache,
         });
         return;
     }
     await loadPostsWithPagination(DOM.timeline, 'timeline', {
         tab,
-        pageCache: getTimelinePageCache(tab, { forceRefresh }),
+        pageCache,
     });
 }
 

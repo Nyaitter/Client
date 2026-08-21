@@ -10,10 +10,7 @@ export const MAX_TIMELINE_PAGE_CACHES = 30;
 export const MAX_PROFILE_POST_PAGE_CACHES = 30;
 export const MAX_AUXILIARY_PAGE_CACHES = 50;
 export const MAX_SCREEN_DATA_CACHES = 50;
-// _v1, _v2のようなバージョニングは絶対にしない。
-export const PAGE_CACHE_STORAGE_KEY = 'nyaitter_page_cache_v2'
-    .replaceAll('_v1', '')
-    .replaceAll('_v2', '');
+export const PAGE_CACHE_STORAGE_KEY = 'nyaitter_page_cache';
 
 export const timelinePageCaches = new Map();
 export const profilePostPageCaches = new Map();
