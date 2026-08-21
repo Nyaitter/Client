@@ -282,6 +282,15 @@ function handleGlobalClick(e) {
             void copyPost(timelinePostId, target.closest('.share-btn'));
             return;
         }
+        if (target.closest('.report-btn')) {
+            openReportModal({
+                targetKind: 'post',
+                targetId: Number(actionTargetPostId || timelinePostId),
+                targetLabel: 'このポスト',
+            });
+            target.closest('.post-menu')?.classList.remove('is-visible');
+            return;
+        }
         if (target.closest('.edit-btn')) {
             openEditPostModal(timelinePostId);
             return;

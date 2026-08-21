@@ -4,7 +4,7 @@ import {
     getCurrentUser,
     setCurrentUser,
 } from '../state.js';
-import { cacheUser } from './cache.js';
+import { cacheUser, invalidateTimelinePageCache, invalidateDmCaches } from './cache.js';
 import { applyInterfaceTheme } from './theme.js';
 import { router } from '../router.js';
 import { subscribeToChanges, unsubscribeFromChanges } from './realtime.js';
@@ -37,18 +37,33 @@ export function openLoginModal(options = {}) {
     }
 }
 
+export async function handleLoginSuccess() {
+    const modal = document.getElementById('login-modal');
+    modal?.classList.add('hidden');
+    invalidateTimelinePageCache();
+    invalidateDmCaches();
+    await checkSession({ route: true, refreshAccounts: true });
+}
+
+window.NyaitterOnLoginSuccess = handleLoginSuccess;
+window.addEventListener('nyaitter:login-success', () => {
+    void handleLoginSuccess();
+});
+
 export async function handleLogout(onLogoutComplete) {
     try {
         await apiRequest('/server/auth/logout', { method: 'POST' });
         setCurrentUser(null);
         applyInterfaceTheme();
+        invalidateTimelinePageCache();
+        invalidateDmCaches();
         if (typeof onLogoutComplete === 'function') {
             await onLogoutComplete();
         }
-        window.location.reload();
+        await checkSession({ route: true, refreshAccounts: true });
     } catch (error) {
         console.error('ログアウト処理エラー:', error);
-        window.location.reload();
+        await checkSession({ route: true, refreshAccounts: true });
     }
 }
 
@@ -477,18 +492,7 @@ export async function checkSession({
             return null;
         }
 
-        const authUserId = session.user.id;
-        let userData = session.user;
-        try {
-            const { data: fullUser, error: userError } = await api
-                .from('user')
-                .select('*')
-                .eq('uuid', authUserId)
-                .single();
-            if (fullUser && !userError) {
-                userData = fullUser;
-            }
-        } catch (_) {}
+        const userData = session.user;
 
         setCurrentUser(userData);
         cacheUser(userData);

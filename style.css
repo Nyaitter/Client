@@ -2884,49 +2884,150 @@ body.dark .recommend-user button {
     border-color: var(--primary-color);
 }
 
-#dm-list-container {
-    width: 100%; /* 幅を100%に */
-    border-right: none; /* 右の境界線を削除 */
+#dm-list-container,
+.dm-list-container {
+    width: 100%;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
 }
-.dm-new-message-btn {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    padding: 1rem;
-    font-weight: bold;
-    font-size: 1rem;
-    color: var(--primary-color);
-    border: none;
-    border-bottom: 1px solid var(--border-color);
-    background-color: var(--main-bg-color);
-    cursor: pointer;
-    transition: background-color 0.2s;
+
+.dm-list-items-wrapper {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
 }
-.dm-new-message-btn:hover {
-    background-color: var(--bg-color);
-}
+
 .dm-list-item {
-    padding: 1rem;
+    padding: 0.85rem 1rem;
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    background-color: var(--main-bg-color);
+    transition: background-color 0.15s ease;
 }
+
 .dm-list-item:hover,
 .dm-list-item.active {
     background-color: var(--bg-color);
 }
-.dm-list-item-title {
-    font-weight: bold;
-    flex-grow: 1;
-    white-space: normal;
-    word-break: break-word;
+
+.dm-list-item.is-unread {
+    background-color: var(--light-primary-color);
 }
+
+.dm-list-item-avatar-wrap {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    position: relative;
+}
+
+.dm-list-item-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+.dm-group-avatar-stack {
+    position: relative;
+    width: 42px;
+    height: 42px;
+}
+
+.dm-group-avatar-1 {
+    width: 28px;
+    height: 28px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--main-bg-color);
+}
+
+.dm-group-avatar-2 {
+    width: 28px;
+    height: 28px;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--main-bg-color);
+}
+
+.dm-list-item-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.dm-list-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.dm-list-item-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dm-list-item-unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 9999px;
+    background: var(--primary-color);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.dm-list-item-sub {
+    font-size: 0.8rem;
+    color: var(--secondary-text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dm-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    color: var(--secondary-text-color);
+}
+
+.dm-empty-state p {
+    margin: 0 0 1.25rem;
+    line-height: 1.5;
+}
+
+.dm-empty-create-btn {
+    font-weight: 700;
+    padding: 0.65rem 1.25rem;
+    border-radius: 9999px;
+}
+
 .dm-manage-btn:not(.report-btn) {
     box-sizing: border-box;
     display: inline-grid;
@@ -2936,23 +3037,388 @@ body.dark .recommend-user button {
     padding: 0;
     place-items: center;
     flex: 0 0 34px;
-    border: 1px solid var(--text-color);
+    border: 1px solid var(--border-color);
     border-radius: 50%;
     background: var(--main-bg-color);
-    color: var(--text-color);
+    color: var(--secondary-text-color);
     cursor: pointer;
     font-size: 1.1rem;
     line-height: 1;
-    transition:
-        background-color 0.16s ease,
-        border-color 0.16s ease,
-        color 0.16s ease;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
+
 .dm-manage-btn:not(.report-btn):hover {
     border-color: var(--text-color);
     background-color: var(--bg-color);
     color: var(--text-color);
 }
+
+.dm-header-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.dm-header-titles {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.dm-header-title {
+    font-size: 1.1rem;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dm-header-subtitle {
+    font-size: 0.8rem;
+    color: var(--secondary-text-color);
+}
+
+.dm-send-action-btn {
+    padding: 0.5rem 0.8rem;
+    border-radius: 9999px;
+    border: none;
+    background: var(--primary-color);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+}
+
+.dm-send-action-btn:hover {
+    opacity: 0.9;
+}
+
+.dm-action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.45rem;
+    border-radius: 50%;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dm-action-btn:hover {
+    background-color: var(--bg-color);
+}
+
+/* DM モーダル共通スタイル */
+.dm-modal-content {
+    box-sizing: border-box;
+    max-width: 520px;
+    width: min(520px, calc(100vw - 2rem));
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: var(--main-bg-color);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    position: relative;
+}
+
+.dm-modal-content .modal-close-btn {
+    top: 1rem;
+    right: 1rem;
+    background: transparent;
+    color: var(--secondary-text-color);
+    font-size: 1.4rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    line-height: 1;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.dm-modal-content .modal-close-btn:hover {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.dm-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.dm-modal-body .modal-heading h3 {
+    margin: 0 0 0.35rem;
+    font-size: 1.2rem;
+    color: var(--text-color);
+}
+
+.dm-modal-search-box {
+    width: 100%;
+}
+
+.dm-modal-input,
+.dm-modal-search-input,
+.dm-search-input,
+.dm-create-search-input,
+#dm-user-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.95rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dm-modal-input:focus,
+.dm-modal-search-input:focus,
+.dm-search-input:focus,
+.dm-create-search-input:focus,
+#dm-user-search:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--light-primary-color);
+}
+
+.dm-modal-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ユーザー検索結果リスト */
+.dm-search-results {
+    display: flex;
+    flex-direction: column;
+    max-height: 260px;
+    overflow-y: auto;
+    gap: 0.25rem;
+}
+
+.dm-search-user-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.dm-search-user-item:hover {
+    background-color: var(--bg-color);
+}
+
+.dm-search-user-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.dm-search-user-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 0.1rem;
+}
+
+.dm-search-user-name {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dm-search-user-handle {
+    font-size: 0.8rem;
+    color: var(--secondary-text-color);
+}
+
+.dm-search-empty {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--secondary-text-color);
+    font-size: 0.9rem;
+}
+
+/* DM管理モーダル */
+.dm-manage-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.dm-manage-label,
+.dm-manage-section-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.dm-manage-inline-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.dm-manage-btn-sm {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 8px;
+}
+
+.dm-manage-member-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+}
+
+.dm-manage-member-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.65rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dm-manage-member-item:last-child {
+    border-bottom: none;
+}
+
+.dm-manage-member-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.dm-manage-member-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.dm-manage-member-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dm-manage-member-handle {
+    font-size: 0.78rem;
+    color: var(--secondary-text-color);
+}
+
+.dm-manage-host-badge {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.dm-manage-member-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.dm-manage-member-actions button {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.78rem;
+    border-radius: 6px;
+}
+
+.dm-manage-actions-footer {
+    display: flex;
+    gap: 0.65rem;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+/* DM編集モーダル */
+.dm-edit-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.dm-edit-editor {
+    width: 100%;
+}
+
+.dm-edit-textarea {
+    width: 100%;
+    min-height: 90px;
+    padding: 0.65rem 0.75rem;
+    box-sizing: border-box;
+}
+
+.dm-edit-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.dm-edit-tools {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.dm-edit-tool-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.4rem;
+    border-radius: 50%;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dm-edit-tool-btn:hover {
+    background: var(--bg-color);
+}
+
+.dm-edit-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 #dm-conversation-container {
     display: flex;
     flex-direction: column;
@@ -4173,17 +4639,20 @@ body.dark .recommend-user button {
 
 /* ログインセキュリティとセッション管理 */
 .settings-login-security,
+.settings-auth-providers,
 .settings-sessions {
     margin-top: 1.25rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
 }
 
+.settings-auth-providers h4,
 .settings-sessions h4 {
     margin: 0;
     font-size: 1rem;
 }
 
+.settings-auth-providers-list,
 .settings-sessions-list {
     margin-top: 0.75rem;
 }
@@ -4222,6 +4691,16 @@ body.dark .recommend-user button {
     color: var(--primary-color);
     font-size: 0.75rem;
     font-weight: 700;
+}
+
+.settings-provider-unlinked {
+    display: inline-block;
+    padding: 0.08rem 0.42rem;
+    border-radius: 9999px;
+    background: var(--border-color);
+    color: var(--secondary-text-color);
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
 .settings-session-item p {
@@ -4328,6 +4807,9 @@ body.dark .recommend-user button {
 }
 
 .login-modal-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     margin-bottom: 1.25rem;
 }
 
@@ -4336,15 +4818,75 @@ body.dark .recommend-user button {
     font-size: 1.3rem;
 }
 
+.login-modal-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.login-modal-back-btn:hover {
+    background: var(--border-color);
+}
+
+.login-provider-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.login-provider-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 3.35rem;
+    padding: 0.85rem 1.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.login-provider-btn:hover {
+    border-color: var(--primary-color);
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
+
 #login-modal #auth-step1,
-#login-modal #auth-step2 {
+#login-modal #auth-step2,
+#login-modal #auth-email-step1,
+#login-modal #auth-email-step2,
+#login-modal #auth-passkey-panel {
     display: flex;
     flex-direction: column;
     gap: 1rem;
 }
 
 #login-modal #auth-step1.hidden,
-#login-modal #auth-step2.hidden {
+#login-modal #auth-step2.hidden,
+#login-modal #auth-email-step1.hidden,
+#login-modal #auth-email-step2.hidden,
+#login-modal #auth-passkey-panel.hidden,
+#login-modal #auth-scratch-panel.hidden,
+#login-modal #auth-email-panel.hidden,
+#login-modal #auth-provider-select.hidden {
     display: none;
 }
 
@@ -4354,7 +4896,9 @@ body.dark .recommend-user button {
     letter-spacing: 0.01em;
 }
 
-#login-modal #username-input {
+#login-modal #username-input,
+#login-modal #login-email-input,
+#login-modal #login-email-code-input {
     box-sizing: border-box;
     width: 100%;
     min-height: 3.15rem;
@@ -4773,34 +5317,6 @@ body.dark .settings-bot-new-key-box {
     .settings-bot-new-key-display button {
         width: 100%;
     }
-}
-/* 外部ログイン確認モーダル */
-.external-confirm-detail {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin: 1rem 0;
-}
-
-.external-confirm-detail.hidden {
-    display: none;
-}
-
-.external-confirm-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-top: 1rem;
-}
-
-.external-confirm-actions.hidden {
-    display: none;
-}
-
-#external-confirm-modal .login-secondary-button.login-auth-action {
-    width: 100%;
-}
-
 /* 報告モーダルと管理対応画面 */
 .report-modal-content {
     box-sizing: border-box;
@@ -6975,4 +7491,242 @@ body.pull-to-refresh-enabled {
 .group-modal-cancel-button {
     min-width: 5.5rem;
     border-radius: 9999px;
+}
+
+/* グループロール管理UI */
+.group-roles-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.group-roles-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.group-role-card {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+    overflow: hidden;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.group-role-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    gap: 0.75rem;
+    border-bottom: 1px solid transparent;
+}
+
+.group-role-card-header.is-open {
+    border-bottom-color: var(--border-color);
+    background: var(--bg-color);
+}
+
+.group-role-title {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.group-role-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.group-role-badge {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 9999px;
+    background: var(--bg-color);
+    color: var(--secondary-text-color);
+    font-weight: 600;
+}
+
+.group-role-owner-badge {
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+}
+
+.group-role-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem 0.85rem;
+}
+
+.group-role-chip {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.group-role-chip.inactive {
+    background: var(--bg-color);
+    color: var(--secondary-text-color);
+    opacity: 0.6;
+}
+
+.group-role-actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.group-role-edit-btn,
+.group-role-delete-btn {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.82rem;
+    border-radius: 8px;
+}
+
+.group-role-editor-pane {
+    padding: 1.15rem 1rem;
+    background: var(--main-bg-color);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.group-role-name-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.95rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+}
+
+.group-role-perm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.65rem;
+}
+
+.group-role-perm-tile {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+    user-select: none;
+}
+
+.group-role-perm-tile:hover {
+    border-color: var(--primary-color);
+}
+
+.group-role-perm-tile.active {
+    border-color: var(--primary-color);
+    background: var(--light-primary-color);
+}
+
+.group-role-perm-tile.readonly {
+    cursor: default;
+    opacity: 0.85;
+}
+
+.group-role-perm-tile.readonly:hover {
+    border-color: var(--border-color);
+}
+
+.group-role-perm-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.group-role-perm-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    gap: 0.15rem;
+}
+
+.group-role-perm-title {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--text-color);
+}
+
+.group-role-perm-desc {
+    font-size: 0.76rem;
+    color: var(--secondary-text-color);
+    line-height: 1.35;
+}
+
+.group-role-perm-check {
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.group-role-editor-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.group-role-create-wrapper {
+    margin-bottom: 0.5rem;
+}
+
+.group-role-create-card {
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-color);
+    overflow: hidden;
+}
+
+.group-role-create-toggle {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--primary-color);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.group-role-create-toggle:hover {
+    background: var(--hover-bg-color, var(--main-bg-color));
+}
+
+.group-role-create-body {
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background: var(--main-bg-color);
 }

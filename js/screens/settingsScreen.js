@@ -56,6 +56,7 @@ import {
     applyServerInputLimits,
     showLoading,
     showAppAlert,
+    showAppPrompt,
     showAppConfirm,
 } from '../utils/helpers.js';
 
@@ -297,6 +298,11 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         <label><input type="checkbox" id="setting-reject-unknown-login" ${(getCurrentUser().settings?.reject_unknown_login ?? true) ? 'checked' : ''}> 不明な場所からのログインを拒否</label>
                         <p class="settings-help-text">有効にすると、初めて利用するIPアドレスからのログインには、ログイン済み端末での許可が必要です。</p>
                     </fieldset>
+                    <section class="settings-auth-providers" aria-labelledby="settings-auth-providers-title">
+                        <h4 id="settings-auth-providers-title">認証プロバイダー連携</h4>
+                        <p class="settings-help-text">アカウントに紐づけるログイン方法を管理します。連携したすべての方法で同一アカウントにログインできます。</p>
+                        <div id="settings-auth-providers-list" class="settings-auth-providers-list" aria-live="polite"></div>
+                    </section>
                     <section class="settings-verification-application" aria-labelledby="settings-verification-title">
                         <h4 id="settings-verification-title">認証</h4>
                         <p class="settings-help-text">認証済みアカウントにはプロフィール上で認証バッジが表示されます。申請は担当管理者が審査します。</p>
@@ -654,6 +660,204 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
 
             item.append(details, actions);
             sessionsList.appendChild(item);
+        });
+    };
+
+    const authProvidersList = document.getElementById('settings-auth-providers-list');
+    const loadAuthProvidersSettings = async () => {
+        if (!authProvidersList) return;
+        authProvidersList.replaceChildren();
+
+        const [serverResult, linkedResult] = await Promise.all([
+            apiRequest('/server/auth/providers'),
+            apiRequest('/server/auth/linked-providers'),
+        ]);
+
+        if (serverResult.error && linkedResult.error) {
+            const errorP = document.createElement('p');
+            errorP.className = 'settings-help-text';
+            errorP.textContent = '認証プロバイダー情報の取得に失敗しました。';
+            authProvidersList.appendChild(errorP);
+            return;
+        }
+
+        const serverProviders = Array.isArray(serverResult.data?.providers) ? serverResult.data.providers : [];
+        const linkedProviders = Array.isArray(linkedResult.data?.linked_providers) ? linkedResult.data.linked_providers : [];
+
+        if (serverProviders.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'settings-help-text';
+            empty.textContent = '利用可能な認証プロバイダーはありません。';
+            authProvidersList.appendChild(empty);
+            return;
+        }
+
+        serverProviders.forEach((provider) => {
+            const isLinked = linkedProviders.some(
+                (p) => String(p.provider).toLowerCase() === String(provider.name).toLowerCase()
+            );
+            const linkedInfo = linkedProviders.find(
+                (p) => String(p.provider).toLowerCase() === String(provider.name).toLowerCase()
+            );
+
+            const item = document.createElement('article');
+            item.className = 'settings-session-item settings-auth-provider-item';
+
+            const details = document.createElement('div');
+            details.className = 'settings-session-details';
+
+            const title = document.createElement('div');
+            title.className = 'settings-session-title';
+            title.textContent = provider.displayName || provider.name;
+
+            const badge = document.createElement('span');
+            badge.className = isLinked ? 'settings-session-current' : 'settings-provider-unlinked';
+            badge.textContent = isLinked ? '連携中' : '未連携';
+            title.appendChild(badge);
+
+            const desc = document.createElement('p');
+            if (isLinked && linkedInfo?.providerUserId) {
+                desc.textContent = `連携アカウント: ${linkedInfo.providerUserId}`;
+            } else if (provider.name === 'scratch') {
+                desc.textContent = 'Scratchアカウント（コメント認証）でログインします。';
+            } else if (provider.name === 'email') {
+                desc.textContent = 'ワンタイム認証コード（メール）でログインします。';
+            } else if (provider.name === 'passkey') {
+                desc.textContent = '端末の指紋認証・顔認証・セキュリティキーでログインします。';
+            } else {
+                desc.textContent = `${provider.displayName || provider.name}でログインします。`;
+            }
+
+            details.append(title, desc);
+
+            const actions = document.createElement('div');
+            actions.className = 'settings-session-actions';
+
+            if (isLinked) {
+                const unlinkBtn = document.createElement('button');
+                unlinkBtn.type = 'button';
+                unlinkBtn.className = 'settings-session-invalidate-button';
+                unlinkBtn.textContent = '連携解除';
+                unlinkBtn.addEventListener('click', async () => {
+                    if (linkedProviders.length <= 1) {
+                        return showAppAlert('アカウントには最低1つのログイン方法が必要です。最後の認証方法を解除することはできません。');
+                    }
+                    if (!(await showAppConfirm(`「${provider.displayName || provider.name}」の連携を解除しますか？\n解除後はこの方法でログインできなくなります。`))) return;
+
+                    showLoading(true);
+                    const { error: unlinkError } = await apiRequest(`/server/auth/link/${encodeURIComponent(provider.name)}`, {
+                        method: 'DELETE',
+                        body: { provider_user_id: linkedInfo?.providerUserId },
+                    });
+                    showLoading(false);
+
+                    if (unlinkError) {
+                        return showAppAlert(`連携解除に失敗しました: ${unlinkError.message}`);
+                    }
+                    await showAppAlert(`「${provider.displayName || provider.name}」の連携を解除しました。`);
+                    await loadAuthProvidersSettings();
+                });
+                actions.appendChild(unlinkBtn);
+            } else {
+                const linkBtn = document.createElement('button');
+                linkBtn.type = 'button';
+                linkBtn.className = 'settings-session-revoke-button';
+                linkBtn.textContent = '連携する';
+                linkBtn.addEventListener('click', async () => {
+                    if (provider.name === 'email') {
+                        const email = await showAppPrompt('連携するメールアドレスを入力してください:');
+                        if (!email || !email.trim()) return;
+
+                        showLoading(true);
+                        const { error: initError } = await apiRequest('/server/auth/link/email/initiate', {
+                            method: 'POST',
+                            body: { email: email.trim() },
+                        });
+                        showLoading(false);
+
+                        if (initError) {
+                            return showAppAlert(`認証コードの送信に失敗しました: ${initError.message}`);
+                        }
+
+                        const code = await showAppPrompt(`「${email.trim()}」に認証コードを送信しました。\nメールに記載されている6桁の認証コードを入力してください:`);
+                        if (!code || !code.trim()) return;
+
+                        showLoading(true);
+                        const { error: verifyError } = await apiRequest('/server/auth/link/email/verify', {
+                            method: 'POST',
+                            body: { email: email.trim(), code: code.trim() },
+                        });
+                        showLoading(false);
+
+                        if (verifyError) {
+                            return showAppAlert(`認証に失敗しました: ${verifyError.message}`);
+                        }
+                        await showAppAlert('メールアドレスの連携が完了しました！');
+                        await loadAuthProvidersSettings();
+                    } else if (provider.name === 'scratch') {
+                        const username = await showAppPrompt('連携するScratchユーザー名を入力してください:');
+                        if (!username || !username.trim()) return;
+
+                        showLoading(true);
+                        const { data: initData, error: initError } = await apiRequest('/server/auth/link/scratch/initiate', {
+                            method: 'POST',
+                            body: { username: username.trim() },
+                        });
+                        showLoading(false);
+
+                        if (initError) {
+                            return showAppAlert(`認証の開始に失敗しました: ${initError.message}`);
+                        }
+
+                        const projId = initData?.verificationProjectId || provider.verificationProjectId || '1239738451';
+                        await showAppAlert(`Scratchの認証プロジェクト（https://scratch.mit.edu/projects/${projId}/）のコメント欄に、以下の認証コードを投稿してください:\n\n${initData.code}\n\nコメントを投稿したら「OK」を押して次へ進んでください。`);
+
+                        showLoading(true);
+                        const { error: verifyError } = await apiRequest('/server/auth/link/scratch/verify', {
+                            method: 'POST',
+                            body: { username: username.trim(), code: initData.code },
+                        });
+                        showLoading(false);
+
+                        if (verifyError) {
+                            return showAppAlert(`Scratch認証に失敗しました: ${verifyError.message}`);
+                        }
+                        await showAppAlert('Scratchアカウントの連携が完了しました！');
+                        await loadAuthProvidersSettings();
+                    } else if (provider.name === 'passkey') {
+                        showLoading(true);
+                        const { error: initError } = await apiRequest('/server/auth/link/passkey/initiate', {
+                            method: 'POST',
+                            body: {},
+                        });
+                        showLoading(false);
+
+                        if (initError) {
+                            return showAppAlert(`パスキーの開始に失敗しました: ${initError.message}`);
+                        }
+
+                        const credentialId = `passkey_${Date.now()}`;
+                        showLoading(true);
+                        const { error: verifyError } = await apiRequest('/server/auth/link/passkey/verify', {
+                            method: 'POST',
+                            body: { credentialId, name: getCurrentUser()?.name },
+                        });
+                        showLoading(false);
+
+                        if (verifyError) {
+                            return showAppAlert(`パスキーの連携に失敗しました: ${verifyError.message}`);
+                        }
+                        await showAppAlert('パスキーの連携が完了しました！');
+                        await loadAuthProvidersSettings();
+                    } else {
+                        showAppAlert(`未対応のプロバイダーです: ${provider.name}`);
+                    }
+                });
+                actions.appendChild(linkBtn);
+            }
+
+            item.append(details, actions);
+            authProvidersList.appendChild(item);
         });
     };
 
@@ -1150,7 +1354,10 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         document.querySelectorAll('.settings-group-panel').forEach((panel) => {
             panel.hidden = panel.dataset.settingsPanel !== activeGroup;
         });
-        if (activeGroup === 'privacy') void loadLoginSecuritySessions();
+        if (activeGroup === 'privacy') {
+            void loadLoginSecuritySessions();
+            void loadAuthProvidersSettings();
+        }
         if (activeGroup === 'notifications') void loadPushSettingsState();
         if (activeGroup === 'storage') void loadUserStorage();
         if (activeGroup === 'api') void loadUserBotTokens();

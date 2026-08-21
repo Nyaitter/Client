@@ -396,7 +396,7 @@ export function invalidateDmCaches(dmId = null) {
     if (dmId) {
         const targetDmId = String(dmId).trim();
         for (const key of screenDataCaches.keys()) {
-            if (key.includes(`:dm:${targetDmId}`)) {
+            if (key.includes(`:dm:${targetDmId}`) || key.includes(':dm:list')) {
                 screenDataCaches.delete(key);
                 changed = true;
             }

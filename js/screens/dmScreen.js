@@ -37,7 +37,58 @@ import { getEmoji } from '../modules/format.js';
 import { attachMarkdownContentEditor, getMarkdownEditorValue, setMarkdownEditorValue, setupMarkdownEditorPreviewButton } from '../modules/editor.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { sendNotification } from '../modules/notifications.js';
-import { escapeHTML, getNyaitterId, showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
+import { escapeHTML, getNyaitterId, getUserIconUrl, showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
+
+function renderDmListItem(dm, unreadCount, currentUserId) {
+    const members = Array.isArray(dm.member) ? dm.member : [];
+    const otherMemberIds = members.filter((id) => Number(id) !== Number(currentUserId));
+    const otherUsers = otherMemberIds.map((id) => getAllUsersCache().get(id)).filter(Boolean);
+
+    let title = dm.title;
+    let subtitle = '';
+    let avatarHtml = '';
+
+    if (otherUsers.length === 1) {
+        const otherUser = otherUsers[0];
+        if (!title) title = otherUser.name || `ユーザー #${otherUser.id}`;
+        subtitle = getNyaitterId(otherUser);
+        avatarHtml = `<img src="${getUserIconUrl(otherUser)}" class="dm-list-item-avatar" alt="">`;
+    } else if (otherUsers.length > 1) {
+        if (!title) {
+            title = otherUsers.map((u) => u.name || `#${u.id}`).join(', ');
+        }
+        subtitle = `${members.length}人のメンバー`;
+        const firstAvatar = otherUsers[0] ? getUserIconUrl(otherUsers[0]) : getUserIconUrl({});
+        const secondAvatar = otherUsers[1] ? getUserIconUrl(otherUsers[1]) : getUserIconUrl({});
+        avatarHtml = `<div class="dm-group-avatar-stack">
+            <img src="${firstAvatar}" class="dm-list-item-avatar dm-group-avatar-1" alt="">
+            <img src="${secondAvatar}" class="dm-list-item-avatar dm-group-avatar-2" alt="">
+        </div>`;
+    } else {
+        if (!title) title = '自分のみのメッセージ';
+        subtitle = 'プライベートメモ';
+        avatarHtml = `<img src="${getUserIconUrl(getCurrentUser())}" class="dm-list-item-avatar" alt="">`;
+    }
+
+    const dmIdStr = escapeHTML(String(dm.id));
+    const titleEscaped = getEmoji(escapeHTML(title || 'メッセージ'));
+
+    return `
+        <article class="dm-list-item ${unreadCount > 0 ? 'is-unread' : ''}" data-action="open-dm" data-dm-id="${dmIdStr}">
+            <div class="dm-list-item-avatar-wrap">
+                ${avatarHtml}
+            </div>
+            <div class="dm-list-item-main">
+                <div class="dm-list-item-header">
+                    <span class="dm-list-item-title">${titleEscaped}</span>
+                    ${unreadCount > 0 ? `<span class="dm-list-item-unread-badge">${unreadCount}</span>` : ''}
+                </div>
+                ${subtitle ? `<div class="dm-list-item-sub">${escapeHTML(subtitle)}</div>` : ''}
+            </div>
+            <button type="button" class="dm-manage-btn" title="DM管理メニュー" aria-label="DM管理メニュー" data-action="open-dm-manage" data-dm-id="${dmIdStr}">${ICONS.more}</button>
+        </article>
+    `;
+}
 
 export async function showDmScreen(dmId = null, showScreenFn = null) {
     if (!getCurrentUser()) {
@@ -58,11 +109,15 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
         contentDiv.innerHTML = '<div id="dm-conversation-container"></div>';
         await showDmConversation(dmId);
     } else {
-        DOM.pageHeader.innerHTML = `<h2 id="page-title">メッセージ</h2>`;
+        DOM.pageHeader.innerHTML = `
+            <div class="header-with-action-button">
+                <h2 id="page-title">メッセージ</h2>
+                <button type="button" class="header-action-btn" data-action="open-create-dm">新しいメッセージ</button>
+            </div>
+        `;
         contentDiv.innerHTML = `
-            <div id="dm-list-container">
-                <button class="dm-new-message-btn" data-action="open-create-dm">新しいメッセージ</button>
-                <div id="dm-list-items-wrapper" class="spinner"></div>
+            <div id="dm-list-container" class="dm-list-container">
+                <div id="dm-list-items-wrapper" class="dm-list-items-wrapper spinner"></div>
             </div>
         `;
         const listItemsWrapper = document.getElementById('dm-list-items-wrapper');
@@ -93,28 +148,18 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
             }
 
             if (dmList.length === 0) {
-                listItemsWrapper.innerHTML =
-                    '<p style="text-align:center; padding: 2rem; color: var(--secondary-text-color);">まだメッセージはありません。</p>';
+                listItemsWrapper.innerHTML = `
+                    <div class="dm-empty-state">
+                        <p class="settings-help-text">まだメッセージはありません。<br>ダイレクトメッセージを送ってみましょう。</p>
+                        <button type="button" class="settings-primary-button dm-empty-create-btn" data-action="open-create-dm">新しいメッセージを作成</button>
+                    </div>
+                `;
             } else {
+                const currentUserId = getCurrentUser().id;
                 listItemsWrapper.innerHTML = dmList
                     .map((dm) => {
                         const unreadCount = unreadCountsMap.get(String(dm.id)) || 0;
-                        const titlePrefix = unreadCount > 0 ? `(${unreadCount}) ` : '';
-                        const title = getEmoji(
-                            escapeHTML(
-                                dm.title ||
-                                    (dm.member || [])
-                                        .map((id) => getAllUsersCache().get(id)?.name || id)
-                                        .join(', '),
-                            ),
-                        );
-
-                        return `
-                            <div class="dm-list-item" data-action="open-dm" data-dm-id="${escapeHTML(String(dm.id))}">
-                                <div class="dm-list-item-title"><span class="dm-list-item-unread-prefix">${titlePrefix}</span>${title}</div>
-                                <button type="button" class="dm-manage-btn" title="DM管理メニュー" aria-label="DM管理メニュー" data-action="open-dm-manage" data-dm-id="${escapeHTML(String(dm.id))}">${ICONS.more}</button>
-                            </div>
-                        `;
+                        return renderDmListItem(dm, unreadCount, currentUserId);
                     })
                     .join('');
             }
@@ -174,7 +219,8 @@ export async function showDmConversation(dmId) {
         for (const member of dmPayload?.members || []) {
             cacheUser(member);
         }
-        setActiveDmMemberIds(Array.isArray(dm?.member) ? dm.member.map(Number) : []);
+        const memberList = Array.isArray(dm?.member) ? dm.member.map(Number) : [];
+        setActiveDmMemberIds(memberList);
         if (!usedCachedPayload) {
             getCurrentUser().unreadDmTotal = Number(dmPayload?.unread_total || 0);
         }
@@ -195,12 +241,28 @@ export async function showDmConversation(dmId) {
             return;
         }
 
+        // 会話ヘッダーのタイトルとサブタイトル生成
+        const otherMemberIds = memberList.filter((id) => id !== Number(getCurrentUser().id));
+        const otherUsers = otherMemberIds.map((id) => getAllUsersCache().get(id)).filter(Boolean);
+        let headerTitle = dm.title;
+        let headerSubtitle = '';
+        if (otherUsers.length === 1) {
+            if (!headerTitle) headerTitle = otherUsers[0].name || `ユーザー #${otherUsers[0].id}`;
+            headerSubtitle = getNyaitterId(otherUsers[0]);
+        } else if (otherUsers.length > 1) {
+            if (!headerTitle) headerTitle = otherUsers.map((u) => u.name || `#${u.id}`).join(', ');
+            headerSubtitle = `${memberList.length}人のメンバー`;
+        } else {
+            if (!headerTitle) headerTitle = '自分のみのメッセージ';
+            headerSubtitle = 'プライベートメモ';
+        }
+
         DOM.pageHeader.innerHTML = `
-            <div class="header-with-back-button">
-                <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
-                <div style="flex-grow:1;">
-                    <h2 id="page-title" style="font-size: 1.1rem; margin-bottom: 0;">${getEmoji(escapeHTML(dm.title || 'メッセージ'))}</h2>
-                    <small style="color: var(--secondary-text-color);">${dm.member.length}人のメンバー</small>
+            <div class="header-with-back-button dm-header-container">
+                <button class="header-back-btn" data-action="history-back" aria-label="戻る">${ICONS.back}</button>
+                <div class="dm-header-titles">
+                    <h2 id="page-title" class="dm-header-title">${getEmoji(escapeHTML(headerTitle))}</h2>
+                    <span class="dm-header-subtitle">${escapeHTML(headerSubtitle)}</span>
                 </div>
                 <button type="button" class="dm-manage-btn" title="DM管理メニュー" aria-label="DM管理メニュー" data-action="open-dm-manage" data-dm-id="${escapeHTML(String(dm.id))}">${ICONS.more}</button>
             </div>
@@ -240,13 +302,22 @@ export async function showDmConversation(dmId) {
             <div class="dm-conversation-view">${messagesHTML}</div>
             <div class="dm-message-form">
                 <div class="dm-form-content">
-                    <div class="markdown-textarea-editor dm-content-editor"><textarea id="dm-message-input" class="markdown-content-editor" rows="2" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length" placeholder="メッセージを送信"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
                     <div class="file-preview-container dm-file-preview"></div>
+                    <div class="markdown-textarea-editor dm-content-editor">
+                        <textarea id="dm-message-input" class="markdown-content-editor" rows="1" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length" placeholder="メッセージを入力... (Ctrl+Enterで送信)"></textarea>
+                        <div class="markdown-editor-paint" aria-hidden="true">
+                            <div class="markdown-editor-placeholder"></div>
+                            <div class="markdown-editor-preview hidden"></div>
+                            <div class="markdown-editor-selection"></div>
+                            <div class="markdown-editor-composition"></div>
+                            <div class="markdown-editor-caret"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="dm-form-actions">
-                    <button id="dm-attachment-btn" class="attachment-button" title="ファイルを添付">${ICONS.attachment}</button>
+                    <button type="button" id="dm-attachment-btn" class="attachment-button dm-action-btn" title="ファイルを添付">${ICONS.attachment}</button>
                     <input type="file" id="dm-file-input" class="hidden" multiple>
-                    <button id="send-dm-btn" title="送信 (Ctrl+Enter)">${ICONS.send}</button>
+                    <button type="button" id="send-dm-btn" class="dm-send-action-btn" title="送信 (Ctrl+Enter)">${ICONS.send}</button>
                 </div>
             </div>
         `;
@@ -320,7 +391,7 @@ export async function showDmConversation(dmId) {
         };
 
         messageInput?.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 void sendMessageAction();
             }
@@ -374,8 +445,9 @@ async function sendDirectMessage(dmId, files = []) {
 
         const messageObject = {
             id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-            type: 'message',
+            type: 'user',
             userid: getCurrentUser().id,
+            content: content,
             message: content,
             attachments: attachmentsData,
             created_at: new Date().toISOString(),
@@ -402,11 +474,15 @@ async function sendDirectMessage(dmId, files = []) {
 
 export function openCreateDmModal() {
     DOM.createDmModalContent.innerHTML = `
-        <div style="padding: 1.5rem;">
-            <h3>新しいメッセージ</h3>
-            <p>ユーザーを検索してDMを開始します。</p>
-            <input type="text" id="dm-user-search" placeholder="ユーザー名またはIDで検索" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 8px;">
-            <div id="dm-user-search-results" style="margin-top: 1rem; max-height: 200px; overflow-y: auto;"></div>
+        <div class="dm-modal-body">
+            <div class="modal-heading">
+                <h3 id="create-dm-modal-title">新しいメッセージ</h3>
+                <p class="settings-help-text">ユーザー名またはNyaitterIDで検索してDMを開始します。</p>
+            </div>
+            <div class="dm-modal-search-box">
+                <input type="text" id="dm-user-search" class="dm-modal-search-input dm-search-input" placeholder="ユーザー名またはNyaitterIDで検索..." autofocus>
+            </div>
+            <div id="dm-user-search-results" class="dm-search-results"></div>
         </div>
     `;
 
@@ -418,7 +494,7 @@ export function openCreateDmModal() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(async () => {
             const query = searchInput.value.trim();
-            if (query.length < 2) {
+            if (query.length < 1) {
                 if (resultsContainer) resultsContainer.innerHTML = '';
                 return;
             }
@@ -429,26 +505,30 @@ export function openCreateDmModal() {
                     : `name.ilike.%${query}%`;
             const { data: users } = await api
                 .from('user')
-                .select('id, name, scid')
+                .select('id, name, scid, icon_data')
                 .or(orFilter)
                 .neq('id', getCurrentUser().id)
-                .limit(5);
+                .limit(8);
 
             if (resultsContainer) {
                 if (users && users.length > 0) {
                     resultsContainer.innerHTML = users
                         .map(
                             (u) => `
-                        <div class="widget-item" style="cursor: pointer;" data-user-id="${escapeHTML(String(u.id))}">
-                            <strong>${getEmoji(escapeHTML(u.name))}</strong> (${getNyaitterId(u)})
+                        <div class="dm-search-user-item" data-user-id="${escapeHTML(String(u.id))}">
+                            <img src="${getUserIconUrl(u)}" class="user-icon dm-search-user-icon" alt="">
+                            <div class="dm-search-user-info">
+                                <span class="dm-search-user-name">${getEmoji(escapeHTML(u.name))}</span>
+                                <span class="dm-search-user-handle">${getNyaitterId(u)}</span>
+                            </div>
                         </div>`,
                         )
                         .join('');
                 } else {
-                    resultsContainer.innerHTML = `<div class="widget-item">ユーザーが見つかりません。</div>`;
+                    resultsContainer.innerHTML = `<div class="dm-search-empty">一致するユーザーが見つかりません。</div>`;
                 }
             }
-        }, 300);
+        }, 250);
     });
 
     resultsContainer?.addEventListener('click', (e) => {
@@ -465,3 +545,4 @@ export function openCreateDmModal() {
         DOM.createDmModal.classList.add('hidden');
     });
 }
+

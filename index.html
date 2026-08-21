@@ -21,12 +21,41 @@
 			crossorigin="anonymous"
 		/>
 			<link rel="stylesheet" href="./style.css" />
+			<style>
+				#loading-overlay {
+					position: fixed;
+					inset: 0;
+					width: 100%;
+					height: 100%;
+					background: var(--loading-color, rgba(255, 255, 255, 0.9));
+					display: flex;
+					justify-content: center;
+					align-items: center;
+					z-index: 99999;
+				}
+				#loading-overlay.hidden {
+					display: none !important;
+				}
+				#loading-overlay .spinner {
+					border: 4px solid var(--spin, rgba(0, 0, 0, 0.1));
+					border-left-color: var(--primary-color, #ff9900);
+					width: 36px;
+					height: 36px;
+					border-radius: 50%;
+					animation: spin 1s linear infinite;
+				}
+				@keyframes spin {
+					0% { transform: rotate(0deg); }
+					100% { transform: rotate(360deg); }
+				}
+			</style>
 		<script src="https://cdn.jsdelivr.net/npm/@twemoji/api@15.1.0/dist/twemoji.min.js" integrity="sha384-o28+zJO3/45GHIy+9TFKGaYnbt0KQcFRzyBrb0WSSrz7bPGwGI1d64worBiXPgXw" crossorigin="anonymous"></script>
 		<script src="https://cdn.jsdelivr.net/npm/emojione@4.0.0/lib/js/emojione.min.js" integrity="sha384-1BsqfFBBtVbyYG2C3PTRFz+m1tERshCkrZnIAIhP8+ES00qPKe9EvOWpRb5Uoscd" crossorigin="anonymous"></script>
 			<script src="./vendor/emoji-mart.js"></script>
 			<script src="./config.js"></script>
 		</head>
 	<body>
+		<div id="loading-overlay" role="status" aria-live="polite" aria-label="読み込み中" aria-hidden="false" aria-busy="true"><div class="spinner"></div></div>
 		<div class="app-container">
 			<!-- 左側ナビゲーションメニュー -->
 			<nav id="left-nav">
@@ -128,27 +157,64 @@
 				<div class="modal-content login-modal-content">
 					<button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
 					<div class="login-modal-heading">
-						<h3 id="login-title">ログイン</h3>
+						<button type="button" id="login-back-btn" class="login-modal-back-btn hidden" aria-label="ログイン方法選択に戻る">←</button>
+						<h3 id="login-title">ログイン方法を選択</h3>
 					</div>
-					<div id="auth-step1">
-						<p id="login-instruction" class="settings-help-text">ScratchID、またはNyaitterアドレスを入力してください。</p>
-						<label class="login-modal-field" for="username-input">ScratchID または Nyaitterアドレス</label>
-						<input type="text" id="username-input" placeholder="ScratchID または Nyaitterアドレス" autocomplete="username" required />
-						<div id="login-turnstile-container" class="login-turnstile-container hidden">
-							<p class="login-turnstile-hint settings-help-text">認証チャレンジを完了すると、認証コードを取得できます。</p>
-							<div id="login-turnstile-widget"></div>
+
+					<!-- Provider Selection Screen -->
+					<div id="auth-provider-select">
+						<p class="settings-help-text">利用するログイン方法を選択してください。</p>
+						<div id="login-provider-buttons" class="login-provider-list"></div>
+					</div>
+
+					<!-- Scratch Flow -->
+					<div id="auth-scratch-panel" class="hidden">
+						<div id="auth-step1">
+							<p id="login-instruction" class="settings-help-text">ScratchIDを入力してください。</p>
+							<label class="login-modal-field" for="username-input">ScratchID</label>
+							<input type="text" id="username-input" placeholder="ScratchID" autocomplete="username" />
+							<div id="login-turnstile-container" class="login-turnstile-container hidden">
+								<p class="login-turnstile-hint settings-help-text">認証チャレンジを完了すると、認証コードを取得できます。</p>
+								<div id="login-turnstile-widget"></div>
+							</div>
+							<button type="button" id="get-code-btn" class="settings-primary-button login-auth-action">認証コードを取得</button>
 						</div>
-						<button type="button" id="get-code-btn" class="settings-primary-button login-auth-action">認証コードを取得</button>
-					</div>
-					<div id="auth-step2" class="hidden">
-						<p class="settings-help-text">この認証コードをコピーして、下のいずれかにコメントしてください。</p>
-						<button type="button" id="verification-code" class="login-verification-code" title="クリックしてコピー"></button>
-						<div class="login-modal-links">
-							<a class="login-secondary-button" href="https://scratch.mit.edu/projects/1239738451/" target="_blank" rel="noopener noreferrer">認証用プロジェクトを開く</a>
-							<a class="login-secondary-button" href="https://scratch.mit.edu/" target="_blank" rel="noopener noreferrer" id="pflink">プロフィールを開く</a>
+						<div id="auth-step2" class="hidden">
+							<p class="settings-help-text">この認証コードをコピーして、下のいずれかにコメントしてください。</p>
+							<button type="button" id="verification-code" class="login-verification-code" title="クリックしてコピー"></button>
+							<div class="login-modal-links">
+								<a class="login-secondary-button" href="https://scratch.mit.edu/projects/1239738451/" target="_blank" rel="noopener noreferrer" id="projlink">認証用プロジェクトを開く</a>
+								<a class="login-secondary-button" href="https://scratch.mit.edu/" target="_blank" rel="noopener noreferrer" id="pflink">プロフィールを開く</a>
+							</div>
+							<button type="button" id="verify-comment-btn" class="settings-primary-button login-auth-action">コメントを認証</button>
 						</div>
-						<button type="button" id="verify-comment-btn" class="settings-primary-button login-auth-action">コメントを認証</button>
 					</div>
+
+					<!-- Email Flow -->
+					<div id="auth-email-panel" class="hidden">
+						<div id="auth-email-step1">
+							<p class="settings-help-text">メールアドレスを入力してください。</p>
+							<label class="login-modal-field" for="login-email-input">メールアドレス</label>
+							<input type="email" id="login-email-input" placeholder="you@example.com" autocomplete="email" />
+							<button type="button" id="get-email-code-btn" class="settings-primary-button login-auth-action">認証コードを送信</button>
+						</div>
+						<div id="auth-email-step2" class="hidden">
+							<p class="settings-help-text">メールに届いた6桁の認証コードを入力してください。</p>
+							<label class="login-modal-field" for="login-email-code-input">認証コード</label>
+							<input type="text" id="login-email-code-input" placeholder="123456" maxlength="8" autocomplete="one-time-code" />
+							<button type="button" id="verify-email-code-btn" class="settings-primary-button login-auth-action">ログイン</button>
+							<div class="login-modal-links">
+								<button type="button" id="resend-email-code-btn" class="login-secondary-button">認証コードを再送信</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Passkey Flow -->
+					<div id="auth-passkey-panel" class="hidden">
+						<p class="settings-help-text">端末に保存されているパスキー（生体認証またはセキュリティキー）でサインインします。</p>
+						<button type="button" id="passkey-signin-btn" class="settings-primary-button login-auth-action">パスキーでサインイン</button>
+					</div>
+
 					<p id="error-message" class="login-modal-message login-modal-error hidden" role="alert"></p>
 					<p id="copy-message" class="login-modal-message login-modal-copy hidden" role="status">認証コードをコピーしました。</p>
 					<div id="login-loading-overlay" class="login-loading-overlay hidden" aria-live="polite"><div class="spinner"></div></div>
@@ -166,31 +232,6 @@
 							<button type="button" id="login-approval-wait-cancel-btn" class="login-secondary-button">ログインをキャンセル</button>
 						</div>
 					</section>
-				</div>
-				<div id="external-confirm-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="external-confirm-title">
-				<div class="modal-content login-modal-content">
-					<button type="button" class="modal-close-btn" aria-label="閉じる" id="external-confirm-close-btn">×</button>
-					<div class="login-modal-heading">
-						<h3 id="external-confirm-title">外部ログインの確認</h3>
-					</div>
-					<p id="external-confirm-instruction" class="settings-help-text">
-						別のNyaitterサーバーから、このアカウントでのログイン確認を求められています。
-					</p>
-					<div id="external-confirm-detail" class="external-confirm-detail hidden">
-						<p class="settings-help-text"><strong>要求されたアドレス</strong></p>
-						<p id="external-confirm-address" class="login-verification-code" style="cursor: default;"></p>
-						<p class="settings-help-text"><strong>いまのアカウント</strong></p>
-						<p id="external-confirm-current-user" class="settings-help-text"></p>
-					</div>
-					<div id="external-confirm-actions" class="external-confirm-actions hidden">
-						<button type="button" id="external-confirm-approve-btn" class="settings-primary-button login-auth-action">ログインを許可する</button>
-						<button type="button" id="external-confirm-deny-btn" class="login-secondary-button login-auth-action">拒否して戻る</button>
-					</div>
-					<div id="external-confirm-login-needed" class="external-confirm-actions hidden">
-						<button type="button" id="external-confirm-open-login-btn" class="settings-primary-button login-auth-action">ログインする</button>
-					</div>
-					<p id="external-confirm-error" class="login-modal-message login-modal-error hidden" role="alert"></p>
-					<div id="external-confirm-loading" class="login-loading-overlay hidden" aria-live="polite"><div class="spinner"></div></div>
 				</div>
 			</div>
 			<div id="post-modal" class="modal-overlay hidden">
@@ -218,18 +259,18 @@
 				<div id="edit-post-modal-content"></div>
 			</div>
 		</div>
-		<div id="create-dm-modal" class="modal-overlay hidden">
-			<div class="modal-content" style="max-width: 500px">
-				<button class="modal-close-btn">×</button>
+		<div id="create-dm-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="create-dm-modal-title">
+			<div class="modal-content dm-modal-content">
+				<button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
 				<div id="create-dm-modal-content"></div>
 			</div>
 		</div>
-			<div id="dm-manage-modal" class="modal-overlay hidden">
-				<div class="modal-content" style="max-width: 500px">
-					<button class="modal-close-btn">×</button>
-					<div id="dm-manage-modal-content"></div>
-				</div>
+		<div id="dm-manage-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dm-manage-modal-title">
+			<div class="modal-content dm-modal-content">
+				<button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+				<div id="dm-manage-modal-content"></div>
 			</div>
+		</div>
 			<div id="report-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
 				<div class="modal-content report-modal-content">
 					<button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
@@ -353,10 +394,9 @@
 					</form>
 				</section>
 			</div>
-		<div id="loading-overlay" role="status" aria-live="polite" aria-label="読み込み中" aria-hidden="false" aria-busy="true"><div class="spinner"></div></div>
-		<div id="edit-dm-message-modal" class="modal-overlay hidden">
-			<div class="modal-content">
-				<!--<button class="modal-close-btn">×</button>-->
+		<div id="edit-dm-message-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-dm-modal-title">
+			<div class="modal-content dm-modal-content">
+				<button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
 				<div id="edit-dm-message-modal-content"></div>
 			</div>
 		</div>

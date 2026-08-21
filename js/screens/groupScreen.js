@@ -12,15 +12,44 @@ const VISIBILITY_LABELS = {
     open_invite: 'OpenInvite',
 };
 
-const PERMISSION_LABELS = {
-    invite: '招待・参加申請',
-    announce: 'アナウンス',
-    delete: 'ポスト削除',
-    ban: '禁止',
-    post: 'ポスト',
-    profile: 'プロフィール編集',
-    admin: '管理者',
-};
+const PERMISSION_CONFIG = [
+    {
+        id: 'admin',
+        label: '管理者権限',
+        badge: '全権限',
+        description: 'グループの設定、ロール、メンバー管理を含むすべての操作を行えます。',
+    },
+    {
+        id: 'profile',
+        label: 'プロフィール編集',
+        description: 'グループの名前・説明・アイコン・ヘッダー画像・公開レベルを変更できます。',
+    },
+    {
+        id: 'invite',
+        label: '招待・申請管理',
+        description: '新規メンバーの招待送信や、保留中の参加申請の承認・拒否を行えます。',
+    },
+    {
+        id: 'ban',
+        label: 'メンバー追放・禁止',
+        description: '迷惑行為を行うメンバーの追放および参加禁止（BAN）を行えます。',
+    },
+    {
+        id: 'post',
+        label: 'タイムライン投稿',
+        description: 'グループタイムラインへの新規ポストを投稿できます。',
+    },
+    {
+        id: 'announce',
+        label: 'アナウンス投稿',
+        description: 'グループメンバー全員への重要なお知らせ（アナウンス）を投稿できます。',
+    },
+    {
+        id: 'delete',
+        label: '投稿の削除',
+        description: '他メンバーの投稿を含むグループ内の不適切なポストを削除できます。',
+    },
+];
 
 function groupsContent() {
     return document.getElementById('groups-content');
@@ -393,7 +422,7 @@ function bindGroupsIndexEvents() {
     }));
 }
 
-export async function showGroupDetailScreen(groupId, section = 'overview', showScreenFn = null) {
+export async function showGroupDetailScreen(groupId, section = 'overview', showScreenFn = null, initialManageTab = null) {
     if (!getCurrentUser()) {
         window.location.hash = '#';
         return;
@@ -408,7 +437,7 @@ export async function showGroupDetailScreen(groupId, section = 'overview', showS
         if (!group) throw new Error('グループが見つかりません。');
         document.getElementById('page-header').innerHTML = `<div class="header-with-back-button"><button class="header-back-btn" type="button" id="group-back-btn">${ICONS.back}</button><h2 id="page-title">${escapeHTML(group.name || 'グループ')}</h2></div>`;
         document.getElementById('group-back-btn')?.addEventListener('click', () => { window.location.hash = '#groups'; });
-        if (section === 'manage') await renderGroupManage(content, group);
+        if (section === 'manage') await renderGroupManage(content, group, initialManageTab || 'profile');
         else renderGroupOverview(content, group, data.join_request || null);
     } catch (error) {
         content.innerHTML = `<p class="error-message">グループを読み込めませんでした。${escapeHTML(error.message || '')}</p>`;
@@ -523,35 +552,156 @@ function getDefaultRoleType(role) {
         || 'system';
 }
 
-function renderRolePermissionInputs(role, { disabled = false } = {}) {
+function renderRolePermissionCards(role = null) {
     const assignedPermissions = new Set(Array.isArray(role?.permissions) ? role.permissions : []);
-    return Object.entries(PERMISSION_LABELS).map(([permission, label]) => `<label><input type="checkbox" name="permissions" value="${escapeHTML(permission)}" ${assignedPermissions.has(permission) ? 'checked' : ''} ${disabled ? 'disabled' : ''}> <span>${escapeHTML(label)}</span></label>`).join('');
+    const checkIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3.5 8.5 6.5 11.5 12.5 4.5"></polyline></svg>`;
+    return PERMISSION_CONFIG.map((perm) => {
+        const isChecked = assignedPermissions.has(perm.id);
+        return `<label class="group-role-perm-tile ${isChecked ? 'is-checked' : ''}">
+            <input type="checkbox" name="permissions" value="${escapeHTML(perm.id)}" ${isChecked ? 'checked' : ''} class="group-role-perm-checkbox">
+            <div class="group-role-perm-tile-inner">
+                <div class="group-role-perm-tile-check">${checkIcon}</div>
+                <div class="group-role-perm-tile-info">
+                    <div class="group-role-perm-tile-title">
+                        <strong>${escapeHTML(perm.label)}</strong>
+                        ${perm.badge ? `<span class="group-role-perm-badge">${escapeHTML(perm.badge)}</span>` : ''}
+                    </div>
+                    <p class="group-role-perm-tile-desc">${escapeHTML(perm.description)}</p>
+                </div>
+            </div>
+        </label>`;
+    }).join('');
 }
 
-function renderRoleEditor(role) {
+function renderRoleChips(role, isOwner) {
+    if (isOwner) {
+        return '<span class="group-role-chip is-admin">すべての権限（オーナー固定）</span>';
+    }
+    const permissions = Array.isArray(role?.permissions) ? role.permissions : [];
+    if (permissions.includes('admin')) {
+        return '<span class="group-role-chip is-admin">すべての権限（管理者）</span>';
+    }
+    if (permissions.length === 0) {
+        return '<span class="group-role-chip is-empty">権限なし</span>';
+    }
+    return permissions.map((permId) => {
+        const perm = PERMISSION_CONFIG.find((p) => p.id === permId);
+        const label = perm?.label || permId;
+        return `<span class="group-role-chip">${escapeHTML(label)}</span>`;
+    }).join('');
+}
+
+function renderRoleCard(role) {
     const roleId = escapeHTML(String(role.id));
     const roleType = getDefaultRoleType(role);
     const ownerRole = roleType === 'owner';
     const defaultRole = Boolean(roleType);
     const roleName = escapeHTML(role.name || '無題のロール');
-    const roleDescription = ownerRole
-        ? 'オーナーロールは変更できません。'
-        : defaultRole
-            ? `${escapeHTML(DEFAULT_ROLE_LABELS[roleType] || '既定')}ロールの名前と権限を編集できます。`
-            : 'ロール名と許可する操作を編集できます。';
-    return `<form class="group-role-form group-role-editor" ${ownerRole ? '' : `data-edit-group-role="${roleId}"`}>
-        <header class="group-role-form-heading group-role-editor-heading">
-            <div><h5>${roleName}${defaultRole ? '<span class="settings-session-current">既定</span>' : ''}</h5><p class="settings-help-text">${roleDescription}</p></div>
-            ${defaultRole ? '' : `<button type="button" class="settings-session-revoke-button" data-delete-role="${roleId}">削除</button>`}
-        </header>
-        <label class="group-role-name-field">ロール名<input name="name" maxlength="50" required value="${roleName}" ${ownerRole ? 'readonly aria-readonly="true"' : ''}></label>
-        <fieldset class="group-role-permissions" ${ownerRole ? 'disabled' : ''}><legend>許可する操作</legend><div>${renderRolePermissionInputs(role, { disabled: ownerRole })}</div></fieldset>
-        ${ownerRole ? '' : '<p class="settings-help-text group-role-autosave-note">権限はチェックを変更するとすぐに反映されます。</p>'}
-    </form>`;
+    
+    let badgeHtml = '';
+    if (ownerRole) {
+        badgeHtml = '<span class="settings-session-current group-role-badge-owner">オーナー</span>';
+    } else if (roleType === 'admin') {
+        badgeHtml = '<span class="settings-session-current group-role-badge-admin">管理者・既定</span>';
+    } else if (defaultRole) {
+        badgeHtml = '<span class="settings-session-current group-role-badge-default">メンバー・既定</span>';
+    } else {
+        badgeHtml = '<span class="settings-session-current group-role-badge-custom">カスタム</span>';
+    }
+
+    return `<article class="group-role-card ${ownerRole ? 'is-owner-role' : ''}" id="role-card-${roleId}" data-role-id="${roleId}">
+        <div class="group-role-card-summary">
+            <div class="group-role-summary-main">
+                <div class="group-role-title-row">
+                    <h5 class="group-role-title" data-role-title="${roleId}">${roleName}</h5>
+                    ${badgeHtml}
+                </div>
+                <div class="group-role-perm-preview" data-role-preview="${roleId}">
+                    ${renderRoleChips(role, ownerRole)}
+                </div>
+            </div>
+            <div class="group-role-summary-actions">
+                ${ownerRole ? '<span class="group-role-locked-tag">変更不可</span>' : `
+                    <button type="button" class="group-ui-secondary-button group-role-edit-toggle-btn" data-toggle-role="${roleId}">
+                        <span class="edit-text">編集</span>
+                        <span class="close-text hidden">閉じる</span>
+                    </button>
+                    ${defaultRole ? '' : `<button type="button" class="settings-session-revoke-button group-role-delete-btn" data-delete-role="${roleId}">削除</button>`}
+                `}
+            </div>
+        </div>
+        ${ownerRole ? '' : `
+        <div class="group-role-editor-pane hidden" id="role-editor-${roleId}">
+            <form class="group-role-edit-form" data-edit-group-role="${roleId}">
+                <div class="group-role-input-group">
+                    <label class="group-role-input-label" for="role-name-${roleId}">ロール名</label>
+                    <input id="role-name-${roleId}" name="name" maxlength="50" required value="${roleName}" class="group-role-name-input">
+                </div>
+                <div class="group-role-perm-section">
+                    <div class="group-role-perm-header">
+                        <span class="group-role-input-label">許可する操作</span>
+                        <span class="settings-help-text">チェックした権限がこのロールに付与されます</span>
+                    </div>
+                    <div class="group-role-perm-grid">
+                        ${renderRolePermissionCards(role)}
+                    </div>
+                </div>
+                <div class="group-role-card-actions">
+                    <span class="group-role-save-status" id="save-status-${roleId}"></span>
+                    <button type="button" class="group-ui-secondary-button" data-cancel-role="${roleId}">閉じる</button>
+                    <button type="submit" class="settings-primary-button group-role-save-btn">変更を保存</button>
+                </div>
+            </form>
+        </div>
+        `}
+    </article>`;
 }
 
-function renderRoleCreateForm() {
-    return `<form id="group-role-form" class="group-role-form group-role-create-form"><div class="group-role-form-heading"><h5>ロールを追加</h5><p class="settings-help-text">必要な操作だけを許可したカスタムロールを作成できます。</p></div><label class="group-role-name-field">ロール名<input name="name" maxlength="50" required></label><fieldset class="group-role-permissions"><legend>許可する操作</legend><div>${renderRolePermissionInputs()}</div></fieldset><div class="settings-save-row"><button type="submit" class="settings-primary-button">ロールを追加</button></div></form>`;
+function renderRolesPanel(group) {
+    const roles = Array.isArray(group.roles) ? group.roles : [];
+    return `<div class="group-roles-container">
+        <div class="group-roles-header">
+            <div class="group-roles-header-text">
+                <p class="settings-help-text">ロールごとにメンバーへ付与する権限を設定できます。オーナー以外のロールは名前や権限のカスタマイズが可能です。</p>
+            </div>
+            <button type="button" class="settings-primary-button group-role-add-btn" id="toggle-create-role-btn">
+                + ロールを追加
+            </button>
+        </div>
+
+        <div id="group-role-create-wrapper" class="group-role-create-wrapper hidden">
+            <form id="group-role-form" class="group-role-card group-role-create-card">
+                <div class="group-role-card-header">
+                    <div class="group-role-card-title-wrap">
+                        <h5 class="group-role-card-title">新しいロールを作成</h5>
+                        <span class="settings-session-current group-role-badge-custom">カスタム</span>
+                    </div>
+                    <button type="button" class="modal-close-btn group-role-create-close-btn" id="cancel-create-role-btn" aria-label="閉じる">×</button>
+                </div>
+                <div class="group-role-input-group">
+                    <label for="create-role-name" class="group-role-input-label">ロール名</label>
+                    <input id="create-role-name" name="name" maxlength="50" required placeholder="例: モデレーター、広報担当" class="group-role-name-input">
+                </div>
+                <div class="group-role-perm-section">
+                    <div class="group-role-perm-header">
+                        <span class="group-role-input-label">付与する権限を選択</span>
+                        <span class="settings-help-text">必要な操作だけにチェックを付けてください</span>
+                    </div>
+                    <div class="group-role-perm-grid">
+                        ${renderRolePermissionCards()}
+                    </div>
+                </div>
+                <div class="group-role-card-actions">
+                    <button type="button" class="group-ui-secondary-button" id="cancel-create-role-btn-action">キャンセル</button>
+                    <button type="submit" class="settings-primary-button">ロールを作成</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="group-role-list">
+            ${roles.map((role) => renderRoleCard(role)).join('')}
+        </div>
+    </div>`;
 }
 
 function renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, canTransfer }) {
@@ -564,7 +714,7 @@ function renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, 
     return tabs;
 }
 
-async function renderGroupManage(content, group) {
+async function renderGroupManage(content, group, initialTab = 'profile') {
     if (!isGroupAdmin(group) && !hasGroupPermission(group, 'profile') && !hasGroupPermission(group, 'invite') && !hasGroupPermission(group, 'ban')) {
         content.innerHTML = '<p class="error-message">このグループを管理する権限がありません。</p>';
         return;
@@ -584,7 +734,7 @@ async function renderGroupManage(content, group) {
     const joinRequests = Array.isArray(requestData.join_requests) ? requestData.join_requests : [];
     const groupId = escapeHTML(String(group.id));
     const tabs = renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, canTransfer });
-    const selectedTab = tabs[0]?.id || 'profile';
+    const selectedTab = tabs.some((tab) => tab.id === initialTab) ? initialTab : (tabs[0]?.id || 'profile');
     content.innerHTML = `<main class="group-ui-page group-ui-manage-page">
         <header class="settings-detail-heading group-ui-page-heading"><div><h3>${escapeHTML(group.name || '')} の管理</h3><p class="settings-group-description">${escapeHTML(tabs.find((tab) => tab.id === selectedTab)?.description || '')}</p></div><a href="#group/${groupId}" class="group-ui-secondary-button">グループへ戻る</a></header>
         <div class="settings-layout group-ui-manage-layout">
@@ -600,7 +750,7 @@ async function renderGroupManage(content, group) {
                     return `<article class="settings-session-item group-ui-member-row"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(user.name || `#${member.user_id}`)}${owner ? '<span class="settings-session-current">オーナー</span>' : ''}</span><p>${escapeHTML(getNyaitterId(user) || `#${member.user_id}`)}</p></div><div class="settings-session-actions">${canAdmin && !owner ? `<select class="settings-select group-ui-role-select" data-member-role="${Number(member.user_id)}" aria-label="${escapeHTML(user.name || `#${member.user_id}`)}のロール">${roles.map((role) => `<option value="${escapeHTML(String(role.id))}" ${String(role.id) === String(member.role_id) ? 'selected' : ''}>${escapeHTML(role.name)}</option>`).join('')}</select>` : ''}${canBan && !owner ? `<button type="button" class="settings-session-revoke-button" data-ban-member="${Number(member.user_id)}">禁止</button>` : ''}</div></article>`;
                 }).join('') || '<p class="settings-help-text">メンバーがいません。</p>'}</div>`)}</section>` : ''}
                 ${canInvite ? `<section class="settings-group-panel" data-group-manage-panel="invites" ${selectedTab === 'invites' ? '' : 'hidden'}>${renderGroupSection('ユーザーを招待', `<form id="group-invite-form" class="group-ui-inline-form"><label>NyaitterID<input name="user_id" inputmode="numeric" required placeholder="#0000の数字部分"></label><button type="submit" class="settings-primary-button">招待を送信</button></form>`)}${renderGroupSection('参加申請', joinRequests.length ? `<div class="settings-sessions-list">${joinRequests.map((item) => `<article class="settings-session-item"><div class="settings-session-details"><span class="settings-session-title">ユーザー #${Number(item.userId ?? item.user_id)}</span><p>参加申請を確認してください。</p></div><div class="settings-session-actions"><button type="button" class="settings-primary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="approve">承認</button><button type="button" class="group-ui-secondary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>` : '<p class="settings-help-text">保留中の参加申請はありません。</p>')}</section>` : ''}
-                ${canAdmin ? `<section class="settings-group-panel" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロール', `<div class="group-role-editor-list">${roles.map((role) => renderRoleEditor(role)).join('')}</div>${renderRoleCreateForm()}`, '既定ロールを含め、オーナー以外のロールは名前と許可する操作を編集できます。')}</section>` : ''}
+                ${canAdmin ? `<section class="settings-group-panel" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロールと権限', renderRolesPanel(group), '')}</section>` : ''}
                 ${canTransfer ? `<section class="settings-group-panel" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>${renderGroupSection('オーナー権限を移譲', `<form id="group-transfer-owner-form" class="group-ui-inline-form"><label>新しいオーナーのNyaitterID<input name="user_id" inputmode="numeric" required></label><button type="submit" class="settings-danger-button">権限を移譲</button></form>`, 'この操作は取り消せません。')}${renderGroupSection('グループを削除', '<button type="button" id="delete-group-button" class="settings-danger-button">グループを削除</button>', 'グループと紐づくすべてのポストを完全に削除します。この操作は取り消せません。')}</section>` : ''}
             </div>
         </div>
@@ -608,8 +758,9 @@ async function renderGroupManage(content, group) {
     bindGroupManageEvents(group);
 }
 
-function refreshGroupManage(group) {
-    return showGroupDetailScreen(group.id, 'manage');
+function refreshGroupManage(group, defaultTab = null) {
+    const activeTab = defaultTab || document.querySelector('[data-group-manage-tab].active')?.dataset.groupManageTab || 'profile';
+    return showGroupDetailScreen(group.id, 'manage', null, activeTab);
 }
 
 function bindGroupProfileForm(group) {
@@ -810,7 +961,7 @@ function bindGroupManageEvents(group) {
         try {
             showLoading(true);
             await request(groupPath(group.id, `/members/${encodeURIComponent(select.dataset.memberRole)}`), { method: 'PATCH', body: { role_id: select.value } });
-            await refreshGroupManage(group);
+            await refreshGroupManage(group, 'members');
         } catch (error) {
             showAppAlert(error.message || 'ロールを更新できませんでした。');
         } finally {
@@ -822,69 +973,149 @@ function bindGroupManageEvents(group) {
         try {
             showLoading(true);
             await request(groupPath(group.id, `/members/${encodeURIComponent(button.dataset.banMember)}/ban`), { method: 'POST', body: {} });
-            await refreshGroupManage(group);
+            await refreshGroupManage(group, 'members');
         } catch (error) {
             showAppAlert(error.message || 'ユーザーを禁止できませんでした。');
         } finally {
             showLoading(false);
         }
     }));
-    document.querySelectorAll('[data-edit-group-role]').forEach((form) => {
-        let saveInFlight = false;
-        let saveQueued = false;
-        const saveRole = async () => {
-            if (saveInFlight) {
-                saveQueued = true;
-                return;
+
+    // ロール権限チェックボックスのリアルタイム表示切り替え
+    document.querySelectorAll('.group-role-perm-checkbox').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+            const tile = checkbox.closest('.group-role-perm-tile');
+            if (tile) tile.classList.toggle('is-checked', checkbox.checked);
+        });
+    });
+
+    // ロール編集ペインの開閉
+    document.querySelectorAll('[data-toggle-role]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const roleId = button.dataset.toggleRole;
+            const editor = document.getElementById(`role-editor-${roleId}`);
+            if (!editor) return;
+            const isHidden = editor.classList.contains('hidden');
+            editor.classList.toggle('hidden', !isHidden);
+            button.querySelector('.edit-text')?.classList.toggle('hidden', isHidden);
+            button.querySelector('.close-text')?.classList.toggle('hidden', !isHidden);
+        });
+    });
+
+    document.querySelectorAll('[data-cancel-role]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const roleId = button.dataset.cancelRole;
+            const editor = document.getElementById(`role-editor-${roleId}`);
+            const toggleBtn = document.querySelector(`[data-toggle-role="${roleId}"]`);
+            if (editor) editor.classList.add('hidden');
+            if (toggleBtn) {
+                toggleBtn.querySelector('.edit-text')?.classList.remove('hidden');
+                toggleBtn.querySelector('.close-text')?.classList.add('hidden');
             }
+        });
+    });
+
+    // 新規ロール作成フォームの開閉
+    const createWrapper = document.getElementById('group-role-create-wrapper');
+    const toggleCreateBtn = document.getElementById('toggle-create-role-btn');
+    const closeCreateRole = () => {
+        createWrapper?.classList.add('hidden');
+        toggleCreateBtn?.classList.remove('hidden');
+    };
+    toggleCreateBtn?.addEventListener('click', () => {
+        createWrapper?.classList.remove('hidden');
+        toggleCreateBtn?.classList.add('hidden');
+        document.getElementById('create-role-name')?.focus();
+    });
+    document.getElementById('cancel-create-role-btn')?.addEventListener('click', closeCreateRole);
+    document.getElementById('cancel-create-role-btn-action')?.addEventListener('click', closeCreateRole);
+
+    // ロール編集のインプレース保存
+    document.querySelectorAll('[data-edit-group-role]').forEach((form) => {
+        const roleId = form.dataset.editGroupRole;
+        const statusEl = document.getElementById(`save-status-${roleId}`);
+        const submitBtn = form.querySelector('.group-role-save-btn');
+        let saveTimeout = null;
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
             if (!form.reportValidity()) return;
-            saveInFlight = true;
             const values = new FormData(form);
+            const newName = String(values.get('name') || '').trim();
+            const newPermissions = values.getAll('permissions');
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '保存中...';
+            }
+            if (statusEl) {
+                statusEl.textContent = '';
+            }
+
             try {
-                showLoading(true);
-                await request(groupPath(group.id, `/roles/${encodeURIComponent(form.dataset.editGroupRole)}`), {
+                await request(groupPath(group.id, `/roles/${encodeURIComponent(roleId)}`), {
                     method: 'PATCH',
-                    body: { name: values.get('name'), permissions: values.getAll('permissions') },
+                    body: { name: newName, permissions: newPermissions },
                 });
-                await refreshGroupManage(group);
+
+                // グループデータのインメモリ更新
+                const existingRole = group.roles?.find((r) => String(r.id) === String(roleId));
+                if (existingRole) {
+                    existingRole.name = newName;
+                    existingRole.permissions = newPermissions;
+                }
+
+                // サマリータイトルと権限プレビューのリアルタイム更新
+                const titleEl = document.querySelector(`[data-role-title="${roleId}"]`);
+                if (titleEl) titleEl.textContent = newName;
+                const previewEl = document.querySelector(`[data-role-preview="${roleId}"]`);
+                if (previewEl) previewEl.innerHTML = renderRoleChips(existingRole || { permissions: newPermissions }, false);
+
+                // メンバー一覧のロール選択肢更新
+                document.querySelectorAll(`select.group-ui-role-select option[value="${roleId}"]`).forEach((opt) => {
+                    opt.textContent = newName;
+                });
+
+                if (statusEl) {
+                    statusEl.textContent = '✓ 保存しました';
+                    clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => {
+                        if (statusEl) statusEl.textContent = '';
+                    }, 3000);
+                }
             } catch (error) {
-                await refreshGroupManage(group).catch(() => {});
                 showAppAlert(error.message || 'ロールを更新できませんでした。');
             } finally {
-                saveInFlight = false;
-                showLoading(false);
-                if (saveQueued) {
-                    saveQueued = false;
-                    void saveRole();
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '変更を保存';
                 }
             }
-        };
-        form.addEventListener('submit', (event) => {
-            event.preventDefault();
-            void saveRole();
         });
-        form.querySelector('[name="name"]')?.addEventListener('blur', () => { void saveRole(); });
-        form.querySelectorAll('[name="permissions"]').forEach((input) => input.addEventListener('change', () => { void saveRole(); }));
     });
+
+    // 新規ロール作成
     document.getElementById('group-role-form')?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         try {
             showLoading(true);
             await request(groupPath(group.id, '/roles'), { method: 'POST', body: { name: form.get('name'), permissions: form.getAll('permissions') } });
-            await refreshGroupManage(group);
+            await refreshGroupManage(group, 'roles');
         } catch (error) {
             showAppAlert(error.message || 'ロールを追加できませんでした。');
         } finally {
             showLoading(false);
         }
     });
+
+    // ロール削除
     document.querySelectorAll('[data-delete-role]').forEach((button) => button.addEventListener('click', async () => {
-        if (!await showAppConfirm('このロールを削除しますか？')) return;
+        if (!await showAppConfirm('このロールを削除しますか？この操作は取り消せません。')) return;
         try {
             showLoading(true);
             await request(groupPath(group.id, `/roles/${encodeURIComponent(button.dataset.deleteRole)}`), { method: 'DELETE' });
-            await refreshGroupManage(group);
+            await refreshGroupManage(group, 'roles');
         } catch (error) {
             showAppAlert(error.message || 'ロールを削除できませんでした。');
         } finally {

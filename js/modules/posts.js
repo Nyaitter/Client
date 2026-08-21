@@ -30,6 +30,7 @@ import {
 } from './editor.js';
 import { isDataSaverEnabled } from './theme.js';
 import { router } from '../router.js';
+import { openReportModal } from '../screens/adminScreen.js';
 import { getAccountList, refreshAccountList } from './auth.js';
 import {
     escapeHTML,
@@ -389,7 +390,7 @@ export async function renderPost(post, author, options = {}) {
                 if (typeof onReportClick === 'function') {
                     onReportClick(post);
                 } else {
-                    window.openReportModal?.({
+                    openReportModal({
                         targetKind: 'post',
                         targetId: post.id,
                         targetLabel: 'このポスト',

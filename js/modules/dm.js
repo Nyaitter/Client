@@ -1,6 +1,7 @@
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { api, apiRequest } from '../api.js';
+import { router } from '../router.js';
 import {
     getCurrentUser,
     getAllUsersCache,
@@ -52,7 +53,7 @@ import { isDataSaverEnabled } from './theme.js';
 
 export async function renderDmMessage(msg, dmId = null) {
     const currentUserId = getCurrentUser()?.id;
-    const plaintext = await dmE2EDecryptMessage(msg, currentUserId) || msg.message || '';
+    const plaintext = await dmE2EDecryptMessage(msg, currentUserId) || msg.content || msg.message || '';
     await ensureMentionedUsersCached([plaintext]);
 
     if (msg.type === 'system') {
@@ -101,35 +102,42 @@ export async function renderDmMessage(msg, dmId = null) {
         ? renderNyarkDown(plaintext, getAllUsersCache(), { allowMarkdown: true })
         : '';
     const sent = Number(msg.userid) === Number(currentUserId);
+    const time = formatPostTimestamp(msg);
 
     if (sent) {
         return `<div class="dm-message-container sent" data-message-id="${escapeHTML(msg.id)}">
             <div class="dm-message-wrapper">
-                <button type="button" class="dm-message-menu-btn" title="メッセージメニュー" aria-label="メッセージメニュー">${ICONS.more}</button>
-                <div class="post-menu">
-                    <button class="edit-dm-msg-btn">編集</button>
-                    <button class="delete-dm-msg-btn delete-btn">削除</button>
+                <div class="dm-message-bubble-row">
+                    <button type="button" class="dm-message-menu-btn" title="メッセージメニュー" aria-label="メッセージメニュー">${ICONS.more}</button>
+                    <div class="post-menu">
+                        <button class="edit-dm-msg-btn">編集</button>
+                        <button class="delete-dm-msg-btn delete-btn">削除</button>
+                    </div>
+                    <div class="dm-message"><div class="dm-message-content">${formattedContent}</div>${attachmentsHTML}</div>
                 </div>
-                <div class="dm-message"><div class="dm-message-content">${formattedContent}</div>${attachmentsHTML}</div>
+                <div class="dm-message-meta">
+                    <span class="dm-message-time">${time}</span>
+                </div>
             </div>
         </div>`;
     } else {
         const user = getAllUsersCache().get(msg.userid) || {};
-        const time = formatPostTimestamp(msg);
         return `<div class="dm-message-container received" data-message-id="${escapeHTML(msg.id)}">
-            <a href="#profile/${user.id}" class="dm-user-link">
+            <a href="#profile/${user.id}" class="dm-user-link" tabindex="-1" aria-hidden="true">
                 <img src="${getUserIconUrl(user)}" class="dm-message-icon" alt="">
             </a>
             <div class="dm-message-wrapper">
-                <div class="post-menu">
-                    <button class="report-dm-message-btn" data-dm-id="${escapeHTML(String(dmId || ''))}" data-message-id="${escapeHTML(String(msg.id || ''))}">報告する</button>
-                </div>
                 <div class="dm-message-meta">
-                    <a href="#profile/${user.id}" class="dm-user-link">${getEmoji(escapeHTML(user.name || '不明'))}</a>
+                    <a href="#profile/${user.id}" class="dm-user-link dm-user-name">${getEmoji(escapeHTML(user.name || '不明'))}</a>
                     <span class="dm-message-time">・${time}</span>
-                    <button type="button" class="dm-message-menu-btn" title="メッセージメニュー" aria-label="メッセージメニュー">${ICONS.more}</button>
                 </div>
-                <div class="dm-message"><div class="dm-message-content">${formattedContent}</div>${attachmentsHTML}</div>
+                <div class="dm-message-bubble-row">
+                    <div class="dm-message"><div class="dm-message-content">${formattedContent}</div>${attachmentsHTML}</div>
+                    <button type="button" class="dm-message-menu-btn" title="メッセージメニュー" aria-label="メッセージメニュー">${ICONS.more}</button>
+                    <div class="post-menu">
+                        <button class="report-dm-message-btn" data-dm-id="${escapeHTML(String(dmId || ''))}" data-message-id="${escapeHTML(String(msg.id || ''))}">報告する</button>
+                    </div>
+                </div>
             </div>
         </div>`;
     }
@@ -320,6 +328,7 @@ export async function sendSystemDmMessage(dmId, content) {
         const messageObject = {
             id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
             type: 'system',
+            content: content,
             message: content,
             created_at: new Date().toISOString(),
         };
@@ -361,8 +370,9 @@ export async function sendDmMessage(dmId, messageText, attachments = [], onCompl
 
         const messageObject = {
             id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-            type: 'message',
+            type: 'user',
             userid: getCurrentUser().id,
+            content: text,
             message: text,
             attachments: attachmentsData,
             created_at: new Date().toISOString(),
@@ -401,9 +411,11 @@ export async function handleUpdateDmTitle(dmId, newTitle, onComplete = null) {
         if (error) throw error;
         await sendSystemDmMessage(dmId, `グループ名が「${escapeHTML(title)}」に変更されました`);
         invalidateDmCaches(dmId);
+        const titleEl = document.querySelector('.dm-header-title');
+        if (titleEl) titleEl.innerHTML = getEmoji(escapeHTML(title));
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert('タイトルの更新に失敗しました');
+        showAppAlert(e.message || 'タイトルの更新に失敗しました');
     }
 }
 
@@ -411,49 +423,61 @@ export async function handleRemoveDmMember(dmId, memberId, onComplete = null) {
     try {
         const { data: dm } = await api.from('dm').eq('id', dmId).single();
         if (!dm) return;
-        const newMembers = (dm.users || []).filter((id) => Number(id) !== Number(memberId));
-        const { error } = await api.from('dm').update({ users: newMembers }).eq('id', dmId);
+        const currentMembers = (dm.member || dm.users || []).map(Number);
+        const newMembers = currentMembers.filter((id) => Number(id) !== Number(memberId));
+        const { error } = await api.from('dm').update({ member: newMembers }).eq('id', dmId);
         if (error) throw error;
 
         const removedUser = getCachedUser(memberId);
         const name = removedUser?.name || `user${memberId}`;
         await sendSystemDmMessage(dmId, `${escapeHTML(name)} さんがグループから退出させられました`);
         invalidateDmCaches(dmId);
+        await openDmManageModal(dmId, onComplete);
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert('メンバーの削除に失敗しました');
+        showAppAlert(e.message || 'メンバーの削除に失敗しました');
     }
 }
 
 export async function handleSetHostDmMember(dmId, memberId, onComplete = null) {
     try {
-        const { error } = await api.from('dm').update({ host: memberId }).eq('id', dmId);
+        const { error } = await api.from('dm').update({ host_id: Number(memberId) }).eq('id', dmId);
         if (error) throw error;
         const newHost = getCachedUser(memberId);
         const name = newHost?.name || `user${memberId}`;
         await sendSystemDmMessage(dmId, `${escapeHTML(name)} さんが新しいホストになりました`);
         invalidateDmCaches(dmId);
+        await openDmManageModal(dmId, onComplete);
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert('ホストの変更に失敗しました');
+        showAppAlert(e.message || 'ホストの変更に失敗しました');
     }
 }
 
 export async function handleAddDmMember(dmId, newMemberId, onComplete = null) {
+    const numericId = Number(newMemberId);
+    if (!Number.isSafeInteger(numericId) || numericId <= 0) {
+        return showAppAlert('有効なNyaitterIDを入力してください');
+    }
     try {
         const { data: dm } = await api.from('dm').eq('id', dmId).single();
         if (!dm) return;
-        const newMembers = Array.from(new Set([...(dm.users || []), Number(newMemberId)]));
-        const { error } = await api.from('dm').update({ users: newMembers }).eq('id', dmId);
+        const currentMembers = (dm.member || dm.users || []).map(Number);
+        if (currentMembers.includes(numericId)) {
+            return showAppAlert('このユーザーは既に参加しています');
+        }
+        const newMembers = Array.from(new Set([...currentMembers, numericId]));
+        const { error } = await api.from('dm').update({ member: newMembers }).eq('id', dmId);
         if (error) throw error;
 
-        const addedUser = getCachedUser(newMemberId);
-        const name = addedUser?.name || `user${newMemberId}`;
+        const addedUser = getCachedUser(numericId);
+        const name = addedUser?.name || `user${numericId}`;
         await sendSystemDmMessage(dmId, `${escapeHTML(name)} さんがグループに追加されました`);
         invalidateDmCaches(dmId);
+        await openDmManageModal(dmId, onComplete);
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert('メンバーの追加に失敗しました');
+        showAppAlert(e.message || 'メンバーの追加に失敗しました');
     }
 }
 
@@ -461,20 +485,20 @@ export async function handleLeaveDm(dmId, onComplete = null) {
     const confirm = await showAppConfirm('このDMグループから退出しますか？');
     if (!confirm) return;
     try {
-        const { data: dm } = await api.from('dm').eq('id', dmId).single();
-        if (!dm) return;
-        const myId = getCurrentUser()?.id;
-        const newMembers = (dm.users || []).filter((id) => Number(id) !== Number(myId));
-        const { error } = await api.from('dm').update({ users: newMembers }).eq('id', dmId);
+        const { error } = await api.rpc('leave_dm', { dm_id_in: dmId });
         if (error) throw error;
 
+        const myId = getCurrentUser()?.id;
         const name = getCurrentUser()?.name || `user${myId}`;
         await sendSystemDmMessage(dmId, `${escapeHTML(name)} さんがグループから退出しました`);
         invalidateDmCaches(dmId);
+        invalidateDmCaches();
+        DOM.dmManageModal?.classList.add('hidden');
         window.location.hash = '#dm';
+        await router();
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert('グループからの退出に失敗しました');
+        showAppAlert(e.message || 'グループからの退出に失敗しました');
     }
 }
 
@@ -485,10 +509,13 @@ export async function handleDisbandDm(dmId, onComplete = null) {
         const { error } = await api.from('dm').delete().eq('id', dmId);
         if (error) throw error;
         invalidateDmCaches(dmId);
+        invalidateDmCaches();
+        DOM.dmManageModal?.classList.add('hidden');
         window.location.hash = '#dm';
+        await router();
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert('グループの解散に失敗しました');
+        showAppAlert(e.message || 'グループの解散に失敗しました');
     }
 }
 
@@ -503,35 +530,37 @@ export async function openDmManageModal(dmId, onComplete = null) {
         if (error || !dm) throw new Error('DM情報の取得に失敗しました');
 
         const currentUserId = getCurrentUser()?.id;
-        const isHost = Number(dm.host) === Number(currentUserId);
-        const memberIds = dm.users || [];
+        const isHost = Number(dm.host_id ?? dm.host) === Number(currentUserId);
+        const memberIds = (dm.member || dm.users || []).map(Number);
 
         const { data: members } = await api.from('user').in('id', memberIds);
         if (members) cacheUsers(members);
 
         content.innerHTML = `
-            <div class="dm-manage-container">
-                <h3>DM管理</h3>
-                <div class="dm-manage-field">
-                    <label for="dm-manage-title-input">グループ名</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input id="dm-manage-title-input" type="text" value="${escapeHTML(dm.title || '')}" ${!isHost ? 'disabled' : ''}>
-                        ${isHost ? '<button type="button" id="dm-manage-title-save-btn" class="settings-primary-button">変更</button>' : ''}
+            <div class="dm-modal-body">
+                <div class="modal-heading">
+                    <h3 id="dm-manage-modal-title">DM管理</h3>
+                </div>
+                <div class="dm-manage-section">
+                    <label class="dm-manage-label" for="dm-manage-title-input">グループ名</label>
+                    <div class="dm-manage-inline-row">
+                        <input id="dm-manage-title-input" class="dm-modal-input" type="text" value="${escapeHTML(dm.title || '')}" ${!isHost ? 'disabled' : ''} placeholder="未設定">
+                        ${isHost ? '<button type="button" id="dm-manage-title-save-btn" class="settings-primary-button dm-manage-btn-sm">変更</button>' : ''}
                     </div>
                 </div>
-                <div class="dm-manage-members">
-                    <h4>参加メンバー (${memberIds.length})</h4>
+                <div class="dm-manage-section">
+                    <h4 class="dm-manage-section-title">参加メンバー (${memberIds.length})</h4>
                     <div class="dm-manage-member-list"></div>
                 </div>
                 ${isHost ? `
-                <div class="dm-manage-add-member" style="margin-top: 1rem;">
-                    <label for="dm-manage-add-input">メンバーを追加 (ユーザーID)</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input id="dm-manage-add-input" type="number" placeholder="ユーザーID">
-                        <button type="button" id="dm-manage-add-btn" class="settings-primary-button">追加</button>
+                <div class="dm-manage-section">
+                    <label class="dm-manage-label" for="dm-manage-add-input">メンバーを追加</label>
+                    <div class="dm-manage-inline-row">
+                        <input id="dm-manage-add-input" class="dm-modal-input" type="number" placeholder="NyaitterID (数字)">
+                        <button type="button" id="dm-manage-add-btn" class="settings-primary-button dm-manage-btn-sm">追加</button>
                     </div>
                 </div>` : ''}
-                <div class="dm-manage-actions" style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <div class="dm-manage-actions-footer">
                     <button type="button" id="dm-manage-leave-btn" class="settings-danger-button">グループから退出</button>
                     ${isHost ? '<button type="button" id="dm-manage-disband-btn" class="settings-danger-button">グループを解散</button>' : ''}
                 </div>
@@ -541,21 +570,21 @@ export async function openDmManageModal(dmId, onComplete = null) {
         const listEl = content.querySelector('.dm-manage-member-list');
         memberIds.forEach((uid) => {
             const user = getCachedUser(uid) || { id: uid, name: `user${uid}` };
-            const isUserHost = Number(dm.host) === Number(uid);
+            const isUserHost = Number(dm.host_id ?? dm.host) === Number(uid);
             const isMe = Number(uid) === Number(currentUserId);
             const item = document.createElement('div');
             item.className = 'dm-manage-member-item';
-            item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border-color);';
             item.innerHTML = `
-                <div style="display:flex;align-items:center;gap:0.5rem;">
-                    <img src="${getUserIconUrl(user)}" class="user-icon" style="width:32px;height:32px;border-radius:50%;" alt="">
-                    <span>${getEmoji(escapeHTML(user.name))}</span>
-                    ${isUserHost ? '<span class="admin-badge" style="font-size:0.75em;background:var(--primary-color);color:#fff;padding:2px 6px;border-radius:4px;">ホスト</span>' : ''}
+                <div class="dm-manage-member-info">
+                    <img src="${getUserIconUrl(user)}" class="user-icon dm-manage-member-icon" alt="">
+                    <span class="dm-manage-member-name">${getEmoji(escapeHTML(user.name))}</span>
+                    <span class="dm-manage-member-handle">${getNyaitterId(user)}</span>
+                    ${isUserHost ? '<span class="dm-manage-host-badge">ホスト</span>' : ''}
                 </div>
-                <div style="display:flex;gap:0.25rem;">
+                <div class="dm-manage-member-actions">
                     ${isHost && !isMe ? `
-                        <button type="button" class="set-host-btn login-secondary-button" data-uid="${uid}" style="font-size:0.8em;padding:2px 8px;">ホストにする</button>
-                        <button type="button" class="remove-member-btn settings-danger-button" data-uid="${uid}" style="font-size:0.8em;padding:2px 8px;">削除</button>
+                        <button type="button" class="set-host-btn group-ui-secondary-button" data-uid="${uid}">ホストにする</button>
+                        <button type="button" class="remove-member-btn settings-session-revoke-button" data-uid="${uid}">削除</button>
                     ` : ''}
                 </div>
             `;
@@ -585,16 +614,14 @@ export async function openDmManageModal(dmId, onComplete = null) {
         });
 
         content.querySelector('#dm-manage-leave-btn')?.addEventListener('click', () => {
-            modal.classList.add('hidden');
             void handleLeaveDm(dmId, onComplete);
         });
 
         content.querySelector('#dm-manage-disband-btn')?.addEventListener('click', () => {
-            modal.classList.add('hidden');
             void handleDisbandDm(dmId, onComplete);
         });
 
-        content.querySelector('.modal-close-btn')?.addEventListener('click', () => {
+        modal.querySelector('.modal-close-btn')?.addEventListener('click', () => {
             modal.classList.add('hidden');
         });
 
@@ -616,23 +643,34 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
         const { data: dm, error } = await api.from('dm').eq('id', dmId).single();
         if (error || !dm) throw new Error('DMメッセージの取得に失敗しました');
 
-        const message = (dm.messages || []).find((m) => String(m.id) === String(messageId));
+        const message = (dm.messages || dm.post || []).find((m) => String(m.id) === String(messageId));
         if (!message) throw new Error('メッセージが見つかりませんでした');
 
         content.innerHTML = `
-            <div class="post-form" style="padding: 1rem;">
-                <h3>メッセージを編集</h3>
-                <button class="modal-close-btn">×</button>
-                <div class="form-content">
-                    <div class="markdown-textarea-editor post-form-textarea">
-                        <textarea id="edit-dm-textarea" class="markdown-content-editor" rows="4">${escapeHTML(message.message || '')}</textarea>
-                        <div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div>
+            <div class="dm-modal-body">
+                <div class="modal-heading">
+                    <h3 id="edit-dm-modal-title">メッセージを編集</h3>
+                </div>
+                <div class="dm-edit-content">
+                    <div class="markdown-textarea-editor dm-edit-editor">
+                        <textarea id="edit-dm-textarea" class="markdown-content-editor dm-edit-textarea" rows="4" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length">${escapeHTML(message.content || message.message || '')}</textarea>
+                        <div class="markdown-editor-paint" aria-hidden="true">
+                            <div class="markdown-editor-placeholder"></div>
+                            <div class="markdown-editor-preview hidden"></div>
+                            <div class="markdown-editor-selection"></div>
+                            <div class="markdown-editor-composition"></div>
+                            <div class="markdown-editor-caret"></div>
+                        </div>
                     </div>
-                    <div class="post-form-actions" style="margin-top: 1rem;">
-                        <button type="button" class="emoji-pic-button float-left" title="絵文字を選択">${ICONS.emoji}</button>
-                        <div id="emoji-picker" class="hidden"></div>
-                        <button id="update-dm-btn" class="settings-primary-button float-right">更新</button>
-                        <span class="float-clear"></span>
+                    <div class="dm-edit-footer">
+                        <div class="dm-edit-tools">
+                            <button type="button" class="emoji-pic-button dm-edit-tool-btn" title="絵文字を選択">${ICONS.emoji}</button>
+                            <div id="emoji-picker" class="hidden"></div>
+                        </div>
+                        <div class="dm-edit-actions">
+                            <button type="button" class="login-secondary-button dm-edit-cancel-btn">キャンセル</button>
+                            <button type="button" id="update-dm-btn" class="settings-primary-button">保存</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -650,7 +688,11 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
             await handleUpdateDmMessage(dmId, messageId, updatedText, onComplete);
         });
 
-        content.querySelector('.modal-close-btn')?.addEventListener('click', () => {
+        content.querySelector('.dm-edit-cancel-btn')?.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        modal.querySelector('.modal-close-btn')?.addEventListener('click', () => {
             modal.classList.add('hidden');
         });
 
@@ -667,14 +709,14 @@ export async function handleUpdateDmMessage(dmId, messageId, newText, onComplete
     try {
         const { data: dm } = await api.from('dm').eq('id', dmId).single();
         if (!dm) return;
-        const messages = (dm.messages || []).map((m) => {
+        const messages = (dm.messages || dm.post || []).map((m) => {
             if (String(m.id) === String(messageId)) {
-                return { ...m, message: newText, edited: true };
+                return { ...m, content: newText, message: newText, edited: true };
             }
             return m;
         });
 
-        const { error } = await api.from('dm').update({ messages }).eq('id', dmId);
+        const { error } = await api.from('dm').update({ post: messages, messages }).eq('id', dmId);
         if (error) throw error;
 
         invalidateDmCaches(dmId);
