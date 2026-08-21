@@ -471,8 +471,8 @@ position: fixed;
 
 .spinner {
 border: 4px solid var(--spin);
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     border-left-color: var(--primary-color);
     animation: spin 1s ease infinite;
