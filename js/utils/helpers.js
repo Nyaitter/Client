@@ -601,3 +601,47 @@ export function showLoading(show) {
     DOM.loadingOverlay.setAttribute('aria-hidden', String(!visible));
     DOM.loadingOverlay.setAttribute('aria-busy', String(visible));
 }
+
+export function getGroupBadgesHtml(user) {
+    if (!user) return '';
+    const badges = Array.isArray(user.group_badges)
+        ? user.group_badges
+        : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
+    const validBadges = badges
+        .filter((b) => b && (b.icon_data || b.iconData))
+        .slice(0, 3);
+    if (validBadges.length === 0) return '';
+    return `<span class="user-group-badges">${validBadges
+        .map((b) => `<span role="link" tabindex="0" class="user-group-badge-link" title="${escapeHTML(b.name || '参加グループ')}" onclick="event.preventDefault(); event.stopPropagation(); window.location.hash='#group/${encodeURIComponent(b.id)}';"><img src="${escapeHTML(getSafeHttpUrl(b.icon_data || b.iconData))}" class="user-group-badge" alt="${escapeHTML(b.name || 'グループ')}"></span>`)
+        .join('')}</span>`;
+}
+
+export function renderGroupBadgesElement(user) {
+    if (!user) return null;
+    const badges = Array.isArray(user.group_badges)
+        ? user.group_badges
+        : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
+    const validBadges = badges
+        .filter((b) => b && (b.icon_data || b.iconData))
+        .slice(0, 3);
+    if (validBadges.length === 0) return null;
+
+    const span = document.createElement('span');
+    span.className = 'user-group-badges';
+    validBadges.forEach((b) => {
+        const link = document.createElement('a');
+        link.href = `#group/${encodeURIComponent(b.id)}`;
+        link.className = 'user-group-badge-link';
+        link.title = b.name || '参加グループ';
+        link.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        const img = document.createElement('img');
+        img.src = getSafeHttpUrl(b.icon_data || b.iconData);
+        img.className = 'user-group-badge';
+        img.alt = b.name || 'グループ';
+        link.appendChild(img);
+        span.appendChild(link);
+    });
+    return span;
+}

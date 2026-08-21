@@ -45,6 +45,7 @@ import {
     showAppAlert,
     showAppConfirm,
     copyTextToClipboard,
+    renderGroupBadgesElement,
 } from '../utils/helpers.js';
 
 export const METRICS_FALLBACK = '?';
@@ -340,6 +341,11 @@ export async function renderPost(post, author, options = {}) {
         verifyBadge.className = 'verify-badge';
         verifyBadge.title = '認証済み';
         authorLink.appendChild(verifyBadge);
+    }
+
+    const groupBadgesEl = renderGroupBadgesElement(displayAuthor);
+    if (groupBadgesEl) {
+        postHeader.appendChild(groupBadgesEl);
     }
 
     const postTime = document.createElement('span');

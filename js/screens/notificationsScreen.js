@@ -87,25 +87,6 @@ export async function showNotificationsScreen(showScreenFn = null) {
         });
 
     try {
-        const { data: readAllOnOpenData, error: readAllOnOpenError } =
-            await apiRequest('/server/api/notifications/read-all', {
-                method: 'PUT',
-            });
-        if (readAllOnOpenError) {
-            console.error('通知一覧表示時の既読化に失敗しました:', readAllOnOpenError);
-        } else {
-            if (getCurrentUser().notice) {
-                getCurrentUser().notice.forEach((notification) => {
-                    notification.read = true;
-                });
-            }
-            getCurrentUser().notification_unread_count = Number(
-                readAllOnOpenData?.notification_unread_count || 0,
-            );
-            getCurrentUser().nav_summary_fetched_recently = false;
-            void updateNavAndSidebars();
-        }
-
         const NOTIFICATIONS_PER_PAGE = getNotificationsPerPage();
         let notificationOffset = 0;
         let hasMoreNotifications = true;
@@ -225,6 +206,31 @@ export async function showNotificationsScreen(showScreenFn = null) {
         );
         getPostLoadObserver().observe(trigger);
         await loadMoreNotifications();
+
+        try {
+            const { data: readAllOnOpenData, error: readAllOnOpenError } =
+                await apiRequest('/server/api/notifications/read-all', {
+                    method: 'PUT',
+                });
+            if (readAllOnOpenError) {
+                console.error('通知一覧表示後の既読化に失敗しました:', readAllOnOpenError);
+            } else {
+                if (getCurrentUser()?.notice) {
+                    getCurrentUser().notice.forEach((notification) => {
+                        notification.read = true;
+                    });
+                }
+                if (getCurrentUser()) {
+                    getCurrentUser().notification_unread_count = Number(
+                        readAllOnOpenData?.notification_unread_count || 0,
+                    );
+                    getCurrentUser().nav_summary_fetched_recently = false;
+                }
+                void updateNavAndSidebars();
+            }
+        } catch (readErr) {
+            console.error('通知一覧既読化エラー:', readErr);
+        }
     } catch (e) {
         console.error('通知画面エラー:', e);
         contentDiv.innerHTML = `<p class="error-message">通知の読み込みに失敗しました。</p>`;

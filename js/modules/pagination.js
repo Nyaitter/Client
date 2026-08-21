@@ -26,6 +26,7 @@ import {
     escapeHTML,
     getNyaitterId,
     getUserIconUrl,
+    getGroupBadgesHtml,
 } from '../utils/helpers.js';
 
 export let currentRouterGeneration = 0;
@@ -362,11 +363,11 @@ export async function loadUsersWithPagination(container, type, options = {}) {
         userLink.style.cssText =
             'display:flex; align-items:center; gap:0.8rem; text-decoration:none; color:inherit;';
 
-        const badgeHTML = u.admin
+        const badgeHTML = (u.admin
             ? ` <img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">`
             : u.verify
               ? ` <img src="icons/verify.png" class="verify-badge" title="認証済み">`
-              : '';
+              : '') + getGroupBadgesHtml(u);
 
         userLink.innerHTML = `
             <img src="${getUserIconUrl(u)}" style="width:48px; height:48px; border-radius:50%;" alt="${escapeHTML(u.name)}'s icon">
