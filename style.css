@@ -5317,6 +5317,8 @@ body.dark .settings-bot-new-key-box {
     .settings-bot-new-key-display button {
         width: 100%;
     }
+}
+
 /* 報告モーダルと管理対応画面 */
 .report-modal-content {
     box-sizing: border-box;
