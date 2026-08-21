@@ -682,7 +682,16 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         }
 
         const serverProviders = Array.isArray(serverResult.data?.providers) ? serverResult.data.providers : [];
-        const linkedProviders = Array.isArray(linkedResult.data?.linked_providers) ? linkedResult.data.linked_providers : [];
+        const rawLinkedProviders = Array.isArray(linkedResult.data?.linked_providers) ? linkedResult.data.linked_providers : [];
+        const currentUser = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+        const linkedProviders = [...rawLinkedProviders];
+        if (currentUser?.scid && !linkedProviders.some((p) => String(p.provider).toLowerCase() === 'scratch')) {
+            linkedProviders.unshift({
+                provider: 'scratch',
+                providerUserId: currentUser.scid,
+                isPrimary: true,
+            });
+        }
 
         if (serverProviders.length === 0) {
             const empty = document.createElement('p');
@@ -825,8 +834,12 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         await showAppAlert('Scratchアカウントの連携が完了しました！');
                         await loadAuthProvidersSettings();
                     } else if (provider.name === 'passkey') {
+                        if (!window.PublicKeyCredential) {
+                            return showAppAlert('このブラウザはパスキー認証に対応していません。');
+                        }
+
                         showLoading(true);
-                        const { error: initError } = await apiRequest('/server/auth/link/passkey/initiate', {
+                        const { data: initiateData, error: initError } = await apiRequest('/server/auth/link/passkey/initiate', {
                             method: 'POST',
                             body: {},
                         });
@@ -836,11 +849,98 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                             return showAppAlert(`パスキーの開始に失敗しました: ${initError.message}`);
                         }
 
-                        const credentialId = `passkey_${Date.now()}`;
+                        // WebAuthn API で新しいパスキーを作成
+                        function base64urlToUint8Array(base64url) {
+                            let base64 = String(base64url || '').replace(/-/g, '+').replace(/_/g, '/');
+                            while (base64.length % 4 !== 0) {
+                                base64 += '=';
+                            }
+                            const binary = atob(base64);
+                            const bytes = new Uint8Array(binary.length);
+                            for (let i = 0; i < binary.length; i++) {
+                                bytes[i] = binary.charCodeAt(i);
+                            }
+                            return bytes;
+                        }
+
+                        function bufferToBase64url(buffer) {
+                            if (!buffer) return null;
+                            const bytes = new Uint8Array(buffer);
+                            let binary = '';
+                            for (const b of bytes) binary += String.fromCharCode(b);
+                            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                        }
+
+                        function getEffectiveRpId(serverRpId) {
+                            const host = window.location.hostname;
+                            if (!host) return undefined;
+                            if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.includes(':')) {
+                                return undefined;
+                            }
+                            if (serverRpId && serverRpId !== 'localhost' && (host === serverRpId || host.endsWith('.' + serverRpId))) {
+                                return serverRpId;
+                            }
+                            return host;
+                        }
+
+                        const challengeBytes = base64urlToUint8Array(initiateData.challenge);
+                        const userIdBytes = new TextEncoder().encode(String(getCurrentUser()?.id || 'user'));
+                        const rpId = getEffectiveRpId(initiateData.rpId);
+
+                        let credential;
+                        try {
+                            credential = await navigator.credentials.create({
+                                publicKey: {
+                                    challenge: challengeBytes,
+                                    rp: {
+                                        name: initiateData.rpName || 'Nyaitter',
+                                        ...(rpId ? { id: rpId } : {}),
+                                    },
+                                    user: {
+                                        id: userIdBytes,
+                                        name: getCurrentUser()?.name || 'user',
+                                        displayName: getCurrentUser()?.name || 'user',
+                                    },
+                                    pubKeyCredParams: [
+                                        { type: 'public-key', alg: -7 },
+                                        { type: 'public-key', alg: -257 },
+                                    ],
+                                    timeout: 60000,
+                                    authenticatorSelection: {
+                                        userVerification: 'preferred',
+                                        residentKey: 'preferred',
+                                    },
+                                    attestation: 'none',
+                                    extensions: {
+                                        credProps: true,
+                                    },
+                                },
+                            });
+                        } catch (webAuthnError) {
+                            if (webAuthnError.name === 'NotAllowedError') {
+                                return showAppAlert('パスキーの作成がキャンセルされました。');
+                            }
+                            return showAppAlert(`パスキーの作成に失敗しました: ${webAuthnError.message}`);
+                        }
+
+                        if (!credential) {
+                            return showAppAlert('パスキーの作成がキャンセルされました。');
+                        }
+
                         showLoading(true);
+                        const verifyPayload = {
+                            credentialId: credential.id,
+                            rawId: bufferToBase64url(credential.rawId),
+                            response: {
+                                clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                                attestationObject: bufferToBase64url(credential.response.attestationObject),
+                            },
+                            type: credential.type,
+                            name: getCurrentUser()?.name,
+                        };
                         const { error: verifyError } = await apiRequest('/server/auth/link/passkey/verify', {
                             method: 'POST',
-                            body: { credentialId, name: getCurrentUser()?.name },
+                            body: verifyPayload,
                         });
                         showLoading(false);
 

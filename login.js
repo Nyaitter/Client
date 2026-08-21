@@ -561,19 +561,111 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- Passkey Flow Handlers ---
+  function base64urlToUint8Array(base64url) {
+    let base64 = String(base64url || '').replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  function bufferToBase64url(buffer) {
+    if (!buffer) return null;
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (const b of bytes) binary += String.fromCharCode(b);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  }
+
+  function getEffectiveRpId(serverRpId) {
+    const host = window.location.hostname;
+    if (!host) return undefined;
+    // IPアドレス直アクセスの場合は WebAuthn 仕様上 rpId を渡さない
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.includes(':')) {
+      return undefined;
+    }
+    if (serverRpId && serverRpId !== 'localhost' && (host === serverRpId || host.endsWith('.' + serverRpId))) {
+      return serverRpId;
+    }
+    return host;
+  }
+
   passkeySigninBtn?.addEventListener('click', async () => {
+    if (!window.PublicKeyCredential) {
+      showError('このブラウザはパスキー認証に対応していません。');
+      return;
+    }
+
     showLoading(true);
     hideMessages();
     try {
-      const credentialId = `passkey_${Date.now()}`;
-      const response = await fetch(`${AUTH_API}/passkey/verify`, {
+      // Step 1: サーバーからチャレンジを取得
+      const initiateResponse = await fetch(`${AUTH_API}/passkey/initiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ credentialId }),
+        body: JSON.stringify({}),
       });
-      let data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) throw new Error(data.error || 'パスキー認証に失敗しました。');
+      const initiateData = await initiateResponse.json().catch(() => ({}));
+      if (!initiateResponse.ok || initiateData.error) {
+        throw new Error(initiateData.error || 'パスキー認証の開始に失敗しました。');
+      }
+
+      // Step 2: WebAuthn API でパスキーウィンドウを表示して認証
+      const challengeBytes = base64urlToUint8Array(initiateData.challenge);
+      showLoading(false); // ブラウザのパスキーダイアログを表示する前にローディングを非表示に
+
+      const rpId = getEffectiveRpId(initiateData.rpId);
+
+      let credential;
+      try {
+        credential = await navigator.credentials.get({
+          publicKey: {
+            challenge: challengeBytes,
+            ...(rpId ? { rpId } : {}),
+            timeout: initiateData.timeout || 60000,
+            userVerification: initiateData.userVerification || 'preferred',
+          },
+        });
+      } catch (webAuthnError) {
+        if (webAuthnError.name === 'NotAllowedError') {
+          throw new Error('パスキー認証がキャンセルされました。');
+        }
+        throw new Error(`パスキー認証に失敗しました: ${webAuthnError.message}`);
+      }
+
+      if (!credential) {
+        throw new Error('パスキー認証がキャンセルされました。');
+      }
+
+      showLoading(true);
+
+      // Step 3: credential をサーバーに送信して検証
+      const verifyPayload = {
+        credentialId: credential.id,
+        rawId: bufferToBase64url(credential.rawId),
+        response: {
+          clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+          authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+          signature: bufferToBase64url(credential.response.signature),
+          userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null,
+        },
+        type: credential.type,
+      };
+
+      const verifyResponse = await fetch(`${AUTH_API}/passkey/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(verifyPayload),
+      });
+      let data = await verifyResponse.json().catch(() => ({}));
+      if (!verifyResponse.ok || data.error) throw new Error(data.error || 'パスキー認証に失敗しました。');
       if (data.approval_required) data = await completeApprovedLogin(data);
       if (!data.success) throw new Error('セッションの設定に失敗しました。');
       finishLogin();
