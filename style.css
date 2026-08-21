@@ -6679,6 +6679,44 @@ body.pull-to-refresh-enabled {
     grid-column: 1 / -1;
 }
 
+.group-role-editor-list {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.group-role-editor {
+    margin-top: 0;
+}
+
+.group-role-editor-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.group-role-editor-heading > div {
+    min-width: 0;
+}
+
+.group-role-editor-heading .settings-session-current {
+    margin-left: 0.45rem;
+}
+
+.group-role-editor .group-role-permissions:disabled {
+    opacity: 0.72;
+}
+
+.group-role-editor input[readonly] {
+    color: var(--text-color);
+    background: var(--bg-color);
+    cursor: not-allowed;
+}
+
+.group-role-create-form {
+    margin-top: 1rem;
+}
+
 .group-role-form-heading h5 {
     margin: 0;
     font-size: 1rem;
@@ -6746,6 +6784,15 @@ body.pull-to-refresh-enabled {
 
     .group-role-form {
         grid-template-columns: 1fr;
+    }
+
+    .group-role-editor-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .group-role-editor-heading .settings-session-revoke-button {
+        width: 100%;
     }
 
     .group-role-permissions > div {

@@ -512,6 +512,48 @@ function renderGroupProfileForm(group) {
     </form>`;
 }
 
+const DEFAULT_ROLE_SORT_ORDERS = { owner: 0, admin: 1, member: 2 };
+const DEFAULT_ROLE_LABELS = { owner: 'オーナー', admin: '管理者', member: 'メンバー' };
+
+function getDefaultRoleType(role) {
+    if (!Boolean(role?.is_system ?? role?.isSystem)) return null;
+    const sortOrder = Number(role?.sort_order ?? role?.sortOrder);
+    return Object.entries(DEFAULT_ROLE_SORT_ORDERS).find(([, value]) => value === sortOrder)?.[0]
+        || Object.keys(DEFAULT_ROLE_SORT_ORDERS).find((type) => role?.name === type)
+        || 'system';
+}
+
+function renderRolePermissionInputs(role, { disabled = false } = {}) {
+    const assignedPermissions = new Set(Array.isArray(role?.permissions) ? role.permissions : []);
+    return Object.entries(PERMISSION_LABELS).map(([permission, label]) => `<label><input type="checkbox" name="permissions" value="${escapeHTML(permission)}" ${assignedPermissions.has(permission) ? 'checked' : ''} ${disabled ? 'disabled' : ''}> <span>${escapeHTML(label)}</span></label>`).join('');
+}
+
+function renderRoleEditor(role) {
+    const roleId = escapeHTML(String(role.id));
+    const roleType = getDefaultRoleType(role);
+    const ownerRole = roleType === 'owner';
+    const defaultRole = Boolean(roleType);
+    const roleName = escapeHTML(role.name || '無題のロール');
+    const roleDescription = ownerRole
+        ? 'オーナーロールは変更できません。'
+        : defaultRole
+            ? `${escapeHTML(DEFAULT_ROLE_LABELS[roleType] || '既定')}ロールの名前と権限を編集できます。`
+            : 'ロール名と許可する操作を編集できます。';
+    return `<form class="group-role-form group-role-editor" ${ownerRole ? '' : `data-edit-group-role="${roleId}"`}>
+        <header class="group-role-form-heading group-role-editor-heading">
+            <div><h5>${roleName}${defaultRole ? '<span class="settings-session-current">既定</span>' : ''}</h5><p class="settings-help-text">${roleDescription}</p></div>
+            ${defaultRole ? '' : `<button type="button" class="settings-session-revoke-button" data-delete-role="${roleId}">削除</button>`}
+        </header>
+        <label class="group-role-name-field">ロール名<input name="name" maxlength="50" required value="${roleName}" ${ownerRole ? 'readonly aria-readonly="true"' : ''}></label>
+        <fieldset class="group-role-permissions" ${ownerRole ? 'disabled' : ''}><legend>許可する操作</legend><div>${renderRolePermissionInputs(role, { disabled: ownerRole })}</div></fieldset>
+        ${ownerRole ? '' : '<div class="settings-save-row"><button type="submit" class="settings-primary-button">変更を保存</button></div>'}
+    </form>`;
+}
+
+function renderRoleCreateForm() {
+    return `<form id="group-role-form" class="group-role-form group-role-create-form"><div class="group-role-form-heading"><h5>ロールを追加</h5><p class="settings-help-text">必要な操作だけを許可したカスタムロールを作成できます。</p></div><label class="group-role-name-field">ロール名<input name="name" maxlength="50" required></label><fieldset class="group-role-permissions"><legend>許可する操作</legend><div>${renderRolePermissionInputs()}</div></fieldset><div class="settings-save-row"><button type="submit" class="settings-primary-button">ロールを追加</button></div></form>`;
+}
+
 function renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, canTransfer }) {
     const tabs = [];
     if (canProfile) tabs.push({ id: 'profile', label: 'プロフィール', description: 'グループの名前、説明、公開レベル、画像を管理します。' });
@@ -558,7 +600,7 @@ async function renderGroupManage(content, group) {
                     return `<article class="settings-session-item group-ui-member-row"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(user.name || `#${member.user_id}`)}${owner ? '<span class="settings-session-current">オーナー</span>' : ''}</span><p>${escapeHTML(getNyaitterId(user) || `#${member.user_id}`)}</p></div><div class="settings-session-actions">${canAdmin && !owner ? `<select class="settings-select group-ui-role-select" data-member-role="${Number(member.user_id)}" aria-label="${escapeHTML(user.name || `#${member.user_id}`)}のロール">${roles.map((role) => `<option value="${escapeHTML(String(role.id))}" ${String(role.id) === String(member.role_id) ? 'selected' : ''}>${escapeHTML(role.name)}</option>`).join('')}</select>` : ''}${canBan && !owner ? `<button type="button" class="settings-session-revoke-button" data-ban-member="${Number(member.user_id)}">禁止</button>` : ''}</div></article>`;
                 }).join('') || '<p class="settings-help-text">メンバーがいません。</p>'}</div>`)}</section>` : ''}
                 ${canInvite ? `<section class="settings-group-panel" data-group-manage-panel="invites" ${selectedTab === 'invites' ? '' : 'hidden'}>${renderGroupSection('ユーザーを招待', `<form id="group-invite-form" class="group-ui-inline-form"><label>NyaitterID<input name="user_id" inputmode="numeric" required placeholder="#0000の数字部分"></label><button type="submit" class="settings-primary-button">招待を送信</button></form>`)}${renderGroupSection('参加申請', joinRequests.length ? `<div class="settings-sessions-list">${joinRequests.map((item) => `<article class="settings-session-item"><div class="settings-session-details"><span class="settings-session-title">ユーザー #${Number(item.userId ?? item.user_id)}</span><p>参加申請を確認してください。</p></div><div class="settings-session-actions"><button type="button" class="settings-primary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="approve">承認</button><button type="button" class="group-ui-secondary-button" data-join-request="${escapeHTML(String(item.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>` : '<p class="settings-help-text">保留中の参加申請はありません。</p>')}</section>` : ''}
-                ${canAdmin ? `<section class="settings-group-panel" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロール', `<div id="group-role-list" class="settings-sessions-list">${roles.map((role) => `<article class="settings-session-item"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(role.name)}${role.is_system ? '<span class="settings-session-current">システム</span>' : ''}</span><p>${(role.permissions || []).map((permission) => escapeHTML(PERMISSION_LABELS[permission] || permission)).join('、') || '権限なし'}</p></div>${role.is_system ? '' : `<div class="settings-session-actions"><button type="button" class="settings-session-revoke-button" data-delete-role="${escapeHTML(String(role.id))}">削除</button></div>`}</article>`).join('')}</div><form id="group-role-form" class="group-role-form"><div class="group-role-form-heading"><h5>ロールを追加</h5><p class="settings-help-text">ロール名と許可する操作を選択してください。</p></div><label class="group-role-name-field">ロール名<input name="name" maxlength="50" required></label><fieldset class="group-role-permissions"><legend>権限</legend><div>${Object.entries(PERMISSION_LABELS).map(([key, label]) => `<label><input type="checkbox" name="permissions" value="${key}"> <span>${label}</span></label>`).join('')}</div></fieldset><div class="settings-save-row"><button type="submit" class="settings-primary-button">ロールを追加</button></div></form>`)}</section>` : ''}
+                ${canAdmin ? `<section class="settings-group-panel" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロール', `<div class="group-role-editor-list">${roles.map((role) => renderRoleEditor(role)).join('')}</div>${renderRoleCreateForm()}`, '既定ロールを含め、オーナー以外のロールは名前と許可する操作を編集できます。')}</section>` : ''}
                 ${canTransfer ? `<section class="settings-group-panel" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>${renderGroupSection('オーナー権限を移譲', `<form id="group-transfer-owner-form" class="group-ui-inline-form"><label>新しいオーナーのNyaitterID<input name="user_id" inputmode="numeric" required></label><button type="submit" class="settings-danger-button">権限を移譲</button></form>`, 'この操作は取り消せません。')}${renderGroupSection('グループを削除', '<button type="button" id="delete-group-button" class="settings-danger-button">グループを削除</button>', 'グループと紐づくすべてのポストを完全に削除します。この操作は取り消せません。')}</section>` : ''}
             </div>
         </div>
@@ -783,6 +825,23 @@ function bindGroupManageEvents(group) {
             await refreshGroupManage(group);
         } catch (error) {
             showAppAlert(error.message || 'ユーザーを禁止できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    }));
+    document.querySelectorAll('[data-edit-group-role]').forEach((form) => form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!event.currentTarget.reportValidity()) return;
+        const values = new FormData(event.currentTarget);
+        try {
+            showLoading(true);
+            await request(groupPath(group.id, `/roles/${encodeURIComponent(event.currentTarget.dataset.editGroupRole)}`), {
+                method: 'PATCH',
+                body: { name: values.get('name'), permissions: values.getAll('permissions') },
+            });
+            await refreshGroupManage(group);
+        } catch (error) {
+            showAppAlert(error.message || 'ロールを更新できませんでした。');
         } finally {
             showLoading(false);
         }
