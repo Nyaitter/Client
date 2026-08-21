@@ -46,6 +46,7 @@ import {
     showAppConfirm,
     copyTextToClipboard,
     renderGroupBadgesElement,
+    getGroupIconUrl,
 } from '../utils/helpers.js';
 
 export const METRICS_FALLBACK = '?';
@@ -815,15 +816,6 @@ export function createPostFormHTML(isModal = false) {
                 </div>
             </div>
         </div>`;
-}
-
-function getGroupIconUrl(group) {
-    const iconData = typeof group?.icon_data === 'string' ? group.icon_data.trim() : '';
-    if (!iconData) return '';
-    if (/^data:image\//i.test(iconData)) return iconData;
-    if (/^https?:\/\//i.test(iconData)) return getSafeHttpUrl(iconData) || '';
-    const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(iconData);
-    return typeof configuredUrl === 'string' ? configuredUrl : '';
 }
 
 function renderPostGroupMenuIcon(group) {

@@ -602,17 +602,30 @@ export function showLoading(show) {
     DOM.loadingOverlay.setAttribute('aria-busy', String(visible));
 }
 
+export function getGroupIconUrl(value) {
+    const icon = typeof value === 'object' && value !== null
+        ? (value.icon_data || value.iconData || '')
+        : value;
+    const image = typeof icon === 'string' ? icon.trim() : '';
+    if (!image) return '';
+    if (/^data:image\//i.test(image)) return image;
+    if (/^https?:\/\//i.test(image)) return getSafeHttpUrl(image) || image;
+    const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(image);
+    if (typeof configuredUrl === 'string' && configuredUrl) return configuredUrl;
+    return image;
+}
+
 export function getGroupBadgesHtml(user) {
     if (!user) return '';
     const badges = Array.isArray(user.group_badges)
         ? user.group_badges
         : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
     const validBadges = badges
-        .filter((b) => b && (b.icon_data || b.iconData))
+        .filter((b) => b && getGroupIconUrl(b))
         .slice(0, 3);
     if (validBadges.length === 0) return '';
     return `<span class="user-group-badges">${validBadges
-        .map((b) => `<span role="link" tabindex="0" class="user-group-badge-link" title="${escapeHTML(b.name || '参加グループ')}" onclick="event.preventDefault(); event.stopPropagation(); window.location.hash='#group/${encodeURIComponent(b.id)}';"><img src="${escapeHTML(getSafeHttpUrl(b.icon_data || b.iconData))}" class="user-group-badge" alt="${escapeHTML(b.name || 'グループ')}"></span>`)
+        .map((b) => `<span role="link" tabindex="0" class="user-group-badge-link" title="${escapeHTML(b.name || '参加グループ')}" onclick="event.preventDefault(); event.stopPropagation(); window.location.hash='#group/${encodeURIComponent(b.id)}';"><img src="${escapeHTML(getGroupIconUrl(b))}" class="user-group-badge" alt="${escapeHTML(b.name || 'グループ')}"></span>`)
         .join('')}</span>`;
 }
 
@@ -622,7 +635,7 @@ export function renderGroupBadgesElement(user) {
         ? user.group_badges
         : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
     const validBadges = badges
-        .filter((b) => b && (b.icon_data || b.iconData))
+        .filter((b) => b && getGroupIconUrl(b))
         .slice(0, 3);
     if (validBadges.length === 0) return null;
 
@@ -637,7 +650,7 @@ export function renderGroupBadgesElement(user) {
             e.stopPropagation();
         });
         const img = document.createElement('img');
-        img.src = getSafeHttpUrl(b.icon_data || b.iconData);
+        img.src = getGroupIconUrl(b);
         img.className = 'user-group-badge';
         img.alt = b.name || 'グループ';
         link.appendChild(img);

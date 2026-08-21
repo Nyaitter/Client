@@ -47,12 +47,10 @@ width: 1.2em;
     text-decoration: none;
     cursor: pointer;
     line-height: 1;
-    transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .user-group-badge-link:hover {
-    transform: scale(1.15);
-    opacity: 0.9;
+    opacity: 0.8;
 }
 
 #login-banner {
