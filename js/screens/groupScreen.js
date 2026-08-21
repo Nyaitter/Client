@@ -3,6 +3,7 @@ import { ICONS } from '../icons.js';
 import { getCurrentUser } from '../state.js';
 import { loadPostsWithPagination } from '../modules/pagination.js';
 import { uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
+import { initTabGroup } from '../modules/tabSwipe.js';
 import { escapeHTML, getNyaitterId, showAppAlert, showAppConfirm, showLoading } from '../utils/helpers.js';
 
 const VISIBILITY_LABELS = {
@@ -472,18 +473,21 @@ function renderGroupOverview(content, group, pendingJoinRequest = null) {
     </main>`;
     if (isActive) {
         const postContainer = content.querySelector('#group-detail-posts');
-        const tabButtons = [...content.querySelectorAll('[data-group-post-mode]')];
+        const tabsEl = content.querySelector('.group-ui-post-tabs .timeline-tabs');
         const loadGroupPosts = (mode = 'all') => {
             if (!postContainer) return;
             postContainer.replaceChildren();
-            tabButtons.forEach((button) => {
-                const active = button.dataset.groupPostMode === mode;
-                button.classList.toggle('active', active);
-                button.setAttribute('aria-selected', String(active));
-            });
             void loadPostsWithPagination(postContainer, 'group_posts', { groupId: group.id, mode });
         };
-        tabButtons.forEach((button) => button.addEventListener('click', () => loadGroupPosts(button.dataset.groupPostMode || 'all')));
+        if (tabsEl) {
+            initTabGroup({
+                container: tabsEl,
+                tabSelector: '[data-group-post-mode]',
+                contentContainer: postContainer,
+                getTabKey: (btn) => btn.dataset.groupPostMode || 'all',
+                onTabChange: (mode) => loadGroupPosts(mode),
+            });
+        }
         loadGroupPosts('all');
     }
     document.getElementById('join-group-btn')?.addEventListener('click', () => joinGroup(group));
@@ -922,15 +926,24 @@ function bindGroupProfileForm(group) {
 function bindGroupManageEvents(group) {
     const headingTitle = document.querySelector('.group-ui-page-heading h3');
     const headingDescription = document.querySelector('.group-ui-page-heading .settings-group-description');
-    document.querySelectorAll('[data-group-manage-tab]').forEach((button) => button.addEventListener('click', () => {
-        const tabId = button.dataset.groupManageTab;
-        document.querySelectorAll('[data-group-manage-tab]').forEach((candidate) => candidate.classList.toggle('active', candidate === button));
-        document.querySelectorAll('[data-group-manage-panel]').forEach((panel) => {
-            panel.hidden = panel.dataset.groupManagePanel !== tabId;
+    const tabsContainer = document.querySelector('.settings-group-list');
+    const manageDetail = document.querySelector('.group-ui-manage-detail');
+
+    if (tabsContainer) {
+        initTabGroup({
+            container: tabsContainer,
+            tabSelector: '[data-group-manage-tab]',
+            contentContainer: manageDetail,
+            getTabKey: (button) => button.dataset.groupManageTab,
+            onTabChange: (tabId, button) => {
+                document.querySelectorAll('[data-group-manage-panel]').forEach((panel) => {
+                    panel.hidden = panel.dataset.groupManagePanel !== tabId;
+                });
+                if (headingTitle) headingTitle.textContent = `${group.name || ''} の${button.dataset.groupManageTitle || '管理'}`;
+                if (headingDescription) headingDescription.textContent = button.dataset.groupManageDescription || '';
+            },
         });
-        if (headingTitle) headingTitle.textContent = `${group.name || ''} の${button.dataset.groupManageTitle || '管理'}`;
-        if (headingDescription) headingDescription.textContent = button.dataset.groupManageDescription || '';
-    }));
+    }
     bindGroupProfileForm(group);
     document.getElementById('group-invite-form')?.addEventListener('submit', async (event) => {
         event.preventDefault();

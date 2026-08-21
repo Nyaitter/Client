@@ -110,14 +110,36 @@ export function applyInterfaceTheme(themePreference = null) {
 }
 
 // Pull to refresh support
+const dynamicPtrHandlers = new Map();
+
+export function registerDynamicPtrHandler(key, handler) {
+    if (typeof handler === 'function') {
+        dynamicPtrHandlers.set(key, handler);
+        updatePullToRefreshAvailability();
+    }
+}
+
+export function unregisterDynamicPtrHandler(key) {
+    dynamicPtrHandlers.delete(key);
+    updatePullToRefreshAvailability();
+}
+
 export function isPullToRefreshTouchCapable() {
     return Number(globalThis.navigator?.maxTouchPoints || 0) > 0
         || matchesMedia('(any-pointer: coarse)');
 }
 
 export function getActivePullToRefreshContext() {
+    // Check if there is an active screen or tab with a dynamic handler
+    for (const [key, handler] of dynamicPtrHandlers.entries()) {
+        const elem = document.getElementById(key) || document.querySelector(key);
+        if (elem && !elem.classList.contains('hidden') && elem.offsetParent !== null) {
+            return { type: 'dynamic', key, handler };
+        }
+    }
+
     const currentHash = window.location.hash || '#';
-    if (currentHash === '#') {
+    if (currentHash === '#' || currentHash === '') {
         const mainScreen = document.getElementById('main-screen');
         if (mainScreen && !mainScreen.classList.contains('hidden')) {
             return { type: 'timeline', key: 'main' };
@@ -127,6 +149,24 @@ export function getActivePullToRefreshContext() {
         const notificationsScreen = document.getElementById('notifications-screen');
         if (notificationsScreen && !notificationsScreen.classList.contains('hidden')) {
             return { type: 'notifications' };
+        }
+    }
+    if (currentHash === '#dm' || currentHash.startsWith('#dm/')) {
+        const dmScreen = document.getElementById('dm-screen');
+        if (dmScreen && !dmScreen.classList.contains('hidden')) {
+            return { type: 'dm' };
+        }
+    }
+    if (currentHash === '#explore') {
+        const exploreScreen = document.getElementById('explore-screen');
+        if (exploreScreen && !exploreScreen.classList.contains('hidden')) {
+            return { type: 'explore' };
+        }
+    }
+    if (currentHash === '#groups' || currentHash.startsWith('#group/')) {
+        const groupScreen = document.getElementById('group-screen') || document.getElementById('groups-screen');
+        if (groupScreen && !groupScreen.classList.contains('hidden')) {
+            return { type: 'group' };
         }
     }
     const postDetailMatch = currentHash.match(/^#post\/(\d+)$/);

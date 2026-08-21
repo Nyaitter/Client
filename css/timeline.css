@@ -1,0 +1,917 @@
+/* ==========================================================================
+   Nyaitter - timeline.css
+   ========================================================================== */
+
+#nav-menu-top {
+display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+#nav-logo {
+padding: 1rem;
+    display: flex;
+    margin-bottom: 0px;
+}
+
+#nav-menu-bottom {
+padding-bottom: 1rem;
+    margin-top: auto;
+}
+
+.account-info {
+display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.account-info .name {
+font-weight: 700;
+}
+
+.account-info .id {
+color: var(--secondary-text-color);
+}
+
+.timeline-tabs-sticky-container {
+position: sticky;
+    top: 56px;
+    background-color: var(--pg-bg-color);
+    backdrop-filter: blur(12px);
+    z-index: 9;
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.timeline-tabs {
+display: flex;
+    flex-wrap: nowrap;
+    min-width: max-content;
+}
+
+.post-form-sticky-container {
+background-color: var(
+        --main-bg-color
+    ); /* スクロール時に背景が透けないように */
+    z-index: 8;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.new-posts-indicator {
+position: sticky;
+    top: calc(56px + 50px); /* ヘッダー + タブの高さ */
+    z-index: 9; /* ポストフォームより手前に表示 */
+    text-align: center;
+    padding-bottom: 0.5rem; /* ボタンの下に少し余白 */
+    margin-bottom: -2.5rem; /* ボタンの高さ分、下の要素との距離を詰める */
+}
+
+.post-form {
+padding: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    position: relative;
+}
+
+.post-form .user-icon {
+width: 48px;
+    height: 48px;
+    border-radius: 50%;
+}
+
+.post-account-selector {
+flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+}
+
+.post-account-selector:focus-visible {
+outline: 2px solid var(--primary-color);
+    outline-offset: 3px;
+}
+
+.post-account-selector .user-icon {
+display: block;
+    object-fit: cover;
+}
+
+.post-account-menu {
+position: absolute;
+    z-index: 30;
+    top: 4.4rem;
+    left: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    min-width: min(17rem, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+    max-height: min(22rem, calc(100vh - 7rem));
+    overflow: auto;
+    padding: 0.35rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-color);
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 22%, transparent);
+}
+
+.post-account-menu-item {
+display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.55rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+}
+
+.post-account-menu-item:hover,
+.post-account-menu-item:focus-visible,
+.post-account-menu-item.active {
+background: var(--hover-bg-color, var(--main-bg-color));
+}
+
+.post-account-menu-item:focus-visible {
+outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+.post-account-menu-icon {
+flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.post-account-menu-user {
+display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.post-account-menu-user strong,
+.post-account-menu-user small {
+overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.post-account-menu-user small {
+color: var(--secondary-text-color);
+}
+
+.post-form .form-content {
+flex-grow: 1;
+}
+
+.post-form textarea {
+width: 100%;
+    min-height: 60px;
+    background-color: var(--main-bg-color);
+    color: var(--text-color);
+    border: none;
+    padding: 0.5rem 0;
+    box-sizing: border-box;
+    resize: vertical;
+    font-size: 1.25rem;
+    outline: none;
+}
+
+.post-form-actions {
+display: inline-block;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.5rem;
+    width: 100%;
+}
+
+.post-form-actions svg {
+width: 20px;
+    height: 20px;
+}
+
+.float-left {
+float: left;
+}
+
+.float-right {
+float: right;
+}
+
+.float-clear {
+clear: both;
+}
+
+.file-preview-container {
+margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+@keyframes markdown-editor-caret-blink {
+50% {
+        opacity: 0;
+    }
+}
+
+.file-preview-item {
+position: relative;
+}
+
+.file-preview-item img,
+.file-preview-item video {
+max-width: 100px;
+    max-height: 100px;
+    border-radius: 8px;
+}
+
+.file-preview-remove {
+position: absolute;
+    top: -5px;
+    right: -5px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem; /* 変更なし */
+    line-height: 20px; /* 変更なし */
+    text-align: center;
+}
+
+.post {
+padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.5rem;
+}
+
+.thread-nested-reply {
+box-sizing: border-box;
+    margin-left: var(--reply-indent, 2rem) !important;
+    width: calc(100% - var(--reply-indent, 2rem)) !important;
+    padding-left: 1rem;
+}
+
+.thread-nested-reply > .post {
+width: 100%;
+    box-sizing: border-box;
+}
+
+.post .user-icon {
+width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    object-fit: cover; /* アイコンが潰れるのを防ぐ */
+}
+
+.post-main {
+flex-grow: 1;
+    min-width: 0;
+}
+
+.post-header {
+display: flex;
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: nowrap;
+    margin-bottom: 0.25rem;
+    position: relative;
+}
+
+.post-header.has-post-menu {
+padding-right: 32px;
+}
+
+.post-author {
+display: flex;
+    min-width: 0;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 0.25rem;
+    overflow: hidden;
+    white-space: nowrap;
+    font-weight: bold;
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+.post-author-name {
+min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.post-author:hover {
+text-decoration: underline;
+}
+
+.post-time {
+flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    color: var(--secondary-text-color);
+}
+
+.post-lock-indicator {
+display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    color: var(--secondary-text-color);
+}
+
+.post-lock-indicator svg {
+width: 0.95rem;
+    height: 0.95rem;
+}
+
+.post-content {
+margin-bottom: 1rem;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    line-break: anywhere;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.post-content-decoration,
+.nyarkdown-decoration {
+max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.url-card {
+display: flex;
+    min-width: 0;
+    max-width: 100%;
+    flex-direction: column;
+    gap: 0.22rem;
+    box-sizing: border-box;
+    overflow: hidden;
+    margin: 0 0 1rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: inherit;
+    background: var(--bg-color);
+    text-decoration: none;
+}
+
+.url-card:hover {
+border-color: var(--primary-color);
+    text-decoration: none;
+}
+
+.url-card-hostname {
+overflow: hidden;
+    color: var(--secondary-text-color);
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.url-card-title,
+.url-card-description {
+overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.url-card-title {
+font-size: 0.96rem;
+}
+
+.url-card-description {
+display: -webkit-box;
+    overflow: hidden;
+    color: var(--secondary-text-color);
+    font-size: 0.88rem;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.url-card-placeholder {
+display: none;
+}
+
+.post-content.post-mask-title {
+margin-bottom: auto;
+}
+
+.post[data-clamp-content] .post-content {
+max-height: 320px;
+    overflow: hidden;
+}
+
+.post[data-clamp-content] .post-content.post-content-expanded {
+max-height: none;
+}
+
+.post-clamp-toggle {
+display: none;
+    margin: 0.25rem 0 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border: none;
+    border-radius: 9999px;
+    background: none;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.post-clamp-toggle.is-visible {
+display: inline-flex;
+}
+
+.user-me {
+line-break: anywhere;
+}
+
+.post-actions {
+display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: 425px;
+}
+
+.post-menu {
+position: absolute;
+    right: 0;
+    top: 25px;
+    z-index: 101;
+    width: 12rem;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: 0.35rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+    box-shadow: 0 0.55rem 1.4rem rgba(0, 0, 0, 0.14);
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0.16s;
+    pointer-events: none;
+}
+
+.post-menu.is-visible {
+visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.post .user-icon-link {
+align-self: flex-start;
+}
+
+.replying-to a {
+color: var(--primary-color);
+    text-decoration: none;
+}
+
+.parent-post-container {
+padding-left: 0.9rem;
+    border-left: 2px solid var(--border-color);
+    margin-left: 24px;
+    margin-bottom: 1rem;
+}
+
+.attachments-container {
+display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.attachment-item {
+border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.attachment-item img,
+.attachment-item video,
+.attachment-item audio {
+max-height: 15em;
+    max-width: 100%;
+    display: block;
+    cursor: pointer;
+}
+
+.attachment-fileinfo {
+display: block;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    text-decoration: none;
+    color: var(--bw);
+}
+
+.attachment-download-link {
+display: block;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    text-decoration: none;
+    color: var(--primary-color);
+}
+
+.attachment-download-link:hover {
+text-decoration: underline;
+}
+
+.load-more-trigger {
+height: 100px;
+    text-align: center;
+    padding: 2rem;
+    color: var(--secondary-text-color);
+}
+
+.link {
+text-decoration: none;
+    color: #808090;
+    padding: 1px 8px 1px 8px;
+}
+
+.link:not(:last-child) {
+border-right: #808090 1.5px solid;
+}
+
+.link:hover {
+text-decoration: underline;
+}
+
+.sidebar-widget {
+background-color: var(--bg-color);
+    border-radius: 16px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.widget-title {
+font-size: 1.25rem;
+    font-weight: 800;
+    padding: 0.75rem 1rem;
+}
+
+.widget-item {
+padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.widget-item:hover {
+background-color: var(--widget-bg-color);
+}
+
+.recommend-user {
+display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.8rem; /* 要素間の隙間を追加 */
+}
+
+.recommend-user > a {
+min-width: 0; /* flexアイテムが自身のコンテンツ幅以下に縮むことを許可 */
+    flex-shrink: 1; /* 親コンテナが狭いときに縮むことを許可 */
+    overflow: hidden; /* はみ出し防止のため */
+}
+
+.recommend-user > a > div {
+overflow: hidden; /* 中のspanがはみ出た場合に隠すため */
+}
+
+.recommend-user span {
+font-weight: 700;
+        display: block; /* ellipsisを効かせるためにblock要素にする */
+    white-space: nowrap; /* テキストを折り返さない */
+    overflow: hidden; /* はみ出たテキストを隠す */
+    text-overflow: ellipsis; /* はみ出た部分を...で表示 */
+}
+
+.app-dialog-overlay {
+z-index: 3000;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.app-dialog-content {
+box-sizing: border-box;
+    width: min(420px, 100%);
+    max-width: 420px;
+    padding: 1.7rem 1.25rem 1.25rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.app-dialog-message {
+margin: 0;
+    color: var(--text-color);
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.app-dialog-input-group {
+display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-top: 1.1rem;
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.app-dialog-input-group.hidden {
+display: none;
+}
+
+#app-dialog-input {
+box-sizing: border-box;
+    width: 100%;
+    min-height: 3rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+}
+
+#app-dialog-input:focus-visible {
+outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.app-dialog-actions {
+display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    margin-top: 1.35rem;
+}
+
+#image-preview-modal {
+box-sizing: border-box;
+    width: 100vw;
+    height: 100dvh;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.94);
+    cursor: zoom-out;
+    z-index: 2100;
+}
+
+.scidlink {
+color: var(--secondary-text-color);
+    border: none;
+    text-decoration: none;
+}
+
+.scidlink:hover {
+border-bottom: 1px black solid;
+}
+
+.media-grid-container {
+display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3カラム表示 */
+    gap: 2px; /* グリッド間の隙間 */
+}
+
+.media-grid-item {
+position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1; /* 正方形を維持 */
+    background-color: var(--border-color);
+}
+
+.media-grid-item img,
+.media-grid-item video {
+position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* アスペクト比を維持したままコンテナを埋める */
+    transition: filter 0.2s;
+}
+
+.media-grid-item:hover img,
+.media-grid-item:hover video {
+filter: brightness(0.8); /* ホバー時に少し暗くする */
+}
+
+.setting-icon-container {
+display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#setting-icon-preview {
+width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border-color);
+    margin-top: 0.5rem;
+    cursor: pointer;
+}
+
+.setting-header-container {
+display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.setting-header-preview {
+width: min(100%, 360px);
+    height: 120px;
+    overflow: hidden;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    background: var(--light-primary-color);
+}
+
+.setting-header-preview.is-empty {
+display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--secondary-text-color);
+    font-weight: 700;
+    background: linear-gradient(
+        135deg,
+        var(--light-primary-color),
+        var(--bg-color)
+    );
+}
+
+.setting-header-preview img {
+width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.attachment-download-link {
+text-decoration: none;
+}
+
+.attachment-download-link:hover {
+text-decoration: underline;
+}
+
+.repost-indicator,
+.pinned-indicator {
+color: var(--secondary-text-color);
+    font-size: 0.9em;
+    padding-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.repost-indicator svg,
+.pinned-indicator svg {
+width: 1em;
+    height: 1em;
+    stroke: currentColor;
+}
+
+.repost-indicator a {
+color: inherit;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.repost-indicator a:hover {
+text-decoration: underline;
+}
+
+.repost-indicator-icon {
+display: flex;
+    align-items: center;
+    justify-content: flex-end; /* 右寄せ */
+    flex-basis: 48px; /* 通常のアイコン幅に合わせる */
+    padding-right: 0.5rem; /* post-mainとのgapを考慮 */
+}
+
+.repost-indicator svg {
+width: 1.5em; /* アイコンサイズを調整 */
+    height: 1.5em;
+    stroke: currentColor;
+    flex-shrink: 0;
+}
+
+.nested-repost-container {
+border: 1px solid var(--border-color);
+    border-radius: 16px;
+    margin-top: 1rem;
+    padding: 0.8rem;
+}
+
+.nested-repost-container .post {
+border: none;
+    padding: 0;
+}
+
+.nested-repost-container .post-actions {
+display: none;
+}
+
+.deleted-post-container {
+border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    color: var(--secondary-text-color);
+}
+
+.account-switcher-list {
+margin: 1rem 0;
+    padding: 0;
+    list-style: none;
+}
+
+.account-switcher-item {
+display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0.2rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+
+.account-switcher-item .switcher-user-info {
+display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.account-switcher-item .switcher-user-icon {
+width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.account-switcher-item.active {
+background: var(--light-primary-color);
+}
+
+.account-switcher-item:not(.active):hover {
+background: var(--widget-bg-color);
+    cursor: pointer;
+}
+
+.account-switcher-empty {
+padding: 1rem 0.2rem;
+    text-align: center;
+    color: var(--secondary-text-color);
+    list-style: none;
+}
+
+.post-mask-alert {
+padding: 0.6rem 1.2rem;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    background-color: var(--main-bg-color);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+    margin-right: 0.5rem;
+}
+
+.post-mask-alert:hover {
+background-color: var(--light-primary-color);
+    border-color: var(--primary-color);
+}

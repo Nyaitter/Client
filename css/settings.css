@@ -1,0 +1,714 @@
+/* ==========================================================================
+   Nyaitter - settings.css
+   ========================================================================== */
+
+.imposter-badge {
+display: inline-block;
+    margin-left: 0.35rem;
+    padding: 0.1rem 0.42rem;
+    border: 1px solid var(--accent-color, #6f42c1);
+    border-radius: 999px;
+    color: var(--accent-color, #6f42c1);
+    font-size: 0.58em;
+    font-weight: 700;
+    line-height: 1.35;
+    vertical-align: middle;
+}
+
+.app-dialog-actions .login-secondary-button,
+.app-dialog-actions .settings-primary-button {
+min-height: 2.75rem;
+}
+
+#settings-form {
+padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+#settings-form label {
+font-weight: 700;
+}
+
+#settings-form input[type='text'],
+#settings-form textarea {
+width: 100%;
+    padding: 0.8rem;
+    background-color: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+#settings-form fieldset {
+border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+#settings-form fieldset legend {
+font-weight: 700;
+    padding: 0 0.5rem;
+}
+
+#settings-form fieldset label {
+font-weight: 400;
+}
+
+#settings-form input[type='checkbox'],
+#settings-form select {
+background-color: var(--main-bg-color);
+    color: var(--text-color);
+}
+
+#settings-form button[type='submit'] {
+align-self: flex-end;
+    padding: 0.6rem 1.2rem;
+    border-radius: 9999px;
+    border: none;
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#settings-form button[type='submit']:hover {
+background-color: var(--primary-hover-color);
+}
+
+.settings-primary-button,
+.settings-danger-button {
+padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 9999px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        opacity 0.2s;
+}
+
+.settings-primary-button {
+background-color: var(--primary-color);
+    color: white;
+}
+
+.settings-danger-button {
+border-color: var(--like-color);
+    color: var(--like-color);
+}
+
+.settings-primary-button:hover:not(:disabled) {
+background-color: var(--primary-hover-color);
+}
+
+.settings-danger-button:hover:not(:disabled) {
+background: var(--danger-color);
+}
+
+.settings-primary-button:disabled {
+cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.settings-danger-zone {
+margin-top: 2rem;
+    padding: 1.5rem 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.settings-account-identity,
+.settings-account-delete {
+margin-bottom: 1.25rem;
+}
+
+.settings-account-identity h4,
+.settings-account-delete h4 {
+margin: 0 0 0.35rem;
+}
+
+#settings-reassign-nyaitter-id-btn {
+padding: 0.6rem 1.2rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 9999px;
+    background: var(--main-bg-color);
+    color: var(--primary-color);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+#settings-reassign-nyaitter-id-btn:disabled,
+#settings-delete-account-btn:disabled {
+cursor: not-allowed;
+    opacity: 0.6;
+}
+
+#settings-logout-btn,
+#settings-showlog-btn {
+padding: 0.6rem 1.2rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    cursor: pointer;
+    background-color: var(--main-bg-color);
+    border: 1px solid var(--like-color);
+    color: var(--like-color);
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+    text-decoration-line: none;
+}
+
+#settings-logout-btn:hover,
+#settings-showlog-btn:hover {
+background-color: var(--danger-color);
+    border-color: var(--like-color);
+}
+
+#settings-account-switcher-btn {
+padding: 0.6rem 1.2rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    cursor: pointer;
+    background-color: var(--main-bg-color);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+    margin-right: 0.5rem;
+}
+
+#settings-account-switcher-btn:hover {
+background-color: var(--light-primary-color);
+    border-color: var(--primary-color);
+}
+
+.settings-layout {
+display: grid;
+    grid-template-columns: minmax(11rem, 0.34fr) minmax(0, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+    align-items: start;
+}
+
+.settings-coming-soon {
+display: inline-block;
+    margin-left: 0.3rem;
+    padding: 0.08rem 0.35rem;
+    border-radius: 9999px;
+    background: var(--bg-color);
+    color: var(--secondary-text-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+#settings-form.settings-detail {
+min-width: 0;
+    gap: 1rem;
+    padding: 0;
+}
+
+.settings-detail-heading {
+padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-detail-heading h3 {
+margin: 0;
+    font-size: 1.2rem;
+}
+
+.settings-select {
+width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+}
+
+.settings-resource-links {
+display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.7rem;
+}
+
+.settings-resource-links a {
+padding: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9px;
+    color: var(--primary-color);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.settings-resource-links a:hover {
+background: var(--light-primary-color);
+}
+
+.settings-save-row {
+display: flex;
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+}
+
+.settings-save-row[hidden] {
+display: none;
+}
+
+.settings-custom-colors {
+padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--main-bg-color);
+}
+
+.settings-custom-colors[hidden] {
+display: none;
+}
+
+.settings-custom-colors h4 {
+margin: 0;
+}
+
+.settings-color-grid {
+display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.9rem;
+}
+
+.settings-color-field {
+display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-weight: 700;
+}
+
+.settings-color-control {
+display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.settings-color-control input[type='color'] {
+width: 2.6rem;
+    height: 2.4rem;
+    padding: 0.15rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+    cursor: pointer;
+}
+
+.settings-color-code {
+min-width: 0;
+    flex: 1;
+    padding: 0.65rem 0.7rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font:
+        600 0.9rem ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        monospace;
+}
+
+.settings-color-code:focus,
+.settings-color-control input[type='color']:focus-visible {
+outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.settings-color-code:disabled,
+.settings-color-control input[type='color']:disabled {
+cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.settings-login-security,
+.settings-auth-providers,
+.settings-sessions {
+margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.settings-auth-providers h4,
+.settings-sessions h4 {
+margin: 0;
+    font-size: 1rem;
+}
+
+.settings-auth-providers-list,
+.settings-sessions-list {
+margin-top: 0.75rem;
+}
+
+.settings-session-item {
+display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 0.15rem;
+    border-bottom: 1px solid var(--border-color);
+    background: transparent;
+}
+
+.settings-session-item:first-child {
+border-top: 1px solid var(--border-color);
+}
+
+.settings-session-details {
+min-width: 0;
+}
+
+.settings-session-title {
+display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    font-weight: 700;
+}
+
+.settings-session-current {
+display: inline-block;
+    padding: 0.08rem 0.42rem;
+    border-radius: 9999px;
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.settings-provider-unlinked {
+display: inline-block;
+    padding: 0.08rem 0.42rem;
+    border-radius: 9999px;
+    background: var(--border-color);
+    color: var(--secondary-text-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.settings-session-item p {
+margin: 0.25rem 0 0;
+    color: var(--secondary-text-color);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.settings-session-dates {
+font-variant-numeric: tabular-nums;
+}
+
+.settings-session-actions,
+.login-approval-actions {
+display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+}
+
+.settings-session-actions button {
+padding: 0.45rem 0.8rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 9999px;
+    background: var(--main-bg-color);
+    color: var(--primary-color);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+}
+
+.settings-session-actions button:hover:not(:disabled) {
+background: var(--light-primary-color);
+}
+
+.settings-session-actions button:disabled {
+cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.settings-session-actions .settings-session-revoke-button {
+border-color: var(--like-color);
+    color: var(--like-color);
+}
+
+.settings-session-actions .settings-session-revoke-button:hover:not(:disabled) {
+background: var(--danger-color);
+}
+
+.settings-bot-section {
+display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.settings-bot-create-container {
+padding: 1.1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-color);
+}
+
+.settings-bot-create-form {
+display: flex;
+    gap: 0.6rem;
+    margin-top: 0.6rem;
+}
+
+.settings-bot-create-form input[type='text'] {
+flex: 1;
+    min-width: 0;
+    margin: 0 !important;
+    padding: 0.65rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+    font-size: 0.95rem;
+    transition:
+        border-color 0.2s,
+        outline 0.2s;
+}
+
+.settings-bot-create-form input[type='text']:focus {
+outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+    border-color: transparent;
+}
+
+.settings-imposter .settings-bot-create-form select {
+flex: 0 1 8rem;
+}
+
+.settings-imposter .settings-session-actions select {
+max-width: 9rem;
+}
+
+.settings-imposter .settings-bot-create-form input:disabled,
+.settings-imposter .settings-bot-create-form select:disabled,
+.settings-imposter .settings-session-actions select:disabled {
+opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.settings-bot-create-form button {
+flex-shrink: 0;
+    padding: 0.65rem 1.25rem;
+    border: none;
+    border-radius: 9999px;
+    background-color: var(--primary-color);
+    color: white;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        opacity 0.2s;
+}
+
+.settings-bot-create-form button:hover:not(:disabled) {
+background-color: var(--primary-hover-color);
+}
+
+.settings-bot-create-form button:disabled {
+opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.settings-bot-new-key-box {
+padding: 1.1rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 12px;
+    background: var(--light-primary-color);
+}
+
+.settings-bot-new-key-header strong {
+display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.settings-bot-new-key-warning {
+margin: 0.3rem 0 0.8rem !important;
+    color: var(--secondary-text-color) !important;
+    font-size: 0.85rem !important;
+    line-height: 1.45;
+}
+
+.settings-bot-new-key-display {
+display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.settings-bot-new-key-display input[type='text'] {
+flex: 1;
+    min-width: 0;
+    margin: 0 !important;
+    padding: 0.6rem 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    background: var(--main-bg-color) !important;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    color: var(--text-color);
+    box-sizing: border-box;
+}
+
+.settings-bot-copy-button {
+flex-shrink: 0;
+    padding: 0.6rem 1.15rem;
+    border: none;
+    border-radius: 9999px;
+    background-color: var(--primary-color);
+    color: white;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        transform 0.1s;
+}
+
+.settings-bot-copy-button:hover {
+background-color: var(--primary-hover-color);
+}
+
+.settings-bot-copy-button:active {
+transform: scale(0.97);
+}
+
+.settings-bot-secondary-button {
+padding: 0.45rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    background: var(--main-bg-color);
+    color: var(--secondary-text-color);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        color 0.2s,
+        border-color 0.2s;
+}
+
+.settings-bot-secondary-button:hover {
+background: var(--bg-color);
+    color: var(--text-color);
+    border-color: var(--secondary-text-color);
+}
+
+.settings-bot-token-id {
+display: inline-block;
+    padding: 0.08rem 0.42rem;
+    border-radius: 9999px;
+    background: var(--bg-color);
+    color: var(--secondary-text-color);
+    font-size: 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 600;
+}
+
+.settings-bot-docs-section {
+margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.settings-bot-docs-section h4 {
+margin: 0;
+    font-size: 1rem;
+}
+
+.settings-code-example {
+margin-top: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: 8px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: var(--text-color);
+}
+
+.settings-verification-application {
+margin: 1.2rem 0;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+}
+
+.settings-verification-application h4 {
+margin: 0 0 0.45rem;
+}
+
+.verification-application-modal-content > .settings-help-text {
+margin: 0 0 1rem;
+    color: var(--secondary-text-color);
+    line-height: 1.55;
+}
+
+.login-approval-wait-content .settings-help-text {
+margin: 0 0 1rem;
+    line-height: 1.55;
+}
+
+.settings-storage-heading {
+display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.settings-storage-heading h4 {
+margin: 0;
+}
+
+.settings-storage-progress {
+width: 100%;
+    height: 0.6rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--border-color);
+    margin: 0.75rem 0 1rem;
+}
+
+.settings-storage-progress-value {
+width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--primary-color);
+    transition: width 160ms ease;
+}
+
+.settings-storage-file .settings-session-title {
+overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

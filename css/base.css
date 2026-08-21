@@ -1,0 +1,125 @@
+/* ==========================================================================
+   Nyaitter - base.css
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+box-sizing: border-box;
+}
+
+body {
+font-family:
+        'Noto Sans JP',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+    margin: 0;
+    background-color: var(--main-bg-color);
+    color: var(--text-color);
+}
+
+input,
+textarea {
+font-family:
+        'Noto Sans JP',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+}
+
+.hidden {
+display: none !important;
+}
+
+img.emojione {
+width: 1.1rem;
+    height: auto;
+}
+
+img.emoji {
+display: inline-block;
+    width: 1.1rem;
+    height: auto;
+    padding-right: 1px;
+}
+
+.notocoloremoji {
+font-family:
+        'Noto Sans JP',
+        'Noto Color Emoji',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+}
+
+.nyaitter-emoji {
+background-color: var(--emoji-bg-color);
+}
+
+.attachment-button,
+.emoji-pic-button,
+.markdown-preview-button,
+.post-mask-button,
+    .post-lock-button,
+    .post-announcement-button,
+    .post-group-button {
+background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    color: var(--text-color);
+    line-height: 1;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.attachment-button:hover,
+.emoji-pic-button:hover,
+.markdown-preview-button:hover,
+.post-mask-button:hover,
+    .post-lock-button:hover,
+    .post-announcement-button:hover,
+    .post-group-button:hover {
+background-color: var(--bg-color);
+}
+
+.emoji-pic-button svg {
+stroke: none;
+    fill: var(--text-color);
+}
+
+textarea.markdown-content-editor {
+font: inherit;
+    line-height: inherit;
+    resize: none;
+}
+
+textarea.markdown-content-editor::placeholder {
+color: transparent;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+}
+
+#emoji-picker {
+position: fixed;
+    z-index: 100;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+em-emoji-picker {
+--rgb-background: var(--emoji-mart);
+}

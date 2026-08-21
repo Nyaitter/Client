@@ -1,0 +1,338 @@
+/* ==========================================================================
+   Nyaitter - markdown.css
+   ========================================================================== */
+
+.post-mask-button.active svg,
+.post-lock-button.active svg,
+    .markdown-preview-button.active svg,
+    .post-announcement-button.active svg {
+stroke: var(--primary-color);
+}
+
+.markdown-content-editor {
+box-sizing: border-box;
+    width: 100%;
+    min-height: 60px;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: text;
+    outline: none;
+}
+
+.markdown-textarea-editor {
+position: relative;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 60px;
+    overflow: hidden;
+}
+
+.markdown-textarea-editor .markdown-content-editor {
+position: relative;
+    z-index: 2;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    color: transparent !important;
+    caret-color: transparent;
+    -webkit-text-fill-color: transparent;
+    border: 0 !important;
+    background: transparent !important;
+    pointer-events: auto;
+}
+
+.markdown-textarea-editor .markdown-content-editor::selection {
+color: transparent;
+    background: transparent;
+}
+
+.markdown-textarea-editor .markdown-content-editor::placeholder {
+color: transparent !important;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+}
+
+.markdown-editor-paint {
+position: absolute;
+    z-index: 1;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+    transform-origin: top left;
+}
+
+.markdown-textarea-editor.is-plain-textarea .markdown-editor-paint {
+display: none;
+}
+
+.markdown-textarea-editor.is-markdown-previewing .markdown-content-editor {
+z-index: 0;
+    pointer-events: none;
+}
+
+.markdown-textarea-editor.is-markdown-previewing .markdown-editor-paint {
+z-index: 2;
+}
+
+.markdown-textarea-editor.is-markdown-previewing .markdown-editor-selection,
+.markdown-textarea-editor.is-markdown-previewing .markdown-editor-composition,
+.markdown-textarea-editor.is-markdown-previewing .markdown-editor-caret {
+display: none;
+}
+
+.markdown-textarea-editor.is-plain-textarea .markdown-content-editor {
+z-index: auto;
+    color: var(--text-color) !important;
+    caret-color: auto;
+    -webkit-text-fill-color: currentColor;
+}
+
+.markdown-textarea-editor.is-plain-textarea
+    .markdown-content-editor::selection {
+color: var(--text-color);
+    background: color-mix(in srgb, var(--primary-color) 35%, transparent);
+}
+
+.markdown-textarea-editor.is-plain-textarea
+    .markdown-content-editor::placeholder {
+color: var(--secondary-text-color) !important;
+    -webkit-text-fill-color: var(--secondary-text-color);
+    opacity: 1;
+}
+
+.markdown-textarea-editor.is-plain-textarea.is-markdown-previewing
+    .markdown-editor-paint {
+display: block;
+    z-index: 2;
+}
+
+.markdown-textarea-editor.is-plain-textarea.is-markdown-previewing
+    .markdown-content-editor {
+z-index: 0;
+    color: transparent !important;
+    caret-color: transparent;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.markdown-editor-preview,
+.markdown-editor-placeholder {
+box-sizing: border-box;
+    min-width: 100%;
+    min-height: 100%;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.markdown-editor-placeholder {
+position: absolute;
+    inset: 0;
+    color: var(--secondary-text-color);
+}
+
+.markdown-editor-sentinel,
+.markdown-editor-caret-anchor {
+color: transparent;
+    pointer-events: none;
+}
+
+.markdown-editor-selection,
+.markdown-editor-composition,
+.markdown-editor-caret {
+position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.markdown-editor-selection-rect {
+position: absolute;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--primary-color) 35%, transparent);
+}
+
+.markdown-editor-composition-underline {
+position: absolute;
+    display: block;
+    box-sizing: border-box;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.markdown-editor-caret {
+inset: auto;
+    width: 2px;
+    background: var(--text-color);
+    animation: markdown-editor-caret-blink 1s steps(1, end) infinite;
+}
+
+.post-form .markdown-content-editor {
+border: none;
+    background-color: var(--main-bg-color);
+    color: var(--text-color);
+    padding: 0.5rem 0;
+    font-size: 1.25rem;
+}
+
+.post-form .markdown-editor-preview,
+.post-form .markdown-editor-placeholder {
+padding: 0.5rem 0;
+    font-size: 1.25rem;
+}
+
+.post-form .markdown-editor-preview {
+color: var(--text-color);
+}
+
+.markdown-content-editor p,
+.markdown-content-editor h1,
+.markdown-content-editor h2,
+.markdown-content-editor h3,
+.markdown-content-editor blockquote,
+.markdown-content-editor ul,
+.markdown-content-editor ol,
+.markdown-content-editor pre,
+.markdown-editor-preview p,
+.markdown-editor-preview h1,
+.markdown-editor-preview h2,
+.markdown-editor-preview h3,
+.markdown-editor-preview blockquote,
+.markdown-editor-preview ul,
+.markdown-editor-preview ol,
+.markdown-editor-preview pre {
+margin: 0;
+}
+
+.markdown-content-editor ul,
+.markdown-content-editor ol,
+.markdown-editor-preview ul,
+.markdown-editor-preview ol {
+padding-left: 0;
+    list-style: none;
+}
+
+.markdown-content-editor .markdown-syntax,
+.markdown-editor-preview .markdown-syntax {
+color: color-mix(in srgb, var(--secondary-text-color) 72%, transparent);
+    font-style: normal;
+    font-weight: 400;
+    text-decoration: none;
+}
+
+.markdown-content-editor a,
+.markdown-editor-preview a {
+color: var(--primary-color);
+    text-decoration: none;
+}
+
+.markdown-content-editor .markdown-spoiler,
+.markdown-editor-preview .markdown-spoiler {
+position: relative;
+    isolation: isolate;
+    cursor: text;
+}
+
+.markdown-content-editor .markdown-spoiler::before,
+.markdown-editor-preview .markdown-spoiler::before {
+position: absolute;
+    z-index: 2;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--secondary-text-color);
+    content: '';
+    opacity: 0.12;
+    pointer-events: none;
+}
+
+.markdown-content-editor .markdown-spoiler-content,
+.markdown-editor-preview .markdown-spoiler-content {
+position: relative;
+    z-index: 1;
+}
+
+.markdown-content-editor .markdown-spoiler:not(.is-revealed),
+.markdown-content-editor .markdown-spoiler:not(.is-revealed) *,
+.markdown-editor-preview .markdown-spoiler:not(.is-revealed),
+.markdown-editor-preview .markdown-spoiler:not(.is-revealed) * {
+color: var(--text-color) !important;
+    text-shadow: none !important;
+}
+
+.markdown-content-editor .markdown-spoiler:not(.is-revealed) img,
+.markdown-editor-preview .markdown-spoiler:not(.is-revealed) img {
+opacity: 1;
+}
+
+.markdown-content-editor::selection,
+.markdown-content-editor *::selection {
+color: transparent;
+    background: transparent;
+}
+
+.markdown-spoiler {
+display: inline;
+    padding: 0.06em 0.22em;
+    border-radius: 4px;
+    background: var(--secondary-text-color);
+    cursor: pointer;
+    user-select: none;
+}
+
+.markdown-spoiler:not(.is-revealed),
+.markdown-spoiler:not(.is-revealed) * {
+color: transparent !important;
+    text-shadow: none !important;
+}
+
+.markdown-spoiler:not(.is-revealed) img {
+opacity: 0;
+}
+
+.markdown-spoiler.is-revealed {
+background: color-mix(
+        in srgb,
+        var(--secondary-text-color) 16%,
+        transparent
+    );
+    cursor: text;
+    user-select: text;
+}
+
+.markdown-spoiler:focus-visible {
+outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.inline-code-wrapper {
+display: inline-flex;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    padding: 0.1em 0.2em 0.1em 0.4em;
+    line-height: 1; /* 親要素の行間の影響を減らす */
+}
+
+.markdown-copy-btn {
+position: absolute;
+    top: 0.5em;
+    right: 0.5em;
+    padding: 0.3em 0.5em;
+}
+
+.markdown-copy-btn-inline {
+padding: 0.1em 0.3em;
+    margin-left: 0.4em;
+    color: #333;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.markdown-copy-btn-inline:hover {
+background-color: rgba(0, 0, 0, 0.1);
+}
+
+#get-code-btn:disabled {
+opacity: 0.6;
+    cursor: not-allowed;
+}

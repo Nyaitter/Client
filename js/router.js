@@ -43,6 +43,10 @@ let routerGeneration = 0;
 let scrollRestoreVersion = 0;
 
 async function refreshPullToRefreshContext(context) {
+    if (context?.type === 'dynamic' && typeof context.handler === 'function') {
+        await context.handler(context);
+        return;
+    }
     if (context?.type === 'timeline') {
         await switchTimelineTab(getCurrentTimelineTab(), {
             forceRefresh: true,
@@ -60,6 +64,24 @@ async function refreshPullToRefreshContext(context) {
     }
     if (context?.type === 'post-detail') {
         await showPostDetail(context.postId, { forceRefresh: true }, showScreen);
+        return;
+    }
+    if (context?.type === 'dm') {
+        const activeDmIdMatch = (window.location.hash || '').match(/^#dm\/(.+)$/);
+        await showDmScreen(activeDmIdMatch ? decodeURIComponent(activeDmIdMatch[1]) : null, showScreen);
+        return;
+    }
+    if (context?.type === 'explore') {
+        await showExploreScreen(showScreen);
+        return;
+    }
+    if (context?.type === 'group') {
+        const groupMatch = (window.location.hash || '').match(/^#group\/(\d+)(?:\/([^/]+))?$/);
+        if (groupMatch) {
+            await showGroupDetailScreen(Number(groupMatch[1]), groupMatch[2] || '', showScreen);
+        } else {
+            await showGroupsScreen(showScreen);
+        }
     }
 }
 

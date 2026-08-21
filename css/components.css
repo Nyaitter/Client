@@ -1,0 +1,675 @@
+/* ==========================================================================
+   Nyaitter - components.css
+   ========================================================================== */
+
+.account-button {
+width: 100%;
+    font-size: 1rem;
+    justify-content: flex-start;
+    gap: 0.8rem;
+}
+
+.account-button img {
+width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.timeline-tab-button {
+flex: 1 0 8rem;
+    min-width: 8rem;
+    white-space: nowrap;
+    padding: 1rem;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--secondary-text-color);
+    font-weight: 500;
+    position: relative;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    transition: background-color 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.timeline-tab-button:hover {
+background-color: var(--bg-color);
+}
+
+.timeline-tab-button.active::after {
+content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background-color: var(--primary-color);
+    border-radius: 9999px;
+}
+
+.timeline-tab-button.active {
+color: var(--text-color);
+    font-weight: 700;
+}
+
+.new-posts-indicator button {
+background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s;
+}
+
+.new-posts-indicator button:hover {
+background-color: var(--primary-hover-color);
+}
+
+.post-account-menu-loading,
+.post-account-menu-empty {
+display: grid;
+    min-height: 4rem;
+    margin: 0;
+    place-items: center;
+    color: var(--secondary-text-color);
+    text-align: center;
+}
+
+.post-account-menu-loading .spinner {
+width: 1.4rem;
+    height: 1.4rem;
+    margin: 0;
+}
+
+.post-form-actions button {
+padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.post-form-actions button:disabled {
+cursor: not-allowed;
+}
+
+.post-form-actions #post-submit-button {
+background-color: var(--primary-color);
+    color: white;
+    transition: background-color 0.2s;
+}
+
+.post-form-actions #post-submit-button:hover {
+background-color: var(--primary-hover-color);
+}
+
+.attachment-button svg {
+stroke: var(--text-color);
+    fill: none;
+}
+
+.post-mask-button svg {
+stroke: var(--text-color);
+}
+
+.post-actions button {
+background: none;
+    border: none;
+    color: var(--secondary-text-color);
+    padding: 0;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.post-actions button svg {
+width: 1.25rem;
+    height: 1.25rem;
+    vertical-align: middle;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    transition:
+        fill 0.2s,
+        stroke 0.2s,
+        color 0.2s;
+}
+
+.reply-button:hover {
+color: var(--primary-color);
+}
+
+.like-button:hover {
+color: var(--like-color);
+}
+
+.like-button.liked {
+color: var(--like-color);
+    font-weight: bold; /* いいね済みの数字を太字に */
+}
+
+.like-button.liked svg {
+fill: currentColor; /* いいね済みのアイコンを塗りつぶす */
+}
+
+.star-button:hover {
+color: var(--star-color);
+}
+
+.star-button.starred {
+color: var(--star-color);
+    font-weight: bold; /* お気に入り済みの数字を太字に */
+}
+
+.star-button.starred svg {
+fill: currentColor; /* お気に入り済みのアイコンを塗りつぶす */
+}
+
+.post-actions button svg {
+width: 1.25rem; /* サイズを微調整 */
+    height: 1.25rem;
+    vertical-align: middle;
+    fill: none; /* デフォルトは塗りつぶしなし */
+    stroke: currentColor; /* 枠線の色は親のcolorに連動 */
+    stroke-width: 2;
+    transition:
+        fill 0.2s,
+        stroke 0.2s; /* 色の遷移を滑らかに */
+}
+
+.post-menu-btn {
+position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 5;
+}
+
+.post-menu-btn,
+.post-menu-btn:hover {
+border: none;
+}
+
+.post-menu-btn:hover {
+color: var(--text-color);
+}
+
+.post-menu button {
+display: flex;
+    width: 100%;
+    min-height: 2.55rem;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color 0.16s ease,
+        color 0.16s ease;
+}
+
+.post-menu button:hover {
+background-color: var(--bg-color);
+}
+
+.edit-modal-attachments {
+margin-top: 1rem;
+    padding: 1rem;
+    background-color: var(--bg-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: var(--secondary-text-color);
+}
+
+.edit-modal-attachments p {
+margin: 0 0 0.5rem 0;
+    font-weight: bold;
+}
+
+.edit-modal-attachments .attachments-container {
+pointer-events: none; /* 添付ファイルは編集不可のため操作を無効化 */
+}
+
+.post-menu .delete-btn {
+color: #e5484d;
+    font-weight: 700;
+}
+
+.post-menu .delete-btn:hover {
+background-color: rgba(229, 72, 77, 0.1);
+}
+
+.load-more-btn {
+border: none;
+    border-top: 1px var(--border-color) solid;
+    border-bottom: 1px var(--border-color) solid;
+    bottom: 150px;
+    width: 100%;
+    height: 50px;
+    background: none;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--text-color);
+    font-weight: 700;
+    position: relative;
+}
+
+.load-more-btn:hover {
+background-color: var(--bg-color);
+}
+
+.load-more-btn.hide {
+opacity: 0;
+}
+
+.recommend-user > button {
+flex-shrink: 0;
+}
+
+.follow-button-not-following {
+background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.follow-button-not-following:hover {
+background-color: var(--primary-hover-color);
+}
+
+.follow-button-following {
+background-color: var(--main-bg-color);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+}
+
+.follow-button-following:hover {
+background-color: #fce8ec;
+    color: var(--like-color);
+    border-color: var(--like-color) !important;
+}
+
+#banner-signup-button {
+background: white; /* 通常の青に変更 */
+    color: black;
+    border: none; /* 枠線を非表示に変更 */
+    margin-left: 1rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 9999px !important;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+#banner-signup-button:hover {
+background-color: #f0f0f0; /* ホバー色も対応 */
+}
+
+.modal-overlay {
+position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1001;
+}
+
+.modal-content {
+background: var(--main-bg-color);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+}
+
+.modal-close-btn {
+position: absolute;
+    top: 0.1rem;
+    right: 0.2rem;
+    background: #888;
+    color: white;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+#image-preview-modal-content {
+display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: contain;
+    border-radius: 0;
+    cursor: default;
+}
+
+#image-preview-modal .modal-close-btn {
+top: max(1rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.68);
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 2rem;
+}
+
+.tab-button {
+flex: 1 0 8rem;
+    min-width: 8rem;
+    white-space: nowrap;
+    padding: 1rem;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--secondary-text-color);
+    font-weight: 500;
+    position: relative;
+    transition: background-color 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.tab-button:hover {
+background-color: var(--bg-color);
+}
+
+.tab-button.active::after {
+content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background-color: var(--primary-color);
+    border-radius: 9999px;
+}
+
+.tab-button.active {
+color: var(--text-color);
+    font-weight: 700;
+}
+
+#reset-icon-btn {
+padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--border-color);
+    background: none;
+    color: var(--secondary-text-color);
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+}
+
+#reset-icon-btn:hover {
+background-color: var(--bg-color);
+    border-color: var(--secondary-text-color);
+}
+
+#reset-header-btn {
+padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--border-color);
+    background: none;
+    color: var(--secondary-text-color);
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+}
+
+#reset-header-btn:hover {
+background-color: var(--bg-color);
+    border-color: var(--secondary-text-color);
+}
+
+#loading-overlay {
+position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--loading-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.spinner {
+border: 4px solid var(--spin);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border-left-color: var(--primary-color);
+    animation: spin 1s ease infinite;
+}
+
+.copy-btn {
+display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8em; /* テキスト表示用に調整 */
+}
+
+.copy-btn:hover {
+background-color: rgba(255, 255, 255, 0.2);
+}
+
+.copy-btn svg {
+width: 1em;
+    height: 1em;
+}
+
+@keyframes spin {
+0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.repost-button:hover {
+color: #00ba7c; /* 緑色 */
+}
+
+#account-switcher-modal .modal-content {
+padding: 2rem 1rem 1.5rem;
+}
+
+.account-switcher-item .switcher-delete-btn {
+background: var(--main-bg-color);
+    border: none;
+    color: var(--like-color);
+    font-size: 1.2rem;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.account-switcher-item .switcher-delete-btn:hover {
+background: var(--danger-color);
+}
+
+.account-switcher-add-btn {
+width: 100%;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 9999px;
+    font-weight: 700;
+    padding: 0.7rem 0;
+    margin-bottom: 1rem;
+    font-size: 1.05rem;
+    cursor: pointer;
+}
+
+.account-switcher-add-btn:hover {
+background-color: var(--primary-hover-color);
+}
+
+.tag-post-button {
+-webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    padding: 1rem;
+    font-weight: bold;
+    font-size: 1rem;
+    color: var(--primary-color);
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--main-bg-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.tag-post-button:hover {
+background-color: var(--bg-color);
+}
+
+.pull-to-refresh-indicator {
+--pull-distance: 0px;
+    --pull-opacity: 0;
+    position: fixed;
+    top: max(0.5rem, env(safe-area-inset-top));
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.5rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    background: var(--pg-bg-color);
+    color: var(--secondary-text-color);
+    box-shadow: 0 0.25rem 0.85rem rgba(0, 0, 0, 0.14);
+    pointer-events: none;
+    z-index: 110;
+    opacity: var(--pull-opacity);
+    transform: translate(-50%, calc(-5.25rem + var(--pull-distance)));
+    transition:
+        transform 180ms ease-out,
+        opacity 150ms ease-out,
+        color 150ms ease-out;
+    will-change: transform, opacity;
+}
+
+.pull-to-refresh-indicator.is-pulling {
+transition: none;
+}
+
+.pull-to-refresh-indicator.is-ready {
+color: var(--primary-color);
+    font-weight: 700;
+}
+
+.pull-to-refresh-indicator.is-refreshing {
+--pull-opacity: 1;
+    transform: translate(-50%, 0.5rem);
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.pull-to-refresh-icon {
+width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 150ms ease-out;
+}
+
+.pull-to-refresh-indicator.is-ready .pull-to-refresh-icon {
+transform: rotate(180deg);
+}
+
+.pull-to-refresh-indicator.is-refreshing .pull-to-refresh-icon {
+animation: pull-to-refresh-spin 800ms linear infinite;
+}
+
+@keyframes pull-to-refresh-spin {
+to {
+        transform: rotate(360deg);
+    }
+}
+
+html.pull-to-refresh-enabled,
+body.pull-to-refresh-enabled {
+overscroll-behavior-y: contain;
+}
+
+/* Tab Swipe Transitions */
+.tab-swipe-left {
+    animation: tab-swipe-in-right 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-swipe-right {
+    animation: tab-swipe-in-left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tab-swipe-in-right {
+    from {
+        opacity: 0.6;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes tab-swipe-in-left {
+    from {
+        opacity: 0.6;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}

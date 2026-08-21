@@ -31,19 +31,37 @@ let sidebarOverflowAbortController = null;
 let mobileSidebarOpen = false;
 let mobileSidebarHistoryEntry = false;
 let mobileSidebarAbortController = null;
+let isMobileSidebarClosing = false;
 
 function isMobileSidebarViewport() {
     return matchesMedia('(max-width: 680px)');
 }
 
-function closeMobileSidebar({ fromHistory = false } = {}) {
+export function closeMobileSidebar({ fromHistory = false } = {}) {
     const overlay = document.getElementById('mobile-sidebar-overlay');
     if (!mobileSidebarOpen && !overlay) return;
+    if (isMobileSidebarClosing) return;
+
+    isMobileSidebarClosing = true;
     mobileSidebarOpen = false;
     document.body.classList.remove('mobile-sidebar-open');
     mobileSidebarAbortController?.abort();
     mobileSidebarAbortController = null;
-    overlay?.remove();
+
+    if (overlay) {
+        overlay.classList.add('is-closing');
+        const finishClose = () => {
+            overlay.remove();
+            isMobileSidebarClosing = false;
+        };
+        const timer = setTimeout(finishClose, 210);
+        overlay.addEventListener('animationend', () => {
+            clearTimeout(timer);
+            finishClose();
+        }, { once: true });
+    } else {
+        isMobileSidebarClosing = false;
+    }
 
     if (mobileSidebarHistoryEntry && !fromHistory) {
         mobileSidebarHistoryEntry = false;
@@ -142,12 +160,9 @@ function setupMobileSidebarOverflow(overlay, signal) {
     return closeOverflow;
 }
 
-function openMobileSidebar() {
-    if (!isMobileSidebarViewport()) {
-        void openAccountSwitcherModal();
-        return;
-    }
-    if (mobileSidebarOpen) return;
+export function openMobileSidebar() {
+    if (!isMobileSidebarViewport()) return;
+    if (mobileSidebarOpen || isMobileSidebarClosing) return;
 
     const overlay = document.createElement('div');
     overlay.id = 'mobile-sidebar-overlay';

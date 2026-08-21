@@ -33,6 +33,7 @@ import { getNotificationTargetHash } from './modules/notifications.js';
 import { updateNavAndSidebars } from './modules/sidebar.js';
 import { beginScrollRouteTransition } from './modules/scroll.js';
 import { goToLoginPage } from './modules/auth.js';
+import { setupTabSwipeNavigation } from './modules/tabSwipe.js';
 import {
     getSafeHttpUrl,
     copyTextToClipboard,
@@ -46,6 +47,9 @@ import {
 export function setupGlobalEventListeners() {
     // ---- Click handler ----
     document.addEventListener('click', handleGlobalClick);
+
+    // ---- Touch swipe for tabs navigation (Home & Profile) ----
+    setupTabSwipeNavigation();
 
     // ---- 「再試行」ボタン ----
     DOM.retryConnectionBtn?.addEventListener('click', async () => {

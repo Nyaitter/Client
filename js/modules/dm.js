@@ -749,3 +749,42 @@ export async function handleDeleteDmMessage(dmId, messageId, onComplete = null) 
         showLoading(false);
     }
 }
+
+export async function handleAcceptDmRequest(dmId, onComplete = null) {
+    showLoading(true);
+    try {
+        const { error } = await apiRequest(`/server/api/dm/${encodeURIComponent(dmId)}/accept`, {
+            method: 'POST',
+        });
+        if (error) throw error;
+
+        invalidateDmCaches(dmId);
+        if (typeof onComplete === 'function') await onComplete();
+    } catch (e) {
+        showAppAlert(e.message || 'DMの承認に失敗しました');
+    } finally {
+        showLoading(false);
+    }
+}
+
+export async function handleDeclineDmRequest(dmId, onComplete = null) {
+    const confirm = await showAppConfirm('このメッセージリクエストを削除しますか？');
+    if (!confirm) return;
+    showLoading(true);
+
+    try {
+        const { error } = await apiRequest(`/server/api/dm/${encodeURIComponent(dmId)}/decline`, {
+            method: 'POST',
+        });
+        if (error) throw error;
+
+        invalidateDmCaches(dmId);
+        if (typeof onComplete === 'function') await onComplete();
+        else window.location.hash = '#dm';
+    } catch (e) {
+        showAppAlert(e.message || 'メッセージリクエストの削除に失敗しました');
+    } finally {
+        showLoading(false);
+    }
+}
+

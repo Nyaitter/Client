@@ -1,0 +1,618 @@
+/* ==========================================================================
+   Nyaitter - responsive.css
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+.nav-item[href^='#settings'].active svg circle {
+        fill: black;
+    }
+}
+
+@media (max-width: 680px) {
+.thread-nested-reply {
+        margin-left: min(var(--reply-indent, 2rem), 2.5rem) !important;
+        width: calc(100% - min(var(--reply-indent, 2rem), 2.5rem)) !important;
+        padding-left: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+.app-dialog-overlay {
+        padding: 0.5rem;
+    }
+
+    .app-dialog-content {
+        width: 100%;
+        padding: 1.5rem 1rem 1rem;
+    }
+
+    .app-dialog-actions {
+        flex-direction: column-reverse;
+    }
+
+    .app-dialog-actions .login-secondary-button,
+    .app-dialog-actions .settings-primary-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 1100px) {
+#right-sidebar {
+        display: none;
+    }
+}
+
+@media (max-width: 1000px) {
+#left-nav {
+        width: 88px;
+    }
+    #left-nav .nav-item {
+        justify-content: center;
+    }
+    #left-nav .nav-item .nav-item-text {
+        display: none;
+    }
+
+    #left-nav .nav-overflow-panel .nav-item {
+        justify-content: flex-start;
+    }
+
+    #left-nav .nav-overflow-panel .nav-item .nav-item-text {
+        display: inline;
+    }
+
+    /* ポストボタンのアイコン表示切り替え */
+    .nav-item-post {
+        width: 52px; /* アイコンに合わせたサイズ */
+        height: 52px;
+        padding: 0;
+    }
+    .nav-item-post .nav-item-icon {
+        display: block; /* 縮小ビューではアイコンを表示 */
+    }
+    .nav-item-post .nav-item-icon svg {
+        fill: none;
+        stroke: white;
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+    .nav-item-post .nav-item-text {
+        display: none; /* 縮小ビューではテキストを非表示 */
+    }
+
+    /* アカウントボタンのテキスト非表示 */
+    #left-nav #account-button .account-info {
+        display: none;
+    }
+}
+
+@media (max-width: 680px) {
+.app-container {
+        flex-direction: column;
+        padding-bottom: 50px;
+    }
+    #left-nav {
+        position: fixed;
+        bottom: 0;
+        top: auto;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        justify-content: space-around;
+        background-color: var(--bg-color);
+        border-top: 1px solid var(--border-color);
+        z-index: 100;
+        padding: 0;
+    }
+    #left-nav .nav-item {
+        flex: 1;
+    }
+    #nav-menu-top {
+        flex-direction: row;
+        justify-content: space-around;
+        width: 100%;
+    }
+    .nav-overflow-menu {
+        display: none;
+    }
+    #left-nav .nav-item[href='#likes'],
+    #left-nav .nav-item[href='#stars'],
+    #left-nav .nav-item[href='#groups'],
+    #left-nav .nav-item[href='#admin/reports'] {
+        display: none;
+    }
+    .nav-item-post {
+        position: fixed;
+        z-index: 20;
+        bottom: 4rem;
+        right: 1rem;
+        display: flex;
+    }
+    #account-button {
+        position: fixed;
+        z-index: 30;
+        top: 0;
+        right: 0.5rem;
+        width: auto;
+    }
+    .header-search-bar {
+        width: calc(95% - 4rem);
+    }
+    .header-action-btn {
+        position: sticky;
+        right: 4.5rem;
+    }
+    #profile-tabs .tab-button.mobile-hidden {
+        display: block;
+    }
+    .dm-message-form {
+        bottom: 4em;
+    }
+    #main-content {
+        border: none;
+        width: 100%;
+    }
+    #login-banner {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    #nav-logo {
+        display: none;
+    }
+}
+
+@media (max-width: 700px) {
+.settings-layout {
+        grid-template-columns: 1fr;
+        padding: 0.75rem;
+    }
+
+    .settings-group-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        display: grid;
+    }
+
+    .settings-group-button {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 700px) {
+.settings-color-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+.settings-session-item {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .settings-session-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+.login-modal-content {
+        width: calc(100vw - 1rem);
+        padding: 1.5rem 1rem 1rem;
+    }
+
+    .login-modal-links {
+        grid-template-columns: 1fr;
+        gap: 0.45rem;
+    }
+}
+
+@media (max-width: 600px) {
+.settings-bot-create-form {
+        flex-direction: column;
+    }
+    .settings-imposter .settings-bot-create-form input[type='search'],
+    .settings-imposter .settings-bot-create-form input[type='number'],
+    .settings-imposter .settings-bot-create-form select {
+        box-sizing: border-box;
+        flex: 0 0 auto;
+        width: 100%;
+        min-height: 2.75rem;
+        height: auto;
+    }
+    .settings-imposter .settings-session-actions select {
+        box-sizing: border-box;
+        flex: 0 0 auto;
+        min-height: 2.75rem;
+        height: auto;
+    }
+    .settings-bot-create-form button {
+        width: 100%;
+    }
+    .settings-bot-new-key-display {
+        flex-direction: column;
+    }
+    .settings-bot-new-key-display button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+.report-modal-content {
+        width: calc(100% - 2rem);
+        padding: 1.25rem;
+    }
+
+    .moderation-action-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .moderation-report-meta {
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+.freeze-panel {
+        padding: 1.45rem;
+    }
+    .freeze-appeal-modal-actions {
+        flex-direction: column-reverse;
+    }
+    .freeze-appeal-modal-actions button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+.verification-application-modal-content {
+        width: calc(100% - 1rem);
+        padding: 1.5rem 1rem 1rem;
+    }
+
+    .verification-application-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+.login-approval-wait-actions .login-secondary-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 520px) {
+.groups-index-heading,
+    .group-manage-heading,
+    .group-invite-card,
+    .group-manage-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .group-inline-actions {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 680px) {
+body.mobile-sidebar-open {
+        overflow: hidden;
+    }
+
+    .mobile-sidebar-overlay {
+        position: fixed;
+        z-index: 1200;
+        inset: 0;
+        background: color-mix(in srgb, #000 42%, transparent);
+        animation: mobile-sidebar-overlay-enter 220ms ease-out;
+    }
+
+    .mobile-sidebar-overlay.is-closing {
+        animation: mobile-sidebar-overlay-exit 200ms ease-in forwards;
+    }
+
+    .mobile-sidebar-panel {
+        display: flex;
+        box-sizing: border-box;
+        width: min(84vw, 22rem);
+        height: 100%;
+        min-height: 100dvh;
+        flex-direction: column;
+        background: var(--main-bg-color);
+        box-shadow: 0.35rem 0 1.4rem rgba(0, 0, 0, 0.28);
+        animation: mobile-sidebar-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: transform;
+    }
+
+    .mobile-sidebar-overlay.is-closing .mobile-sidebar-panel {
+        animation: mobile-sidebar-leave 200ms cubic-bezier(0.4, 0, 1, 1) forwards;
+    }
+
+    .mobile-sidebar-content {
+        display: flex;
+        min-height: 100%;
+        flex: 1;
+        flex-direction: column;
+    }
+
+    .mobile-sidebar-logo {
+        display: flex;
+        align-items: center;
+        min-height: 4.2rem;
+        padding: max(0.8rem, env(safe-area-inset-top)) 1rem 0.65rem;
+    }
+
+    .mobile-sidebar-logo .nav-logo-img {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .mobile-sidebar-logo .nyaitter-logo-image {
+        max-width: 9.5rem;
+        max-height: 2.4rem;
+    }
+
+    .mobile-sidebar-menu {
+        display: flex;
+        min-height: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: 0.45rem;
+        overflow-y: auto;
+        padding: 0.6rem 1rem 1rem;
+    }
+
+    .mobile-sidebar-menu .nav-item[href='#likes'],
+    .mobile-sidebar-menu .nav-item[href='#stars'] {
+        display: flex;
+    }
+
+    .mobile-sidebar-bottom {
+        padding: 0.8rem 1rem calc(0.8rem + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--border-color);
+    }
+
+    .mobile-sidebar-bottom .account-button {
+        position: static;
+        display: flex;
+        width: 100%;
+        min-height: 3.5rem;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 0.65rem;
+        border-radius: 10px;
+    }
+
+    .mobile-sidebar-bottom .account-button .account-info {
+        display: flex;
+    }
+
+    .mobile-sidebar-menu .nav-item {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 3.5rem;
+        justify-content: flex-start;
+        padding: 0.8rem 1rem;
+        font-size: 1.1rem;
+    }
+
+    .mobile-sidebar-menu .nav-item .nav-item-text {
+        display: inline;
+    }
+
+    .mobile-sidebar-menu .mobile-nav-overflow-menu {
+        display: block;
+    }
+
+    .mobile-sidebar-menu .nav-overflow-panel {
+        z-index: 1201;
+    }
+
+    .mobile-sidebar-menu .nav-item-post {
+        position: static;
+        right: auto;
+        bottom: auto;
+        width: 100%;
+        height: auto;
+        justify-content: center;
+        margin-top: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .mobile-sidebar-menu .nav-item-post .nav-item-text {
+        display: inline;
+    }
+
+    .mobile-sidebar-menu .nav-item-post .nav-item-icon {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+.group-ui-page {
+        gap: 1rem;
+        padding: 0.75rem;
+    }
+
+    .group-ui-page-heading,
+    .group-ui-profile {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .group-ui-page-heading {
+        display: flex;
+    }
+
+    .group-ui-profile {
+        display: flex;
+    }
+
+    .group-ui-profile-actions,
+    .group-ui-page-heading > .settings-primary-button {
+        width: 100%;
+    }
+
+    .group-ui-profile-actions > *,
+    .group-ui-page-heading > .settings-primary-button {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+
+    .group-ui-inline-form {
+        grid-template-columns: 1fr;
+    }
+
+    .group-ui-inline-form > button {
+        width: 100%;
+    }
+
+    .group-ui-member-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .group-ui-member-row .settings-session-actions {
+        max-width: none;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 760px) {
+.group-modal-images,
+    .group-role-form {
+        grid-template-columns: 1fr;
+    }
+
+    .group-modal-header-field {
+        min-width: 0;
+    }
+
+    .group-modal-header-preview {
+        max-width: 100%;
+    }
+
+    .group-ui-manage-layout {
+        display: block;
+    }
+
+    .group-ui-manage-layout .settings-group-list {
+        position: static;
+        display: flex;
+        width: auto;
+        margin: 0 -0.75rem 1rem;
+        padding: 0.45rem 0.75rem;
+        overflow-x: auto;
+        border: 0;
+        border-radius: 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .group-ui-manage-layout .settings-group-button {
+        width: auto;
+        min-width: max-content;
+        text-align: center;
+    }
+
+    .group-ui-profile-main {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .group-ui-profile-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .group-ui-post-tabs {
+        margin: 0 -0.75rem;
+    }
+
+
+}
+
+@media (max-width: 420px) {
+.group-modal-form {
+        padding: 1.25rem 1rem;
+    }
+
+    .group-modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+
+    .group-modal-overlay {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .group-profile-header-preview {
+        width: 100%;
+    }
+
+    .group-profile-header-actions {
+        display: grid;
+        width: 100%;
+    }
+
+    .group-roles-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .group-role-add-btn {
+        width: 100%;
+    }
+
+    .group-role-card-summary {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .group-role-summary-actions {
+        width: 100%;
+        justify-content: flex-end;
+        padding-top: 0.5rem;
+        border-top: 1px dashed var(--border-color);
+    }
+
+    .group-role-perm-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .group-role-card-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .group-role-card-actions button {
+        width: 100%;
+    }
+
+    .group-role-save-status {
+        text-align: center;
+        margin-right: 0;
+    }
+}
+
+@media (max-width: 760px) {
+.group-ui-manage-page > .group-ui-page-heading {
+        top: 0;
+        margin: -1rem -1rem 0;
+        padding: 0.7rem 1rem;
+    }
+
+    .group-ui-manage-layout .settings-group-list {
+        position: sticky;
+        top: 5.1rem;
+        z-index: 30;
+        max-height: none;
+        margin-top: 0;
+        background: var(--main-bg-color);
+    }
+}

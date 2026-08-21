@@ -1,0 +1,119 @@
+/* ==========================================================================
+   Nyaitter - variables.css
+   ========================================================================== */
+
+:root {
+    /* 共通色設定 */
+    --primary-color: #ff9900;
+    --primary-hover-color: #e88b00;
+    --like-color: #f91880;
+    --star-color: #ffad1f;
+
+    /* ライトモード(デフォルト)色設定 */
+    --l-border-color: #eff3f4;
+    --l-bg-color: #f9f9f9;
+    --l-main-bg-color: #ffffff;
+    --l-pg-bg-color: rgba(255, 255, 255, 0.85); /* ページヘッダーなど */
+    --l-emoji-bg-color: none;
+    --l-text-color: #0f1419;
+    --l-secondary-text-color: #536471;
+    --l-logo-color: #000000;
+    --l-loading-color: rgba(255, 255, 255, 0.7);
+    --l-widget-bg-color: #e7e8e8;
+    --l-emoji-mart: 255, 255, 255;
+    --l-bw: #000000;
+    --l-spin: rgba(0, 0, 0, 0.1);
+    --l-light-primary-color: #ffebcc;
+    --l-danger-color: #fef0f4;
+
+    /* ダークモード色設定 */
+    --d-border-color: #2f363d;
+    --d-bg-color: #18191d;
+    --d-main-bg-color: #1c1d21;
+    --d-pg-bg-color: rgb(33 35 41 / 85%);
+    --d-emoji-bg-color: #e8eaed;
+    --d-text-color: #ffffff;
+    --d-secondary-text-color: #ffffff;
+    --d-logo-color: #ffffff;
+    --d-loading-color: rgba(0, 0, 0, 0.7);
+    --d-widget-bg-color: #4d5156;
+    --d-emoji-mart: 40, 40, 40;
+    --d-bw: #ffffff;
+    --d-spin: rgba(255, 255, 255, 0.1);
+    --d-light-primary-color: #8f5600;
+    --d-danger-color: #610525;
+
+    /* デフォルトのアクティブ色（ライトモード基準） */
+    --border-color: var(--l-border-color);
+    --bg-color: var(--l-bg-color);
+    --main-bg-color: var(--l-main-bg-color);
+    --pg-bg-color: var(--l-pg-bg-color);
+    --emoji-bg-color: var(--l-emoji-bg-color);
+    --text-color: var(--l-text-color);
+    --secondary-text-color: var(--l-secondary-text-color);
+    --logo-color: var(--l-logo-color);
+    --loading-color: var(--l-loading-color);
+    --widget-bg-color: var(--l-widget-bg-color);
+    --emoji-mart: var(--l-emoji-mart);
+    --bw: var(--l-bw);
+    --spin: var(--l-spin);
+    --light-primary-color: var(--l-light-primary-color);
+    --danger-color: var(--l-danger-color);
+}
+
+/* ライトモード変数指定 */
+body.light,
+[data-theme='light'] {
+    --border-color: var(--l-border-color);
+    --bg-color: var(--l-bg-color);
+    --main-bg-color: var(--l-main-bg-color);
+    --pg-bg-color: var(--l-pg-bg-color);
+    --emoji-bg-color: var(--l-emoji-bg-color);
+    --text-color: var(--l-text-color);
+    --secondary-text-color: var(--l-secondary-text-color);
+    --logo-color: var(--l-logo-color);
+    --loading-color: var(--l-loading-color);
+    --widget-bg-color: var(--l-widget-bg-color);
+    --emoji-mart: var(--l-emoji-mart);
+    --bw: var(--l-bw);
+    --spin: var(--l-spin);
+    --light-primary-color: var(--l-light-primary-color);
+    --danger-color: var(--l-danger-color);
+}
+
+/* ダークモード変数指定 */
+body.dark,
+[data-theme='dark'] {
+    --border-color: var(--d-border-color);
+    --bg-color: var(--d-bg-color);
+    --main-bg-color: var(--d-main-bg-color);
+    --pg-bg-color: var(--d-pg-bg-color);
+    --emoji-bg-color: var(--d-emoji-bg-color);
+    --text-color: var(--d-text-color);
+    --secondary-text-color: var(--d-secondary-text-color);
+    --logo-color: var(--d-logo-color);
+    --loading-color: var(--d-loading-color);
+    --widget-bg-color: var(--d-widget-bg-color);
+    --emoji-mart: var(--d-emoji-mart);
+    --bw: var(--d-bw);
+    --spin: var(--d-spin);
+    --light-primary-color: var(--d-light-primary-color);
+    --danger-color: var(--d-danger-color);
+}
+
+body.light .nav-item[href^='#settings'].active svg circle {
+    fill: white;
+}
+
+body.dark .nav-item[href^='#settings'].active svg circle {
+    fill: black;
+}
+
+body.dark .recommend-user button {
+    border: none;
+}
+
+body.dark .settings-bot-new-key-box {
+    background: rgba(255, 153, 0, 0.12);
+    border-color: rgba(255, 153, 0, 0.45);
+}

@@ -1,0 +1,744 @@
+/* ==========================================================================
+   Nyaitter - auth.css
+   ========================================================================== */
+
+#login-button {
+width: 100%;
+    justify-content: center;
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 700;
+}
+
+.post-author .admin-badge,
+.post-author .verify-badge {
+flex: 0 0 auto;
+}
+
+.admin-badge,
+.verify-badge {
+width: 1.2em;
+    height: 1.2em;
+    vertical-align: text-bottom;
+}
+
+#login-banner {
+position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+}
+
+.login-banner-content h2 {
+transform: translateY(0.4rem);
+    margin: 0;
+}
+
+.login-banner-content h4 {
+transform: translate(-0.45rem, -0.5rem);
+    margin: 0.5rem;
+}
+
+#banner-login-button {
+background: var(--primary-color);
+    color: white;
+    border: 1px solid; /* 枠線を非表示に変更 */
+    margin-left: 1rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 9999px !important;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+#banner-login-button:hover {
+background-color: var(--primary-hover-color);
+}
+
+.app-dialog-actions .login-secondary-button.hidden {
+display: none;
+}
+
+.freeze-notice {
+background-color: #fffbe6;
+    border: 1px solid #ffe58f;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    color: #8a6d3b;
+    text-align: center;
+}
+
+.freeze-notice a {
+color: #8a6d3b;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.login-approval-modal-content {
+max-width: 480px;
+    padding: 1.7rem 1.25rem 1.25rem;
+}
+
+.login-approval-modal-content h3 {
+margin: 0 0 0.75rem;
+}
+
+.login-approval-detail {
+margin: 0.5rem 0;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    background: var(--widget-bg-color);
+    word-break: break-word;
+}
+
+.login-approval-actions {
+margin-top: 1.25rem;
+}
+
+#login-modal {
+align-items: center;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.login-modal-content {
+    box-sizing: border-box;
+    width: min(640px, calc(100vw - 2rem));
+    max-width: 640px;
+    max-height: calc(100vh - 2rem);
+    padding: 2rem;
+    overflow-y: auto;
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+}
+
+.login-modal-heading {
+display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.login-modal-heading h3 {
+margin: 0;
+    font-size: 1.3rem;
+}
+
+.login-modal-back-btn {
+display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.login-modal-back-btn:hover {
+background: var(--border-color);
+}
+
+.login-provider-list {
+display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.login-provider-btn {
+display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 3.35rem;
+    padding: 0.85rem 1.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.login-provider-btn:hover {
+border-color: var(--primary-color);
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
+
+#login-modal #auth-step1,
+#login-modal #auth-step2,
+#login-modal #auth-email-step1,
+#login-modal #auth-email-step2,
+#login-modal #auth-passkey-panel {
+display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+#login-modal #auth-step1.hidden,
+#login-modal #auth-step2.hidden,
+#login-modal #auth-email-step1.hidden,
+#login-modal #auth-email-step2.hidden,
+#login-modal #auth-passkey-panel.hidden,
+#login-modal #auth-scratch-panel.hidden,
+#login-modal #auth-email-panel.hidden,
+#login-modal #auth-provider-select.hidden {
+display: none;
+}
+
+.login-modal-field {
+color: var(--text-color);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+#login-modal #username-input,
+#login-modal #login-email-input,
+#login-modal #login-email-code-input {
+box-sizing: border-box;
+    width: 100%;
+    min-height: 3.15rem;
+    padding: 0.8rem 0.95rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+}
+
+.login-auth-action {
+width: 100%;
+    min-height: 3.15rem;
+    padding: 0.8rem 1rem;
+    border-radius: 9999px;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+}
+
+.login-turnstile-container {
+display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.login-turnstile-container.hidden {
+display: none;
+}
+
+.login-turnstile-hint {
+margin: 0;
+    text-align: center;
+}
+
+#login-modal #username-input:focus-visible,
+.login-verification-code:focus-visible {
+outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.login-verification-code {
+width: 100%;
+    min-height: 3.3rem;
+    padding: 0.85rem 1rem;
+    border: 1px dashed var(--primary-color);
+    border-radius: 10px;
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+    font:
+        700 1.1rem ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Consolas,
+        monospace;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+
+.login-modal-links {
+display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.login-secondary-button {
+box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3.15rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 9999px;
+    background: var(--main-bg-color);
+    color: var(--primary-color);
+    font-weight: 700;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    transition:
+        background-color 0.2s,
+        border-color 0.2s,
+        color 0.2s;
+}
+
+.login-secondary-button:hover {
+background: var(--light-primary-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.login-secondary-button:focus-visible {
+outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.login-modal-message {
+margin: 0.9rem 0 0;
+    padding: 0.7rem 0.8rem;
+    border-radius: 8px;
+    line-height: 1.45;
+}
+
+.login-modal-error {
+background: var(--danger-color);
+    color: var(--text-color);
+}
+
+.login-modal-copy {
+background: var(--light-primary-color);
+    color: var(--text-color);
+}
+
+.login-loading-overlay {
+position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    background: var(--pg-bg-color);
+    z-index: 1;
+}
+
+.login-loading-overlay.hidden {
+display: none;
+}
+
+.report-modal-content {
+box-sizing: border-box;
+    max-width: 520px;
+    padding: 1.6rem;
+    border: 1px solid var(--border-color);
+}
+
+.report-modal-heading h3 {
+margin: 0 0 0.4rem;
+}
+
+#report-form {
+display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-top: 1rem;
+}
+
+#report-form label {
+color: var(--text-color);
+    font-weight: 700;
+}
+
+#report-description,
+.moderation-textarea {
+box-sizing: border-box;
+    width: 100%;
+    resize: vertical;
+    min-height: 7rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+}
+
+#report-description:focus-visible,
+.moderation-textarea:focus-visible,
+.moderation-target-select:focus-visible {
+outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.report-modal-note,
+.moderation-help-text {
+margin: 0;
+    color: var(--secondary-text-color);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.report-modal-actions,
+.moderation-form-actions {
+display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 0.35rem;
+}
+
+.report-modal-actions > button {
+box-sizing: border-box;
+    min-width: 6.5rem;
+    min-height: 3.15rem;
+    padding: 0.75rem 1rem;
+}
+
+.report-btn {
+color: #d92d20 !important;
+    font-weight: 700;
+}
+
+.admin-reports-container {
+padding: 1rem;
+}
+
+.admin-reports-list {
+display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.moderation-report-card,
+.moderation-review-section {
+box-sizing: border-box;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+}
+
+.moderation-report-card {
+display: block;
+    width: 100%;
+    padding: 1rem;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+}
+
+.moderation-report-card:hover {
+background: var(--bg-color);
+}
+
+.moderation-report-meta {
+display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.35rem;
+    color: var(--secondary-text-color);
+    font-size: 0.85rem;
+}
+
+.moderation-report-card p {
+margin: 0.5rem 0 0;
+    color: var(--secondary-text-color);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.moderation-review-layout {
+display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.moderation-review-section {
+padding: 1rem;
+}
+
+.moderation-review-section h3 {
+margin: 0 0 0.65rem;
+    font-size: 1rem;
+}
+
+.moderation-content-evidence {
+max-height: 20rem;
+    overflow: auto;
+    padding: 0.85rem;
+    border-radius: 8px;
+    background: var(--bg-color);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.moderation-message-evidence {
+padding: 0.7rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.moderation-message-evidence:last-child {
+border-bottom: none;
+}
+
+.moderation-action-grid {
+display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+}
+
+.moderation-action-grid label,
+.moderation-action-field {
+display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    color: var(--text-color);
+}
+
+.moderation-action-grid label {
+flex-direction: row;
+    align-items: center;
+    font-weight: 700;
+}
+
+.moderation-target-select {
+box-sizing: border-box;
+    width: 100%;
+    padding: 0.65rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+}
+
+.moderation-submit-button {
+border: none;
+    border-radius: 9999px;
+    padding: 0.65rem 1.1rem;
+    background: var(--primary-color);
+    color: white;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.moderation-submit-button:hover {
+background: var(--primary-hover-color);
+}
+
+.freeze-overlay {
+z-index: 2000;
+    padding: 1.25rem;
+    background: color-mix(in srgb, var(--background-color) 92%, #111 8%);
+}
+
+.freeze-panel {
+width: min(100%, 34rem);
+    padding: 2rem;
+    border: 1px solid color-mix(in srgb, #d9534f 35%, var(--border-color));
+    border-radius: 1.15rem;
+    background: var(--surface-color, #fff);
+    box-shadow: 0 1.25rem 3.5rem rgba(0, 0, 0, 0.16);
+    text-align: left;
+}
+
+.freeze-panel-mark {
+display: grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    margin-bottom: 1rem;
+    border-radius: 50%;
+    place-items: center;
+    background: #d9534f;
+    color: #fff;
+    font-size: 1.45rem;
+    font-weight: 800;
+}
+
+.freeze-panel-eyebrow {
+margin: 0 0 0.42rem;
+    color: var(--secondary-text-color);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+}
+
+.freeze-panel h2 {
+margin: 0;
+    color: var(--text-color);
+    font-size: 1.42rem;
+}
+
+.freeze-panel-lead,
+.freeze-panel-help {
+color: var(--secondary-text-color);
+    line-height: 1.65;
+}
+
+.freeze-reason-card {
+margin: 1.4rem 0;
+    padding: 1rem;
+    border-radius: 0.8rem;
+    background: color-mix(in srgb, var(--background-color) 78%, #d9534f 8%);
+}
+
+.freeze-reason-card > span {
+color: var(--secondary-text-color);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.freeze-reason-card p {
+margin: 0.4rem 0 0;
+    white-space: pre-wrap;
+    line-height: 1.55;
+}
+
+.freeze-appeal-button {
+border: 0;
+    border-radius: 999px;
+    background: var(--primary-color);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0.72rem 1.2rem;
+}
+
+.freeze-appeal-button:hover:not(:disabled) {
+filter: brightness(0.94);
+}
+
+.freeze-appeal-button:disabled {
+cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.freeze-appeal-status {
+margin: -0.35rem 0 1rem;
+    color: var(--secondary-text-color);
+    font-size: 0.88rem;
+}
+
+.freeze-appeal-modal-content {
+width: min(100% - 2rem, 34rem);
+}
+
+.freeze-appeal-modal-content > p:not(.freeze-panel-eyebrow) {
+color: var(--secondary-text-color);
+    line-height: 1.6;
+}
+
+.freeze-appeal-modal-content label {
+display: block;
+    margin: 1.25rem 0 0.5rem;
+    font-weight: 700;
+}
+
+.freeze-appeal-modal-content textarea {
+box-sizing: border-box;
+    width: 100%;
+    resize: vertical;
+}
+
+.freeze-appeal-modal-actions {
+display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    margin-top: 1.1rem;
+}
+
+.verification-application-modal-content {
+box-sizing: border-box;
+    width: min(100% - 2rem, 30rem);
+    max-width: 480px;
+    padding: 1.7rem 1.25rem 1.25rem;
+}
+
+.verification-application-note {
+margin: 0.9rem 0;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--widget-bg-color);
+}
+
+.verification-application-note strong {
+display: block;
+    margin-bottom: 0.3rem;
+    color: var(--text-color);
+    font-size: 0.92rem;
+}
+
+.verification-application-note p {
+margin: 0;
+    color: var(--secondary-text-color);
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.verification-application-actions {
+display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-top: 1.25rem;
+}
+
+.verification-application-actions .login-secondary-button,
+.verification-application-actions .login-auth-action {
+width: 100%;
+}
+
+#login-approval-wait-modal {
+z-index: 1100;
+}
+
+.login-approval-wait-content {
+box-sizing: border-box;
+    width: min(100% - 2rem, 480px);
+}
+
+.login-approval-wait-progress {
+display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.85rem 0;
+    color: var(--secondary-text-color);
+    font-size: 0.9rem;
+}
+
+.login-approval-wait-progress .spinner {
+width: 1rem;
+    height: 1rem;
+    border-width: 0.16rem;
+}
+
+.login-approval-wait-status {
+margin: 0.85rem 0;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.login-approval-wait-actions {
+display: flex;
+    justify-content: flex-end;
+}

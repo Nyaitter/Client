@@ -30,14 +30,19 @@ import {
     handleAddDmMember,
     handleLeaveDm,
     handleDisbandDm,
+    handleAcceptDmRequest,
+    handleDeclineDmRequest,
     sendSystemDmMessage,
 } from '../modules/dm.js';
 import { filterBlockedPosts, uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
 import { getEmoji } from '../modules/format.js';
 import { attachMarkdownContentEditor, getMarkdownEditorValue, setMarkdownEditorValue, setupMarkdownEditorPreviewButton } from '../modules/editor.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
+import { initTabGroup } from '../modules/tabSwipe.js';
 import { sendNotification } from '../modules/notifications.js';
 import { escapeHTML, getNyaitterId, getUserIconUrl, showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
+
+let activeDmListTab = 'inbox';
 
 function renderDmListItem(dm, unreadCount, currentUserId) {
     const members = Array.isArray(dm.member) ? dm.member : [];
@@ -68,6 +73,10 @@ function renderDmListItem(dm, unreadCount, currentUserId) {
         if (!title) title = '自分のみのメッセージ';
         subtitle = 'プライベートメモ';
         avatarHtml = `<img src="${getUserIconUrl(getCurrentUser())}" class="dm-list-item-avatar" alt="">`;
+    }
+
+    if (dm.is_pending) {
+        subtitle = subtitle ? `${subtitle} · リクエスト` : 'メッセージリクエスト';
     }
 
     const dmIdStr = escapeHTML(String(dm.id));
@@ -116,10 +125,21 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
             </div>
         `;
         contentDiv.innerHTML = `
+            <div class="dm-tabs-container">
+                <button type="button" class="dm-tab-button ${activeDmListTab === 'inbox' ? 'active' : ''}" data-dm-tab="inbox">
+                    <span>メッセージ</span>
+                </button>
+                <button type="button" class="dm-tab-button ${activeDmListTab === 'requests' ? 'active' : ''}" data-dm-tab="requests">
+                    <span>リクエスト</span>
+                    <span class="dm-tab-badge hidden" id="dm-request-tab-badge">0</span>
+                </button>
+            </div>
             <div id="dm-list-container" class="dm-list-container">
                 <div id="dm-list-items-wrapper" class="dm-list-items-wrapper spinner"></div>
             </div>
         `;
+        const tabsContainer = contentDiv.querySelector('.dm-tabs-container');
+        const badgeEl = document.getElementById('dm-request-tab-badge');
         const listItemsWrapper = document.getElementById('dm-list-items-wrapper');
 
         try {
@@ -147,22 +167,60 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
                 window.history.replaceState({ path: '#dm' }, '', '#dm');
             }
 
-            if (dmList.length === 0) {
-                listItemsWrapper.innerHTML = `
-                    <div class="dm-empty-state">
-                        <p class="settings-help-text">まだメッセージはありません。<br>ダイレクトメッセージを送ってみましょう。</p>
-                        <button type="button" class="settings-primary-button dm-empty-create-btn" data-action="open-create-dm">新しいメッセージを作成</button>
-                    </div>
-                `;
-            } else {
-                const currentUserId = getCurrentUser().id;
-                listItemsWrapper.innerHTML = dmList
-                    .map((dm) => {
-                        const unreadCount = unreadCountsMap.get(String(dm.id)) || 0;
-                        return renderDmListItem(dm, unreadCount, currentUserId);
-                    })
-                    .join('');
+            const inboxDms = dmList.filter((d) => !d.is_pending);
+            const requestDms = dmList.filter((d) => Boolean(d.is_pending));
+
+            if (badgeEl) {
+                if (requestDms.length > 0) {
+                    badgeEl.textContent = String(requestDms.length);
+                    badgeEl.classList.remove('hidden');
+                } else {
+                    badgeEl.classList.add('hidden');
+                }
             }
+
+            const renderListForTab = (tab) => {
+                activeDmListTab = tab;
+                const currentList = tab === 'requests' ? requestDms : inboxDms;
+                if (currentList.length === 0) {
+                    listItemsWrapper.innerHTML = tab === 'requests'
+                        ? `
+                            <div class="dm-empty-state">
+                                <p class="settings-help-text">メッセージリクエストはありません。</p>
+                            </div>
+                        `
+                        : `
+                            <div class="dm-empty-state">
+                                <p class="settings-help-text">まだメッセージはありません。<br>ダイレクトメッセージを送ってみましょう。</p>
+                                <button type="button" class="settings-primary-button dm-empty-create-btn" data-action="open-create-dm">新しいメッセージを作成</button>
+                            </div>
+                        `;
+                } else {
+                    const currentUserId = getCurrentUser().id;
+                    listItemsWrapper.innerHTML = currentList
+                        .map((dm) => {
+                            const unreadCount = unreadCountsMap.get(String(dm.id)) || 0;
+                            return renderDmListItem(dm, unreadCount, currentUserId);
+                        })
+                        .join('');
+                }
+            };
+
+            initTabGroup({
+                container: tabsContainer,
+                tabSelector: '.dm-tab-button',
+                contentContainer: listItemsWrapper,
+                getTabKey: (btn) => btn.dataset.dmTab,
+                onTabChange: (tab) => {
+                    renderListForTab(tab);
+                },
+                onRefresh: async () => {
+                    deleteScreenDataCache(dmListCacheKey);
+                    await showDmScreen();
+                },
+            });
+
+            renderListForTab(activeDmListTab);
             listItemsWrapper.classList.remove('spinner');
         } catch (e) {
             console.error('DMリストの読み込みに失敗:', e);
@@ -298,107 +356,145 @@ export async function showDmConversation(dmId) {
         );
         const messagesHTML = messagesHTMLArray.join('');
 
-        container.innerHTML = `
-            <div class="dm-conversation-view">${messagesHTML}</div>
-            <div class="dm-message-form">
-                <div class="dm-form-content">
-                    <div class="file-preview-container dm-file-preview"></div>
-                    <div class="markdown-textarea-editor dm-content-editor">
-                        <textarea id="dm-message-input" class="markdown-content-editor" rows="1" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length" placeholder="メッセージを入力... (Ctrl+Enterで送信)"></textarea>
-                        <div class="markdown-editor-paint" aria-hidden="true">
-                            <div class="markdown-editor-placeholder"></div>
-                            <div class="markdown-editor-preview hidden"></div>
-                            <div class="markdown-editor-selection"></div>
-                            <div class="markdown-editor-composition"></div>
-                            <div class="markdown-editor-caret"></div>
-                        </div>
+        const isPending = Boolean(dm?.is_pending);
+
+        if (isPending) {
+            container.innerHTML = `
+                <div class="dm-conversation-view">${messagesHTML}</div>
+                <div class="dm-request-approval-banner">
+                    <div class="dm-request-approval-info">
+                        <span class="dm-request-approval-badge">メッセージリクエスト</span>
+                        <p class="dm-request-approval-text">${getEmoji(escapeHTML(headerTitle))} さんからのメッセージリクエストです。承認するとメッセージの返信や通知の受信が可能になります。</p>
+                    </div>
+                    <div class="dm-request-approval-actions">
+                        <button type="button" class="dm-request-btn dm-request-decline-btn" id="dm-decline-request-btn">拒否・削除</button>
+                        <button type="button" class="dm-request-btn dm-request-accept-btn" id="dm-accept-request-btn">承認する</button>
                     </div>
                 </div>
-                <div class="dm-form-actions">
-                    <button type="button" id="dm-attachment-btn" class="attachment-button dm-action-btn" title="ファイルを添付">${ICONS.attachment}</button>
-                    <input type="file" id="dm-file-input" class="hidden" multiple>
-                    <button type="button" id="send-dm-btn" class="dm-send-action-btn" title="送信 (Ctrl+Enter)">${ICONS.send}</button>
-                </div>
-            </div>
-        `;
+            `;
 
-        void updateNavAndSidebars();
-        await flushRealtimeDmMessages(dm.id);
-        initializeDmMessageClamps(container);
+            void updateNavAndSidebars();
+            await flushRealtimeDmMessages(dm.id);
+            initializeDmMessageClamps(container);
 
-        const messageInput = document.getElementById('dm-message-input');
-        attachMarkdownContentEditor(messageInput);
-        setupMarkdownEditorPreviewButton(container, messageInput);
-        const fileInput = document.getElementById('dm-file-input');
-        const previewContainer = container.querySelector('.file-preview-container');
-
-        document.getElementById('dm-attachment-btn')?.addEventListener('click', () => {
-            fileInput?.click();
-        });
-
-        fileInput?.addEventListener('change', (event) => {
-            dmSelectedFiles = Array.from(event.target.files);
-            previewContainer.innerHTML = '';
-            dmSelectedFiles.forEach((file, index) => {
-                const previewItem = document.createElement('div');
-                previewItem.className = 'file-preview-item';
-
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        previewItem.innerHTML = `<img src="${e.target.result}" alt="${escapeHTML(file.name)}"><button class="file-preview-remove" data-index="${index}">×</button>`;
-                    };
-                    reader.readAsDataURL(file);
-                } else if (file.type.startsWith('video/')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        previewItem.innerHTML = `<video src="${e.target.result}" style="width:100px; height:100px; object-fit:cover;" controls></video><button class="file-preview-remove" data-index="${index}">×</button>`;
-                    };
-                    reader.readAsDataURL(file);
-                } else if (file.type.startsWith('audio/')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        previewItem.innerHTML = `<div style="display:flex; align-items:center; gap:0.5rem;"><audio src="${e.target.result}" controls style="height: 30px; width: 200px;"></audio><button class="file-preview-remove" data-index="${index}" style="position:relative; top:0; right:0;">×</button></div>`;
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    previewItem.innerHTML = `<span>📄 ${escapeHTML(file.name)}</span><button class="file-preview-remove" data-index="${index}">×</button>`;
-                }
-                previewContainer.appendChild(previewItem);
+            document.getElementById('dm-accept-request-btn')?.addEventListener('click', async () => {
+                await handleAcceptDmRequest(dm.id, async () => {
+                    deleteScreenDataCache(getDmCacheKey('conversation', String(dm.id)));
+                    deleteScreenDataCache(getDmCacheKey('list'));
+                    await showDmConversation(dm.id);
+                });
             });
-        });
 
-        previewContainer?.addEventListener('click', (e) => {
-            if (e.target.classList.contains('file-preview-remove')) {
-                const indexToRemove = parseInt(e.target.dataset.index, 10);
-                dmSelectedFiles.splice(indexToRemove, 1);
-                const newFiles = new DataTransfer();
-                dmSelectedFiles.forEach((file) => newFiles.items.add(file));
-                if (fileInput) {
-                    fileInput.files = newFiles.files;
-                    fileInput.dispatchEvent(new Event('change'));
+            document.getElementById('dm-decline-request-btn')?.addEventListener('click', async () => {
+                await handleDeclineDmRequest(dm.id, async () => {
+                    deleteScreenDataCache(getDmCacheKey('conversation', String(dm.id)));
+                    deleteScreenDataCache(getDmCacheKey('list'));
+                    window.location.hash = '#dm';
+                });
+            });
+        } else {
+            container.innerHTML = `
+                <div class="dm-conversation-view">${messagesHTML}</div>
+                <div class="dm-message-form">
+                    <div class="dm-form-content">
+                        <div class="file-preview-container dm-file-preview"></div>
+                        <div class="markdown-textarea-editor dm-content-editor">
+                            <textarea id="dm-message-input" class="markdown-content-editor" rows="1" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length" placeholder="メッセージを入力... (Ctrl+Enterで送信)"></textarea>
+                            <div class="markdown-editor-paint" aria-hidden="true">
+                                <div class="markdown-editor-placeholder"></div>
+                                <div class="markdown-editor-preview hidden"></div>
+                                <div class="markdown-editor-selection"></div>
+                                <div class="markdown-editor-composition"></div>
+                                <div class="markdown-editor-caret"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dm-form-actions">
+                        <button type="button" id="dm-attachment-btn" class="attachment-button dm-action-btn" title="ファイルを添付">${ICONS.attachment}</button>
+                        <input type="file" id="dm-file-input" class="hidden" multiple>
+                        <button type="button" id="send-dm-btn" class="dm-send-action-btn" title="送信 (Ctrl+Enter)">${ICONS.send}</button>
+                    </div>
+                </div>
+            `;
+
+            void updateNavAndSidebars();
+            await flushRealtimeDmMessages(dm.id);
+            initializeDmMessageClamps(container);
+
+            const messageInput = document.getElementById('dm-message-input');
+            attachMarkdownContentEditor(messageInput);
+            setupMarkdownEditorPreviewButton(container, messageInput);
+            const fileInput = document.getElementById('dm-file-input');
+            const previewContainer = container.querySelector('.file-preview-container');
+
+            document.getElementById('dm-attachment-btn')?.addEventListener('click', () => {
+                fileInput?.click();
+            });
+
+            fileInput?.addEventListener('change', (event) => {
+                dmSelectedFiles = Array.from(event.target.files);
+                previewContainer.innerHTML = '';
+                dmSelectedFiles.forEach((file, index) => {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'file-preview-item';
+
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            previewItem.innerHTML = `<img src="${e.target.result}" alt="${escapeHTML(file.name)}"><button class="file-preview-remove" data-index="${index}">×</button>`;
+                        };
+                        reader.readAsDataURL(file);
+                    } else if (file.type.startsWith('video/')) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            previewItem.innerHTML = `<video src="${e.target.result}" style="width:100px; height:100px; object-fit:cover;" controls></video><button class="file-preview-remove" data-index="${index}">×</button>`;
+                        };
+                        reader.readAsDataURL(file);
+                    } else if (file.type.startsWith('audio/')) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            previewItem.innerHTML = `<div style="display:flex; align-items:center; gap:0.5rem;"><audio src="${e.target.result}" controls style="height: 30px; width: 200px;"></audio><button class="file-preview-remove" data-index="${index}" style="position:relative; top:0; right:0;">×</button></div>`;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        previewItem.innerHTML = `<span>📄 ${escapeHTML(file.name)}</span><button class="file-preview-remove" data-index="${index}">×</button>`;
+                    }
+                    previewContainer.appendChild(previewItem);
+                });
+            });
+
+            previewContainer?.addEventListener('click', (e) => {
+                if (e.target.classList.contains('file-preview-remove')) {
+                    const indexToRemove = parseInt(e.target.dataset.index, 10);
+                    dmSelectedFiles.splice(indexToRemove, 1);
+                    const newFiles = new DataTransfer();
+                    dmSelectedFiles.forEach((file) => newFiles.items.add(file));
+                    if (fileInput) {
+                        fileInput.files = newFiles.files;
+                        fileInput.dispatchEvent(new Event('change'));
+                    }
                 }
-            }
-        });
+            });
 
-        const sendMessageAction = async () => {
-            const text = getMarkdownEditorValue(messageInput).trim();
-            if (!text && dmSelectedFiles.length === 0) return;
-            await sendDirectMessage(dmId, dmSelectedFiles);
-            dmSelectedFiles = [];
-            if (fileInput) fileInput.value = '';
-            if (previewContainer) previewContainer.innerHTML = '';
-        };
+            const sendMessageAction = async () => {
+                const text = getMarkdownEditorValue(messageInput).trim();
+                if (!text && dmSelectedFiles.length === 0) return;
+                await sendDirectMessage(dmId, dmSelectedFiles);
+                dmSelectedFiles = [];
+                if (fileInput) fileInput.value = '';
+                if (previewContainer) previewContainer.innerHTML = '';
+            };
 
-        messageInput?.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
+            messageInput?.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    void sendMessageAction();
+                }
+            });
+            document.getElementById('send-dm-btn')?.addEventListener('click', () => {
                 void sendMessageAction();
-            }
-        });
-        document.getElementById('send-dm-btn')?.addEventListener('click', () => {
-            void sendMessageAction();
-        });
+            });
+        }
 
         setLastRenderedMessageId(posts.length > 0 ? posts[posts.length - 1].id : null);
     } catch (e) {
