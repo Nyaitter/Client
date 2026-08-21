@@ -6717,6 +6717,11 @@ body.pull-to-refresh-enabled {
     margin-top: 1rem;
 }
 
+.group-role-autosave-note {
+    grid-column: 1 / -1;
+    margin: 0;
+}
+
 .group-role-form-heading h5 {
     margin: 0;
     font-size: 1rem;

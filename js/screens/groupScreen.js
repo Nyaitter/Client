@@ -546,7 +546,7 @@ function renderRoleEditor(role) {
         </header>
         <label class="group-role-name-field">ロール名<input name="name" maxlength="50" required value="${roleName}" ${ownerRole ? 'readonly aria-readonly="true"' : ''}></label>
         <fieldset class="group-role-permissions" ${ownerRole ? 'disabled' : ''}><legend>許可する操作</legend><div>${renderRolePermissionInputs(role, { disabled: ownerRole })}</div></fieldset>
-        ${ownerRole ? '' : '<div class="settings-save-row"><button type="submit" class="settings-primary-button">変更を保存</button></div>'}
+        ${ownerRole ? '' : '<p class="settings-help-text group-role-autosave-note">権限はチェックを変更するとすぐに反映されます。</p>'}
     </form>`;
 }
 
@@ -829,23 +829,43 @@ function bindGroupManageEvents(group) {
             showLoading(false);
         }
     }));
-    document.querySelectorAll('[data-edit-group-role]').forEach((form) => form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        if (!event.currentTarget.reportValidity()) return;
-        const values = new FormData(event.currentTarget);
-        try {
-            showLoading(true);
-            await request(groupPath(group.id, `/roles/${encodeURIComponent(event.currentTarget.dataset.editGroupRole)}`), {
-                method: 'PATCH',
-                body: { name: values.get('name'), permissions: values.getAll('permissions') },
-            });
-            await refreshGroupManage(group);
-        } catch (error) {
-            showAppAlert(error.message || 'ロールを更新できませんでした。');
-        } finally {
-            showLoading(false);
-        }
-    }));
+    document.querySelectorAll('[data-edit-group-role]').forEach((form) => {
+        let saveInFlight = false;
+        let saveQueued = false;
+        const saveRole = async () => {
+            if (saveInFlight) {
+                saveQueued = true;
+                return;
+            }
+            if (!form.reportValidity()) return;
+            saveInFlight = true;
+            const values = new FormData(form);
+            try {
+                showLoading(true);
+                await request(groupPath(group.id, `/roles/${encodeURIComponent(form.dataset.editGroupRole)}`), {
+                    method: 'PATCH',
+                    body: { name: values.get('name'), permissions: values.getAll('permissions') },
+                });
+                await refreshGroupManage(group);
+            } catch (error) {
+                await refreshGroupManage(group).catch(() => {});
+                showAppAlert(error.message || 'ロールを更新できませんでした。');
+            } finally {
+                saveInFlight = false;
+                showLoading(false);
+                if (saveQueued) {
+                    saveQueued = false;
+                    void saveRole();
+                }
+            }
+        };
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            void saveRole();
+        });
+        form.querySelector('[name="name"]')?.addEventListener('blur', () => { void saveRole(); });
+        form.querySelectorAll('[name="permissions"]').forEach((input) => input.addEventListener('change', () => { void saveRole(); }));
+    });
     document.getElementById('group-role-form')?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
