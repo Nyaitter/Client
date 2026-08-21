@@ -765,7 +765,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
             if (isLinked) {
                 const unlinkBtn = document.createElement('button');
                 unlinkBtn.type = 'button';
-                unlinkBtn.className = 'settings-session-invalidate-button';
+                unlinkBtn.className = 'settings-session-revoke-button';
                 unlinkBtn.textContent = '連携解除';
                 unlinkBtn.addEventListener('click', async () => {
                     if (linkedProviders.length <= 1) {
@@ -790,7 +790,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
             } else {
                 const linkBtn = document.createElement('button');
                 linkBtn.type = 'button';
-                linkBtn.className = 'settings-session-revoke-button';
+                linkBtn.className = 'settings-session-link-button';
                 linkBtn.textContent = '連携する';
                 linkBtn.addEventListener('click', async () => {
                     if (provider.name === 'email') {
