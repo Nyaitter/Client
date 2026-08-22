@@ -465,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.error) {
-        if (response.status === 403) resetTurnstile();
+        if (response.status === 403 || data.code === 'turnstile_required') resetTurnstile();
         throw new Error(data.error || 'コードの生成に失敗しました。');
       }
       resetTurnstile();
