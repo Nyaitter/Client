@@ -115,6 +115,12 @@ export function saveHomeTabs(tabs) {
     }
 }
 
+export function normalizeDmInvitation(value) {
+    if (value === 'always' || value === 'allow') return 'always';
+    if (value === 'deny' || value === 'reject') return 'deny';
+    return 'require_approval';
+}
+
 export function getSettingsGroupFromHash(hash = window.location.hash) {
     const match = /^#settings\/([a-z0-9_-]+)/i.exec(hash || '');
     return match ? match[1].toLowerCase() : 'profile';
@@ -172,6 +178,9 @@ export async function saveSettings(form) {
                 show_star: form.querySelector('#setting-show-star')?.checked || false,
                 show_scid: form.querySelector('#setting-show-scid')?.checked || false,
                 reject_unknown_login: form.querySelector('#setting-reject-unknown-login')?.checked ?? true,
+                dm_invitation: normalizeDmInvitation(
+                    form.querySelector('#setting-dm-invitation')?.value,
+                ),
                 post_timestamp_format: normalizePostTimestampFormat(
                     form.querySelector('#setting-post-timestamp-format')?.value,
                 ),
@@ -369,6 +378,15 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         <label><input type="checkbox" id="setting-show-scid" ${getCurrentUser().settings?.show_scid ? 'checked' : ''}> Scratchアカウント名を公開する</label>
                         <label><input type="checkbox" id="setting-lock" ${getCurrentUser().settings?.lock ? 'checked' : ''}> ポストを非公開にする</label>
                     </fieldset>
+                    <fieldset class="settings-dm-privacy"><legend>ダイレクトメッセージ</legend>
+                        <label for="setting-dm-invitation">DMの招待</label>
+                        <select id="setting-dm-invitation" class="settings-select">
+                            <option value="always" ${(getCurrentUser().settings?.dm_invitation === 'always' || getCurrentUser().settings?.dm_invitation === 'allow') ? 'selected' : ''}>常に許可</option>
+                            <option value="require_approval" ${(getCurrentUser().settings?.dm_invitation === 'require_approval' || !getCurrentUser().settings?.dm_invitation || getCurrentUser().settings?.dm_invitation === 'approval') ? 'selected' : ''}>承認が必要</option>
+                            <option value="deny" ${(getCurrentUser().settings?.dm_invitation === 'deny' || getCurrentUser().settings?.dm_invitation === 'reject') ? 'selected' : ''}>常に拒否</option>
+                        </select>
+                        <p class="settings-help-text">他のユーザーからDMに招待されたときの動作を設定します。</p>
+                    </fieldset>
                     <fieldset class="settings-login-security"><legend>ログインのセーフティ</legend>
                         <label><input type="checkbox" id="setting-reject-unknown-login" ${(getCurrentUser().settings?.reject_unknown_login ?? true) ? 'checked' : ''}> 不明な場所からのログインを拒否</label>
                         <p class="settings-help-text">有効にすると、初めて利用するIPアドレスからのログインには、ログイン済み端末での許可が必要です。</p>
@@ -554,6 +572,10 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         </div>
     `;
 
+    const dmInvitationSelect = document.getElementById('setting-dm-invitation');
+    if (dmInvitationSelect) {
+        dmInvitationSelect.value = normalizeDmInvitation(getCurrentUser().settings?.dm_invitation);
+    }
     document.getElementById('setting-post-timestamp-format').value =
         normalizePostTimestampFormat(getCurrentUser().settings?.post_timestamp_format);
     document.getElementById('setting-emoji-kind').value =

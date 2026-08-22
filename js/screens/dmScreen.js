@@ -163,10 +163,6 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
             getCurrentUser().unreadDmTotal = Number(dmPayload?.unread_total || 0);
             void updateNavAndSidebars();
 
-            if (window.location.hash.startsWith('#dm/')) {
-                window.history.replaceState({ path: '#dm' }, '', '#dm');
-            }
-
             const inboxDms = dmList.filter((d) => !d.is_pending);
             const requestDms = dmList.filter((d) => Boolean(d.is_pending));
 
@@ -479,10 +475,11 @@ export async function showDmConversation(dmId) {
             const sendMessageAction = async () => {
                 const text = getMarkdownEditorValue(messageInput).trim();
                 if (!text && dmSelectedFiles.length === 0) return;
-                await sendDirectMessage(dmId, dmSelectedFiles);
+                const filesToSend = [...dmSelectedFiles];
                 dmSelectedFiles = [];
                 if (fileInput) fileInput.value = '';
                 if (previewContainer) previewContainer.innerHTML = '';
+                await sendDirectMessage(dmId, filesToSend);
             };
 
             messageInput?.addEventListener('keydown', (e) => {
@@ -518,10 +515,14 @@ async function sendDirectMessage(dmId, files = []) {
     if (input) input.disabled = true;
     if (sendButton) sendButton.disabled = true;
 
-    try {
-        let uploadedFileIds = [];
-        let attachmentsData = [];
+    // 入力欄をクリア
+    setMarkdownEditorValue(input, '');
 
+    let uploadedFileIds = [];
+    let attachmentsData = [];
+    let optimisticEl = null;
+
+    try {
         for (const file of files) {
             const fileId = await uploadFileViaEdgeFunction(file);
             uploadedFileIds.push(fileId);
@@ -549,6 +550,28 @@ async function sendDirectMessage(dmId, files = []) {
             created_at: new Date().toISOString(),
         };
 
+        // 楽観的にDOMへメッセージを追加
+        const view = document.querySelector('.dm-conversation-view');
+        if (view) {
+            const messageHtml = await renderDmMessage(messageObject, dmId);
+            view.insertAdjacentHTML('afterbegin', messageHtml);
+            initializeDmMessageClamps(view);
+            optimisticEl = view.querySelector(`[data-message-id="${messageObject.id}"]`);
+        }
+
+        setLastRenderedMessageId(messageObject.id);
+
+        // キャッシュ内のdm会話データにも追加
+        const dmConversationCacheKey = getDmCacheKey('conversation', String(dmId));
+        const cachedPayload = getScreenDataCache(dmConversationCacheKey);
+        if (cachedPayload && Array.isArray(cachedPayload.dm) && cachedPayload.dm[0]) {
+            if (!Array.isArray(cachedPayload.dm[0].post)) {
+                cachedPayload.dm[0].post = [];
+            }
+            cachedPayload.dm[0].post.push(messageObject);
+            setScreenDataCache(dmConversationCacheKey, cachedPayload);
+        }
+
         const { error } = await api.rpc('append_to_dm_post', {
             dm_id_in: dmId,
             new_message_in: messageObject,
@@ -556,15 +579,22 @@ async function sendDirectMessage(dmId, files = []) {
 
         if (error) throw error;
 
-        invalidateDmCaches(dmId);
-        setMarkdownEditorValue(input, '');
-        await showDmConversation(dmId);
+        // リストキャッシュを破棄（次回一覧表示時に最新メッセージを反映）
+        deleteScreenDataCache(getDmCacheKey('list'));
     } catch (e) {
         console.error('DM送信エラー:', e);
+        if (optimisticEl) {
+            optimisticEl.classList.add('dm-message-send-error');
+            optimisticEl.title = '送信に失敗しました';
+        }
+        if (uploadedFileIds.length > 0) {
+            deleteFilesViaEdgeFunction(uploadedFileIds).catch(() => {});
+        }
         showAppAlert(`DMの送信に失敗しました: ${e.message || '不明なエラー'}`);
     } finally {
         if (input) input.disabled = false;
         if (sendButton) sendButton.disabled = false;
+        if (input) input.focus();
     }
 }
 

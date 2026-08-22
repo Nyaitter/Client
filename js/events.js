@@ -6,7 +6,7 @@
 
 import { api, apiRequest } from './api.js';
 import { DOM, openImageModal, closeImageModal } from './dom.js';
-import { getCurrentUser, getCurrentTimelineTab } from './state.js';
+import { getCurrentUser, getCurrentTimelineTab, getActiveDmId } from './state.js';
 import { router } from './router.js';
 import { clearRealtimeTimelineUpdate } from './modules/cache.js';
 import { switchTimelineTab } from './screens/timelineScreen.js';
@@ -263,16 +263,27 @@ function handleGlobalClick(e) {
     const dmEditBtn = target.closest('.edit-dm-msg-btn');
     if (dmEditBtn) {
         const container = dmEditBtn.closest('.dm-message-container');
-        openDmEditModal(window.location.hash.substring(4), container.dataset.messageId);
+        const activeHash = window.location.hash || '';
+        const dmId = activeHash.startsWith('#dm/') ? decodeURIComponent(activeHash.substring(4)) : getActiveDmId();
+        if (dmId && container?.dataset.messageId) {
+            import('./screens/dmScreen.js').then(({ showDmConversation }) => {
+                openDmEditModal(dmId, container.dataset.messageId, async () => {
+                    await showDmConversation(dmId);
+                });
+            });
+        }
         return;
     }
     const dmDeleteBtn = target.closest('.delete-dm-msg-btn');
     if (dmDeleteBtn) {
         const container = dmDeleteBtn.closest('.dm-message-container');
-        handleDeleteDmMessage(
-            window.location.hash.substring(4),
-            container.dataset.messageId,
-        );
+        const activeHash = window.location.hash || '';
+        const dmId = activeHash.startsWith('#dm/') ? decodeURIComponent(activeHash.substring(4)) : getActiveDmId();
+        if (dmId && container?.dataset.messageId) {
+            handleDeleteDmMessage(dmId, container.dataset.messageId, () => {
+                container.remove();
+            });
+        }
         return;
     }
 
