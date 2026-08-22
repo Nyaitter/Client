@@ -47,8 +47,17 @@ import {
     restoreScrollPosition,
     saveElementScrollPosition,
     restoreElementScrollPosition,
+    getSavedScrollTargetY,
 } from '../modules/scroll.js';
-import { escapeHTML, getNyaitterId, getUserIconUrl, showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
+import {
+    escapeHTML,
+    getNyaitterId,
+    getUserIconUrl,
+    showLoading,
+    showAppAlert,
+    showAppConfirm,
+    scheduleNextFrame,
+} from '../utils/helpers.js';
 
 let activeDmListTab = 'inbox';
 
@@ -94,6 +103,7 @@ function renderDmListItem(dm, unreadCount, currentUserId) {
         <article class="dm-list-item ${unreadCount > 0 ? 'is-unread' : ''}" data-action="open-dm" data-dm-id="${dmIdStr}">
             <div class="dm-list-item-avatar-wrap">
                 ${avatarHtml}
+                ${unreadCount > 0 ? `<span class="dm-avatar-unread-badge">${unreadCount}</span>` : ''}
             </div>
             <div class="dm-list-item-main">
                 <div class="dm-list-item-header">
@@ -604,7 +614,16 @@ export async function showDmConversation(dmId) {
                 saveElementScrollPosition(conversationView, `dm_${dm.id}`);
             }, { passive: true });
 
-            restoreElementScrollPosition(conversationView, `dm_${dm.id}`);
+            const savedY = getSavedScrollTargetY(`el:dm_${dm.id}`);
+            if (savedY > 0) {
+                restoreElementScrollPosition(conversationView, `dm_${dm.id}`);
+            } else {
+                scheduleNextFrame(() => {
+                    if (conversationView && conversationView.isConnected) {
+                        conversationView.scrollTop = conversationView.scrollHeight;
+                    }
+                });
+            }
         }
 
         setLastRenderedMessageId(posts.length > 0 ? posts[posts.length - 1].id : null);

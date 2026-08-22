@@ -40,6 +40,7 @@ import {
 } from './cache.js';
 import {
     escapeHTML,
+    getNyaitterId,
     getUserIconUrl,
     getSafeHttpUrl,
     getAttachmentImagePreviewUrl,
@@ -105,6 +106,11 @@ export async function renderDmMessage(msg, dmId = null) {
     const time = formatPostTimestamp(msg);
 
     if (sent) {
+        const readCount = Number(msg.read_count || 0);
+        const readStatusHtml = readCount > 0
+            ? `<span class="dm-message-read-status">既読${readCount > 1 ? ` ${readCount}` : ''}</span>`
+            : '';
+
         return `<div class="dm-message-container sent" data-message-id="${escapeHTML(msg.id)}">
             <div class="dm-message-wrapper">
                 <div class="dm-message-bubble-row">
@@ -116,6 +122,7 @@ export async function renderDmMessage(msg, dmId = null) {
                     <div class="dm-message"><div class="dm-message-content">${formattedContent}</div>${attachmentsHTML}</div>
                 </div>
                 <div class="dm-message-meta">
+                    ${readStatusHtml}
                     <span class="dm-message-time">${time}</span>
                 </div>
             </div>

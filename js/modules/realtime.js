@@ -167,15 +167,71 @@ export function handleRealtimeEvent(event) {
             const listItem = document.querySelector(
                 `.dm-list-item[data-dm-id="${CSS.escape(key)}"]`,
             );
-            const prefixEl = listItem?.querySelector('.dm-list-item-unread-prefix');
-            if (prefixEl) {
-                prefixEl.textContent = newCount > 0 ? `(${newCount}) ` : '';
+            if (listItem) {
+                if (newCount > 0) {
+                    listItem.classList.add('is-unread');
+                } else {
+                    listItem.classList.remove('is-unread');
+                }
+                const avatarWrap = listItem.querySelector('.dm-list-item-avatar-wrap');
+                if (avatarWrap) {
+                    let avatarBadge = avatarWrap.querySelector('.dm-avatar-unread-badge');
+                    if (newCount > 0) {
+                        if (!avatarBadge) {
+                            avatarBadge = document.createElement('span');
+                            avatarBadge.className = 'dm-avatar-unread-badge';
+                            avatarWrap.appendChild(avatarBadge);
+                        }
+                        avatarBadge.textContent = String(newCount);
+                    } else if (avatarBadge) {
+                        avatarBadge.remove();
+                    }
+                }
+                const header = listItem.querySelector('.dm-list-item-header');
+                if (header) {
+                    let badge = header.querySelector('.dm-list-item-unread-badge');
+                    if (newCount > 0) {
+                        if (!badge) {
+                            badge = document.createElement('span');
+                            badge.className = 'dm-list-item-unread-badge';
+                            header.appendChild(badge);
+                        }
+                        badge.textContent = String(newCount);
+                    } else if (badge) {
+                        badge.remove();
+                    }
+                }
             }
         } else {
             user.unreadDmTotal = Number(event.unread_count || 0);
         }
         markRealtimeSummaryFresh();
         void updateNavAndSidebars();
+    }
+
+    if (event.type === 'dm_read') {
+        const eventDmId = String(event.dm_id);
+        const activeDmId = getActiveDmId();
+        if (activeDmId && String(activeDmId) === eventDmId) {
+            const sentContainers = document.querySelectorAll('.dm-message-container.sent');
+            sentContainers.forEach((container) => {
+                const meta = container.querySelector('.dm-message-meta');
+                if (meta) {
+                    let readStatus = meta.querySelector('.dm-message-read-status');
+                    if (!readStatus) {
+                        readStatus = document.createElement('span');
+                        readStatus.className = 'dm-message-read-status';
+                        const timeEl = meta.querySelector('.dm-message-time');
+                        if (timeEl) {
+                            meta.insertBefore(readStatus, timeEl);
+                        } else {
+                            meta.appendChild(readStatus);
+                        }
+                    }
+                    readStatus.textContent = '既読';
+                }
+            });
+        }
     }
 }
 
