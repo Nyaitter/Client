@@ -361,6 +361,14 @@ export async function loadPostsWithPagination(container, type, options = {}) {
             if (!loaded) break;
             iteration += 1;
         }
+
+        // スクロール位置までページを読みだした後、追加で1ページを読み込む
+        if (
+            getCurrentPagination().hasMore &&
+            isActivePaginationLoader(container, trigger, options)
+        ) {
+            await loadMore({ cachedOnly: true });
+        }
     }
 
     return {
@@ -574,6 +582,14 @@ export async function loadUsersWithPagination(container, type, options = {}) {
             const loaded = await loadMore({ cachedOnly: true });
             if (!loaded) break;
             iteration += 1;
+        }
+
+        // スクロール位置までページを読みだした後、追加で1ページを読み込む
+        if (
+            getCurrentPagination().hasMore &&
+            isActivePaginationLoader(container, trigger, options)
+        ) {
+            await loadMore({ cachedOnly: true });
         }
     }
 

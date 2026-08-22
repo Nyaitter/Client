@@ -40,6 +40,14 @@ import { attachMarkdownContentEditor, getMarkdownEditorValue, setMarkdownEditorV
 import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { initTabGroup } from '../modules/tabSwipe.js';
 import { sendNotification } from '../modules/notifications.js';
+import { createViewportObserver } from '../utils/viewport.js';
+import {
+    getScrollRouteKey,
+    saveScrollPosition,
+    restoreScrollPosition,
+    saveElementScrollPosition,
+    restoreElementScrollPosition,
+} from '../modules/scroll.js';
 import { escapeHTML, getNyaitterId, getUserIconUrl, showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
 
 let activeDmListTab = 'inbox';
@@ -175,7 +183,14 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
                 }
             }
 
+            let listObserver = null;
+            const DM_LIST_PAGE_SIZE = 25;
+
             const renderListForTab = (tab) => {
+                if (listObserver) {
+                    listObserver.disconnect();
+                    listObserver = null;
+                }
                 activeDmListTab = tab;
                 const currentList = tab === 'requests' ? requestDms : inboxDms;
                 if (currentList.length === 0) {
@@ -193,13 +208,50 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
                         `;
                 } else {
                     const currentUserId = getCurrentUser().id;
-                    listItemsWrapper.innerHTML = currentList
-                        .map((dm) => {
-                            const unreadCount = unreadCountsMap.get(String(dm.id)) || 0;
-                            return renderDmListItem(dm, unreadCount, currentUserId);
-                        })
-                        .join('');
+                    let renderedCount = 0;
+
+                    const renderNextChunk = () => {
+                        const nextChunk = currentList.slice(renderedCount, renderedCount + DM_LIST_PAGE_SIZE);
+                        if (nextChunk.length === 0) return;
+                        const chunkHtml = nextChunk
+                            .map((dm) => {
+                                const unreadCount = unreadCountsMap.get(String(dm.id)) || 0;
+                                return renderDmListItem(dm, unreadCount, currentUserId);
+                            })
+                            .join('');
+                        renderedCount += nextChunk.length;
+
+                        const trigger = listItemsWrapper.querySelector('.dm-list-load-more');
+                        if (trigger) {
+                            trigger.insertAdjacentHTML('beforebegin', chunkHtml);
+                        } else {
+                            listItemsWrapper.insertAdjacentHTML('beforeend', chunkHtml);
+                        }
+
+                        const existingTrigger = listItemsWrapper.querySelector('.dm-list-load-more');
+                        if (renderedCount < currentList.length) {
+                            if (!existingTrigger) {
+                                const newTrigger = document.createElement('div');
+                                newTrigger.className = 'dm-list-load-more';
+                                listItemsWrapper.appendChild(newTrigger);
+                                listObserver = createViewportObserver((entries) => {
+                                    if (entries[0].isIntersecting) {
+                                        renderNextChunk();
+                                    }
+                                });
+                                listObserver.observe(newTrigger);
+                            }
+                        } else if (existingTrigger) {
+                            existingTrigger.remove();
+                            if (listObserver) listObserver.disconnect();
+                        }
+                    };
+
+                    listItemsWrapper.innerHTML = '';
+                    renderNextChunk();
                 }
+
+                restoreScrollPosition(getScrollRouteKey('#dm', tab));
             };
 
             initTabGroup({
@@ -208,6 +260,7 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
                 contentContainer: listItemsWrapper,
                 getTabKey: (btn) => btn.dataset.dmTab,
                 onTabChange: (tab) => {
+                    saveScrollPosition(getScrollRouteKey('#dm', activeDmListTab));
                     renderListForTab(tab);
                 },
                 onRefresh: async () => {
@@ -347,8 +400,12 @@ export async function showDmConversation(dmId) {
             if (users) cacheUsers(users);
         }
 
+        const DM_CONVERSATION_PAGE_SIZE = 30;
+        const initialSlice = posts.slice(Math.max(0, posts.length - DM_CONVERSATION_PAGE_SIZE));
+        let loadedCount = initialSlice.length;
+
         const messagesHTMLArray = await Promise.all(
-            posts.slice().reverse().map((msg) => renderDmMessage(msg, dm.id)),
+            initialSlice.slice().reverse().map((msg) => renderDmMessage(msg, dm.id)),
         );
         const messagesHTML = messagesHTMLArray.join('');
 
@@ -449,32 +506,26 @@ export async function showDmConversation(dmId) {
                     } else if (file.type.startsWith('audio/')) {
                         const reader = new FileReader();
                         reader.onload = (e) => {
-                            previewItem.innerHTML = `<div style="display:flex; align-items:center; gap:0.5rem;"><audio src="${e.target.result}" controls style="height: 30px; width: 200px;"></audio><button class="file-preview-remove" data-index="${index}" style="position:relative; top:0; right:0;">×</button></div>`;
+                            previewItem.innerHTML = `<audio src="${e.target.result}" controls></audio><button class="file-preview-remove" data-index="${index}">×</button>`;
                         };
                         reader.readAsDataURL(file);
                     } else {
-                        previewItem.innerHTML = `<span>📄 ${escapeHTML(file.name)}</span><button class="file-preview-remove" data-index="${index}">×</button>`;
+                        previewItem.innerHTML = `<div class="file-icon-placeholder">${ICONS.attachment} <span>${escapeHTML(file.name)}</span></div><button class="file-preview-remove" data-index="${index}">×</button>`;
                     }
                     previewContainer.appendChild(previewItem);
                 });
             });
 
             previewContainer?.addEventListener('click', (e) => {
-                if (e.target.classList.contains('file-preview-remove')) {
-                    const indexToRemove = parseInt(e.target.dataset.index, 10);
-                    dmSelectedFiles.splice(indexToRemove, 1);
-                    const newFiles = new DataTransfer();
-                    dmSelectedFiles.forEach((file) => newFiles.items.add(file));
-                    if (fileInput) {
-                        fileInput.files = newFiles.files;
-                        fileInput.dispatchEvent(new Event('change'));
-                    }
+                const removeBtn = e.target.closest('.file-preview-remove');
+                if (removeBtn) {
+                    const index = parseInt(removeBtn.dataset.index, 10);
+                    dmSelectedFiles.splice(index, 1);
+                    removeBtn.parentElement.remove();
                 }
             });
 
             const sendMessageAction = async () => {
-                const text = getMarkdownEditorValue(messageInput).trim();
-                if (!text && dmSelectedFiles.length === 0) return;
                 const filesToSend = [...dmSelectedFiles];
                 dmSelectedFiles = [];
                 if (fileInput) fileInput.value = '';
@@ -491,6 +542,69 @@ export async function showDmConversation(dmId) {
             document.getElementById('send-dm-btn')?.addEventListener('click', () => {
                 void sendMessageAction();
             });
+        }
+
+        const conversationView = container.querySelector('.dm-conversation-view');
+        if (conversationView) {
+            // 過去メッセージのページネーションローダー
+            if (posts.length > loadedCount) {
+                const loadMoreContainer = document.createElement('div');
+                loadMoreContainer.className = 'dm-load-more-container';
+                const loadMoreBtn = document.createElement('button');
+                loadMoreBtn.type = 'button';
+                loadMoreBtn.className = 'dm-load-more-btn';
+                loadMoreBtn.textContent = '過去のメッセージを読み込む';
+                loadMoreContainer.appendChild(loadMoreBtn);
+                conversationView.appendChild(loadMoreContainer);
+
+                let isLoadingMoreHistory = false;
+                const loadMoreHistory = async () => {
+                    if (isLoadingMoreHistory || loadedCount >= posts.length) return;
+                    isLoadingMoreHistory = true;
+                    loadMoreBtn.textContent = '読み込み中...';
+
+                    try {
+                        const nextSlice = posts.slice(
+                            Math.max(0, posts.length - loadedCount - DM_CONVERSATION_PAGE_SIZE),
+                            posts.length - loadedCount,
+                        );
+                        if (nextSlice.length > 0) {
+                            const nextHtmlArray = await Promise.all(
+                                nextSlice.slice().reverse().map((msg) => renderDmMessage(msg, dm.id)),
+                            );
+                            loadMoreContainer.insertAdjacentHTML('beforebegin', nextHtmlArray.join(''));
+                            loadedCount += nextSlice.length;
+                            initializeDmMessageClamps(conversationView);
+                        }
+                        if (loadedCount >= posts.length) {
+                            loadMoreContainer.remove();
+                        } else {
+                            loadMoreBtn.textContent = '過去のメッセージを読み込む';
+                        }
+                    } catch (err) {
+                        console.error('過去メッセージの読み込みエラー:', err);
+                        loadMoreBtn.textContent = '読み込みに失敗しました (再試行)';
+                    } finally {
+                        isLoadingMoreHistory = false;
+                    }
+                };
+
+                loadMoreBtn.addEventListener('click', () => void loadMoreHistory());
+
+                const historyObserver = createViewportObserver((entries) => {
+                    if (entries[0].isIntersecting) {
+                        void loadMoreHistory();
+                    }
+                });
+                historyObserver.observe(loadMoreContainer);
+            }
+
+            // スクロール位置の保存と復元
+            conversationView.addEventListener('scroll', () => {
+                saveElementScrollPosition(conversationView, `dm_${dm.id}`);
+            }, { passive: true });
+
+            restoreElementScrollPosition(conversationView, `dm_${dm.id}`);
         }
 
         setLastRenderedMessageId(posts.length > 0 ? posts[posts.length - 1].id : null);

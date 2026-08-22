@@ -82,24 +82,34 @@ background-color: var(--primary-hover-color);
 }
 
 .settings-primary-button,
+.settings-secondary-button,
 .settings-danger-button {
 padding: 0.6rem 1.2rem;
-    border: none;
     border-radius: 9999px;
     font-weight: 700;
     cursor: pointer;
     transition:
         background-color 0.2s,
+        border-color 0.2s,
+        color 0.2s,
         opacity 0.2s;
 }
 
 .settings-primary-button {
-background-color: var(--primary-color);
+border: none;
+    background-color: var(--primary-color);
     color: white;
 }
 
+.settings-secondary-button {
+border: 1px solid var(--border-color);
+    background: none;
+    color: var(--secondary-text-color);
+}
+
 .settings-danger-button {
-border-color: var(--like-color);
+border: none;
+    border-color: var(--like-color);
     color: var(--like-color);
 }
 
@@ -107,11 +117,18 @@ border-color: var(--like-color);
 background-color: var(--primary-hover-color);
 }
 
+.settings-secondary-button:hover:not(:disabled) {
+background-color: var(--hover-bg-color, rgba(0, 0, 0, 0.05));
+    border-color: var(--secondary-text-color);
+    color: var(--text-color);
+}
+
 .settings-danger-button:hover:not(:disabled) {
 background: var(--danger-color);
 }
 
-.settings-primary-button:disabled {
+.settings-primary-button:disabled,
+.settings-secondary-button:disabled {
 cursor: not-allowed;
     opacity: 0.6;
 }
@@ -889,4 +906,9 @@ overflow: hidden;
     border: 1px solid var(--border-color);
     color: var(--secondary-text-color);
     font-size: 1rem;
+}
+
+#reset-home-tabs-btn {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
 }

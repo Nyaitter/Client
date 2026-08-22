@@ -426,11 +426,21 @@ margin-bottom: auto;
 }
 
 .post[data-clamp-content] .post-content {
-max-height: 320px;
+max-height: 240px;
     overflow: hidden;
 }
 
 .post[data-clamp-content] .post-content.post-content-expanded {
+max-height: none;
+}
+
+.nested-repost-container .post[data-clamp-content] .post-content,
+.nested-repost-container .post-content {
+max-height: 180px;
+    overflow: hidden;
+}
+
+.nested-repost-container .post[data-clamp-content] .post-content.post-content-expanded {
 max-height: none;
 }
 
@@ -681,7 +691,9 @@ box-sizing: border-box;
     padding: 0;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.94);
+    background: rgba(0, 0, 0, 0.72);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     cursor: zoom-out;
     z-index: 2100;
 }
@@ -842,6 +854,17 @@ border: none;
 
 .nested-repost-container .post-actions {
 display: none;
+}
+
+.quoting-post-preview {
+max-height: 220px;
+    overflow-y: auto;
+    margin-top: 0.5rem;
+}
+
+.quoting-post-preview .post-content {
+max-height: 140px;
+    overflow: hidden;
 }
 
 .deleted-post-container {

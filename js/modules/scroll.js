@@ -18,6 +18,9 @@ export function getScrollRouteKey(hash = window.location.hash || '#', tab = null
         const timelineTab = tab || getCurrentTimelineTab() || 'all';
         return `${userScope}:#:${timelineTab}`;
     }
+    if (normalizedHash === '#dm' && tab) {
+        return `${userScope}:#dm:${tab}`;
+    }
     return `${userScope}:${normalizedHash}`;
 }
 
@@ -40,6 +43,39 @@ export function getSavedScrollTargetY(routeKey = getScrollRouteKey()) {
     const value = Number(positions.get(routeKey));
     if (!Number.isFinite(value) || value <= 0) return 0;
     return Math.max(0, Math.floor(value));
+}
+
+export function saveElementScrollPosition(element, key) {
+    if (!element || !key) return;
+    const routeKey = `el:${key}`;
+    const currentY = Math.max(0, Math.floor(Math.abs(element.scrollTop || 0)));
+    const positions = getSavedScrollPositions();
+    if (currentY <= 0) {
+        positions.delete(routeKey);
+        savedScrollMemory.delete(routeKey);
+    } else {
+        positions.set(routeKey, currentY);
+        savedScrollMemory.set(routeKey, currentY);
+    }
+    try {
+        sessionStorage.setItem(
+            SCROLL_STORAGE_KEY,
+            JSON.stringify(Object.fromEntries(positions)),
+        );
+    } catch (_) {}
+}
+
+export function restoreElementScrollPosition(element, key) {
+    if (!element || !key) return;
+    const routeKey = `el:${key}`;
+    const targetY = getSavedScrollTargetY(routeKey);
+    if (targetY > 0) {
+        scheduleNextFrame(() => {
+            if (element && element.isConnected) {
+                element.scrollTop = targetY;
+            }
+        });
+    }
 }
 
 export async function restoreCachedPagesUntilScrollPosition(
@@ -68,6 +104,11 @@ export async function restoreCachedPagesUntilScrollPosition(
         pageNumber += 1;
         await new Promise((resolve) => setTimeout(resolve, checkInterval));
     }
+
+    // スクロール位置までページを読みだした後、追加で1ページを読み込む
+    try {
+        await fetchFn(pageNumber, { fromCacheOnly: true });
+    } catch (_) {}
 }
 
 export function clearSavedScrollPosition(routeKey = getScrollRouteKey()) {

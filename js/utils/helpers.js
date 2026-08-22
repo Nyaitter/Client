@@ -474,7 +474,7 @@ export function appendUrlCard(container, content, contextOptions = {}) {
             const nestedPostEl = await contextOptions.renderPost(
                 card.post,
                 card.post.author || card.post.user,
-                { ...(contextOptions.options || {}), isNested: true },
+                { ...(contextOptions.options || {}), isNested: true, clampHeight: true },
             );
             if (nestedPostEl) {
                 nestedContainer.appendChild(nestedPostEl);
