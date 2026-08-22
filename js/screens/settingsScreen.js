@@ -387,6 +387,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         </select>
                         <p class="settings-help-text">他のユーザーからDMに招待されたときの動作を設定します。</p>
                     </fieldset>
+                    ${Boolean(getCurrentUser()?.is_imposter || getCurrentUser()?.auth_provider === 'imposter' || getCurrentUser()?.settings?.imposter?.parent_id) ? '' : `
                     <fieldset class="settings-login-security"><legend>ログインのセーフティ</legend>
                         <label><input type="checkbox" id="setting-reject-unknown-login" ${(getCurrentUser().settings?.reject_unknown_login ?? true) ? 'checked' : ''}> 不明な場所からのログインを拒否</label>
                         <p class="settings-help-text">有効にすると、初めて利用するIPアドレスからのログインには、ログイン済み端末での許可が必要です。</p>
@@ -396,17 +397,20 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         <p class="settings-help-text">アカウントに紐づけるログイン方法を管理します。連携したすべての方法で同一アカウントにログインできます。</p>
                         <div id="settings-auth-providers-list" class="settings-auth-providers-list" aria-live="polite"></div>
                     </section>
+                    `}
                     <section class="settings-verification-application" aria-labelledby="settings-verification-title">
                         <h4 id="settings-verification-title">認証</h4>
                         <p class="settings-help-text">認証済みアカウントにはプロフィール上で認証バッジが表示されます。申請は担当管理者が審査します。</p>
                         <button type="button" id="open-verification-application-btn" class="settings-bot-secondary-button" ${getCurrentUser().verify ? 'disabled' : ''}>${getCurrentUser().verify ? '認証済み' : '認証を申請する'}</button>
                         <p id="verification-application-status" class="settings-help-text hidden" role="status"></p>
                     </section>
+                    ${Boolean(getCurrentUser()?.is_imposter || getCurrentUser()?.auth_provider === 'imposter' || getCurrentUser()?.settings?.imposter?.parent_id) ? '' : `
                     <section class="settings-sessions" aria-labelledby="settings-sessions-title">
                         <h4 id="settings-sessions-title">セッション</h4>
                         <p class="settings-help-text">有効なログイン端末を管理できます。IPアドレスは安全のため一部のみ表示されます。</p>
                         <div id="settings-sessions-list" class="settings-sessions-list" aria-live="polite"></div>
                     </section>
+                    `}
                     <div class="settings-danger-zone"></div>
                 </section>
                 <section class="settings-group-panel" data-settings-panel="ui" hidden>

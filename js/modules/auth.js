@@ -51,6 +51,12 @@ window.addEventListener('nyaitter:login-success', () => {
 });
 
 export async function handleLogout(onLogoutComplete) {
+    const currentUser = getCurrentUser();
+    if (currentUser?.is_imposter || currentUser?.auth_provider === 'imposter' || currentUser?.settings?.imposter?.parent_id) {
+        await showAppAlert('インポスターアカウントから直接ログアウトすることはできません。アカウント切替をご利用ください。');
+        await openAccountSwitcherModal();
+        return;
+    }
     try {
         await apiRequest('/server/auth/logout', { method: 'POST' });
         setCurrentUser(null);
@@ -279,18 +285,24 @@ export async function openAccountSwitcherModal() {
             ${
                 accounts.length > 0
                     ? accounts
-                          .map(
-                              (acc) => `
-                    <li class="account-switcher-item${Number(acc.id) === currentId ? ' active' : ''}" data-id="${escapeHTML(String(acc.id))}" data-automatic-imposter="${acc.automatic_imposter ? 'true' : 'false'}" data-imposter="${acc.is_imposter ? 'true' : 'false'}">
+                          .map((acc) => {
+                              const isAccImposter = Boolean(
+                                  acc.is_imposter ||
+                                  acc.auth_provider === 'imposter' ||
+                                  acc.account_provider === 'imposter' ||
+                                  acc.settings?.imposter?.parent_id
+                              );
+                              return `
+                    <li class="account-switcher-item${Number(acc.id) === currentId ? ' active' : ''}" data-id="${escapeHTML(String(acc.id))}" data-automatic-imposter="${acc.automatic_imposter ? 'true' : 'false'}" data-imposter="${isAccImposter ? 'true' : 'false'}">
                         <span class="switcher-user-info">
                             <img class="switcher-user-icon" src="${escapeHTML(getUserIconUrl(acc))}" alt="${escapeHTML(acc.name || '')}">
                             <span>${getEmoji(escapeHTML(acc.name || '不明なユーザー'))}</span>
                             <span style="color:var(--secondary-text-color); font-size:0.95em;">${formatNyaitterId(acc)}</span>
-                            ${acc.is_imposter ? '<span class="settings-session-current">インポスター</span>' : ''}
+                            ${isAccImposter ? '<span class="settings-session-current">インポスター</span>' : ''}
                         </span>
-                        ${acc.automatic_imposter || acc.is_imposter ? '' : '<button type="button" class="switcher-delete-btn" title="この端末からアカウントを解除">×</button>'}
-                    </li>`,
-                          )
+                        ${acc.automatic_imposter || isAccImposter ? '' : '<button type="button" class="switcher-delete-btn" title="この端末からアカウントを解除">×</button>'}
+                    </li>`;
+                          })
                           .join('')
                     : '<li class="account-switcher-empty">アカウントがありません。</li>'
             }
