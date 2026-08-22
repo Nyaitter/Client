@@ -1,6 +1,6 @@
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
-import { api } from '../api.js';
+import { apiRequest } from '../api.js';
 import { initTabGroup } from '../modules/tabSwipe.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
 
@@ -47,12 +47,16 @@ export async function showExploreScreen(showScreenFn) {
     const trendsContainer = document.getElementById('explore-trends-container');
 
     try {
-        const { data: trends, error } = await api.rpc('get_trending_hashtags');
+        const { data: responseData, error } = await apiRequest('/server/api/posts/trending-hashtags?limit=30');
         if (error) throw error;
 
-        const allTrends = Array.isArray(trends) ? trends : [];
-        const hashtagTrends = allTrends.filter((item) => String(item.tag_name || '').startsWith('#'));
-        const tagTrends = allTrends.filter((item) => !String(item.tag_name || '').startsWith('#'));
+        const allTrends = Array.isArray(responseData?.trends) ? responseData.trends : (Array.isArray(responseData) ? responseData : []);
+        const hashtagTrends = Array.isArray(responseData?.hashtags) && responseData.hashtags.length > 0
+            ? responseData.hashtags
+            : allTrends.filter((item) => String(item.tag_name || '').startsWith('#'));
+        const tagTrends = Array.isArray(responseData?.tags) && responseData.tags.length > 0
+            ? responseData.tags
+            : allTrends.filter((item) => !String(item.tag_name || '').startsWith('#'));
 
         const renderTrendsForTab = (tab) => {
             activeExploreTab = tab;
