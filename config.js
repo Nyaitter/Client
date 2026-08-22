@@ -31,11 +31,11 @@
             },
             {
                 name: 'サーバー(Github)',
-                url: 'https://github.com/nyantorusabu/Server',
+                url: 'https://github.com/Nyaitter/Server',
             },
             {
                 name: 'クライアント(Github)',
-                url: 'https://github.com/nyantorusabu/Client',
+                url: 'https://github.com/Nyaitter/Client',
             },
         ],
 
