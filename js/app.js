@@ -35,6 +35,7 @@ export async function loadServerClientLimits() {
     try {
         const { data, error } = await apiRequest('/server/api/status');
         if (error || !data?.client_limits) {
+            DOM.loadingOverlay?.classList.add('hidden');
             DOM.connectionErrorOverlay?.classList.remove('hidden');
             return false;
         }
@@ -43,6 +44,7 @@ export async function loadServerClientLimits() {
         return true;
     } catch (err) {
         console.error('[startup] status request failed:', err);
+        DOM.loadingOverlay?.classList.add('hidden');
         DOM.connectionErrorOverlay?.classList.remove('hidden');
         return false;
     }
@@ -108,15 +110,24 @@ export function initApp() {
 
     // ── Primary startup sequence ─────────────────────────────────────────────
     void (async () => {
-        // 1. Confirm server is reachable and load input limits.
-        const ok = await loadServerClientLimits();
-        if (!ok) return;
+        try {
+            // 1. Confirm server is reachable and load input limits.
+            const ok = await loadServerClientLimits();
+            if (!ok) {
+                DOM.loadingOverlay?.classList.add('hidden');
+                return;
+            }
 
-        // 2. If app was opened via a push notification, handle deep-link first.
-        const handledPushOpen = await handlePendingPushNotificationOpen();
-        if (!handledPushOpen) {
-            // 3. Otherwise perform a normal session check → router().
-            await checkSession();
+            // 2. If app was opened via a push notification, handle deep-link first.
+            const handledPushOpen = await handlePendingPushNotificationOpen();
+            if (!handledPushOpen) {
+                // 3. Otherwise perform a normal session check → router().
+                await checkSession();
+            }
+        } catch (err) {
+            console.error('[startup] app initialization failed:', err);
+            DOM.loadingOverlay?.classList.add('hidden');
+            DOM.connectionErrorOverlay?.classList.remove('hidden');
         }
     })();
 }
