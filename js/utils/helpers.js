@@ -519,14 +519,14 @@ export function getUserIconUrl(user) {
     }
 
     const userId = Number(user?.id);
-    const scratchId = typeof user?.scid === 'string' ? user.scid.trim() : '';
-    const fallbackUrl =
-        scratchId && Number.isSafeInteger(userId) && userId > 0
-            ? globalThis.NyaitterClientConfig?.apiUrl?.(
-                  `/server/api/users/${encodeURIComponent(String(userId))}/icon`,
-              )
-            : null;
-    return fallbackUrl || '/emoji/neko.svg';
+    if (Number.isSafeInteger(userId) && userId > 0) {
+        const fallbackUrl = globalThis.NyaitterClientConfig?.apiUrl?.(
+            `/server/api/users/${encodeURIComponent(String(userId))}/icon`,
+        );
+        return fallbackUrl || `/server/api/users/${encodeURIComponent(String(userId))}/icon`;
+    }
+
+    return '/emoji/neko.svg';
 }
 
 export function getUserHeaderImageUrl(user) {
