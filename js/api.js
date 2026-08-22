@@ -35,6 +35,9 @@ export const api = (() => {
         data: key ? result.data?.[key] : result.data,
         error: result.error,
     });
+    const request = async (path, options, key) =>
+        unwrap(await apiRequest(path, options), key);
+
     const query = (table) => {
         const state = {
             filters: [],
@@ -43,8 +46,8 @@ export const api = (() => {
             single: false,
             limit: null,
         };
-        const request = async (path, options, key) => {
-            const res = unwrap(await apiRequest(path, options), key);
+        const queryRequest = async (path, options, key) => {
+            const res = await request(path, options, key);
             if (state.single && Array.isArray(res.data)) {
                 res.data = res.data[0] || null;
             }
@@ -134,20 +137,20 @@ export const api = (() => {
             const id = filter('id', 'eq');
             if (table === 'user') {
                 if (state.action === 'update')
-                    return request(
+                    return queryRequest(
                         `/server/api/users/${id || 'me'}`,
                         { method: 'PUT', body: state.values },
                         'user',
                     );
                 const inIds = filter('id', 'in');
                 if (inIds)
-                    return request(
+                    return queryRequest(
                         `/server/api/users?ids=${inIds.join(',')}`,
                         {},
                         'users',
                     );
                 if (id || filter('uuid', 'eq'))
-                    return request(
+                    return queryRequest(
                         id ? `/server/api/users/${id}` : '/server/auth/me',
                         {},
                         id ? 'user' : 'user',
@@ -180,7 +183,7 @@ export const api = (() => {
                 const path = query
                     ? `search?${searchParams.toString()}`
                     : 'recommended';
-                return request(`/server/api/users/${path}`, {}, 'users');
+                return queryRequest(`/server/api/users/${path}`, {}, 'users');
             }
             if (
                 table === 'post' ||
@@ -188,18 +191,18 @@ export const api = (() => {
                 table === 'post_profile'
             ) {
                 if (state.action === 'update')
-                    return request(
+                    return queryRequest(
                         `/server/api/posts/${id}`,
                         { method: 'PUT', body: state.values },
                         'post',
                     );
                 if (state.action === 'delete')
-                    return request(`/server/api/posts/${id}`, {
+                    return queryRequest(`/server/api/posts/${id}`, {
                         method: 'DELETE',
                     });
-                if (id) return request(`/server/api/posts/${id}`, {}, 'post');
+                if (id) return queryRequest(`/server/api/posts/${id}`, {}, 'post');
                 const userId = filter('userid') || filter('userId');
-                return request(
+                return queryRequest(
                     userId
                         ? `/server/api/users/${userId}/posts?limit=${state.limit || 30}`
                         : `/server/api/posts?limit=${state.limit || 30}`,
@@ -209,22 +212,22 @@ export const api = (() => {
             }
             if (table === 'dm') {
                 if (state.action === 'insert')
-                    return request(
+                    return queryRequest(
                         '/server/api/dm',
                         { method: 'POST', body: state.values },
                         'dm',
                     );
                 if (state.action === 'update')
-                    return request(
+                    return queryRequest(
                         `/server/api/dm/${id}`,
                         { method: 'PUT', body: state.values },
                         'dm',
                     );
                 if (state.action === 'delete')
-                    return request(`/server/api/dm/${id}`, {
+                    return queryRequest(`/server/api/dm/${id}`, {
                         method: 'DELETE',
                     });
-                return request(
+                return queryRequest(
                     id ? `/server/api/dm/${id}` : '/server/api/dm',
                     {},
                     'dm',
