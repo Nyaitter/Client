@@ -56,24 +56,43 @@ export function getTabKeyFromButton(button) {
  */
 export function scrollTabIntoCenter(tabButton) {
     if (!tabButton || !(tabButton instanceof Element)) return;
-    const tabContainer = tabButton.closest(
-        '.timeline-tabs, .timeline-tabs-container, #profile-tabs, #profile-sub-tabs-container, .profile-sub-tabs, .dm-tabs-container, .group-ui-manage-tabs, .group-ui-post-tabs'
-    ) || tabButton.parentElement;
 
-    if (!tabContainer) return;
+    // Traverse up to find the actual horizontally scrollable container
+    let container = tabButton.parentElement;
+    while (container && container !== document.body && container !== document.documentElement) {
+        const style = window.getComputedStyle(container);
+        const overflowX = style.overflowX;
+        const hasScrollableOverflow = overflowX === 'auto' || overflowX === 'scroll';
+        if (hasScrollableOverflow || container.scrollWidth > container.clientWidth + 2) {
+            if (container.clientWidth > 0) break;
+        }
+        container = container.parentElement;
+    }
 
-    const containerWidth = tabContainer.clientWidth;
-    const buttonLeft = tabButton.offsetLeft;
-    const buttonWidth = tabButton.offsetWidth;
-    const targetScrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
+    if (!container || container === document.body || container === document.documentElement) {
+        container = tabButton.closest(
+            '.timeline-tabs-sticky-container, .timeline-tabs, #profile-tabs, #profile-sub-tabs-container, .profile-sub-tabs, .dm-tabs-container, .group-ui-post-tabs, .group-ui-manage-tabs, .settings-group-list'
+        ) || tabButton.parentElement;
+    }
+
+    if (!container) return;
+
+    // Calculate accurate position of button relative to scroll container
+    const buttonRect = tabButton.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const relativeLeft = buttonRect.left - containerRect.left + container.scrollLeft;
+
+    const containerWidth = container.clientWidth;
+    const buttonWidth = tabButton.offsetWidth || buttonRect.width;
+    const targetScrollLeft = relativeLeft - (containerWidth / 2) + (buttonWidth / 2);
 
     try {
-        tabContainer.scrollTo({
+        container.scrollTo({
             left: Math.max(0, targetScrollLeft),
             behavior: 'smooth',
         });
     } catch (_) {
-        tabContainer.scrollLeft = Math.max(0, targetScrollLeft);
+        container.scrollLeft = Math.max(0, targetScrollLeft);
     }
 }
 
