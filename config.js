@@ -37,6 +37,10 @@
                 name: 'クライアント(Github)',
                 url: 'https://github.com/nyantorusabu/Client',
             },
+            {
+                name: 'ステータス',
+                url: 'https://stats.uptimerobot.com/H09ggXwBKe',
+            },
         ],
 
         // 右サイドバーに表示するリンクです。
@@ -49,13 +53,17 @@
                 name: 'GitHub',
                 url: 'https://github.com/Nyaitter',
             },
+            {
+                name: 'ステータス',
+                url: 'https://stats.uptimerobot.com/H09ggXwBKe',
+            },
         ],
 
         // Cloudflare Turnstileのサイトキーです（例: '0x4AAAAA...'）。
         // 空文字列ならログインモーダルのTurnstileチャレンジは表示されません。
         // サーバー側（TURNSTILE_SECRET_KEY または turnstile.secret）でも設定されている場合のみ、
         // ログインモーダルの認証コード取得にチャレンジ完了が必須になります。
-        turnstileSiteKey: '',
+        turnstileSiteKey: '0x4AAAAAAEVcjtnn1xqNSl6-',
     };
 
     function normalizeEndpoint(value) {
