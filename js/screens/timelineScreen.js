@@ -19,7 +19,14 @@ import { setupTimelinePullToRefresh } from '../modules/theme.js';
 import { loadPostsWithPagination } from '../modules/pagination.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
 import { apiRequest } from '../api.js';
-import { saveScrollPosition } from '../modules/scroll.js';
+import {
+    saveScrollPosition,
+    beginScrollRouteTransition,
+    restoreScrollPosition,
+    getScrollRouteKey,
+    clearSavedScrollPosition,
+} from '../modules/scroll.js';
+import { getSavedHomeTabs } from './settingsScreen.js';
 
 export const LAST_TIMELINE_TAB_KEY = 'nyaitter_last_timeline_tab';
 
@@ -91,17 +98,26 @@ export async function switchTimelineTab(
     { forceRefresh = false, resetScroll = false } = {},
 ) {
     if (tab === 'following' && !getCurrentUser()) return;
-    const groupId = parseGroupTimelineTab(tab);
+    const previousTab = getCurrentTimelineTab();
+    const previousRouteKey = getScrollRouteKey('#', previousTab);
+    const targetRouteKey = getScrollRouteKey('#', tab);
+
+    // 現在のタブのスクロール位置を保存して遷移開始
+    saveScrollPosition(previousRouteKey);
+    beginScrollRouteTransition();
+
     if (resetScroll) {
+        clearSavedScrollPosition(targetRouteKey);
         window.scrollTo({ left: 0, top: 0, behavior: 'auto' });
-        saveScrollPosition();
     }
+
     setIsLoadingMore(false);
     setCurrentTimelineTab(tab);
     saveLastTimelineTab(tab);
     document
         .querySelectorAll('.timeline-tab-button')
         .forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab));
+    const groupId = parseGroupTimelineTab(tab);
     const groupName = groupId
         ? [...document.querySelectorAll('.timeline-tab-button')]
             .find((button) => button.dataset.tab === tab)
@@ -118,12 +134,16 @@ export async function switchTimelineTab(
             mode: getGroupTimelineMode(groupId),
             pageCache,
         });
-        return;
+    } else {
+        await loadPostsWithPagination(DOM.timeline, 'timeline', {
+            tab,
+            pageCache,
+        });
     }
-    await loadPostsWithPagination(DOM.timeline, 'timeline', {
-        tab,
-        pageCache,
-    });
+
+    if (!resetScroll) {
+        restoreScrollPosition(targetRouteKey);
+    }
 }
 
 export async function showMainScreen(showScreenFn) {
@@ -144,6 +164,8 @@ export async function showMainScreen(showScreenFn) {
     if (tabsContainer) {
         let joinedGroups = [];
         let homeTabLimit = 0;
+        const savedTabs = getSavedHomeTabs();
+
         if (getCurrentUser()) {
             try {
                 const { data, error } = await apiRequest('/server/api/groups/mine?limit=200');
@@ -153,13 +175,26 @@ export async function showMainScreen(showScreenFn) {
                 }
             } catch (_) {}
             const visibleGroups = homeTabLimit > 0 ? joinedGroups.slice(0, homeTabLimit) : joinedGroups;
-            tabsContainer.innerHTML = `
-                <button class="timeline-tab-button" data-tab="all">すべて</button>
-                <button class="timeline-tab-button" data-tab="foryou">おすすめ</button>
-                <button class="timeline-tab-button" data-tab="following">フォロー中</button>
-                <button class="timeline-tab-button" data-tab="announce">お知らせ</button>
-                ${visibleGroups.map((group) => `<button class="timeline-tab-button group-timeline-tab" data-tab="group:${escapeHTML(String(group.id))}" title="${escapeHTML(group.name || 'グループ')}" data-group-id="${escapeHTML(String(group.id))}"><span>${escapeHTML(group.name || '無題のグループ')}</span></button>`).join('')}
-            `;
+
+            const tabButtonsHTML = [];
+            savedTabs.forEach((tabKey) => {
+                if (tabKey === 'all') {
+                    tabButtonsHTML.push('<button class="timeline-tab-button" data-tab="all">すべて</button>');
+                } else if (tabKey === 'foryou') {
+                    tabButtonsHTML.push('<button class="timeline-tab-button" data-tab="foryou">おすすめ</button>');
+                } else if (tabKey === 'following') {
+                    tabButtonsHTML.push('<button class="timeline-tab-button" data-tab="following">フォロー中</button>');
+                } else if (tabKey === 'announce') {
+                    tabButtonsHTML.push('<button class="timeline-tab-button" data-tab="announce">お知らせ</button>');
+                } else if (tabKey === 'groups') {
+                    visibleGroups.forEach((group) => {
+                        tabButtonsHTML.push(`<button class="timeline-tab-button group-timeline-tab" data-tab="group:${escapeHTML(String(group.id))}" title="${escapeHTML(group.name || 'グループ')}" data-group-id="${escapeHTML(String(group.id))}"><span>${escapeHTML(group.name || '無題のグループ')}</span></button>`);
+                    });
+                }
+            });
+
+            tabsContainer.innerHTML = tabButtonsHTML.join('');
+
             tabsContainer.querySelectorAll('.group-timeline-tab').forEach((button) => {
                 const groupId = button.dataset.groupId;
                 let longPressTimer = null;
@@ -176,14 +211,25 @@ export async function showMainScreen(showScreenFn) {
                     longPressTimer = null;
                 }, { passive: true }));
             });
+
             const restoredTab = getLastTimelineTab();
-            setCurrentTimelineTab(parseGroupTimelineTab(restoredTab) && !visibleGroups.some((group) => `group:${group.id}` === restoredTab) ? 'all' : restoredTab);
+            const renderedTabs = Array.from(tabsContainer.querySelectorAll('.timeline-tab-button')).map((b) => b.dataset.tab);
+            const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'all');
+            setCurrentTimelineTab(initialTab);
         } else {
-            tabsContainer.innerHTML = `
-                <button class="timeline-tab-button" data-tab="all">すべて</button>
-                <button class="timeline-tab-button" data-tab="announce">お知らせ</button>
-            `;
-            setCurrentTimelineTab(getLastTimelineTab());
+            const guestButtons = [];
+            savedTabs.forEach((tabKey) => {
+                if (tabKey === 'all') {
+                    guestButtons.push('<button class="timeline-tab-button" data-tab="all">すべて</button>');
+                } else if (tabKey === 'announce') {
+                    guestButtons.push('<button class="timeline-tab-button" data-tab="announce">お知らせ</button>');
+                }
+            });
+            tabsContainer.innerHTML = guestButtons.length > 0 ? guestButtons.join('') : '<button class="timeline-tab-button" data-tab="all">すべて</button>';
+            const renderedTabs = Array.from(tabsContainer.querySelectorAll('.timeline-tab-button')).map((b) => b.dataset.tab);
+            const restoredTab = getLastTimelineTab();
+            const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'all');
+            setCurrentTimelineTab(initialTab);
         }
     }
 

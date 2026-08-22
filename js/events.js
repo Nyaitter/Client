@@ -413,10 +413,11 @@ function handleGlobalClick(e) {
     // ── Timeline tab buttons ──────────────────────────────────────────────
     const timelineTab = target.closest('.timeline-tab-button');
     if (timelineTab) {
+        const isCurrentActive = timelineTab.classList.contains('active') || timelineTab.dataset.tab === getCurrentTimelineTab();
         clearRealtimeTimelineUpdate();
         void switchTimelineTab(timelineTab.dataset.tab, {
-            forceRefresh: true,
-            resetScroll: true,
+            forceRefresh: isCurrentActive,
+            resetScroll: isCurrentActive,
         });
         return;
     }

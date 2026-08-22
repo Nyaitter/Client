@@ -391,7 +391,7 @@ export function setupTabSwipeNavigation() {
             clearRealtimeTimelineUpdate();
             void switchTimelineTab(targetBtn.dataset.tab, {
                 forceRefresh: false,
-                resetScroll: true,
+                resetScroll: false,
             });
             scrollTabIntoCenter(targetBtn);
             triggerTabSwipeAnimation(document.getElementById('timeline'), direction);
