@@ -179,10 +179,6 @@
 							<p id="login-instruction" class="settings-help-text">ScratchIDを入力してください。</p>
 							<label class="login-modal-field" for="username-input">ScratchID</label>
 							<input type="text" id="username-input" placeholder="ScratchID" autocomplete="username" />
-							<div id="login-turnstile-container" class="login-turnstile-container hidden">
-								<p class="login-turnstile-hint settings-help-text">認証チャレンジを完了すると、認証コードを取得できます。</p>
-								<div id="login-turnstile-widget"></div>
-							</div>
 							<button type="button" id="get-code-btn" class="settings-primary-button login-auth-action">認証コードを取得</button>
 						</div>
 						<div id="auth-step2" class="hidden">
@@ -233,6 +229,11 @@
 						<label class="login-modal-field" for="login-nyaitter-server-input">NyaitterサーバーURL</label>
 						<input type="url" id="login-nyaitter-server-input" placeholder="https://example.com" autocomplete="url" required />
 						<button type="button" id="nyaitter-signin-btn" class="settings-primary-button login-auth-action">ログイン</button>
+					</div>
+
+					<div id="login-turnstile-container" class="login-turnstile-container hidden">
+						<p class="login-turnstile-hint settings-help-text">認証チャレンジを完了すると続行できます。</p>
+						<div id="login-turnstile-widget"></div>
 					</div>
 
 					<p id="error-message" class="login-modal-message login-modal-error hidden" role="alert"></p>

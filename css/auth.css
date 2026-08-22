@@ -242,10 +242,11 @@ color: var(--text-color);
     letter-spacing: 0.01em;
 }
 
-#login-modal #username-input,
-#login-modal #login-email-input,
-#login-modal #login-email-code-input {
-box-sizing: border-box;
+#login-modal input[type="text"],
+#login-modal input[type="email"],
+#login-modal input[type="url"],
+#login-modal .login-modal-input {
+    box-sizing: border-box;
     width: 100%;
     min-height: 3.15rem;
     padding: 0.8rem 0.95rem;
@@ -257,7 +258,7 @@ box-sizing: border-box;
 }
 
 .login-auth-action {
-width: 100%;
+    width: 100%;
     min-height: 3.15rem;
     padding: 0.8rem 1rem;
     border-radius: 9999px;
@@ -266,24 +267,27 @@ width: 100%;
 }
 
 .login-turnstile-container {
-display: flex;
+    display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
 }
 
 .login-turnstile-container.hidden {
-display: none;
+    display: none;
 }
 
 .login-turnstile-hint {
-margin: 0;
+    margin: 0;
     text-align: center;
 }
 
-#login-modal #username-input:focus-visible,
+#login-modal input[type="text"]:focus-visible,
+#login-modal input[type="email"]:focus-visible,
+#login-modal input[type="url"]:focus-visible,
+#login-modal .login-modal-input:focus-visible,
 .login-verification-code:focus-visible {
-outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }
 
