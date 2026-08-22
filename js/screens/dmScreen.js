@@ -315,21 +315,22 @@ export async function showDmConversation(dmId) {
         } else {
             const key = String(dmId);
             cachedUnreadBefore = Number(getDmUnreadCounts().get(key) || 0);
-            const { error: readError } = await apiRequest(
-                `/server/api/dm/${encodeURIComponent(dmId)}/read`,
-                { method: 'POST' },
-            );
-            if (readError) {
-                console.error('DM既読化に失敗しました:', readError);
-            } else {
-                readSucceeded = true;
+            if (cachedUnreadBefore > 0) {
                 getDmUnreadCounts().set(key, 0);
                 getCurrentUser().unreadDmTotal = Math.max(
                     0,
                     Number(getCurrentUser().unreadDmTotal || 0) - cachedUnreadBefore,
                 );
                 deleteScreenDataCache(getDmCacheKey('list'));
+                void updateNavAndSidebars();
             }
+            // /read の完了を待たずにバックグラウンドで非同期送信
+            void apiRequest(
+                `/server/api/dm/${encodeURIComponent(dmId)}/read`,
+                { method: 'POST' },
+            ).catch((readErr) => {
+                console.warn('DM既読化バックグラウンド送信失敗:', readErr);
+            });
         }
 
         const dm = Array.isArray(dmPayload?.dm) ? dmPayload.dm[0] : null;
@@ -341,7 +342,7 @@ export async function showDmConversation(dmId) {
         if (!usedCachedPayload) {
             getCurrentUser().unreadDmTotal = Number(dmPayload?.unread_total || 0);
         }
-        if (dm && readSucceeded) {
+        if (dm) {
             getDmUnreadCounts().set(String(dm.id), 0);
             deleteScreenDataCache(getDmCacheKey('list'));
             if (!error) void updateNavAndSidebars();
