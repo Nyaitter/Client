@@ -291,6 +291,16 @@ export function setupTabSwipeNavigation() {
         if (target.closest('textarea, input[type="text"], input[type="search"], input[type="password"], [contenteditable="true"], .modal-overlay:not(.hidden), #image-preview-modal:not(.hidden)')) {
             return true;
         }
+        // Ignore tap/swipe starting on tab buttons or tab bar containers
+        if (target.closest('.tab-button, .timeline-tab-button, .dm-tab-button, .settings-group-button, [data-tab], [data-sub-tab], [data-dm-tab], [data-group-tab], [data-role-tab], [data-manage-tab], [data-tab-key], [role="tab"], .timeline-tabs, .timeline-tabs-sticky-container, #profile-tabs, #profile-sub-tabs-container, .profile-sub-tabs, .dm-tabs-container, .group-ui-post-tabs, .group-ui-manage-tabs, .settings-group-list, .tabs-container, [role="tablist"]')) {
+            return true;
+        }
+        // Check active dynamic tab group containers
+        for (const controller of activeTabGroups.values()) {
+            if (controller.container && controller.container.contains(target)) {
+                return true;
+            }
+        }
         // Ignore horizontally scrollable code blocks or tables with active overflow
         const codeOrPre = target.closest('pre, code, .code-block, .table-container');
         if (codeOrPre && codeOrPre.scrollWidth > codeOrPre.clientWidth + 8) {
