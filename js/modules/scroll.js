@@ -13,7 +13,8 @@ let savedScrollMemory = new Map();
 
 export function getScrollRouteKey(hash = window.location.hash || '#') {
     const userScope = getCurrentUser()?.id ?? 'guest';
-    return `${userScope}:${hash}`;
+    const normalizedHash = (!hash || hash === '#') ? '#' : hash;
+    return `${userScope}:${normalizedHash}`;
 }
 
 export function getSavedScrollPositions() {
@@ -79,7 +80,7 @@ export function clearSavedScrollPosition(routeKey = getScrollRouteKey()) {
 }
 
 export function saveScrollPosition(targetRouteKey = null) {
-    const routeKey = targetRouteKey || activeScrollRouteKey || getScrollRouteKey();
+    const routeKey = targetRouteKey || activeScrollRouteKey;
     if (!routeKey) return;
     const currentY = Math.max(0, Math.floor(window.scrollY || 0));
     const positions = getSavedScrollPositions();
@@ -116,8 +117,14 @@ export function scheduleScrollPositionSave() {
 }
 
 export function beginScrollRouteTransition() {
-    saveScrollPosition();
+    if (activeScrollRouteKey) {
+        saveScrollPosition(activeScrollRouteKey);
+    }
     activeScrollRouteKey = null;
+    if (pendingScrollSaveTimer) {
+        clearTimeout(pendingScrollSaveTimer);
+        pendingScrollSaveTimer = null;
+    }
 }
 
 let scrollRestoreVersion = 0;
