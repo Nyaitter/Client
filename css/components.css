@@ -190,19 +190,16 @@ width: 1.25rem; /* サイズを微調整 */
 }
 
 .post-menu-btn {
-position: absolute;
+    position: absolute;
     top: 0;
     right: 0;
     z-index: 5;
-}
-
-.post-menu-btn,
-.post-menu-btn:hover {
-border: none;
+    border: none;
 }
 
 .post-menu-btn:hover {
-color: var(--text-color);
+    border: none;
+    color: var(--text-color);
 }
 
 .post-menu button {
