@@ -508,6 +508,10 @@ export function appendUrlCard(container, content, contextOptions = {}) {
 }
 
 export function getUserIconUrl(user) {
+    if (user?.icon_available === false) {
+        return '/emoji/neko.svg';
+    }
+
     const iconData =
         typeof user?.icon_data === 'string' ? user.icon_data.trim() : '';
     if (iconData) {
