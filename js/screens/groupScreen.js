@@ -393,7 +393,7 @@ export async function showGroupsScreen(showScreenFn = null) {
         const joinedIds = new Set(joinedGroups.map((group) => String(group.id)));
         content.innerHTML = `<main class="group-ui-page">
             <header class="settings-detail-heading group-ui-page-heading">
-                <div><h3>グループ</h3><p class="settings-group-description">投稿は参加者だけが閲覧できます。</p></div>
+                <div><h3>グループ</h3><p class="settings-group-description">グループは共通の話題でポスト可能なスペースです。</p></div>
                 <button type="button" class="settings-primary-button" id="open-create-group">グループを作成</button>
             </header>
             ${invites.length ? renderGroupSection('グループ招待', `<div class="settings-sessions-list">${invites.map((invite) => `<article class="settings-session-item group-ui-invite-item"><div class="settings-session-details"><span class="settings-session-title">${escapeHTML(invite.group?.name || 'グループ')}</span><p>グループへの招待が届いています。</p></div><div class="settings-session-actions"><button type="button" class="settings-primary-button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="accept">参加</button><button type="button" class="group-ui-secondary-button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>`) : ''}
