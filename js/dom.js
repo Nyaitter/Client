@@ -54,6 +54,8 @@ export const DOM = {
     },
 };
 
+let imageModalOpen = false;
+
 export function openImageModal(sourceUrl) {
     const safeUrl = getSafeHttpUrl(sourceUrl);
     if (!safeUrl || !DOM.imagePreviewModal || !DOM.imagePreviewModalContent) {
@@ -61,13 +63,31 @@ export function openImageModal(sourceUrl) {
     }
     DOM.imagePreviewModalContent.src = safeUrl;
     DOM.imagePreviewModal.classList.remove('hidden');
+
+    if (!imageModalOpen) {
+        imageModalOpen = true;
+        try {
+            history.pushState({ modal: 'image-preview' }, '');
+        } catch (_) {}
+    }
     return true;
 }
 
-export function closeImageModal() {
+export function closeImageModal({ fromHistory = false } = {}) {
     if (!DOM.imagePreviewModal || !DOM.imagePreviewModalContent) return;
     DOM.imagePreviewModal.classList.add('hidden');
     DOM.imagePreviewModalContent.removeAttribute('src');
+
+    if (imageModalOpen) {
+        imageModalOpen = false;
+        if (!fromHistory) {
+            try {
+                if (history.state?.modal === 'image-preview') {
+                    history.back();
+                }
+            } catch (_) {}
+        }
+    }
 }
 
 export function showMainJsError(message) {
@@ -93,11 +113,26 @@ window.addEventListener('unhandledrejection', (event) => {
 document
     .getElementById('mainjs-error-reload-btn')
     ?.addEventListener('click', () => window.location.reload());
+
+// 画像以外の領域（背景、余白、閉じるボタン等）をクリックした時に閉じる
 DOM.imagePreviewModal?.addEventListener('click', (event) => {
-    if (
-        event.target === DOM.imagePreviewModal ||
-        event.target.closest('.modal-close-btn')
-    ) {
+    if (event.target !== DOM.imagePreviewModalContent) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeImageModal();
+    }
+});
+
+// ブラウザの戻る操作で閉じる
+window.addEventListener('popstate', (event) => {
+    if (imageModalOpen) {
+        closeImageModal({ fromHistory: true });
+    }
+});
+
+// Escapeキーで閉じる
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && imageModalOpen) {
         closeImageModal();
     }
 });
