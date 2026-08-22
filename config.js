@@ -11,17 +11,17 @@
 
     const CLIENT_CONFIG = {
         // APIルート。静的サイトと同一オリジンで配信する場合は変更不要です。
-        apiEndpoint: '/server',
+        apiEndpoint: 'https://api.nyaitter.jp',
 
         // ユーザーファイルの公開URLです。nullの場合はAPIルートの /uploads を使用します。
         // R2の公開ドメインなどを使う場合は、'/uploads' または 'https://media.example.com' を指定します。
         // 空文字列の場合、ClientはユーザーファイルのURLを生成しません。
-        userFileEndpoint: null,
+        userFileEndpoint: 'https://files.nyaitter.jp',
 
         // ポスト共有/コピー時のURLです。
         // Discord や SNS で投稿カード（Embed）を表示させたい場合は、サーバー側のURL（例: 'https://link.example.com'）を指定します。
         // null の場合は現在のブラウザのURL（window.location.origin）が使われます。
-        postShareUrl: null,
+        postShareUrl: 'https://link.nyaitter.jp',
 
         // 設定画面の「リンク」に表示するリソースです。
         resourceLinks: [
