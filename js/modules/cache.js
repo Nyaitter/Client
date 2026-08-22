@@ -386,9 +386,10 @@ export function getPostDetailCacheKey(postId) {
     return `${userScope}:post_detail:${postId}`;
 }
 
-export function getDmCacheKey(dmId) {
+export function getDmCacheKey(...parts) {
     const userScope = getCurrentUser()?.id ?? 'guest';
-    return `${userScope}:dm:${dmId}`;
+    const cleanParts = parts.filter((p) => p !== null && p !== undefined && p !== '');
+    return `${userScope}:dm:${cleanParts.join(':')}`;
 }
 
 export function invalidateDmCaches(dmId = null) {
@@ -396,7 +397,7 @@ export function invalidateDmCaches(dmId = null) {
     if (dmId) {
         const targetDmId = String(dmId).trim();
         for (const key of screenDataCaches.keys()) {
-            if (key.includes(`:dm:${targetDmId}`) || key.includes(':dm:list')) {
+            if (key.includes(`:dm:conversation:${targetDmId}`) || key.includes(`:dm:${targetDmId}`) || key.includes(':dm:list')) {
                 screenDataCaches.delete(key);
                 changed = true;
             }

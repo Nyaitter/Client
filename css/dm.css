@@ -1429,3 +1429,8 @@ max-height: 200px; /* 例えば、最大高さを200pxに設定 */
     color: #ef4444;
     border-color: rgba(239, 68, 68, 0.3);
 }
+
+.dm-message-container.dm-message-send-error .dm-message {
+    opacity: 0.6;
+    border: 1px dashed #ef4444;
+}

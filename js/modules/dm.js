@@ -130,13 +130,13 @@ export async function renderDmMessage(msg, dmId = null) {
                 <div class="dm-message-meta">
                     <a href="#profile/${user.id}" class="dm-user-link dm-user-name">${getEmoji(escapeHTML(user.name || '不明'))}</a>
                     <span class="dm-message-time">・${time}</span>
-                </div>
-                <div class="dm-message-bubble-row">
-                    <div class="dm-message"><div class="dm-message-content">${formattedContent}</div>${attachmentsHTML}</div>
                     <button type="button" class="dm-message-menu-btn" title="メッセージメニュー" aria-label="メッセージメニュー">${ICONS.more}</button>
                     <div class="post-menu">
                         <button class="report-dm-message-btn" data-dm-id="${escapeHTML(String(dmId || ''))}" data-message-id="${escapeHTML(String(msg.id || ''))}">報告する</button>
                     </div>
+                </div>
+                <div class="dm-message-bubble-row">
+                    <div class="dm-message"><div class="dm-message-content">${formattedContent}</div>${attachmentsHTML}</div>
                 </div>
             </div>
         </div>`;
