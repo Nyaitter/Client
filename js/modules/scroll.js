@@ -158,7 +158,7 @@ export function scheduleScrollPositionSave() {
     pendingScrollSaveTimer = setTimeout(() => {
         pendingScrollSaveTimer = null;
         saveScrollPosition();
-    }, 150);
+    }, 100);
 }
 
 export function beginScrollRouteTransition() {
@@ -180,7 +180,10 @@ export function restoreScrollPosition(targetRouteKey = null) {
     const targetY = getSavedScrollTargetY(routeKey);
     const version = ++scrollRestoreVersion;
 
-    scheduleNextFrame(() => {
+    if (targetY <= 0) return;
+
+    // 複数フレームにわたってスクロール位置の適用を試行（非同期レイアウトや画像読込に対応）
+    const tryScroll = (attemptsLeft = 5) => {
         scheduleNextFrame(() => {
             if (version !== scrollRestoreVersion || activeScrollRouteKey !== routeKey) return;
             window.scrollTo({
@@ -188,18 +191,22 @@ export function restoreScrollPosition(targetRouteKey = null) {
                 left: 0,
                 behavior: 'instant',
             });
-            if (targetY > 0) {
-                scheduleNextFrame(() => {
-                    if (version !== scrollRestoreVersion || activeScrollRouteKey !== routeKey) return;
-                    if (Math.abs((window.scrollY || 0) - targetY) > 2) {
-                        window.scrollTo({
-                            top: targetY,
-                            left: 0,
-                            behavior: 'instant',
-                        });
-                    }
-                });
+            if (attemptsLeft > 1 && Math.abs((window.scrollY || 0) - targetY) > 2) {
+                setTimeout(() => tryScroll(attemptsLeft - 1), 40);
             }
         });
-    });
+    };
+
+    tryScroll();
+}
+
+// ユーザーがスクロールした際にリアルタイムで最新位置をデバウンス保存
+if (typeof window !== 'undefined') {
+    window.addEventListener(
+        'scroll',
+        () => {
+            scheduleScrollPositionSave();
+        },
+        { passive: true },
+    );
 }
