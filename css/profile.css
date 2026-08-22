@@ -84,7 +84,13 @@ display: flex;
 }
 
 #profile-tabs {
-display: flex;
+    position: sticky;
+    top: 56px;
+    background-color: var(--pg-bg-color);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 9;
+    display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
@@ -95,26 +101,28 @@ display: flex;
 }
 
 #profile-sub-tabs-container {
-/* サブメニューがない場合は非表示にする */
-    &:empty {
-        display: none;
-    }
-    /* メインのタブとの区別のための線 */
-    border-bottom: 1px solid var(--border-color);
-}
-
-.profile-sub-tabs {
-display: flex;
-    flex-wrap: nowrap;
-    min-width: max-content;
-}
-
-#profile-sub-tabs-container {
-overflow-x: auto;
+    position: sticky;
+    top: 56px;
+    background-color: var(--pg-bg-color);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 9;
+    overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#profile-sub-tabs-container:empty {
+    display: none;
+}
+
+.profile-sub-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    min-width: max-content;
 }
 
 .profile-card {
