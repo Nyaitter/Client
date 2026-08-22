@@ -305,6 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function resetLoginModal() {
     scratchUsername = '';
     currentEmail = '';
+    turnstileToken = null;
     if (usernameInput) usernameInput.value = '';
     if (loginEmailInput) loginEmailInput.value = '';
     if (loginEmailCodeInput) loginEmailCodeInput.value = '';
@@ -313,13 +314,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (verificationCodeElem) verificationCodeElem.textContent = '';
     if (profileLink) profileLink.href = 'https://scratch.mit.edu/';
 
+    authScratchPanel?.classList.add('hidden');
+    authEmailPanel?.classList.add('hidden');
+    authPasskeyPanel?.classList.add('hidden');
+    authNyaitterPanel?.classList.add('hidden');
+
     authStep2?.classList.add('hidden');
     authStep1?.classList.remove('hidden');
     authEmailStep3?.classList.add('hidden');
     authEmailStep2?.classList.add('hidden');
     authEmailStep1?.classList.remove('hidden');
-    authNyaitterPanel?.classList.add('hidden');
 
+    showLoading(false);
+    hideTurnstile();
     showProviderSelect();
   }
 
@@ -744,7 +751,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (initiateResponse.status === 403 || initiateData.code === 'turnstile_required') resetTurnstile();
         throw new Error(initiateData.error || 'パスキー認証の開始に失敗しました。');
       }
-      resetTurnstile();
 
       // Step 2: WebAuthn API でパスキーウィンドウを表示して認証
       const challengeBytes = base64urlToUint8Array(initiateData.challenge);
@@ -835,7 +841,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (initiateRes.status === 403 || initiateData.code === 'turnstile_required') resetTurnstile();
         throw new Error(initiateData.error || 'NyaitterAuth認証の開始に失敗しました。');
       }
-      resetTurnstile();
 
       // Redirect to authorization URL
       window.location.href = initiateData.auth_url;
