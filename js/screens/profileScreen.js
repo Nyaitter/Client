@@ -106,6 +106,14 @@ export async function getPublicProfile(userId) {
             error: null,
         };
     }
+    const cachedUser = getAllUsersCache().get(normalizedId);
+    if (cachedUser && (cachedUser.name || cachedUser.handle) && (cachedUser.bio !== undefined || cachedUser.created_at !== undefined)) {
+        getPublicProfileCache().set(normalizedId, cachedUser);
+        return {
+            data: cachedUser,
+            error: null,
+        };
+    }
     const result = await apiRequest(
         `/server/api/users/${encodeURIComponent(normalizedId)}`,
     );

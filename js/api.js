@@ -1,3 +1,5 @@
+import { getAllUsersCache } from './state.js';
+
 const { apiUrl, userFileUrl } = globalThis.NyaitterClientConfig;
 
 export async function apiRequest(path, { method = 'GET', body } = {}) {
@@ -136,25 +138,74 @@ export const api = (() => {
         async function execute() {
             const id = filter('id', 'eq');
             if (table === 'user') {
-                if (state.action === 'update')
-                    return queryRequest(
+                if (state.action === 'update') {
+                    const res = await queryRequest(
                         `/server/api/users/${id || 'me'}`,
                         { method: 'PUT', body: state.values },
                         'user',
                     );
+                    if (res?.data) {
+                        const user = res.data.user || res.data;
+                        if (user && Number.isInteger(Number(user.id))) {
+                            getAllUsersCache().set(Number(user.id), { ...getAllUsersCache().get(Number(user.id)), ...user, id: Number(user.id) });
+                        }
+                    }
+                    return res;
+                }
                 const inIds = filter('id', 'in');
-                if (inIds)
-                    return queryRequest(
-                        `/server/api/users?ids=${inIds.join(',')}`,
+                if (inIds) {
+                    const userCache = getAllUsersCache();
+                    const requestedIds = Array.isArray(inIds) ? inIds.map(Number) : String(inIds).split(',').map(Number);
+                    const cachedUsers = [];
+                    const missingIds = [];
+                    for (const reqId of requestedIds) {
+                        if (!Number.isInteger(reqId) || reqId < 0) continue;
+                        const cached = userCache.get(reqId);
+                        if (cached && (cached.name || cached.handle)) {
+                            cachedUsers.push(cached);
+                        } else {
+                            missingIds.push(reqId);
+                        }
+                    }
+                    if (missingIds.length === 0) {
+                        return { data: cachedUsers, error: null };
+                    }
+                    const res = await queryRequest(
+                        `/server/api/users?ids=${missingIds.join(',')}`,
                         {},
                         'users',
                     );
-                if (id || filter('uuid', 'eq'))
-                    return queryRequest(
-                        id ? `/server/api/users/${id}` : '/server/auth/me',
-                        {},
-                        id ? 'user' : 'user',
-                    );
+                    const fetched = Array.isArray(res?.data) ? res.data : [];
+                    for (const u of fetched) {
+                        if (u && Number.isInteger(Number(u.id))) {
+                            userCache.set(Number(u.id), { ...userCache.get(Number(u.id)), ...u, id: Number(u.id) });
+                        }
+                    }
+                    return {
+                        data: [...cachedUsers, ...fetched],
+                        error: res.error,
+                    };
+                }
+                if (id) {
+                    const numericId = Number(id);
+                    if (Number.isInteger(numericId) && numericId >= 0) {
+                        const cached = getAllUsersCache().get(numericId);
+                        if (cached && (cached.name || cached.handle)) {
+                            return { data: cached, error: null };
+                        }
+                    }
+                    const res = await queryRequest(`/server/api/users/${id}`, {}, 'user');
+                    if (res?.data) {
+                        const user = res.data.user || res.data;
+                        if (user && Number.isInteger(Number(user.id))) {
+                            getAllUsersCache().set(Number(user.id), { ...getAllUsersCache().get(Number(user.id)), ...user, id: Number(user.id) });
+                        }
+                    }
+                    return res;
+                }
+                if (filter('uuid', 'eq')) {
+                    return queryRequest('/server/auth/me', {}, 'user');
+                }
                 const rawFilter =
                     state.filters.find((f) => f[0] === 'or')?.[2] || '';
                 const entries = rawFilter.split(',');
@@ -183,7 +234,16 @@ export const api = (() => {
                 const path = query
                     ? `search?${searchParams.toString()}`
                     : 'recommended';
-                return queryRequest(`/server/api/users/${path}`, {}, 'users');
+                const res = await queryRequest(`/server/api/users/${path}`, {}, 'users');
+                if (Array.isArray(res?.data)) {
+                    const userCache = getAllUsersCache();
+                    for (const u of res.data) {
+                        if (u && Number.isInteger(Number(u.id))) {
+                            userCache.set(Number(u.id), { ...userCache.get(Number(u.id)), ...u, id: Number(u.id) });
+                        }
+                    }
+                }
+                return res;
             }
             if (
                 table === 'post' ||
