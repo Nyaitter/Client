@@ -63,11 +63,11 @@ import {
 const { resourceLinks: RESOURCE_LINKS, apiUrl } = globalThis.NyaitterClientConfig || {};
 
 export const ALL_HOME_TABS = [
-    { key: 'all', name: 'すべて', icon: '📝', description: 'すべての投稿を表示' },
-    { key: 'foryou', name: 'おすすめ', icon: '✨', description: 'おすすめの投稿を表示' },
-    { key: 'following', name: 'フォロー中', icon: '👥', description: 'フォロー中のユーザーの投稿を表示' },
-    { key: 'announce', name: 'お知らせ', icon: '📢', description: '公式・全体アナウンスを表示' },
-    { key: 'groups', name: 'グループ', icon: '🏷️', description: '参加中のグループタブを表示' },
+    { key: 'all', name: 'すべて', description: 'すべての投稿を表示' },
+    { key: 'foryou', name: 'おすすめ', description: 'おすすめの投稿を表示' },
+    { key: 'following', name: 'フォロー中', description: 'フォロー中のユーザーの投稿を表示' },
+    { key: 'announce', name: 'お知らせ', description: '運営によるアナウンスを表示' },
+    { key: 'groups', name: 'グループ', description: '参加中のグループタブを表示' },
 ];
 
 export const DEFAULT_HOME_TABS = ['all', 'foryou', 'following', 'announce', 'groups'];
@@ -333,7 +333,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         </div>
 
                         <div class="home-tabs-section">
-                            <h4 class="home-tabs-section-title">有効なタブ（ホームに表示される順序）</h4>
+                            <h4 class="home-tabs-section-title">有効なタブ</h4>
                             <p class="settings-help-text">ドラッグして並び替えたり、「×」ボタンで削除できます。</p>
                             <div id="home-tabs-active-list" class="home-tabs-list home-tabs-active-list" data-zone="active"></div>
                         </div>
@@ -486,8 +486,8 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                 </section>
                 <section class="settings-group-panel" data-settings-panel="api" hidden>
                     <div class="settings-bot-section">
-                        <h4 id="settings-bot-title">Bot用 APIキー</h4>
-                        <p class="settings-help-text">プログラムやスクリプトからNyaitter APIを操作するためのAPIキー（Botトークン）を生成・管理できます。</p>
+                        <h4 id="settings-bot-title">APIキー</h4>
+                        <p class="settings-help-text">プログラムやスクリプトからNyaitter APIを操作するためのAPIキーを生成・管理できます。</p>
                         <div class="settings-bot-create-container">
                             <label for="setting-bot-token-name" style="font-weight: 600; font-size: 0.9rem;">新しいAPIキーの名前</label>
                             <div class="settings-bot-create-form">
@@ -498,7 +498,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         <div id="settings-bot-token-newly-created" class="settings-bot-new-key-box" hidden>
                             <div class="settings-bot-new-key-header">
                                 <strong>APIキーが生成されました</strong>
-                                <p class="settings-bot-new-key-warning">⚠️ このキーは一度しか表示されません。安全な場所にコピーして保存してください。</p>
+                                <p class="settings-bot-new-key-warning">このキーは一度しか表示されません。安全な場所にコピーして保存してください。</p>
                             </div>
                             <div class="settings-bot-new-key-display">
                                 <input type="text" id="settings-bot-new-key-value" readonly spellcheck="false" autocomplete="off">
@@ -1716,7 +1716,6 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         item.innerHTML = `
             <div class="home-tab-item-main">
                 <span class="home-tab-handle" title="ドラッグして並び替え">⠿</span>
-                <span class="home-tab-icon">${tabDef.icon}</span>
                 <div class="home-tab-info">
                     <span class="home-tab-name">${escapeHTML(tabDef.name)}</span>
                     <span class="home-tab-description">${escapeHTML(tabDef.description)}</span>
