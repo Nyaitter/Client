@@ -23,7 +23,7 @@ export const ACCOUNT_LIST_STORAGE_KEY = 'nyaitter_accounts';
 
 export function goToLoginPage() {
     if (typeof window.openNyaitterLoginModal === 'function') {
-        window.openNyaitterLoginModal({ reset: false });
+        window.openNyaitterLoginModal({ reset: true });
         return;
     }
     window.location.href = './index.html?login=1';
