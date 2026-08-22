@@ -19,7 +19,13 @@ import { setupTimelinePullToRefresh } from '../modules/theme.js';
 import { loadPostsWithPagination } from '../modules/pagination.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
 import { apiRequest } from '../api.js';
-import { saveScrollPosition } from '../modules/scroll.js';
+import {
+    saveScrollPosition,
+    beginScrollRouteTransition,
+    restoreScrollPosition,
+    getScrollRouteKey,
+    clearSavedScrollPosition,
+} from '../modules/scroll.js';
 
 export const LAST_TIMELINE_TAB_KEY = 'nyaitter_last_timeline_tab';
 
@@ -91,17 +97,26 @@ export async function switchTimelineTab(
     { forceRefresh = false, resetScroll = false } = {},
 ) {
     if (tab === 'following' && !getCurrentUser()) return;
-    const groupId = parseGroupTimelineTab(tab);
+    const previousTab = getCurrentTimelineTab();
+    const previousRouteKey = getScrollRouteKey('#', previousTab);
+    const targetRouteKey = getScrollRouteKey('#', tab);
+
+    // 現在のタブのスクロール位置を保存して遷移開始
+    saveScrollPosition(previousRouteKey);
+    beginScrollRouteTransition();
+
     if (resetScroll) {
+        clearSavedScrollPosition(targetRouteKey);
         window.scrollTo({ left: 0, top: 0, behavior: 'auto' });
-        saveScrollPosition();
     }
+
     setIsLoadingMore(false);
     setCurrentTimelineTab(tab);
     saveLastTimelineTab(tab);
     document
         .querySelectorAll('.timeline-tab-button')
         .forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tab));
+    const groupId = parseGroupTimelineTab(tab);
     const groupName = groupId
         ? [...document.querySelectorAll('.timeline-tab-button')]
             .find((button) => button.dataset.tab === tab)
@@ -118,12 +133,16 @@ export async function switchTimelineTab(
             mode: getGroupTimelineMode(groupId),
             pageCache,
         });
-        return;
+    } else {
+        await loadPostsWithPagination(DOM.timeline, 'timeline', {
+            tab,
+            pageCache,
+        });
     }
-    await loadPostsWithPagination(DOM.timeline, 'timeline', {
-        tab,
-        pageCache,
-    });
+
+    if (!resetScroll) {
+        restoreScrollPosition(targetRouteKey);
+    }
 }
 
 export async function showMainScreen(showScreenFn) {

@@ -1,4 +1,4 @@
-import { getCurrentUser } from '../state.js';
+import { getCurrentUser, getCurrentTimelineTab } from '../state.js';
 import { scheduleNextFrame } from '../utils/helpers.js';
 
 export const MAX_SAVED_SCROLL_POSITIONS = 50;
@@ -11,9 +11,13 @@ let activeScrollRouteKey = null;
 let pendingScrollSaveTimer = null;
 let savedScrollMemory = new Map();
 
-export function getScrollRouteKey(hash = window.location.hash || '#') {
+export function getScrollRouteKey(hash = window.location.hash || '#', tab = null) {
     const userScope = getCurrentUser()?.id ?? 'guest';
     const normalizedHash = (!hash || hash === '#') ? '#' : hash;
+    if (normalizedHash === '#') {
+        const timelineTab = tab || getCurrentTimelineTab() || 'all';
+        return `${userScope}:#:${timelineTab}`;
+    }
     return `${userScope}:${normalizedHash}`;
 }
 
