@@ -237,40 +237,50 @@ export function openMobileSidebar() {
 
     let startX = null;
     let startY = null;
+    let startTime = 0;
     const beginSwipe = (x, y) => {
         startX = x;
         startY = y;
+        startTime = Date.now();
     };
     const finishSwipe = (x, y) => {
         if (startX === null || startY === null) return;
         const horizontalDistance = x - startX;
         const verticalDistance = y - startY;
+        const elapsed = Date.now() - startTime;
         startX = null;
         startY = null;
-        if (horizontalDistance <= -48 && Math.abs(verticalDistance) <= 80) {
+        // 左スワイプ（指を左に40px以上動かした）時にサイドバーを閉じる
+        if (horizontalDistance <= -40 && (Math.abs(horizontalDistance) > Math.abs(verticalDistance) * 1.1 || elapsed < 500)) {
             closeMobileSidebar();
         }
     };
-    // Pointer Eventsに対応しないモバイルブラウザでも閉じられるようTouch Eventsも監視する。
-    overlay.addEventListener('pointerdown', (event) => {
+
+    // オーバーレイおよびサイドバーパネル内のどこからでも左スワイプで閉じられるようdocument全体で監視
+    document.addEventListener('pointerdown', (event) => {
+        if (!mobileSidebarOpen) return;
         beginSwipe(event.clientX, event.clientY);
     }, { signal });
-    overlay.addEventListener('pointerup', (event) => {
+    document.addEventListener('pointerup', (event) => {
+        if (!mobileSidebarOpen) return;
         finishSwipe(event.clientX, event.clientY);
     }, { signal });
-    overlay.addEventListener('pointercancel', () => {
+    document.addEventListener('pointercancel', () => {
         startX = null;
         startY = null;
     }, { signal });
-    overlay.addEventListener('touchstart', (event) => {
+
+    document.addEventListener('touchstart', (event) => {
+        if (!mobileSidebarOpen) return;
         const touch = event.touches[0];
         if (touch) beginSwipe(touch.clientX, touch.clientY);
     }, { passive: true, signal });
-    overlay.addEventListener('touchend', (event) => {
+    document.addEventListener('touchend', (event) => {
+        if (!mobileSidebarOpen) return;
         const touch = event.changedTouches[0];
         if (touch) finishSwipe(touch.clientX, touch.clientY);
     }, { passive: true, signal });
-    overlay.addEventListener('touchcancel', () => {
+    document.addEventListener('touchcancel', () => {
         startX = null;
         startY = null;
     }, { passive: true, signal });
