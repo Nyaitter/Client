@@ -69,15 +69,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function disableAuthActionButtons() {
     if (!turnstileEnabled || turnstileToken) return;
-    if (getCodeBtn) getCodeBtn.disabled = true;
-    if (getEmailCodeBtn) getEmailCodeBtn.disabled = true;
+    if (verifyCommentBtn) verifyCommentBtn.disabled = true;
+    if (verifyEmailCodeBtn) verifyEmailCodeBtn.disabled = true;
     if (passkeySigninBtn) passkeySigninBtn.disabled = true;
     if (nyaitterSigninBtn) nyaitterSigninBtn.disabled = true;
   }
 
   function enableAuthActionButtons() {
-    if (getCodeBtn) getCodeBtn.disabled = false;
-    if (getEmailCodeBtn) getEmailCodeBtn.disabled = false;
+    if (verifyCommentBtn) verifyCommentBtn.disabled = false;
+    if (verifyEmailCodeBtn) verifyEmailCodeBtn.disabled = false;
     if (passkeySigninBtn) passkeySigninBtn.disabled = false;
     if (nyaitterSigninBtn) nyaitterSigninBtn.disabled = false;
   }
@@ -140,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    turnstileContainer.classList.remove('hidden');
     disableAuthActionButtons();
     turnstileWidgetId = window.turnstile.render(turnstileWidget, {
       sitekey: configuredTurnstileSiteKey,
@@ -158,6 +157,19 @@ document.addEventListener('DOMContentLoaded', () => {
         disableAuthActionButtons();
       },
     });
+  }
+
+  function mountTurnstile(beforeElement) {
+    if (!turnstileEnabled || !turnstileContainer || !beforeElement) return;
+    if (beforeElement.parentNode && turnstileContainer.parentNode !== beforeElement.parentNode) {
+      beforeElement.parentNode.insertBefore(turnstileContainer, beforeElement);
+    }
+    turnstileContainer.classList.remove('hidden');
+    void setupTurnstile();
+  }
+
+  function hideTurnstile() {
+    if (turnstileContainer) turnstileContainer.classList.add('hidden');
   }
 
   function resetTurnstile() {
@@ -283,6 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showProviderSelect() {
     hideAllPanels();
+    hideTurnstile();
     authProviderSelect?.classList.remove('hidden');
     loginBackBtn?.classList.add('hidden');
     if (loginTitle) loginTitle.textContent = 'ログイン方法を選択';
@@ -312,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function selectProvider(provider) {
     hideAllPanels();
+    hideTurnstile();
     loginBackBtn?.classList.remove('hidden');
     hideMessages();
 
@@ -321,7 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
       authScratchPanel?.classList.remove('hidden');
       authStep1?.classList.remove('hidden');
       authStep2?.classList.add('hidden');
-      if (turnstileEnabled) void setupTurnstile();
       window.setTimeout(() => usernameInput?.focus(), 0);
     } else if (name === 'email') {
       if (loginTitle) loginTitle.textContent = 'メールアドレスでログイン';
@@ -333,9 +346,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (name === 'passkey') {
       if (loginTitle) loginTitle.textContent = 'パスキーでログイン';
       authPasskeyPanel?.classList.remove('hidden');
+      mountTurnstile(passkeySigninBtn);
     } else if (name === 'nyaitter' || name === 'nyaitterauth' || name === 'nyaitter-auth') {
       if (loginTitle) loginTitle.textContent = 'Nyaitterでログイン';
       authNyaitterPanel?.classList.remove('hidden');
+      mountTurnstile(nyaitterSigninBtn);
       window.setTimeout(() => loginNyaitterServerInput?.focus(), 0);
     } else {
       if (loginTitle) loginTitle.textContent = `${provider?.displayName || name}でログイン`;
@@ -378,14 +393,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (reset) resetLoginModal();
     else hideMessages();
 
-    // ログインモーダルを開いた段階でTurnstile認証を開始し、トークンを先行用意
-    if (turnstileEnabled) {
-      void setupTurnstile();
-    } else {
-      void detectTurnstileRequirement().then(() => {
-        if (turnstileEnabled) void setupTurnstile();
-      });
-    }
+    // Turnstileの要件を検出してスクリプトを先行ロード
+    void detectTurnstileRequirement();
 
     await renderProviderButtons();
     loginModal.classList.remove('hidden');
@@ -444,10 +453,6 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('Scratchユーザー名を入力してください。');
       return;
     }
-    if (turnstileEnabled && !turnstileToken) {
-      showError('認証チャレンジを完了してください。');
-      return;
-    }
 
     showLoading(true);
     hideMessages();
@@ -460,20 +465,18 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           type: 'generateCode',
           username: scratchUsername,
-          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
         }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.error) {
-        if (response.status === 403 || data.code === 'turnstile_required') resetTurnstile();
         throw new Error(data.error || 'コードの生成に失敗しました。');
       }
-      resetTurnstile();
 
       if (verificationCodeElem) verificationCodeElem.textContent = data.code;
       if (profileLink) profileLink.href = `https://scratch.mit.edu/users/${encodeURIComponent(scratchUsername)}/#comments`;
       authStep1?.classList.add('hidden');
       authStep2?.classList.remove('hidden');
+      mountTurnstile(verifyCommentBtn);
     } catch (error) {
       showError(error.message);
     } finally {
@@ -497,6 +500,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   verifyCommentBtn?.addEventListener('click', async () => {
+    if (turnstileEnabled && !turnstileToken) {
+      showError('認証チャレンジを完了してください。');
+      return;
+    }
+
     showLoading(true);
     hideMessages();
     try {
@@ -508,10 +516,15 @@ document.addEventListener('DOMContentLoaded', () => {
           type: 'verifyComment',
           username: scratchUsername,
           code: verificationCodeElem?.textContent,
+          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
         }),
       });
       let data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) throw new Error(data.error || '認証に失敗しました。');
+      if (!response.ok || data.error) {
+        if (response.status === 403 || data.code === 'turnstile_required') resetTurnstile();
+        throw new Error(data.error || '認証に失敗しました。');
+      }
+      resetTurnstile();
       if (data.approval_required) data = await completeApprovedLogin(data);
       if (!data.success) throw new Error('セッションの設定に失敗しました。');
       finishLogin();
@@ -529,10 +542,6 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('メールアドレスを入力してください。');
       return;
     }
-    if (turnstileEnabled && !turnstileToken) {
-      showError('認証チャレンジを完了してください。');
-      return;
-    }
 
     showLoading(true);
     hideMessages();
@@ -544,18 +553,16 @@ document.addEventListener('DOMContentLoaded', () => {
         credentials: 'include',
         body: JSON.stringify({
           email: currentEmail,
-          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
         }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.error) {
-        if (response.status === 403 || data.code === 'turnstile_required') resetTurnstile();
         throw new Error(data.error || '認証コードの送信に失敗しました。');
       }
-      resetTurnstile();
 
       authEmailStep1?.classList.add('hidden');
       authEmailStep2?.classList.remove('hidden');
+      mountTurnstile(verifyEmailCodeBtn);
       window.setTimeout(() => loginEmailCodeInput?.focus(), 0);
     } catch (error) {
       showError(error.message);
@@ -580,6 +587,10 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('認証コードを入力してください。');
       return;
     }
+    if (turnstileEnabled && !turnstileToken) {
+      showError('認証チャレンジを完了してください。');
+      return;
+    }
 
     showLoading(true);
     hideMessages();
@@ -591,20 +602,24 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           email: currentEmail,
           code,
+          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
         }),
       });
       let data = await response.json().catch(() => ({}));
       if (!response.ok || data.error) {
+        if (response.status === 403 || data.code === 'turnstile_required') resetTurnstile();
         if (data.code === 'username_required') {
           hideMessages();
           if (loginTitle) loginTitle.textContent = 'ユーザー名の設定';
           authEmailStep2?.classList.add('hidden');
           authEmailStep3?.classList.remove('hidden');
+          hideTurnstile();
           window.setTimeout(() => loginEmailNameInput?.focus(), 0);
           return;
         }
         throw new Error(data.error || '認証に失敗しました。');
       }
+      resetTurnstile();
       if (data.approval_required) data = await completeApprovedLogin(data);
       if (!data.success) throw new Error('セッションの設定に失敗しました。');
       finishLogin();
