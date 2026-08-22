@@ -474,7 +474,7 @@ export function appendUrlCard(container, content, contextOptions = {}) {
             const nestedPostEl = await contextOptions.renderPost(
                 card.post,
                 card.post.author || card.post.user,
-                { ...(contextOptions.options || {}), isNested: true },
+                { ...(contextOptions.options || {}), isNested: true, clampHeight: true },
             );
             if (nestedPostEl) {
                 nestedContainer.appendChild(nestedPostEl);
@@ -508,6 +508,10 @@ export function appendUrlCard(container, content, contextOptions = {}) {
 }
 
 export function getUserIconUrl(user) {
+    if (user?.icon_available === false) {
+        return '/emoji/neko.svg';
+    }
+
     const iconData =
         typeof user?.icon_data === 'string' ? user.icon_data.trim() : '';
     if (iconData) {

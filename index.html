@@ -264,14 +264,35 @@
 		<div
 			id="image-preview-modal"
 			class="modal-overlay hidden"
+			role="dialog"
+			aria-modal="true"
+			aria-label="画像プレビュー"
 		>
 			<button
+				type="button"
 				class="modal-close-btn"
-				style="top: 1rem; right: 1rem; font-size: 2rem"
+				aria-label="閉じる"
 			>
 				×
 			</button>
-			<img id="image-preview-modal-content" src="" alt="拡大画像" />
+			<button
+				type="button"
+				class="image-modal-nav-btn image-modal-prev-btn hidden"
+				aria-label="前の画像"
+			>
+				<svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+			</button>
+			<div class="image-preview-wrapper">
+				<img id="image-preview-modal-content" src="" alt="拡大画像" />
+			</div>
+			<button
+				type="button"
+				class="image-modal-nav-btn image-modal-next-btn hidden"
+				aria-label="次の画像"
+			>
+				<svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+			</button>
+			<div class="image-modal-counter hidden"></div>
 		</div>
 		<div id="edit-post-modal" class="modal-overlay hidden">
 			<div class="modal-content">

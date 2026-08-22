@@ -762,6 +762,32 @@ flex-grow: 1;
     /* justify-content と align-items を削除し、デフォルトの挙動に任せる */
 }
 
+.dm-load-more-container {
+display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.dm-load-more-btn {
+padding: 0.4rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--border-color);
+    background: none;
+    color: var(--secondary-text-color);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.dm-load-more-btn:hover {
+background-color: var(--hover-bg-color, rgba(0, 0, 0, 0.05));
+    color: var(--text-color);
+}
+
 .dm-message-container {
 display: flex;
     gap: 0.8rem;

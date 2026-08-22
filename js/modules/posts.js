@@ -508,6 +508,13 @@ export async function renderPost(post, author, options = {}) {
             itemDiv.appendChild(fileinfo);
             attachmentsContainer.appendChild(itemDiv);
         } else {
+            const allImageAttachments = post.attachments.filter((a) => a.type === 'image');
+            const allImageUrls = allImageAttachments.map((a) => {
+                const { data } = api.storage.from('nyaitter').getPublicUrl(a.id);
+                return getSafeHttpUrl(data?.publicUrl);
+            }).filter(Boolean);
+
+            let currentImageIndex = 0;
             for (const attachment of post.attachments) {
                 const { data: publicUrlData } = api.storage
                     .from('nyaitter')
@@ -524,9 +531,10 @@ export async function renderPost(post, author, options = {}) {
                     configureAttachmentImage(img, attachment, publicURL);
                     img.alt = attachmentName;
                     img.className = 'attachment-image';
+                    const targetIndex = currentImageIndex++;
                     img.onclick = (e) => {
                         e.stopPropagation();
-                        openImageModal(publicURL);
+                        openImageModal(publicURL, { images: allImageUrls, index: targetIndex });
                     };
                     itemDiv.appendChild(img);
                 } else if (attachment.type === 'video') {
@@ -567,7 +575,7 @@ export async function renderPost(post, author, options = {}) {
             const nestedPostEl = await renderPost(
                 post.reposted_post,
                 post.reposted_post.author,
-                { ...options, isNested: true },
+                { ...options, isNested: true, clampHeight: true },
             );
             if (nestedPostEl) {
                 nestedContainer.appendChild(nestedPostEl);
@@ -635,7 +643,7 @@ export async function renderPost(post, author, options = {}) {
 
     postEl.appendChild(postMain);
 
-    if (clampHeight && !isNested && !post.mask && post.content) {
+    if (clampHeight && !post.mask && post.content) {
         postEl.dataset.clampContent = '1';
         const contentEl = postMain.querySelector('.post-content');
         if (contentEl) {

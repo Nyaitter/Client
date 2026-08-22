@@ -357,25 +357,111 @@ position: absolute;
     line-height: 1;
 }
 
-#image-preview-modal-content {
-display: block;
+.image-preview-wrapper {
+display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     height: 100%;
-    max-width: none;
-    max-height: none;
-    object-fit: contain;
-    border-radius: 0;
+    max-width: 95vw;
+    max-height: 92vh;
     cursor: default;
+    pointer-events: none;
+}
+
+#image-preview-modal-content {
+display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 4px;
+    cursor: default;
+    pointer-events: auto;
+    user-select: none;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 #image-preview-modal .modal-close-btn {
 top: max(1rem, env(safe-area-inset-top));
     right: max(1rem, env(safe-area-inset-right));
-    z-index: 1;
-    background: rgba(0, 0, 0, 0.68);
+    z-index: 12;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: #fff;
     width: 2.5rem;
     height: 2.5rem;
-    font-size: 2rem;
+    font-size: 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.15s;
+}
+
+#image-preview-modal .modal-close-btn:hover {
+background: rgba(0, 0, 0, 0.85);
+    transform: scale(1.08);
+}
+
+.image-modal-nav-btn {
+position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 11;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.15s, opacity 0.2s;
+    user-select: none;
+}
+
+.image-modal-nav-btn:hover {
+background: rgba(0, 0, 0, 0.85);
+    transform: translateY(-50%) scale(1.08);
+}
+
+.image-modal-nav-btn svg {
+width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    fill: none;
+    pointer-events: none;
+}
+
+.image-modal-prev-btn {
+left: max(1rem, env(safe-area-inset-left));
+}
+
+.image-modal-next-btn {
+right: max(1rem, env(safe-area-inset-right));
+}
+
+.image-modal-counter {
+position: absolute;
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 0.35rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    pointer-events: none;
+    z-index: 11;
+    user-select: none;
 }
 
 .tab-button {

@@ -35,8 +35,6 @@ export const api = (() => {
         data: key ? result.data?.[key] : result.data,
         error: result.error,
     });
-    const request = async (path, options, key) =>
-        unwrap(await apiRequest(path, options), key);
     const query = (table) => {
         const state = {
             filters: [],
@@ -44,6 +42,13 @@ export const api = (() => {
             values: null,
             single: false,
             limit: null,
+        };
+        const request = async (path, options, key) => {
+            const res = unwrap(await apiRequest(path, options), key);
+            if (state.single && Array.isArray(res.data)) {
+                res.data = res.data[0] || null;
+            }
+            return res;
         };
         const chain = {
             // Nyaitter RESTクエリファサードでは、update()/insert()後のselect()は返却形式の指定であり操作種別を上書きしない。

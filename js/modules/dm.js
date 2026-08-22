@@ -640,10 +640,20 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
     showLoading(true);
 
     try {
-        const { data: dm, error } = await api.from('dm').eq('id', dmId).single();
-        if (error || !dm) throw new Error('DMメッセージの取得に失敗しました');
+        let message = null;
+        const dmConversationCacheKey = getDmCacheKey('conversation', String(dmId));
+        const cachedPayload = getScreenDataCache(dmConversationCacheKey);
+        const cachedDm = Array.isArray(cachedPayload?.dm) ? cachedPayload.dm[0] : cachedPayload?.dm;
+        const cachedPosts = Array.isArray(cachedDm?.post) ? cachedDm.post : (Array.isArray(cachedDm?.messages) ? cachedDm.messages : []);
+        message = cachedPosts.find((m) => String(m.id) === String(messageId));
 
-        const message = (dm.messages || dm.post || []).find((m) => String(m.id) === String(messageId));
+        if (!message) {
+            const { data: dmResult, error } = await api.from('dm').eq('id', dmId).single();
+            if (error || !dmResult) throw new Error('DMメッセージの取得に失敗しました');
+            const fetchedPosts = Array.isArray(dmResult.post) ? dmResult.post : (Array.isArray(dmResult.messages) ? dmResult.messages : []);
+            message = fetchedPosts.find((m) => String(m.id) === String(messageId));
+        }
+
         if (!message) throw new Error('メッセージが見つかりませんでした');
 
         content.innerHTML = `
@@ -707,22 +717,26 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
 export async function handleUpdateDmMessage(dmId, messageId, newText, onComplete = null) {
     showLoading(true);
     try {
-        const { data: dm } = await api.from('dm').eq('id', dmId).single();
-        if (!dm) return;
-        const messages = (dm.messages || dm.post || []).map((m) => {
+        const { data: dmResult, error: fetchError } = await api.from('dm').eq('id', dmId).single();
+        if (fetchError || !dmResult) throw new Error('DMの取得に失敗しました');
+        const postList = Array.isArray(dmResult.post) ? dmResult.post : (Array.isArray(dmResult.messages) ? dmResult.messages : []);
+        const messages = postList.map((m) => {
             if (String(m.id) === String(messageId)) {
                 return { ...m, content: newText, message: newText, edited: true };
             }
             return m;
         });
 
-        const { error } = await api.from('dm').update({ post: messages, messages }).eq('id', dmId);
+        const { error } = await api.from('dm').update({ post: messages }).eq('id', dmId);
         if (error) throw error;
 
         invalidateDmCaches(dmId);
-        if (typeof onComplete === 'function') await onComplete();
+        if (typeof onComplete === 'function') {
+            await onComplete();
+        }
     } catch (e) {
-        showAppAlert('メッセージの更新に失敗しました');
+        console.error('DM更新エラー:', e);
+        showAppAlert(e.message || 'メッセージの更新に失敗しました');
     } finally {
         showLoading(false);
     }
@@ -734,17 +748,21 @@ export async function handleDeleteDmMessage(dmId, messageId, onComplete = null) 
     showLoading(true);
 
     try {
-        const { data: dm } = await api.from('dm').eq('id', dmId).single();
-        if (!dm) return;
-        const messages = (dm.messages || []).filter((m) => String(m.id) !== String(messageId));
+        const { data: dmResult, error: fetchError } = await api.from('dm').eq('id', dmId).single();
+        if (fetchError || !dmResult) throw new Error('DMの取得に失敗しました');
+        const postList = Array.isArray(dmResult.post) ? dmResult.post : (Array.isArray(dmResult.messages) ? dmResult.messages : []);
+        const messages = postList.filter((m) => String(m.id) !== String(messageId));
 
-        const { error } = await api.from('dm').update({ messages }).eq('id', dmId);
+        const { error } = await api.from('dm').update({ post: messages }).eq('id', dmId);
         if (error) throw error;
 
         invalidateDmCaches(dmId);
-        if (typeof onComplete === 'function') await onComplete();
+        if (typeof onComplete === 'function') {
+            await onComplete();
+        }
     } catch (e) {
-        showAppAlert('メッセージの削除に失敗しました');
+        console.error('DM削除エラー:', e);
+        showAppAlert(e.message || 'メッセージの削除に失敗しました');
     } finally {
         showLoading(false);
     }

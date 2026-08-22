@@ -139,7 +139,22 @@ function handleGlobalClick(e) {
         if (imageUrl) {
             e.preventDefault();
             e.stopPropagation();
-            openImageModal(imageUrl);
+
+            const parentContainer = actionTarget.closest('.attachments-container, .post-attachments, .dm-attachments, .post, .dm-message-container');
+            let allImages = [];
+            let imageIndex = 0;
+            if (parentContainer) {
+                const imageEls = Array.from(parentContainer.querySelectorAll('[data-action="open-image"], .attachment-image'));
+                allImages = imageEls.map((el) => getSafeHttpUrl(el.dataset?.url || el.src)).filter(Boolean);
+                imageIndex = imageEls.indexOf(actionTarget);
+                if (imageIndex < 0) imageIndex = 0;
+            }
+            if (allImages.length <= 1) {
+                allImages = [imageUrl];
+                imageIndex = 0;
+            }
+
+            openImageModal(imageUrl, { images: allImages, index: imageIndex });
         }
         return;
     }

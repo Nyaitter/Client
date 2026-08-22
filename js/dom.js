@@ -55,13 +55,144 @@ export const DOM = {
 };
 
 let imageModalOpen = false;
+let currentImageModalList = [];
+let currentImageModalIndex = 0;
+let imageModalListenersAttached = false;
 
-export function openImageModal(sourceUrl) {
-    const safeUrl = getSafeHttpUrl(sourceUrl);
-    if (!safeUrl || !DOM.imagePreviewModal || !DOM.imagePreviewModalContent) {
+function renderImageModalCurrent() {
+    if (!DOM.imagePreviewModalContent || currentImageModalList.length === 0) return;
+    const url = currentImageModalList[currentImageModalIndex];
+    DOM.imagePreviewModalContent.src = url;
+
+    if (DOM.imagePreviewModal) {
+        const prevBtn = DOM.imagePreviewModal.querySelector('.image-modal-prev-btn');
+        const nextBtn = DOM.imagePreviewModal.querySelector('.image-modal-next-btn');
+        const counter = DOM.imagePreviewModal.querySelector('.image-modal-counter');
+        const hasMultiple = currentImageModalList.length > 1;
+
+        if (prevBtn) {
+            prevBtn.classList.toggle('hidden', !hasMultiple || currentImageModalIndex <= 0);
+        }
+        if (nextBtn) {
+            nextBtn.classList.toggle('hidden', !hasMultiple || currentImageModalIndex >= currentImageModalList.length - 1);
+        }
+        if (counter) {
+            if (hasMultiple) {
+                counter.textContent = `${currentImageModalIndex + 1} / ${currentImageModalList.length}`;
+                counter.classList.remove('hidden');
+            } else {
+                counter.classList.add('hidden');
+            }
+        }
+    }
+}
+
+export function showPrevModalImage() {
+    if (currentImageModalIndex > 0) {
+        currentImageModalIndex--;
+        renderImageModalCurrent();
+    }
+}
+
+export function showNextModalImage() {
+    if (currentImageModalIndex < currentImageModalList.length - 1) {
+        currentImageModalIndex++;
+        renderImageModalCurrent();
+    }
+}
+
+function attachImageModalListeners() {
+    if (imageModalListenersAttached || !DOM.imagePreviewModal) return;
+    imageModalListenersAttached = true;
+
+    // 画像外の背景をクリックしたときに閉じる
+    DOM.imagePreviewModal.addEventListener('click', (e) => {
+        if (e.target.closest('#image-preview-modal-content')) return;
+        if (e.target.closest('.image-modal-nav-btn')) return;
+        closeImageModal();
+    });
+
+    // 左右ボタン
+    const prevBtn = DOM.imagePreviewModal.querySelector('.image-modal-prev-btn');
+    const nextBtn = DOM.imagePreviewModal.querySelector('.image-modal-next-btn');
+    prevBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showPrevModalImage();
+    });
+    nextBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showNextModalImage();
+    });
+
+    // スワイプ操作 (タッチ)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    DOM.imagePreviewModal.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+        }
+    }, { passive: true });
+
+    DOM.imagePreviewModal.addEventListener('touchend', (e) => {
+        if (e.changedTouches.length === 1 && currentImageModalList.length > 1) {
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            const deltaY = e.changedTouches[0].clientY - touchStartY;
+            const deltaTime = Date.now() - touchStartTime;
+
+            if (deltaTime < 500 && Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+                if (deltaX > 0) {
+                    showPrevModalImage();
+                } else {
+                    showNextModalImage();
+                }
+            }
+        }
+    }, { passive: true });
+
+    // キーボード操作
+    window.addEventListener('keydown', (e) => {
+        if (!imageModalOpen) return;
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            showPrevModalImage();
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            showNextModalImage();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeImageModal();
+        }
+    });
+}
+
+export function openImageModal(sourceUrl, options = {}) {
+    let images = [];
+    let initialIndex = 0;
+
+    if (Array.isArray(options.images) && options.images.length > 0) {
+        images = options.images.map(getSafeHttpUrl).filter(Boolean);
+        initialIndex = Number.isInteger(options.index) ? options.index : 0;
+    } else if (Array.isArray(sourceUrl)) {
+        images = sourceUrl.map(getSafeHttpUrl).filter(Boolean);
+        initialIndex = Number.isInteger(options.index) ? options.index : 0;
+    } else {
+        const safeUrl = getSafeHttpUrl(sourceUrl);
+        if (safeUrl) images = [safeUrl];
+    }
+
+    if (images.length === 0 || !DOM.imagePreviewModal || !DOM.imagePreviewModalContent) {
         return false;
     }
-    DOM.imagePreviewModalContent.src = safeUrl;
+
+    currentImageModalList = images;
+    currentImageModalIndex = Math.max(0, Math.min(initialIndex, images.length - 1));
+
+    attachImageModalListeners();
+    renderImageModalCurrent();
     DOM.imagePreviewModal.classList.remove('hidden');
 
     if (!imageModalOpen) {
@@ -77,6 +208,8 @@ export function closeImageModal({ fromHistory = false } = {}) {
     if (!DOM.imagePreviewModal || !DOM.imagePreviewModalContent) return;
     DOM.imagePreviewModal.classList.add('hidden');
     DOM.imagePreviewModalContent.removeAttribute('src');
+    currentImageModalList = [];
+    currentImageModalIndex = 0;
 
     if (imageModalOpen) {
         imageModalOpen = false;
