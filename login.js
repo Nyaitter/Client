@@ -67,12 +67,19 @@ document.addEventListener('DOMContentLoaded', () => {
   let turnstileWidgetId = null;
   let turnstileToken = null;
 
-  function disableGetCodeButton() {
+  function disableAuthActionButtons() {
+    if (!turnstileEnabled || turnstileToken) return;
     if (getCodeBtn) getCodeBtn.disabled = true;
+    if (getEmailCodeBtn) getEmailCodeBtn.disabled = true;
+    if (passkeySigninBtn) passkeySigninBtn.disabled = true;
+    if (nyaitterSigninBtn) nyaitterSigninBtn.disabled = true;
   }
 
-  function enableGetCodeButton() {
+  function enableAuthActionButtons() {
     if (getCodeBtn) getCodeBtn.disabled = false;
+    if (getEmailCodeBtn) getEmailCodeBtn.disabled = false;
+    if (passkeySigninBtn) passkeySigninBtn.disabled = false;
+    if (nyaitterSigninBtn) nyaitterSigninBtn.disabled = false;
   }
 
   function loadTurnstileScript() {
@@ -99,13 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
   async function detectTurnstileRequirement() {
     if (!configuredTurnstileSiteKey || !turnstileContainer || !turnstileWidget) return;
     try {
-      const response = await fetch(apiUrl('/server/status'), {
+      const response = await fetch(apiUrl('/server/api/status'), {
         credentials: 'include',
         headers: { Accept: 'application/json' },
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok && data?.turnstile?.enabled) {
         turnstileEnabled = true;
+        // スクリプトを先行ロード
+        void loadTurnstileScript().catch(() => {});
       }
     } catch (_) {}
   }
@@ -118,28 +127,35 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadTurnstileScript();
       } catch (error) {
         turnstileEnabled = false;
-        enableGetCodeButton();
+        enableAuthActionButtons();
         return;
       }
     }
-    if (turnstileWidgetId != null) return;
+    if (turnstileWidgetId != null) {
+      if (turnstileToken) {
+        enableAuthActionButtons();
+      } else {
+        disableAuthActionButtons();
+      }
+      return;
+    }
 
     turnstileContainer.classList.remove('hidden');
-    disableGetCodeButton();
+    disableAuthActionButtons();
     turnstileWidgetId = window.turnstile.render(turnstileWidget, {
       sitekey: configuredTurnstileSiteKey,
       theme: 'auto',
       callback: (token) => {
         turnstileToken = token;
-        enableGetCodeButton();
+        enableAuthActionButtons();
       },
       'expired-callback': () => {
         turnstileToken = null;
-        disableGetCodeButton();
+        disableAuthActionButtons();
       },
       'error-callback': () => {
         turnstileToken = null;
-        disableGetCodeButton();
+        disableAuthActionButtons();
       },
     });
   }
@@ -151,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.turnstile.reset(turnstileWidgetId);
       } catch (_) {}
     }
-    disableGetCodeButton();
+    disableAuthActionButtons();
   }
 
   function showLoading(show) {
@@ -362,6 +378,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (reset) resetLoginModal();
     else hideMessages();
 
+    // ログインモーダルを開いた段階でTurnstile認証を開始し、トークンを先行用意
+    if (turnstileEnabled) {
+      void setupTurnstile();
+    } else {
+      void detectTurnstileRequirement().then(() => {
+        if (turnstileEnabled) void setupTurnstile();
+      });
+    }
+
     await renderProviderButtons();
     loginModal.classList.remove('hidden');
   }
@@ -504,6 +529,10 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('メールアドレスを入力してください。');
       return;
     }
+    if (turnstileEnabled && !turnstileToken) {
+      showError('認証チャレンジを完了してください。');
+      return;
+    }
 
     showLoading(true);
     hideMessages();
@@ -513,12 +542,17 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: currentEmail }),
+        body: JSON.stringify({
+          email: currentEmail,
+          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
+        }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.error) {
+        if (response.status === 403 || data.code === 'turnstile_required') resetTurnstile();
         throw new Error(data.error || '認証コードの送信に失敗しました。');
       }
+      resetTurnstile();
 
       authEmailStep1?.classList.add('hidden');
       authEmailStep2?.classList.remove('hidden');
@@ -673,6 +707,10 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('このブラウザはパスキー認証に対応していません。');
       return;
     }
+    if (turnstileEnabled && !turnstileToken) {
+      showError('認証チャレンジを完了してください。');
+      return;
+    }
 
     showLoading(true);
     hideMessages();
@@ -682,12 +720,16 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
+        }),
       });
       const initiateData = await initiateResponse.json().catch(() => ({}));
       if (!initiateResponse.ok || initiateData.error) {
+        if (initiateResponse.status === 403 || initiateData.code === 'turnstile_required') resetTurnstile();
         throw new Error(initiateData.error || 'パスキー認証の開始に失敗しました。');
       }
+      resetTurnstile();
 
       // Step 2: WebAuthn API でパスキーウィンドウを表示して認証
       const challengeBytes = base64urlToUint8Array(initiateData.challenge);
@@ -756,6 +798,11 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('NyaitterサーバーURLを入力してください。');
       return;
     }
+    if (turnstileEnabled && !turnstileToken) {
+      showError('認証チャレンジを完了してください。');
+      return;
+    }
+
     showLoading(true);
     hideMessages();
     try {
@@ -763,12 +810,17 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ serverUrl }),
+        body: JSON.stringify({
+          serverUrl,
+          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
+        }),
       });
       const initiateData = await initiateRes.json().catch(() => ({}));
       if (!initiateRes.ok || initiateData.error || !initiateData.auth_url) {
+        if (initiateRes.status === 403 || initiateData.code === 'turnstile_required') resetTurnstile();
         throw new Error(initiateData.error || 'NyaitterAuth認証の開始に失敗しました。');
       }
+      resetTurnstile();
 
       // Redirect to authorization URL
       window.location.href = initiateData.auth_url;
