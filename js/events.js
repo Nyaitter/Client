@@ -31,7 +31,7 @@ import {
 } from './modules/dm.js';
 import { getNotificationTargetHash } from './modules/notifications.js';
 import { updateNavAndSidebars } from './modules/sidebar.js';
-import { beginScrollRouteTransition } from './modules/scroll.js';
+import { beginScrollRouteTransition, saveScrollPosition } from './modules/scroll.js';
 import { goToLoginPage } from './modules/auth.js';
 import { setupTabSwipeNavigation } from './modules/tabSwipe.js';
 import {
@@ -373,6 +373,7 @@ function handleGlobalClick(e) {
             !target.closest('.attachment-item') &&
             !target.closest('.post-clamp-toggle')
         ) {
+            saveScrollPosition();
             window.location.hash = `#post/${actionTargetPostId}`;
             return;
         }

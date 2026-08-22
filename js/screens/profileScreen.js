@@ -43,6 +43,9 @@ import {
 } from '../modules/pagination.js';
 import {
     getScrollRouteKey,
+    saveScrollPosition,
+    restoreScrollPosition,
+    beginScrollRouteTransition,
     clearSavedScrollPosition,
 } from '../modules/scroll.js';
 import { isDataSaverEnabled, getMediaPerPage } from '../modules/theme.js';
@@ -124,51 +127,76 @@ export async function getPublicProfile(userId) {
     return { data: result.data?.user || null, error: result.error };
 }
 
-export function resetProfileTabNavigation(userId, subpage) {
-    const normalizedUserId = Number(userId);
-    if (!Number.isInteger(normalizedUserId) || normalizedUserId < 0) return;
+let currentProfileTab = 'posts';
 
+export async function switchProfileTab(
+    user,
+    subpage,
+    { forceRefresh = false, resetScroll = false } = {},
+) {
+    if (!user?.id) return;
+    const normalizedUserId = Number(user.id);
     const normalizedTab = String(subpage || 'posts') === 'replies' ? 'posts' : String(subpage || 'posts');
-    const hash =
+    const previousTab = currentProfileTab;
+    const previousHash =
+        previousTab === 'posts'
+            ? `#profile/${normalizedUserId}`
+            : `#profile/${normalizedUserId}/${previousTab}`;
+    const targetHash =
         normalizedTab === 'posts'
             ? `#profile/${normalizedUserId}`
             : `#profile/${normalizedUserId}/${normalizedTab}`;
-    const routeKey = getScrollRouteKey(hash);
-    invalidateProfileTabPageCache(normalizedUserId, normalizedTab);
-    clearSavedScrollPosition(routeKey);
 
-    const profileScreen = document.getElementById('profile-screen');
-    const activeProfile = activeProfilePullRefreshUser;
-    if (
-        profileScreen &&
-        !profileScreen.classList.contains('hidden') &&
-        Number(activeProfile?.id) === normalizedUserId
-    ) {
-        if (window.location.hash !== hash) {
-            window.history.replaceState(window.history.state, '', hash);
-        }
-        window.scrollTo({ left: 0, top: 0, behavior: 'auto' });
-        void loadProfileTabContent(activeProfile, normalizedTab);
-        return;
+    const previousRouteKey = getScrollRouteKey(previousHash);
+    const targetRouteKey = getScrollRouteKey(targetHash);
+
+    // 異なるタブへ切り替える場合のみ、直前のタブのスクロール位置を保存する
+    if (previousTab && previousTab !== normalizedTab) {
+        saveScrollPosition(previousRouteKey);
+        beginScrollRouteTransition();
     }
 
-    window.location.hash = hash;
+    if (forceRefresh) {
+        invalidateProfileTabPageCache(normalizedUserId, normalizedTab);
+    }
+
+    if (resetScroll) {
+        clearSavedScrollPosition(targetRouteKey);
+        window.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+    }
+
+    currentProfileTab = normalizedTab;
+
+    if (window.location.hash !== targetHash) {
+        window.history.replaceState(window.history.state, '', targetHash);
+    }
+
+    await loadProfileTabContent(user, normalizedTab);
+
+    if (!resetScroll) {
+        restoreScrollPosition(targetRouteKey);
+    }
+}
+
+export function resetProfileTabNavigation(userId, subpage) {
+    const activeProfile = activeProfilePullRefreshUser;
+    if (activeProfile && Number(activeProfile.id) === Number(userId)) {
+        void switchProfileTab(activeProfile, subpage, { forceRefresh: true, resetScroll: true });
+    } else {
+        const normalizedTab = String(subpage || 'posts') === 'replies' ? 'posts' : String(subpage || 'posts');
+        const hash =
+            normalizedTab === 'posts'
+                ? `#profile/${Number(userId)}`
+                : `#profile/${Number(userId)}/${normalizedTab}`;
+        window.location.hash = hash;
+    }
 }
 
 export async function refreshActiveProfileTab({ userId, subpage } = {}) {
-    const normalizedUserId = Number(userId);
     const activeProfile = activeProfilePullRefreshUser;
-    if (
-        !Number.isInteger(normalizedUserId) ||
-        normalizedUserId < 0 ||
-        Number(activeProfile?.id) !== normalizedUserId
-    ) {
-        return;
+    if (activeProfile && Number(activeProfile.id) === Number(userId)) {
+        await switchProfileTab(activeProfile, subpage, { forceRefresh: true, resetScroll: true });
     }
-
-    const normalizedTab = String(subpage || 'posts') === 'replies' ? 'posts' : String(subpage || 'posts');
-    invalidateProfileTabPageCache(normalizedUserId, normalizedTab);
-    await loadProfileTabContent(activeProfile, normalizedTab);
 }
 
 export async function showProfileScreen(userId, subpage = 'posts', showScreenFn = null) {
@@ -411,12 +439,20 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                     suppressNextClick = false;
                     return;
                 }
-                resetProfileTabNavigation(user.id, tab);
+                const isSameTab = currentProfileTab === tab;
+                if (isSameTab) {
+                    void switchProfileTab(user, tab, { forceRefresh: true, resetScroll: true });
+                } else {
+                    void switchProfileTab(user, tab);
+                }
             };
         });
 
         activeProfilePullRefreshUser = user;
+        currentProfileTab = subpage;
         await loadProfileTabContent(user, subpage);
+        const currentHash = window.location.hash || `#profile/${user.id}`;
+        restoreScrollPosition(getScrollRouteKey(currentHash));
     } catch (err) {
         profileHeader.innerHTML = '<h2>プロフィールの読み込みに失敗しました</h2>';
         console.error(err);
@@ -474,7 +510,13 @@ export async function loadProfileTabContent(user, subpage) {
         subTabsContainer.querySelectorAll('.tab-button').forEach((button) => {
             button.onclick = (e) => {
                 e.stopPropagation();
-                resetProfileTabNavigation(user.id, button.dataset.subTab);
+                const subTab = button.dataset.subTab;
+                const isSameTab = currentProfileTab === subTab;
+                if (isSameTab) {
+                    void switchProfileTab(user, subTab, { forceRefresh: true, resetScroll: true });
+                } else {
+                    void switchProfileTab(user, subTab);
+                }
             };
         });
     } else {

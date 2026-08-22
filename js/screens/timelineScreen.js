@@ -102,9 +102,11 @@ export async function switchTimelineTab(
     const previousRouteKey = getScrollRouteKey('#', previousTab);
     const targetRouteKey = getScrollRouteKey('#', tab);
 
-    // 現在のタブのスクロール位置を保存して遷移開始
-    saveScrollPosition(previousRouteKey);
-    beginScrollRouteTransition();
+    // 異なるタブへ切り替える場合のみ、直前のタブのスクロール位置を保存する
+    if (previousTab && previousTab !== tab) {
+        saveScrollPosition(previousRouteKey);
+        beginScrollRouteTransition();
+    }
 
     if (resetScroll) {
         clearSavedScrollPosition(targetRouteKey);
