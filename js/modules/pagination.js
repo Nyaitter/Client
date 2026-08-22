@@ -19,6 +19,7 @@ import {
     filterBlockedPosts,
     ensureMentionedUsersCached,
 } from './posts.js';
+import { getSavedScrollTargetY } from './scroll.js';
 import { createViewportObserver } from '../utils/viewport.js';
 import { getPostsPerPage, isDataSaverEnabled } from './theme.js';
 import { getEmoji } from './format.js';
@@ -331,6 +332,37 @@ export async function loadPostsWithPagination(container, type, options = {}) {
     localPostLoadObserver.observe(trigger);
 
     await loadMore({ cachedOnly: Boolean(options.cachedOnly) });
+
+    // スクロール位置が保存されており、かつキャッシュが存在する場合、
+    // 目標のスクロール位置を十分にカバーできる高さになるまでキャッシュから連続ロードする
+    const targetScrollY = getSavedScrollTargetY();
+    if (postPageCache?.pages && targetScrollY > 0) {
+        const MAX_AUTO_RESTORE_PAGES = 30;
+        let iteration = 0;
+        while (
+            iteration < MAX_AUTO_RESTORE_PAGES &&
+            getCurrentPagination().hasMore &&
+            isActivePaginationLoader(container, trigger, options)
+        ) {
+            const nextPageNum = getCurrentPagination().page;
+            if (!postPageCache.pages.has(nextPageNum)) {
+                break;
+            }
+            const currentDocHeight = Math.max(
+                document.documentElement.scrollHeight || 0,
+                document.body.scrollHeight || 0,
+                container.scrollHeight || 0,
+            );
+            const viewportHeight = window.innerHeight || 0;
+            if (currentDocHeight >= targetScrollY + viewportHeight * 0.5) {
+                break;
+            }
+            const loaded = await loadMore({ cachedOnly: true });
+            if (!loaded) break;
+            iteration += 1;
+        }
+    }
+
     return {
         loadMore,
         disconnect: () => localPostLoadObserver?.disconnect(),
@@ -516,6 +548,35 @@ export async function loadUsersWithPagination(container, type, options = {}) {
     userObserver.observe(trigger);
 
     await loadMore();
+
+    const targetScrollY = getSavedScrollTargetY();
+    if (userPageCache?.pages && targetScrollY > 0) {
+        const MAX_AUTO_RESTORE_PAGES = 30;
+        let iteration = 0;
+        while (
+            iteration < MAX_AUTO_RESTORE_PAGES &&
+            getCurrentPagination().hasMore &&
+            isActivePaginationLoader(container, trigger, options)
+        ) {
+            const nextPageNum = getCurrentPagination().page;
+            if (!userPageCache.pages.has(nextPageNum)) {
+                break;
+            }
+            const currentDocHeight = Math.max(
+                document.documentElement.scrollHeight || 0,
+                document.body.scrollHeight || 0,
+                container.scrollHeight || 0,
+            );
+            const viewportHeight = window.innerHeight || 0;
+            if (currentDocHeight >= targetScrollY + viewportHeight * 0.5) {
+                break;
+            }
+            const loaded = await loadMore({ cachedOnly: true });
+            if (!loaded) break;
+            iteration += 1;
+        }
+    }
+
     return {
         loadMore,
         disconnect: () => userObserver?.disconnect(),

@@ -232,7 +232,7 @@ export function setupTimelinePullToRefresh(onRefresh) {
     const canStartPull = (target) => {
         if (window.scrollY > 0) return false;
         if (!getActivePullToRefreshContext()) return false;
-        if (target.closest('button, a, input, textarea, select, .modal-overlay')) {
+        if (target && target.closest('.modal-overlay:not(.hidden), textarea, input[type="text"], input[type="search"]')) {
             return false;
         }
         return true;
