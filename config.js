@@ -18,6 +18,11 @@
         // 空文字列の場合、ClientはユーザーファイルのURLを生成しません。
         userFileEndpoint: null,
 
+        // ポスト共有/コピー時のURLです。
+        // Discord や SNS で投稿カード（Embed）を表示させたい場合は、サーバー側のURL（例: 'https://link.example.com'）を指定します。
+        // null の場合は現在のブラウザのURL（window.location.origin）が使われます。
+        postShareUrl: null,
+
         // 設定画面の「リンク」に表示するリソースです。
         resourceLinks: [
             {
@@ -153,6 +158,7 @@
     globalThis.NyaitterClientConfig = Object.freeze({
         apiEndpoint: CLIENT_CONFIG.apiEndpoint,
         userFileEndpoint: CLIENT_CONFIG.userFileEndpoint,
+        postShareUrl: CLIENT_CONFIG.postShareUrl,
         turnstileSiteKey: String(CLIENT_CONFIG.turnstileSiteKey || '').trim(),
         resourceLinks: Object.freeze([...CLIENT_CONFIG.resourceLinks]),
         widgetLinks: Object.freeze([...CLIENT_CONFIG.widgetLinks]),

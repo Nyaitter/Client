@@ -124,7 +124,19 @@ export async function router() {
     // 新しい遷移のDOMやスクロール状態に触れない。
     if (generation !== routerGeneration) return;
 
-    const hash = window.location.hash || '#';
+    // Check pathname or query for direct post links (/posts/123 or ?post=123)
+    let hash = window.location.hash || '#';
+    const postPathMatch = window.location.pathname.match(/^(?:\/@[^/]+)?\/posts\/(\d+)$/i);
+    if ((!hash || hash === '#') && postPathMatch) {
+        window.location.hash = `#post/${postPathMatch[1]}`;
+        return;
+    }
+    const searchParams = new URLSearchParams(window.location.search);
+    if ((!hash || hash === '#') && searchParams.has('post')) {
+        window.location.hash = `#post/${searchParams.get('post')}`;
+        return;
+    }
+
     routeKey = getScrollRouteKey(hash);
 
     if (getPostLoadObserver()) {

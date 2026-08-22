@@ -418,12 +418,21 @@ export function getUrlCard(url) {
     )
         .then(({ data, error }) => {
             if (error || !data?.card || typeof data.card !== 'object') return null;
-            const safeUrl = getSafeHttpUrl(data.card.url);
-            if (!safeUrl) return null;
+            const safeUrl = getSafeHttpUrl(data.card.url) || url;
+
+            if (data.card.type === 'nyaitter_post' && data.card.post) {
+                return {
+                    type: 'nyaitter_post',
+                    url: safeUrl,
+                    postId: Number(data.card.post_id || data.card.post?.id),
+                    post: data.card.post,
+                };
+            }
 
             const title = String(data.card.title || '').trim().slice(0, 160);
             if (!title) return null;
             return {
+                type: 'link',
                 url: safeUrl,
                 hostname: String(data.card.hostname || '').trim().slice(0, 253),
                 title,
@@ -440,20 +449,38 @@ export function getUrlCard(url) {
     return requestPromise;
 }
 
-export function appendUrlCard(container, content) {
+export function appendUrlCard(container, content, contextOptions = {}) {
     if (!container) return;
     const targetUrl = getUrlCardTarget(content);
     if (!targetUrl) return;
+
+    // If post already has an explicit quote, skip embedded URL quote card
+    if (contextOptions.hasExistingQuote) return;
 
     const placeholder = document.createElement('div');
     placeholder.className = 'url-card-placeholder';
     placeholder.setAttribute('aria-live', 'polite');
     container.appendChild(placeholder);
 
-    void getUrlCard(targetUrl).then((card) => {
+    void getUrlCard(targetUrl).then(async (card) => {
         if (!card || !placeholder.parentElement) {
             placeholder.remove();
             return;
+        }
+
+        if (card.type === 'nyaitter_post' && card.post && typeof contextOptions.renderPost === 'function') {
+            const nestedContainer = document.createElement('div');
+            nestedContainer.className = 'nested-repost-container';
+            const nestedPostEl = await contextOptions.renderPost(
+                card.post,
+                card.post.author || card.post.user,
+                { ...(contextOptions.options || {}), isNested: true },
+            );
+            if (nestedPostEl) {
+                nestedContainer.appendChild(nestedPostEl);
+                placeholder.replaceWith(nestedContainer);
+                return;
+            }
         }
 
         const cardLink = document.createElement('a');

@@ -470,7 +470,13 @@ export async function renderPost(post, author, options = {}) {
             );
         }
         postMain.appendChild(postContent);
-        if (!post.mask) appendUrlCard(postMain, post.content);
+        if (!post.mask) {
+            appendUrlCard(postMain, post.content, {
+                hasExistingQuote: Boolean(post.repost_to && post.reposted_post),
+                renderPost,
+                options,
+            });
+        }
     }
 
     if (post.mask) {
@@ -554,7 +560,7 @@ export async function renderPost(post, author, options = {}) {
         postMain.appendChild(attachmentsContainer);
     }
 
-    if (post.repost_to && post.content) {
+    if ((post.repost_to || post.reposted_post) && post.content) {
         const nestedContainer = document.createElement('div');
         nestedContainer.className = 'nested-repost-container';
         if (post.reposted_post) {
@@ -1690,7 +1696,16 @@ export async function handleUpdatePost(postId, originalAttachments, filesToAdd, 
 }
 
 export async function copyPost(postId, button) {
-    const postUrl = `${window.location.origin}${window.location.pathname}#post/${postId}`;
+    const customBase = globalThis.NyaitterClientConfig?.postShareUrl;
+    let postUrl;
+    if (customBase) {
+        const cleanBase = String(customBase).trim().replace(/\/+$/, '');
+        postUrl = cleanBase.includes('#')
+            ? `${cleanBase}/#post/${postId}`
+            : `${cleanBase}/posts/${postId}`;
+    } else {
+        postUrl = `${window.location.origin}${window.location.pathname}#post/${postId}`;
+    }
     await copyTextToClipboard(postUrl);
     if (button) {
         button.innerText = `コピーしました!`;
