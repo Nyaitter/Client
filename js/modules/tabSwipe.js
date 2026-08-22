@@ -244,17 +244,13 @@ export function setupTabSwipeNavigation() {
 
     function isInteractiveOrScrollable(target) {
         if (!target || !(target instanceof Element)) return false;
-        // Ignore inputs, controls, modals, preview overlays, drawer itself
-        if (target.closest('input, textarea, select, button, a, [contenteditable="true"], .modal-overlay, .modal-content, .drawer, #image-preview-modal, .mobile-sidebar-overlay')) {
+        // Ignore text inputs/areas while typing and active modal dialogs
+        if (target.closest('textarea, input[type="text"], input[type="search"], input[type="password"], [contenteditable="true"], .modal-overlay:not(.hidden), #image-preview-modal:not(.hidden)')) {
             return true;
         }
-        // Ignore touches directly on tab headers (to allow smooth horizontal scroll of tab bar)
-        if (target.closest('.timeline-tabs, .timeline-tabs-sticky-container, #profile-tabs, #profile-sub-tabs-container, .profile-sub-tabs, .dm-tabs-container, .group-ui-manage-tabs, .group-ui-post-tabs')) {
-            return true;
-        }
-        // Ignore horizontally scrollable code blocks or pre tags with active overflow
-        const codeOrPre = target.closest('pre, code, .code-block, .table-container, .markdown-editor-caret');
-        if (codeOrPre && codeOrPre.scrollWidth > codeOrPre.clientWidth) {
+        // Ignore horizontally scrollable code blocks or tables with active overflow
+        const codeOrPre = target.closest('pre, code, .code-block, .table-container');
+        if (codeOrPre && codeOrPre.scrollWidth > codeOrPre.clientWidth + 8) {
             return true;
         }
         return false;
