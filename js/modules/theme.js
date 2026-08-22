@@ -169,7 +169,7 @@ export function getActivePullToRefreshContext() {
             return { type: 'group' };
         }
     }
-    const postDetailMatch = currentHash.match(/^#post\/(\d+)$/);
+    const postDetailMatch = currentHash.match(/^#\/?post\/(\d+)/i);
     if (postDetailMatch) {
         const postDetailScreen = document.getElementById('post-detail-screen');
         if (postDetailScreen && !postDetailScreen.classList.contains('hidden')) {

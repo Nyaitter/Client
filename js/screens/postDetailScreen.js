@@ -12,11 +12,20 @@ import { getScrollRouteKey, getSavedScrollPositions } from '../modules/scroll.js
 import { createViewportObserver } from '../utils/viewport.js';
 import { showLoading } from '../utils/helpers.js';
 
-export async function showPostDetail(postId, { forceRefresh = false } = {}, showScreenFn = null) {
+export async function showPostDetail(postId, options = {}, maybeShowScreenFn = null) {
     const normalizedPostId = Number(postId);
     if (!Number.isInteger(normalizedPostId) || normalizedPostId <= 0) {
         throw new Error('無効なポストIDです。');
     }
+
+    let showScreenFn = maybeShowScreenFn;
+    let forceRefresh = false;
+    if (typeof options === 'function') {
+        showScreenFn = options;
+    } else if (options && typeof options === 'object') {
+        forceRefresh = Boolean(options.forceRefresh);
+    }
+
     const postDetailCacheKey = getPostDetailCacheKey(normalizedPostId);
     DOM.pageHeader.innerHTML = `
         <div class="header-with-back-button">
