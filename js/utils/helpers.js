@@ -1,11 +1,8 @@
 import { DOM } from '../dom.js';
-import { getCurrentUser } from '../state.js';
+import { getCurrentUser, getServerClientLimits, setServerClientLimits } from '../state.js';
 import { apiRequest } from '../api.js';
 
-export let serverClientLimits = null;
-export function setServerClientLimits(limits) {
-    serverClientLimits = limits;
-}
+export { getServerClientLimits, setServerClientLimits };
 
 export function scheduleNextFrame(callback) {
     if (typeof window.requestAnimationFrame === 'function') {
@@ -30,43 +27,165 @@ export function normalizeClientInputRange(range) {
     return { min, max };
 }
 
+/**
+ * 要素の属性やクラス・IDから、対応するサーバー制限キーを自動判定します。
+ * @param {HTMLInputElement|HTMLTextAreaElement} element
+ * @returns {string|null}
+ */
+export function inferServerInputLimitKey(element) {
+    if (!element) return null;
+    if (element.dataset?.serverInputLimit) {
+        return element.dataset.serverInputLimit;
+    }
+
+    const id = (element.id || '').toLowerCase();
+    const name = (element.name || '').toLowerCase();
+
+    // ポスト本文
+    if (
+        id === 'post-content' ||
+        id === 'edit-post-textarea' ||
+        element.classList.contains('post-content-editor') ||
+        element.closest?.('.post-content-editor') ||
+        element.closest?.('.post-form-textarea')
+    ) {
+        return 'post_content_length';
+    }
+
+    // DMメッセージ本文
+    if (
+        id === 'dm-message-input' ||
+        id === 'edit-dm-textarea' ||
+        element.classList.contains('dm-edit-textarea') ||
+        element.classList.contains('dm-message-input')
+    ) {
+        return 'dm_content_length';
+    }
+
+    // ユーザー名・表示名
+    if (
+        id === 'setting-username' ||
+        id === 'login-email-name-input' ||
+        id === 'settings-imposter-name' ||
+        name === 'username' ||
+        name === 'display_name' ||
+        name === 'user_name'
+    ) {
+        return 'user_name_length';
+    }
+
+    // プロフィール自己紹介文
+    if (
+        id === 'setting-me' ||
+        name === 'me' ||
+        name === 'bio' ||
+        name === 'profile_bio'
+    ) {
+        return 'profile_bio_length';
+    }
+
+    // Scratch ユーザー名
+    if (
+        id === 'username-input' ||
+        name === 'scratch_id' ||
+        name === 'scratch_username' ||
+        name === 'scid'
+    ) {
+        return 'scratch_username_length';
+    }
+
+    return null;
+}
+
+/**
+ * サーバーから取得した制限情報に基づいて、DOM内のすべてのinput/textareaに
+ * 自動で minlength / maxlength 制限を設定します。
+ * @param {Element|Document} [root=document]
+ */
 export function applyServerInputLimits(root = document) {
-    const inputLimits = serverClientLimits?.input;
-    if (!inputLimits) return;
-    const selector = '[data-server-input-limit]';
+    const limits = getServerClientLimits()?.input;
+    if (!limits) return;
+
     const elements = [];
-    if (root instanceof Element && root.matches(selector)) elements.push(root);
-    if (root?.querySelectorAll) elements.push(...root.querySelectorAll(selector));
+    if (
+        root instanceof HTMLInputElement ||
+        root instanceof HTMLTextAreaElement
+    ) {
+        elements.push(root);
+    }
+    if (root?.querySelectorAll) {
+        elements.push(
+            ...root.querySelectorAll(
+                'input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="hidden"]), textarea, [data-server-input-limit]',
+            ),
+        );
+    }
 
     elements.forEach((element) => {
         if (
             !(element instanceof HTMLInputElement) &&
             !(element instanceof HTMLTextAreaElement)
-        )
+        ) {
             return;
-        const range = normalizeClientInputRange(
-            inputLimits[element.dataset.serverInputLimit],
-        );
+        }
+
+        const limitKey = inferServerInputLimitKey(element);
+        if (!limitKey) return;
+
+        const range = normalizeClientInputRange(limits[limitKey]);
         if (!range) return;
-        if (range.min === null) element.removeAttribute('minlength');
-        else element.minLength = range.min;
-        if (range.max === null) element.removeAttribute('maxlength');
-        else element.maxLength = range.max;
+
+        if (range.min === null) {
+            element.removeAttribute('minlength');
+        } else {
+            element.minLength = range.min;
+        }
+
+        if (range.max === null) {
+            element.removeAttribute('maxlength');
+        } else {
+            element.maxLength = range.max;
+        }
     });
+}
+
+let serverLimitsObserver = null;
+
+export function initServerInputLimitsObserver() {
+    if (serverLimitsObserver || typeof MutationObserver === 'undefined') return;
+    serverLimitsObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node.nodeType === 1) {
+                    applyServerInputLimits(node);
+                }
+            }
+        }
+    });
+    if (document.body) {
+        serverLimitsObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+        });
+    }
 }
 
 export async function loadServerClientLimits() {
     try {
-        const { data, error } = await apiRequest('/server/status');
+        const { data, error } = await apiRequest('/server/api/status');
         if (error || !data?.client_limits) {
-            DOM.connectionErrorOverlay.classList.remove('hidden');
+            DOM.loadingOverlay?.classList.add('hidden');
+            DOM.connectionErrorOverlay?.classList.remove('hidden');
             return false;
         }
         setServerClientLimits(data.client_limits);
         applyServerInputLimits(document);
+        initServerInputLimitsObserver();
         return true;
-    } catch (_) {
-        DOM.connectionErrorOverlay.classList.remove('hidden');
+    } catch (err) {
+        console.error('[startup] status request failed:', err);
+        DOM.loadingOverlay?.classList.add('hidden');
+        DOM.connectionErrorOverlay?.classList.remove('hidden');
         return false;
     }
 }

@@ -10,82 +10,21 @@
  * All screen logic is delegated to modules under ./modules/ and ./screens/.
  */
 
-import { apiRequest } from './api.js';
 import { DOM } from './dom.js';
 import { setupGlobalEventListeners } from './events.js';
 import { router } from './router.js';
 import { registerPwaServiceWorker, handlePendingPushNotificationOpen } from './modules/pwa.js';
 import { checkSession } from './modules/auth.js';
 import { applyInterfaceTheme, applyColorTheme } from './modules/theme.js';
-import { showAppAlert } from './utils/helpers.js';
+import {
+    showAppAlert,
+    loadServerClientLimits,
+    applyServerInputLimits,
+    getServerClientLimits,
+    setServerClientLimits,
+} from './utils/helpers.js';
 
-// ---------------------------------------------------------------------------
-// Server client limits (input length caps, feature flags, etc.)
-// ---------------------------------------------------------------------------
-
-/** @type {Record<string,any>|null} */
-let serverClientLimits = null;
-
-/**
- * Fetch /server/status and populate serverClientLimits.
- * Shows the connection-error overlay on failure.
- * @returns {Promise<boolean>} true on success
- */
-export async function loadServerClientLimits() {
-    try {
-        const { data, error } = await apiRequest('/server/api/status');
-        if (error || !data?.client_limits) {
-            DOM.loadingOverlay?.classList.add('hidden');
-            DOM.connectionErrorOverlay?.classList.remove('hidden');
-            return false;
-        }
-        serverClientLimits = data.client_limits;
-        applyServerInputLimits();
-        return true;
-    } catch (err) {
-        console.error('[startup] status request failed:', err);
-        DOM.loadingOverlay?.classList.add('hidden');
-        DOM.connectionErrorOverlay?.classList.remove('hidden');
-        return false;
-    }
-}
-
-/**
- * Apply server-specified min/maxlength constraints to any element with
- * data-server-input-limit that is currently in the DOM.
- * @param {Element|Document} [root=document]
- */
-export function applyServerInputLimits(root = document) {
-    const inputLimits = serverClientLimits?.input;
-    if (!inputLimits) return;
-    const selector = '[data-server-input-limit]';
-    const elements = [];
-    if (root instanceof Element && root.matches(selector)) elements.push(root);
-    if (root?.querySelectorAll) elements.push(...root.querySelectorAll(selector));
-
-    elements.forEach((element) => {
-        if (
-            !(element instanceof HTMLInputElement) &&
-            !(element instanceof HTMLTextAreaElement)
-        )
-            return;
-        const range = normalizeClientInputRange(inputLimits[element.dataset.serverInputLimit]);
-        if (!range) return;
-        if (range.min === null) element.removeAttribute('minlength');
-        else element.minLength = range.min;
-        if (range.max === null) element.removeAttribute('maxlength');
-        else element.maxLength = range.max;
-    });
-}
-
-function normalizeClientInputRange(range) {
-    if (!range || typeof range !== 'object') return null;
-    const min = Number.isInteger(range.min) && range.min >= 0 ? range.min : null;
-    const max = Number.isInteger(range.max) && range.max >= 0 ? range.max : null;
-    if (min === null && max === null) return null;
-    if (min !== null && max !== null && min > max) return null;
-    return { min, max };
-}
+export { loadServerClientLimits, applyServerInputLimits, getServerClientLimits, setServerClientLimits };
 
 // ---------------------------------------------------------------------------
 // Application bootstrap

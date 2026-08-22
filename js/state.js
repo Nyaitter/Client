@@ -36,6 +36,7 @@ export const state = {
     dmE2EPublicKeyCache: new Map(),
     dmE2ERegisteredUsers: null,
     dmUnreadCounts: new Map(),
+    serverClientLimits: null,
 };
 
 // Explicit accessors for maximum V8 JIT performance and readability
@@ -143,3 +144,7 @@ export const setDmE2ERegisteredUsers = (val) => { state.dmE2ERegisteredUsers = v
 
 export const getDmUnreadCounts = () => state.dmUnreadCounts;
 export const setDmUnreadCounts = (val) => { state.dmUnreadCounts = val; return val; };
+
+export const getServerClientLimits = () => state.serverClientLimits;
+export const setServerClientLimits = (val) => { state.serverClientLimits = val; return val; };
+
