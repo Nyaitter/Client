@@ -225,6 +225,7 @@ export function setupTimelinePullToRefresh(onRefresh) {
     let trackingPull = false;
     let pullActive = false;
     let refreshInProgress = false;
+    let wasPullReady = false;
 
     const MAX_PULL_DISTANCE = 104;
     const PULL_THRESHOLD = 66;
@@ -240,6 +241,7 @@ export function setupTimelinePullToRefresh(onRefresh) {
 
     const resetIndicator = () => {
         pullActive = false;
+        wasPullReady = false;
         indicator.classList.remove('is-pulling', 'is-ready', 'is-refreshing');
         indicator.style.setProperty('--pull-distance', '0px');
         indicator.style.setProperty('--pull-opacity', '0');
@@ -251,6 +253,17 @@ export function setupTimelinePullToRefresh(onRefresh) {
     const showPullProgress = (distance) => {
         const pullDistance = Math.min(distance, MAX_PULL_DISTANCE);
         const ready = pullDistance >= PULL_THRESHOLD;
+
+        // 「離して更新」に切り替わった瞬間に短いバイブレーションを発火
+        if (ready && !wasPullReady) {
+            try {
+                if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                    navigator.vibrate(15);
+                }
+            } catch (_) {}
+        }
+        wasPullReady = ready;
+
         indicator.classList.add('is-pulling');
         indicator.classList.remove('is-refreshing');
         indicator.classList.toggle('is-ready', ready);

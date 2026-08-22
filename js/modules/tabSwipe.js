@@ -50,6 +50,34 @@ export function getTabKeyFromButton(button) {
 }
 
 /**
+ * Safely scrolls a tab button to center inside its own scrollable tab bar container
+ * WITHOUT triggering parent/window scroll shifts or moving fixed mobile headers/navs.
+ * @param {Element} tabButton
+ */
+export function scrollTabIntoCenter(tabButton) {
+    if (!tabButton || !(tabButton instanceof Element)) return;
+    const tabContainer = tabButton.closest(
+        '.timeline-tabs, .timeline-tabs-container, #profile-tabs, #profile-sub-tabs-container, .profile-sub-tabs, .dm-tabs-container, .group-ui-manage-tabs, .group-ui-post-tabs'
+    ) || tabButton.parentElement;
+
+    if (!tabContainer) return;
+
+    const containerWidth = tabContainer.clientWidth;
+    const buttonLeft = tabButton.offsetLeft;
+    const buttonWidth = tabButton.offsetWidth;
+    const targetScrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
+
+    try {
+        tabContainer.scrollTo({
+            left: Math.max(0, targetScrollLeft),
+            behavior: 'smooth',
+        });
+    } catch (_) {
+        tabContainer.scrollLeft = Math.max(0, targetScrollLeft);
+    }
+}
+
+/**
  * Initialize a Tab Group with full swipe, keyboard, and PTR support.
  * @param {Object} options
  * @param {Element|string} options.container - Tab buttons container (e.g. '.timeline-tabs', '#profile-tabs')
@@ -132,12 +160,8 @@ export function initTabGroup(options = {}) {
             }
         });
 
-        // Smooth scroll tab into view horizontally
-        try {
-            targetBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-        } catch {
-            // ignore unsupported scrollIntoView options
-        }
+        // Smooth scroll tab into view horizontally inside its own tab bar
+        scrollTabIntoCenter(targetBtn);
 
         // Trigger swipe visual feedback on content container if supplied
         if (direction !== 0 && contentContainer) {
@@ -350,7 +374,7 @@ export function setupTabSwipeNavigation() {
                 forceRefresh: false,
                 resetScroll: true,
             });
-            targetBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            scrollTabIntoCenter(targetBtn);
             triggerTabSwipeAnimation(document.getElementById('timeline'), direction);
         }
     }
@@ -396,7 +420,7 @@ export function setupTabSwipeNavigation() {
         if (targetIndex >= 0 && targetIndex < mainTabs.length) {
             const targetBtn = mainTabs[targetIndex];
             targetBtn.click();
-            targetBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            scrollTabIntoCenter(targetBtn);
             triggerTabSwipeAnimation(document.getElementById('profile-content'), direction);
         }
     }
