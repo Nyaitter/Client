@@ -62,6 +62,59 @@ import {
 
 const { resourceLinks: RESOURCE_LINKS, apiUrl } = globalThis.NyaitterClientConfig || {};
 
+export const ALL_HOME_TABS = [
+    { key: 'all', name: 'すべて', icon: '📝', description: 'すべての投稿を表示' },
+    { key: 'foryou', name: 'おすすめ', icon: '✨', description: 'おすすめの投稿を表示' },
+    { key: 'following', name: 'フォロー中', icon: '👥', description: 'フォロー中のユーザーの投稿を表示' },
+    { key: 'announce', name: 'お知らせ', icon: '📢', description: '公式・全体アナウンスを表示' },
+    { key: 'groups', name: 'グループ', icon: '🏷️', description: '参加中のグループタブを表示' },
+];
+
+export const DEFAULT_HOME_TABS = ['all', 'foryou', 'following', 'announce', 'groups'];
+
+export function getSavedHomeTabs() {
+    const user = getCurrentUser();
+    const userId = user?.id ?? 'guest';
+    let tabs = null;
+    if (Array.isArray(user?.settings?.home_tabs) && user.settings.home_tabs.length > 0) {
+        tabs = user.settings.home_tabs;
+    } else {
+        try {
+            const stored = localStorage.getItem(`nyaitter_home_tabs_${userId}`);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    tabs = parsed;
+                }
+            }
+        } catch (_) {}
+    }
+    if (!tabs) return [...DEFAULT_HOME_TABS];
+
+    const validKeys = ALL_HOME_TABS.map((t) => t.key);
+    const filtered = tabs.filter((k) => validKeys.includes(k));
+    return filtered.length > 0 ? filtered : [...DEFAULT_HOME_TABS];
+}
+
+export function saveHomeTabs(tabs) {
+    const validKeys = ALL_HOME_TABS.map((t) => t.key);
+    const sanitized = (Array.isArray(tabs) ? tabs : [])
+        .filter((k) => validKeys.includes(k));
+    const finalTabs = sanitized.length > 0 ? sanitized : [...DEFAULT_HOME_TABS];
+
+    const user = getCurrentUser();
+    const userId = user?.id ?? 'guest';
+    try {
+        localStorage.setItem(`nyaitter_home_tabs_${userId}`, JSON.stringify(finalTabs));
+    } catch (_) {}
+
+    if (user) {
+        if (!user.settings) user.settings = {};
+        user.settings.home_tabs = finalTabs;
+        requestSettingsSave();
+    }
+}
+
 export function getSettingsGroupFromHash(hash = window.location.hash) {
     const match = /^#settings\/([a-z0-9_-]+)/i.exec(hash || '');
     return match ? match[1].toLowerCase() : 'profile';
@@ -252,6 +305,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         <div class="settings-layout">
             <nav class="settings-group-list" aria-label="設定グループ">
                 <a href="#settings/profile" class="settings-group-button" data-settings-group="profile">プロフィール</a>
+                <a href="#settings/home" class="settings-group-button" data-settings-group="home">ホーム</a>
                 <a href="#settings/privacy" class="settings-group-button" data-settings-group="privacy">プライバシーとセキュリティ</a>
                 <a href="#settings/ui" class="settings-group-button" data-settings-group="ui">UI / フォント</a>
                 <a href="#settings/notifications" class="settings-group-button" data-settings-group="notifications">通知</a>
@@ -266,6 +320,26 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                     <h3 id="settings-group-title">プロフィール</h3>
                     <p id="settings-group-description" class="settings-group-description">プロフィールに表示される情報と画像を設定します。</p>
                 </div>
+                <section class="settings-group-panel" data-settings-panel="home" hidden>
+                    <div class="home-tabs-customizer">
+                        <div class="home-tabs-section">
+                            <h4 class="home-tabs-section-title">利用可能なタブ</h4>
+                            <p class="settings-help-text">下側の有効なタブにドラッグするか、「＋」ボタンを押して追加できます。</p>
+                            <div id="home-tabs-available-list" class="home-tabs-list home-tabs-available-list" data-zone="available"></div>
+                        </div>
+
+                        <div class="home-tabs-divider">
+                            <span class="home-tabs-divider-icon">⇅</span>
+                        </div>
+
+                        <div class="home-tabs-section">
+                            <h4 class="home-tabs-section-title">有効なタブ（ホームに表示される順序）</h4>
+                            <p class="settings-help-text">ドラッグして並び替えたり、「×」ボタンで削除できます。</p>
+                            <div id="home-tabs-active-list" class="home-tabs-list home-tabs-active-list" data-zone="active"></div>
+                        </div>
+                        <button type="button" id="reset-home-tabs-btn" class="settings-secondary-button" style="align-self: flex-start;">デフォルトの並び順に戻す</button>
+                    </div>
+                </section>
                 <section class="settings-group-panel" data-settings-panel="profile">
                     <label for="setting-username">ユーザー名</label>
                     <input type="text" id="setting-username" required data-server-input-limit="user_name_length" value="${escapeHTML(getCurrentUser().name)}">
@@ -1632,10 +1706,198 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         });
     };
 
+    function createHomeTabItemElement(tabDef, zone = 'active', isOnlyActive = false) {
+        const item = document.createElement('div');
+        item.className = 'home-tab-item';
+        item.draggable = true;
+        item.dataset.tabKey = tabDef.key;
+        item.dataset.zone = zone;
+
+        item.innerHTML = `
+            <div class="home-tab-item-main">
+                <span class="home-tab-handle" title="ドラッグして並び替え">⠿</span>
+                <span class="home-tab-icon">${tabDef.icon}</span>
+                <div class="home-tab-info">
+                    <span class="home-tab-name">${escapeHTML(tabDef.name)}</span>
+                    <span class="home-tab-description">${escapeHTML(tabDef.description)}</span>
+                </div>
+            </div>
+            <div class="home-tab-actions">
+                ${zone === 'available' ? `
+                    <button type="button" class="home-tab-action-btn home-tab-add-btn" data-action="add-tab" title="有効なタブに追加">＋ 追加</button>
+                ` : `
+                    <button type="button" class="home-tab-action-btn" data-action="move-up" title="上へ移動">↑</button>
+                    <button type="button" class="home-tab-action-btn" data-action="move-down" title="下へ移動">↓</button>
+                    <button type="button" class="home-tab-action-btn home-tab-remove-btn" data-action="remove-tab" title="無効化（削除）" ${isOnlyActive ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>✕</button>
+                `}
+            </div>
+        `;
+
+        return item;
+    }
+
+    function renderHomeTabsCustomizer() {
+        const availableList = document.getElementById('home-tabs-available-list');
+        const activeList = document.getElementById('home-tabs-active-list');
+        if (!availableList || !activeList) return;
+
+        const activeKeys = getSavedHomeTabs();
+        const availableKeys = ALL_HOME_TABS.map((t) => t.key).filter((k) => !activeKeys.includes(k));
+
+        availableList.innerHTML = '';
+        activeList.innerHTML = '';
+
+        availableKeys.forEach((key) => {
+            const def = ALL_HOME_TABS.find((t) => t.key === key);
+            if (def) availableList.appendChild(createHomeTabItemElement(def, 'available'));
+        });
+
+        activeKeys.forEach((key) => {
+            const def = ALL_HOME_TABS.find((t) => t.key === key);
+            if (def) activeList.appendChild(createHomeTabItemElement(def, 'active', activeKeys.length <= 1));
+        });
+    }
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.home-tab-item:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function setupHomeTabsCustomizer() {
+        const container = document.querySelector('.home-tabs-customizer');
+        if (!container) return;
+        renderHomeTabsCustomizer();
+
+        if (container.dataset.dndInitialized) return;
+        container.dataset.dndInitialized = 'true';
+
+        let draggedItem = null;
+
+        container.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('.home-tab-item');
+            if (!item) return;
+            draggedItem = item;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', item.dataset.tabKey);
+        });
+
+        container.addEventListener('dragend', () => {
+            if (draggedItem) {
+                draggedItem.classList.remove('dragging');
+                draggedItem = null;
+            }
+            document.querySelectorAll('.home-tabs-list').forEach((l) => l.classList.remove('drag-over'));
+        });
+
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const list = e.target.closest('.home-tabs-list');
+            if (!list) return;
+            e.dataTransfer.dropEffect = 'move';
+            list.classList.add('drag-over');
+
+            const afterElement = getDragAfterElement(list, e.clientY);
+            if (draggedItem) {
+                if (afterElement == null) {
+                    list.appendChild(draggedItem);
+                } else {
+                    list.insertBefore(draggedItem, afterElement);
+                }
+            }
+        });
+
+        container.addEventListener('dragleave', (e) => {
+            const list = e.target.closest('.home-tabs-list');
+            if (list && !list.contains(e.relatedTarget)) {
+                list.classList.remove('drag-over');
+            }
+        });
+
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.home-tabs-list').forEach((l) => l.classList.remove('drag-over'));
+            const activeList = document.getElementById('home-tabs-active-list');
+            if (!activeList) return;
+
+            const currentActiveItems = Array.from(activeList.querySelectorAll('.home-tab-item'));
+            let newActiveKeys = currentActiveItems.map((item) => item.dataset.tabKey).filter(Boolean);
+            if (newActiveKeys.length === 0) {
+                newActiveKeys = [...DEFAULT_HOME_TABS];
+            }
+            saveHomeTabs(newActiveKeys);
+            renderHomeTabsCustomizer();
+        });
+
+        // Click / Touch buttons action (Add, Remove, Move Up/Down)
+        container.addEventListener('click', (e) => {
+            const actionBtn = e.target.closest('[data-action]');
+            if (!actionBtn) return;
+            const item = actionBtn.closest('.home-tab-item');
+            if (!item) return;
+            const tabKey = item.dataset.tabKey;
+            const action = actionBtn.dataset.action;
+
+            let activeKeys = getSavedHomeTabs();
+
+            if (action === 'add-tab') {
+                if (!activeKeys.includes(tabKey)) {
+                    activeKeys.push(tabKey);
+                    saveHomeTabs(activeKeys);
+                    renderHomeTabsCustomizer();
+                }
+            } else if (action === 'remove-tab') {
+                if (activeKeys.length > 1) {
+                    activeKeys = activeKeys.filter((k) => k !== tabKey);
+                    saveHomeTabs(activeKeys);
+                    renderHomeTabsCustomizer();
+                }
+            } else if (action === 'move-up') {
+                const idx = activeKeys.indexOf(tabKey);
+                if (idx > 0) {
+                    const temp = activeKeys[idx - 1];
+                    activeKeys[idx - 1] = activeKeys[idx];
+                    activeKeys[idx] = temp;
+                    saveHomeTabs(activeKeys);
+                    renderHomeTabsCustomizer();
+                }
+            } else if (action === 'move-down') {
+                const idx = activeKeys.indexOf(tabKey);
+                if (idx >= 0 && idx < activeKeys.length - 1) {
+                    const temp = activeKeys[idx + 1];
+                    activeKeys[idx + 1] = activeKeys[idx];
+                    activeKeys[idx] = temp;
+                    saveHomeTabs(activeKeys);
+                    renderHomeTabsCustomizer();
+                }
+            }
+        });
+
+        const resetBtn = document.getElementById('reset-home-tabs-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                saveHomeTabs([...DEFAULT_HOME_TABS]);
+                renderHomeTabsCustomizer();
+            });
+        }
+    }
+
     const settingsGroupDetails = {
         profile: {
             title: 'プロフィール',
             description: 'プロフィールに表示される情報と画像を設定します。',
+        },
+        home: {
+            title: 'ホームのカスタマイズ',
+            description: 'ホーム画面のタイムラインタブの追加・削除や並び順をカスタマイズします。',
         },
         privacy: {
             title: 'プライバシーとセキュリティ',
@@ -1686,6 +1948,9 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         document.querySelectorAll('.settings-group-panel').forEach((panel) => {
             panel.hidden = panel.dataset.settingsPanel !== activeGroup;
         });
+        if (activeGroup === 'home') {
+            setupHomeTabsCustomizer();
+        }
         if (activeGroup === 'privacy') {
             void loadLoginSecuritySessions();
             void loadAuthProvidersSettings();
