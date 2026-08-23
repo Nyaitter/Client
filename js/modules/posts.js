@@ -315,7 +315,7 @@ export async function renderPost(post, author, options = {}) {
         } else if (post.reply_to_post?.unknown) {
             const replyDiv = document.createElement('div');
             replyDiv.className = 'replying-to';
-            replyDiv.textContent = '不明なポストに返信';
+            replyDiv.innerHTML = `<span>不明なポストに返信</span>`;
             postMain.appendChild(replyDiv);
         }
     }
