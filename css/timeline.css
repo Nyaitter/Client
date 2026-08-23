@@ -493,6 +493,8 @@ display: flex;
     top: 25px;
     z-index: 101;
     min-width: 12rem;
+    max-width: calc(100vw - 1.5rem);
+    width: max-content;
     box-sizing: border-box;
     overflow: hidden;
     padding: 0.35rem;
