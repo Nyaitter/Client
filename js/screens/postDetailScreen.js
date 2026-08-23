@@ -234,6 +234,14 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                 if (repliesLoadObserver) repliesLoadObserver.disconnect();
             } else {
                 trigger.innerHTML = '';
+                requestAnimationFrame(() => {
+                    if (!pagination.hasMore || isLoadingReplies) return;
+                    const rect = trigger.getBoundingClientRect();
+                    const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+                    if (rect.top <= vh + 300 && rect.bottom >= -300) {
+                        void loadMoreReplies();
+                    }
+                });
             }
             isLoadingReplies = false;
         };
@@ -244,7 +252,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                     void loadMoreReplies();
                 }
             },
-            { rootMargin: '200px' },
+            { rootMargin: '300px' },
         );
 
         const savedDetailPosition =

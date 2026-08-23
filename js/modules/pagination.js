@@ -176,12 +176,6 @@ export async function loadPostsWithPagination(container, type, options = {}) {
     trigger.className = 'load-more-trigger';
     container.appendChild(trigger);
 
-    const load_btn = document.createElement('button');
-    load_btn.className = 'load-more-btn';
-    load_btn.innerText = 'さらに読み込む';
-    load_btn.onclick = () => loadMore();
-    container.appendChild(load_btn);
-
     const triggerPreloadNext = (nextPage, cursor) => {
         if (!getCurrentPagination().hasMore) return;
         if (postPageCache.pages.has(nextPage) || preloadPromises.has(nextPage)) return;
@@ -201,6 +195,17 @@ export async function loadPostsWithPagination(container, type, options = {}) {
         preloadPromises.set(nextPage, promise);
     };
 
+    const checkAndTriggerNextIfVisible = () => {
+        if (!getCurrentPagination().hasMore || getIsLoadingMore()) return;
+        const currentTrigger = container.querySelector('.load-more-trigger');
+        if (!isActivePaginationLoader(container, currentTrigger, options)) return;
+        const rect = currentTrigger.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+        if (rect.top <= vh + 300 && rect.bottom >= -300) {
+            void loadMore();
+        }
+    };
+
     const loadMore = async ({ cachedOnly = false } = {}) => {
         const currentTrigger = container.querySelector('.load-more-trigger');
         if (
@@ -217,7 +222,6 @@ export async function loadPostsWithPagination(container, type, options = {}) {
         setIsLoadingMore(true);
         currentTrigger.innerHTML = '<div class="spinner"></div>';
         let posterror = null;
-        load_btn.classList.add('hide');
 
         try {
             const pageNumber = getCurrentPagination().page;
@@ -311,14 +315,12 @@ export async function loadPostsWithPagination(container, type, options = {}) {
             currentTrigger.innerText = 'ポストの読み込みに失敗しました。';
             getCurrentPagination().hasMore = false;
             if (localPostLoadObserver) localPostLoadObserver.disconnect();
-            load_btn.remove();
             return false;
         } finally {
+            setIsLoadingMore(false);
             if (!isActivePaginationLoader(container, currentTrigger, options)) {
                 return;
             }
-            load_btn.classList.remove('hide');
-            setIsLoadingMore(false);
 
             const finalTrigger = container.querySelector('.load-more-trigger');
             if (!finalTrigger) return;
@@ -337,14 +339,16 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                     options.subType === 'replies_only' ? 'replies' : type;
 
                 if (!getCurrentPagination().hasMore) {
-                    load_btn.remove();
                     finalTrigger.innerText =
                         container.querySelectorAll('.post').length === 0
                             ? emptyMessages[emptyMessageKey] || ''
                             : 'すべてのポストを読み込みました';
                     if (localPostLoadObserver) localPostLoadObserver.disconnect();
-                } else if (finalTrigger.innerHTML.includes('spinner')) {
-                    finalTrigger.innerHTML = '';
+                } else {
+                    if (finalTrigger.innerHTML.includes('spinner')) {
+                        finalTrigger.innerHTML = '';
+                    }
+                    requestAnimationFrame(checkAndTriggerNextIfVisible);
                 }
             }
         }
@@ -360,7 +364,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                 void loadMore();
             }
         },
-        { rootMargin: '200px' },
+        { rootMargin: '300px' },
     );
     localPostLoadObserver.observe(trigger);
 
@@ -533,6 +537,17 @@ export async function loadUsersWithPagination(container, type, options = {}) {
         preloadPromises.set(nextPage, promise);
     };
 
+    const checkAndTriggerNextIfVisible = () => {
+        if (!getCurrentPagination().hasMore || getIsLoadingMore()) return;
+        const currentTrigger = container.querySelector('.load-more-trigger');
+        if (!isActivePaginationLoader(container, currentTrigger, options)) return;
+        const rect = currentTrigger.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+        if (rect.top <= vh + 300 && rect.bottom >= -300) {
+            void loadMore();
+        }
+    };
+
     const loadMore = async ({ cachedOnly = false } = {}) => {
         if (
             !isActivePaginationLoader(container, trigger, options) ||
@@ -552,66 +567,69 @@ export async function loadUsersWithPagination(container, type, options = {}) {
             cachedPage = await preloadPromises.get(pageNumber);
         }
 
-        if (cachedPage) {
-            users = Array.isArray(cachedPage.users) ? cachedPage.users : [];
-            hasMoreForPage = Boolean(cachedPage.hasMore);
-        } else {
-            if (cachedOnly) {
-                if (isActivePaginationLoader(container, trigger, options)) {
-                    setIsLoadingMore(false);
-                    trigger.innerHTML = '';
+        try {
+            if (cachedPage) {
+                users = Array.isArray(cachedPage.users) ? cachedPage.users : [];
+                hasMoreForPage = Boolean(cachedPage.hasMore);
+            } else {
+                if (cachedOnly) {
+                    if (isActivePaginationLoader(container, trigger, options)) {
+                        trigger.innerHTML = '';
+                    }
+                    return false;
                 }
-                return false;
-            }
-            try {
-                const result = await fetchUserPageData(type, options, pageNumber, pageSize);
-                users = result.users;
-                hasMoreForPage = result.hasMore;
-                if (userPageCache) {
-                    savePostPageCache(userPageCache, pageNumber, {
-                        users,
-                        hasMore: hasMoreForPage,
-                    });
+                try {
+                    const result = await fetchUserPageData(type, options, pageNumber, pageSize);
+                    users = result.users;
+                    hasMoreForPage = result.hasMore;
+                    if (userPageCache) {
+                        savePostPageCache(userPageCache, pageNumber, {
+                            users,
+                            hasMore: hasMoreForPage,
+                        });
+                    }
+                } catch (err) {
+                    error = err;
                 }
-            } catch (err) {
-                error = err;
             }
-        }
 
-        if (!isActivePaginationLoader(container, trigger, options)) return false;
+            if (!isActivePaginationLoader(container, trigger, options)) return false;
 
-        if (error) {
-            console.error(`${type}のユーザー読み込みに失敗:`, error);
-            trigger.innerHTML = '読み込みに失敗しました。';
-        } else {
-            if (users && users.length > 0) {
-                users.forEach((u) => container.insertBefore(renderUserCard(u), trigger));
-                getCurrentPagination().page++;
-                if (!hasMoreForPage) {
+            if (error) {
+                console.error(`${type}のユーザー読み込みに失敗:`, error);
+                trigger.innerHTML = '読み込みに失敗しました。';
+            } else {
+                if (users && users.length > 0) {
+                    users.forEach((u) => container.insertBefore(renderUserCard(u), trigger));
+                    getCurrentPagination().page++;
+                    if (!hasMoreForPage) {
+                        getCurrentPagination().hasMore = false;
+                    } else if (isActivePaginationLoader(container, trigger, options)) {
+                        triggerPreloadNext(getCurrentPagination().page);
+                    }
+                } else {
                     getCurrentPagination().hasMore = false;
-                } else if (isActivePaginationLoader(container, trigger, options)) {
-                    triggerPreloadNext(getCurrentPagination().page);
                 }
-            } else {
-                getCurrentPagination().hasMore = false;
-            }
 
-            if (!getCurrentPagination().hasMore) {
-                const emptyMessages = {
-                    follows: '誰もフォローしていません。',
-                    followers: 'まだフォロワーがいません。',
-                    search: 'ユーザーは見つかりませんでした。',
-                };
-                trigger.innerHTML =
-                    container.querySelectorAll('.profile-card').length === 0
-                        ? emptyMessages[type] || ''
-                        : 'すべてのユーザーを読み込みました';
-            } else {
-                trigger.innerHTML = '';
+                if (!getCurrentPagination().hasMore) {
+                    const emptyMessages = {
+                        follows: '誰もフォローしていません。',
+                        followers: 'まだフォロワーがいません。',
+                        search: 'ユーザーは見つかりませんでした。',
+                    };
+                    trigger.innerHTML =
+                        container.querySelectorAll('.profile-card').length === 0
+                            ? emptyMessages[type] || ''
+                            : 'すべてのユーザーを読み込みました';
+                } else {
+                    trigger.innerHTML = '';
+                    requestAnimationFrame(checkAndTriggerNextIfVisible);
+                }
             }
+            return !error;
+        } finally {
+            setIsLoadingMore(false);
         }
-        setIsLoadingMore(false);
-        return !error;
     };
 
     const userObserver = createViewportObserver(
@@ -624,7 +642,7 @@ export async function loadUsersWithPagination(container, type, options = {}) {
                 loadMore();
             }
         },
-        { rootMargin: '200px' },
+        { rootMargin: '300px' },
     );
     userObserver.observe(trigger);
 
