@@ -44,7 +44,14 @@ import {
  * Attach all global delegated event listeners.
  * Call this once from initApp().
  */
+let lastPointerDownTarget = null;
+
 export function setupGlobalEventListeners() {
+    // ---- Pointerdown / mousedown handler to track click start target ----
+    document.addEventListener('pointerdown', (e) => {
+        lastPointerDownTarget = e.target;
+    }, { passive: true });
+
     // ---- Click handler ----
     document.addEventListener('click', handleGlobalClick);
 
@@ -63,11 +70,23 @@ export function setupGlobalEventListeners() {
     // ---- hashchange → router ----
     window.addEventListener('hashchange', router);
 
-    // ---- Image modal close ----
+    // ---- Image modal close & spoiler keyboard toggle ----
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeImageModal();
             document.getElementById('report-modal')?.classList.add('hidden');
+            return;
+        }
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.classList?.contains('markdown-spoiler')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const spoiler = e.target;
+            const isRevealed = spoiler.classList.toggle('is-revealed');
+            spoiler.setAttribute('aria-expanded', isRevealed ? 'true' : 'false');
+            const spoilerContent = spoiler.querySelector('.markdown-spoiler-content');
+            if (spoilerContent) {
+                spoilerContent.setAttribute('aria-hidden', isRevealed ? 'false' : 'true');
+            }
         }
     });
 }
@@ -366,6 +385,29 @@ function handleGlobalClick(e) {
             handleShowMaskedPost(target.closest('.post-mask-alert'));
             return;
         }
+
+        // ── Markdown spoiler interaction ──────────────────────────────────
+        const spoiler = target.closest('.markdown-spoiler');
+        if (spoiler) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isRevealed = spoiler.classList.toggle('is-revealed');
+            spoiler.setAttribute('aria-expanded', isRevealed ? 'true' : 'false');
+            const spoilerContent = spoiler.querySelector('.markdown-spoiler-content');
+            if (spoilerContent) {
+                spoilerContent.setAttribute('aria-hidden', isRevealed ? 'false' : 'true');
+            }
+            return;
+        }
+
+        // ポスト文字部分（ND/本文）をクリック、または文字部分でクリック開始した場合は、
+        // 文字選択・コピーやNDインタラクトのみを許可し、親ポストへのイベント伝播（詳細画面遷移）を停止する。
+        const isContentTarget = Boolean(target.closest('.post-content, .post-mask-title, .nyarkdown'));
+        const isPointerDownOnContent = Boolean(lastPointerDownTarget?.closest('.post-content, .post-mask-title, .nyarkdown'));
+        if (isContentTarget || isPointerDownOnContent) {
+            return;
+        }
+
         // Navigate to post detail when clicking non-interactive area.
         if (
             !target.closest('a') &&

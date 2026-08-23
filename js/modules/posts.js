@@ -1365,16 +1365,18 @@ export function openPostModal(replyTo = null, quotingPost = null) {
     modalFormContainer.innerHTML = createPostFormHTML(true);
     attachPostFormListeners(modalFormContainer);
 
-    const replyGroupId = replyTo?.groupId || replyTo?.group_id || null;
-    if (replyGroupId) {
-        setPostingGroup(modalFormContainer, {
-            id: replyGroupId,
-            name: replyTo?.group_name || 'グループ',
-            canAnnounce: false,
-        }, { locked: true });
-        void applyPostGroupSelection(modalFormContainer, replyGroupId).catch(() => {});
-    } else if (quotingPost) {
-        setPostingGroup(modalFormContainer, null, { locked: true });
+    if (replyTo) {
+        const replyGroupId = replyTo?.groupId || replyTo?.group_id || null;
+        if (replyGroupId) {
+            setPostingGroup(modalFormContainer, {
+                id: replyGroupId,
+                name: replyTo?.group_name || 'グループ',
+                canAnnounce: false,
+            }, { locked: true });
+            void applyPostGroupSelection(modalFormContainer, replyGroupId).catch(() => {});
+        } else {
+            setPostingGroup(modalFormContainer, null, { locked: true });
+        }
     }
 
     if (replyTo?.isPrivate || replyTo?.lock) {
