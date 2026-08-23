@@ -261,6 +261,7 @@ export function connectRealtimeSocket() {
     socket.onopen = () => {
         if (getRealtimeChannel() !== socket) return;
         setRealtimeReconnectAttempts(0);
+        void refreshNavSummaryFallback();
         if (getRealtimePingTimer()) clearInterval(getRealtimePingTimer());
         setRealtimePingTimer(
             setInterval(() => {
