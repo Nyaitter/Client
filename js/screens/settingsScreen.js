@@ -2110,6 +2110,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
     applyServerInputLimits(document.getElementById('settings-screen'));
     const settingsForm = document.getElementById('settings-form');
     settingsForm?.addEventListener('submit', (e) => e.preventDefault());
+    let settingsChangeDebouncetimer;
     settingsForm?.querySelectorAll('select, input[type="checkbox"]').forEach((control) => {
         control.addEventListener('change', async () => {
             if (control.dataset.imposterControl === 'true') return;
@@ -2121,7 +2122,8 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                     showAppAlert('現在の端末を信頼済みにできなかったため、この設定は有効化されませんでした。');
                 }
             }
-            requestSettingsSave(settingsForm);
+            clearTimeout(settingsChangeDebouncetimer);
+            settingsChangeDebouncetimer = setTimeout(() => requestSettingsSave(settingsForm), 400);
         });
     });
     settingsForm?.querySelectorAll('input[type="text"], textarea').forEach((control) => {

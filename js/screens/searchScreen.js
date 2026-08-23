@@ -77,6 +77,7 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
     `;
 
     const searchInput = document.getElementById('search-input');
+    let searchDebounceTimer;
     const performSearch = () => {
         const newQuery = searchInput?.value.trim();
         if (newQuery) {
@@ -84,8 +85,16 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
         }
     };
     if (searchInput) {
+        searchInput.value = query;
         searchInput.onkeydown = (e) => {
-            if (e.key === 'Enter') performSearch();
+            if (e.key === 'Enter') {
+                clearTimeout(searchDebounceTimer);
+                performSearch();
+            }
+        };
+        searchInput.oninput = () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(performSearch, 400);
         };
     }
 
