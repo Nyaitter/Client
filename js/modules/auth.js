@@ -117,6 +117,12 @@ export async function refreshAccountList() {
 
 export function addAccountToList(user) {
     if (!user || !Number.isInteger(Number(user.id))) return;
+    const isImposter = Boolean(
+        user.is_imposter ||
+        user.auth_provider === 'imposter' ||
+        user.account_provider === 'imposter' ||
+        user.settings?.imposter?.parent_id
+    );
     const list = getAccountList().filter(
         (acc) => Number(acc.id) !== Number(user.id),
     );
@@ -125,6 +131,8 @@ export function addAccountToList(user) {
         name: String(user.name || ''),
         icon_data: user.icon_data || null,
         nyaitter_id: user.nyaitter_id ?? Number(user.id),
+        is_imposter: isImposter,
+        auth_provider: user.auth_provider || null,
     });
     setAccountList(list);
 }
@@ -147,6 +155,13 @@ export function updateAccountData(user, previousId = null) {
         || (user.uuid && acc.uuid === user.uuid)
     ));
     if (index !== -1) {
+        const isImposter = Boolean(
+            user.is_imposter ||
+            user.auth_provider === 'imposter' ||
+            user.account_provider === 'imposter' ||
+            user.settings?.imposter?.parent_id ||
+            list[index].is_imposter
+        );
         list[index] = {
             ...list[index],
             id: Number(user.id),
@@ -154,6 +169,8 @@ export function updateAccountData(user, previousId = null) {
             handle: user.handle || list[index].handle,
             icon_data: user.icon_data !== undefined ? user.icon_data : list[index].icon_data,
             nyaitter_id: user.nyaitter_id ?? list[index].nyaitter_id ?? Number(user.id),
+            is_imposter: isImposter,
+            auth_provider: user.auth_provider || list[index].auth_provider,
         };
         setAccountList(list);
     }
@@ -286,6 +303,12 @@ export async function openAccountSwitcherModal() {
     }
     const current = getCurrentUser();
     const currentId = current ? Number(current.id) : null;
+    const isCurrentImposter = Boolean(
+        current?.is_imposter ||
+        current?.auth_provider === 'imposter' ||
+        current?.account_provider === 'imposter' ||
+        current?.settings?.imposter?.parent_id
+    );
 
     content.innerHTML = `
         <button type="button" class="account-switcher-add-btn">＋ アカウント追加</button>
@@ -294,14 +317,16 @@ export async function openAccountSwitcherModal() {
                 accounts.length > 0
                     ? accounts
                           .map((acc) => {
+                              const isThisAccCurrent = Number(acc.id) === currentId;
                               const isAccImposter = Boolean(
                                   acc.is_imposter ||
                                   acc.auth_provider === 'imposter' ||
                                   acc.account_provider === 'imposter' ||
-                                  acc.settings?.imposter?.parent_id
+                                  acc.settings?.imposter?.parent_id ||
+                                  (isThisAccCurrent && isCurrentImposter)
                               );
                               return `
-                    <li class="account-switcher-item${Number(acc.id) === currentId ? ' active' : ''}" data-id="${escapeHTML(String(acc.id))}" data-automatic-imposter="${acc.automatic_imposter ? 'true' : 'false'}" data-imposter="${isAccImposter ? 'true' : 'false'}">
+                    <li class="account-switcher-item${isThisAccCurrent ? ' active' : ''}" data-id="${escapeHTML(String(acc.id))}" data-automatic-imposter="${acc.automatic_imposter ? 'true' : 'false'}" data-imposter="${isAccImposter ? 'true' : 'false'}">
                         <span class="switcher-user-info">
                             <img class="switcher-user-icon" src="${escapeHTML(getUserIconUrl(acc))}" alt="${escapeHTML(acc.name || '')}">
                             <span>${getEmoji(escapeHTML(acc.name || '不明なユーザー'))}</span>
