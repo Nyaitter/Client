@@ -85,7 +85,7 @@ display: flex;
 
 #profile-tabs {
     position: sticky;
-    top: 56px;
+    top: 90px;
     background-color: var(--pg-bg-color);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
