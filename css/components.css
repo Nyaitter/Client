@@ -148,7 +148,19 @@ width: 1.25rem;
 }
 
 .reply-button:hover {
-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.reply-button:disabled,
+.reply-button.disabled {
+    opacity: 0.38 !important;
+    cursor: not-allowed !important;
+    pointer-events: auto !important;
+}
+
+.reply-button:disabled:hover,
+.reply-button.disabled:hover {
+    color: inherit !important;
 }
 
 .like-button:hover {

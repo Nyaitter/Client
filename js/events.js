@@ -22,6 +22,10 @@ import {
     handleLike,
     handleStar,
     handleShowMaskedPost,
+    handleDislikePost,
+    handleFollowMenuToggle,
+    handleBlockMenuToggle,
+    openReplyControlModal,
 } from './modules/posts.js';
 import {
     openDmEditModal,
@@ -361,6 +365,26 @@ function handleGlobalClick(e) {
             void copyPost(timelinePostId, target.closest('.share-btn'));
             return;
         }
+        if (target.closest('.dislike-btn')) {
+            void handleDislikePost(actionTargetPostId || timelinePostId, target.closest('.post-menu'));
+            return;
+        }
+        if (target.closest('.follow-menu-btn')) {
+            const author = postElement._displayAuthor || postElement._nyaitterPost?.author || postElement._nyaitterPost?.user;
+            void handleFollowMenuToggle(author, target.closest('.post-menu'));
+            return;
+        }
+        if (target.closest('.block-menu-btn')) {
+            const author = postElement._displayAuthor || postElement._nyaitterPost?.author || postElement._nyaitterPost?.user;
+            void handleBlockMenuToggle(author, target.closest('.post-menu'));
+            return;
+        }
+        if (target.closest('.reply-control-menu-btn')) {
+            const post = postElement._nyaitterPost || { id: Number(timelinePostId) };
+            openReplyControlModal(post);
+            target.closest('.post-menu')?.classList.remove('is-visible');
+            return;
+        }
         if (target.closest('.report-btn')) {
             openReportModal({
                 targetKind: 'post',
@@ -384,6 +408,9 @@ function handleGlobalClick(e) {
         }
         if (target.closest('.reply-button')) {
             const replyBtn = target.closest('.reply-button');
+            if (replyBtn.disabled || replyBtn.classList.contains('disabled')) {
+                return;
+            }
             const replyPost = replyBtn._nyaitterPost;
             const replyAuthor = replyPost?.author || replyPost?.user;
             handleReplyClick(
