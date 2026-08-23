@@ -13,6 +13,7 @@ import {
     savePostPageCache,
     isPinnedPost,
     normalizePostId,
+    clearRealtimeTimelineUpdate,
 } from './cache.js';
 import {
     renderPost,
@@ -266,6 +267,9 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                 }
             }
 
+            if (currentPage === 0 && type === 'timeline') {
+                clearRealtimeTimelineUpdate(options.tab);
+            }
             getCurrentPagination().page++;
             getCurrentPagination().hasMore = hasMoreItems;
             return true;

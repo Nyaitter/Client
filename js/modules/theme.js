@@ -187,6 +187,38 @@ export function getActivePullToRefreshContext() {
             };
         }
     }
+    if (currentHash === '#likes') {
+        const likesScreen = document.getElementById('likes-screen');
+        if (likesScreen && !likesScreen.classList.contains('hidden')) {
+            return { type: 'likes' };
+        }
+    }
+    if (currentHash === '#stars') {
+        const starsScreen = document.getElementById('stars-screen');
+        if (starsScreen && !starsScreen.classList.contains('hidden')) {
+            return { type: 'stars' };
+        }
+    }
+    const searchMatch = currentHash.match(/^#search\/(.+)$/);
+    if (searchMatch) {
+        const searchScreen = document.getElementById('search-results-screen');
+        if (searchScreen && !searchScreen.classList.contains('hidden')) {
+            return { type: 'search', query: decodeURIComponent(searchMatch[1]) };
+        }
+    }
+    if (currentHash === '#admin/reports' || currentHash.startsWith('#admin/reports/')) {
+        const reportDetailMatch = currentHash.match(/^#admin\/reports\/(.+)$/);
+        return {
+            type: 'admin-reports',
+            reportId: reportDetailMatch ? reportDetailMatch[1] : null,
+        };
+    }
+    if (currentHash === '#admin/logs') {
+        const adminLogsScreen = document.getElementById('admin-logs-screen');
+        if (adminLogsScreen && !adminLogsScreen.classList.contains('hidden')) {
+            return { type: 'admin-logs' };
+        }
+    }
     return null;
 }
 

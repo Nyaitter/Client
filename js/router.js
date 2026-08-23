@@ -2,6 +2,7 @@ import { DOM } from './dom.js';
 import {
     getCurrentUser,
     getCurrentTimelineTab,
+    getCurrentSearchTab,
     getPostLoadObserver,
     setIsLoadingMore,
 } from './state.js';
@@ -84,6 +85,31 @@ async function refreshPullToRefreshContext(context) {
         } else {
             await showGroupsScreen(showScreen);
         }
+        return;
+    }
+    if (context?.type === 'likes') {
+        await showLikesScreen(showScreen);
+        return;
+    }
+    if (context?.type === 'stars') {
+        await showStarsScreen(showScreen);
+        return;
+    }
+    if (context?.type === 'search') {
+        await showSearchResults(context.query, getCurrentSearchTab() || 'posts', showScreen);
+        return;
+    }
+    if (context?.type === 'admin-reports') {
+        if (context.reportId) {
+            await showAdminReportDetailScreen(context.reportId, showScreen);
+        } else {
+            await showAdminReportsScreen(showScreen);
+        }
+        return;
+    }
+    if (context?.type === 'admin-logs') {
+        await showAdminLogsScreen(showScreen);
+        return;
     }
 }
 

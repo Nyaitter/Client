@@ -9,6 +9,7 @@ import {
 import {
     getTimelinePageCache,
     updateRealtimeTimelineIndicator,
+    clearRealtimeTimelineUpdate,
 } from '../modules/cache.js';
 import {
     createPostFormHTML,
@@ -126,6 +127,7 @@ export async function switchTimelineTab(
             ?.textContent?.trim()
         : '';
     syncPostFormDestinationWithTimeline(DOM.postFormContainer, groupId, groupName);
+    clearRealtimeTimelineUpdate(tab);
 
     if (getPostLoadObserver()) getPostLoadObserver().disconnect();
     DOM.timeline.innerHTML = '';
