@@ -110,7 +110,7 @@ export async function fetchOptimizedPostPage(
                 context: null,
             };
         }
-        const ids = [...(options.ids || [])].reverse();
+        const ids = Array.isArray(options.ids) ? options.ids : [];
         const pageIds = ids.slice(from, from + pageSize);
         params.set('mode', 'ids');
         params.set('ids', pageIds.join(','));
