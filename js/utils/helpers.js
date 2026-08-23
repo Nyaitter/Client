@@ -634,7 +634,7 @@ export function getUserIconUrl(user) {
         typeof user?.icon_data === 'string' ? user.icon_data.trim() : '';
     if (iconData) {
         if (/^https?:\/\//i.test(iconData)) {
-            return getSafeHttpUrl(iconData) || '/logo.png';
+            return getSafeHttpUrl(iconData) || '/emoji/neko.svg';
         }
         const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(iconData);
         if (configuredUrl) return configuredUrl;

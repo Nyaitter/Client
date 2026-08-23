@@ -524,11 +524,14 @@ export function attachMarkdownContentEditor(editor) {
     const useNyaitterEditor = applyContentEditorPreference(editor);
     if (!useNyaitterEditor) {
         editor.addEventListener('input', () => autoResizeMarkdownEditor(editor));
+        editor.addEventListener('focus', () => autoResizeMarkdownEditor(editor));
         autoResizeMarkdownEditor(editor);
+        scheduleNextFrame(() => autoResizeMarkdownEditor(editor));
         return;
     }
     if (editor.dataset.markdownContentEditor === 'true') {
         updateMarkdownEditorPreview(editor);
+        scheduleNextFrame(() => autoResizeMarkdownEditor(editor));
         return;
     }
     editor.dataset.markdownContentEditor = 'true';
@@ -563,8 +566,25 @@ export function attachMarkdownContentEditor(editor) {
     editor.addEventListener('scroll', sync);
     getMarkdownEditorPreview(editor)?.addEventListener('load', sync, true);
 
+    if (typeof ResizeObserver !== 'undefined') {
+        const host = editor.closest('.markdown-textarea-editor');
+        if (host && !host._markdownResizeObserver) {
+            const observer = new ResizeObserver(() => {
+                if (editor.offsetParent !== null) {
+                    autoResizeMarkdownEditor(editor);
+                }
+            });
+            observer.observe(host);
+            host._markdownResizeObserver = observer;
+        }
+    }
+
     void customEmojiPromise.then(() => updateMarkdownEditorPreview(editor));
     updateMarkdownEditorPreview(editor);
+    scheduleNextFrame(() => {
+        autoResizeMarkdownEditor(editor);
+        syncMarkdownEditorDecoration(editor);
+    });
 }
 
 export function setMarkdownEditorValue(editor, value, { focus = false } = {}) {

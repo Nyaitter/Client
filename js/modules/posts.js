@@ -24,6 +24,7 @@ import { getEmoji, emoji_picker_create } from './format.js';
 import { renderNyarkDown } from './nyarkdown.js';
 import {
     attachMarkdownContentEditor,
+    autoResizeMarkdownEditor,
     getMarkdownEditorValue,
     setMarkdownEditorValue,
     setupMarkdownEditorPreviewButton,
@@ -1399,7 +1400,11 @@ export function openPostModal(replyTo = null, quotingPost = null) {
 
     modalFormContainer.querySelector('.modal-close-btn')?.addEventListener('click', closePostModal);
     postModal.classList.remove('hidden');
-    modalFormContainer.querySelector('#post-content')?.focus();
+    const postEditor = modalFormContainer.querySelector('#post-content');
+    if (postEditor) {
+        autoResizeMarkdownEditor(postEditor);
+        postEditor.focus();
+    }
 }
 
 export function closePostModal() {
@@ -1623,6 +1628,10 @@ export async function openEditPostModal(postId, onSaved = null) {
         };
 
         DOM.editPostModal.classList.remove('hidden');
+        if (editPostEditor) {
+            autoResizeMarkdownEditor(editPostEditor);
+            editPostEditor.focus();
+        }
     } catch (error) {
         console.error(error);
         showAppAlert(error.message || '編集モーダルの読み込みに失敗しました');
