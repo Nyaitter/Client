@@ -187,20 +187,6 @@ export function handleRealtimeEvent(event) {
                         avatarBadge.remove();
                     }
                 }
-                const header = listItem.querySelector('.dm-list-item-header');
-                if (header) {
-                    let badge = header.querySelector('.dm-list-item-unread-badge');
-                    if (newCount > 0) {
-                        if (!badge) {
-                            badge = document.createElement('span');
-                            badge.className = 'dm-list-item-unread-badge';
-                            header.appendChild(badge);
-                        }
-                        badge.textContent = String(newCount);
-                    } else if (badge) {
-                        badge.remove();
-                    }
-                }
             }
         } else {
             user.unreadDmTotal = Number(event.unread_count || 0);

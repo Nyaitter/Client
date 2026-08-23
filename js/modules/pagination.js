@@ -13,6 +13,7 @@ import {
     savePostPageCache,
     isPinnedPost,
     normalizePostId,
+    clearRealtimeTimelineUpdate,
 } from './cache.js';
 import {
     renderPost,
@@ -110,7 +111,7 @@ export async function fetchOptimizedPostPage(
                 context: null,
             };
         }
-        const ids = [...(options.ids || [])].reverse();
+        const ids = Array.isArray(options.ids) ? options.ids : [];
         const pageIds = ids.slice(from, from + pageSize);
         params.set('mode', 'ids');
         params.set('ids', pageIds.join(','));
@@ -266,6 +267,9 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                 }
             }
 
+            if (currentPage === 0 && type === 'timeline') {
+                clearRealtimeTimelineUpdate(options.tab);
+            }
             getCurrentPagination().page++;
             getCurrentPagination().hasMore = hasMoreItems;
             return true;

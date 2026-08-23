@@ -108,7 +108,6 @@ function renderDmListItem(dm, unreadCount, currentUserId) {
             <div class="dm-list-item-main">
                 <div class="dm-list-item-header">
                     <span class="dm-list-item-title">${titleEscaped}</span>
-                    ${unreadCount > 0 ? `<span class="dm-list-item-unread-badge">${unreadCount}</span>` : ''}
                 </div>
                 ${subtitle ? `<div class="dm-list-item-sub">${escapeHTML(subtitle)}</div>` : ''}
             </div>

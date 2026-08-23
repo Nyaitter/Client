@@ -459,8 +459,17 @@ export function queueRealtimeTimelineUpdate(post) {
     updateRealtimeTimelineIndicator(currentTab);
 }
 
-export function clearRealtimeTimelineUpdate(tab = getCurrentTimelineTab()) {
-    const normalizedTab = tab === 'following' ? 'following' : 'foryou';
-    pendingRealtimeTimelineUpdates[normalizedTab] = [];
-    updateRealtimeTimelineIndicator(normalizedTab);
+export function clearRealtimeTimelineUpdate(tab = null) {
+    if (tab) {
+        const normalizedTab = tab === 'following' ? 'following' : 'foryou';
+        pendingRealtimeTimelineUpdates[normalizedTab] = [];
+    } else {
+        pendingRealtimeTimelineUpdates.foryou = [];
+        pendingRealtimeTimelineUpdates.following = [];
+    }
+    const indicator = document.getElementById('new-posts-indicator');
+    if (indicator && (!tab || tab === getCurrentTimelineTab())) {
+        indicator.classList.add('hidden');
+    }
+    updateRealtimeTimelineIndicator(getCurrentTimelineTab());
 }
