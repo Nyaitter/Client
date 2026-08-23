@@ -50,7 +50,7 @@ width: 100%;
 }
 
 .nav-overflow-panel {
-position: fixed;
+    position: fixed;
     z-index: 200;
     box-sizing: border-box;
     width: min(15rem, calc(100vw - 1rem));
@@ -58,9 +58,9 @@ position: fixed;
     overflow-y: auto;
     padding: 0.35rem;
     border: 1px solid var(--border-color);
-    border-radius: 0.85rem;
-    background: var(--main-bg-color);
-    box-shadow: 0 0.45rem 1.25rem rgba(0, 0, 0, 0.14);
+    border-radius: 12px;
+    background: var(--bg-color);
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 22%, transparent);
 }
 
 .nav-overflow-panel .nav-item {

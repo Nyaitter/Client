@@ -269,7 +269,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                 menuButton.setAttribute('aria-label', '管理者メニュー');
                 menuButton.onclick = (event) => {
                     event.stopPropagation();
-                    openProfileMenu(user);
+                    openProfileMenu(user, menuButton);
                 };
                 actionsContainer.appendChild(menuButton);
             }
@@ -392,7 +392,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                 menuButton.setAttribute('aria-label', 'プロフィールメニュー');
                 menuButton.onclick = (e) => {
                     e.stopPropagation();
-                    openProfileMenu(user);
+                    openProfileMenu(user, menuButton);
                 };
                 actionsContainer.appendChild(menuButton);
             }
@@ -765,7 +765,7 @@ export async function loadMediaGrid(container, options = {}) {
     await loadMore();
 }
 
-export function openProfileMenu(targetUser) {
+export function openProfileMenu(targetUser, triggerElement) {
     document.getElementById('profile-menu')?.remove();
 
     const menu = document.createElement('div');
@@ -859,16 +859,40 @@ export function openProfileMenu(targetUser) {
     }
 
     document.body.appendChild(menu);
-    const trigger = document.querySelector('.profile-menu-button');
+    const trigger = triggerElement || document.querySelector('.profile-menu-button');
     if (trigger) {
         const rect = trigger.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const menuWidth = menuRect.width || 180;
+        const menuHeight = menuRect.height || 120;
+        const margin = 8;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+        let top = window.scrollY + rect.bottom + 6;
+        if (rect.bottom + 6 + menuHeight > viewportHeight && rect.top - menuHeight - 6 >= 0) {
+            top = window.scrollY + rect.top - menuHeight - 6;
+        }
+
+        let left = window.scrollX + rect.right - menuWidth;
+        if (left < window.scrollX + margin) {
+            left = window.scrollX + margin;
+        }
+        if (left + menuWidth > window.scrollX + viewportWidth - margin) {
+            left = window.scrollX + viewportWidth - menuWidth - margin;
+        }
+
         menu.style.position = 'absolute';
-        menu.style.top = `${window.scrollY + rect.bottom + 6}px`;
-        menu.style.left = `${window.scrollX + rect.left}px`;
+        menu.style.top = `${top}px`;
+        menu.style.left = `${left}px`;
     }
 
     setTimeout(() => {
-        document.addEventListener('click', () => menu.remove(), { once: true });
+        document.addEventListener('click', (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+            }
+        }, { once: true });
     }, 0);
 }
 
@@ -947,10 +971,28 @@ export function openNotificationMenu(targetUser, trigger) {
     document.body.appendChild(menu);
     if (trigger) {
         const rect = trigger.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const menuWidth = menuRect.width || 260;
+        const menuHeight = menuRect.height || 160;
+        const margin = 8;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+
+        let top = window.scrollY + rect.bottom + 6;
+        if (rect.bottom + 6 + menuHeight > viewportHeight && rect.top - menuHeight - 6 >= 0) {
+            top = window.scrollY + rect.top - menuHeight - 6;
+        }
+
+        let left = window.scrollX + rect.right - menuWidth;
+        if (left < window.scrollX + margin) {
+            left = window.scrollX + margin;
+        }
+        if (left + menuWidth > window.scrollX + viewportWidth - margin) {
+            left = window.scrollX + viewportWidth - menuWidth - margin;
+        }
+
         menu.style.position = 'absolute';
-        menu.style.top = `${window.scrollY + rect.bottom + 6}px`;
-        const menuWidth = 260;
-        const left = Math.max(10, Math.min(window.scrollX + rect.left, window.innerWidth - menuWidth - 10));
+        menu.style.top = `${top}px`;
         menu.style.left = `${left}px`;
     }
 
