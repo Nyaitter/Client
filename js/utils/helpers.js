@@ -172,17 +172,23 @@ export function initServerInputLimitsObserver() {
 
 export async function loadServerClientLimits() {
     try {
-        const { data, error } = await apiRequest('/server/api/status');
+        if (!globalThis.__nyaitterStatusPromise) {
+            globalThis.__nyaitterStatusPromise = apiRequest('/server/api/status');
+        }
+        const { data, error } = await globalThis.__nyaitterStatusPromise;
         if (error || !data?.client_limits) {
+            globalThis.__nyaitterStatusPromise = null;
             DOM.loadingOverlay?.classList.add('hidden');
             DOM.connectionErrorOverlay?.classList.remove('hidden');
             return false;
         }
+        globalThis.NyaitterServerStatus = data;
         setServerClientLimits(data.client_limits);
         applyServerInputLimits(document);
         initServerInputLimitsObserver();
         return true;
     } catch (err) {
+        globalThis.__nyaitterStatusPromise = null;
         console.error('[startup] status request failed:', err);
         DOM.loadingOverlay?.classList.add('hidden');
         DOM.connectionErrorOverlay?.classList.remove('hidden');

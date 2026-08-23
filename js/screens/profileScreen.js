@@ -634,6 +634,15 @@ export async function loadMediaGrid(container, options = {}) {
     let page = 0;
     let hasMore = true;
     let isLoading = false;
+    let preloadMediaPromise = null;
+
+    const triggerPreloadNextMedia = (nextPage) => {
+        if (!hasMore || !isActivePaginationLoader(container, trigger, options)) return;
+        const nextFrom = nextPage * MEDIA_PER_PAGE;
+        preloadMediaPromise = apiRequest(
+            `/server/api/users/${encodeURIComponent(options.userId)}/media?limit=${MEDIA_PER_PAGE}&offset=${nextFrom}`,
+        ).catch(() => null);
+    };
 
     const loadMore = async () => {
         if (!isActivePaginationLoader(container, trigger, options) || isLoading || !hasMore) {
@@ -643,9 +652,20 @@ export async function loadMediaGrid(container, options = {}) {
         trigger.innerHTML = '<div class="spinner"></div>';
 
         const from = page * MEDIA_PER_PAGE;
-        const { data: mediaResponse, error } = await apiRequest(
-            `/server/api/users/${encodeURIComponent(options.userId)}/media?limit=${MEDIA_PER_PAGE}&offset=${from}`,
-        );
+        let mediaResponse;
+        let error;
+        if (preloadMediaPromise) {
+            const res = await preloadMediaPromise;
+            preloadMediaPromise = null;
+            mediaResponse = res?.data;
+            error = res?.error;
+        } else {
+            const res = await apiRequest(
+                `/server/api/users/${encodeURIComponent(options.userId)}/media?limit=${MEDIA_PER_PAGE}&offset=${from}`,
+            );
+            mediaResponse = res?.data;
+            error = res?.error;
+        }
         const mediaItems = Array.isArray(mediaResponse?.media_items)
             ? mediaResponse.media_items
             : [];
@@ -688,7 +708,11 @@ export async function loadMediaGrid(container, options = {}) {
                     gridContainer.appendChild(itemLink);
                 }
                 page++;
-                if (mediaItems.length < MEDIA_PER_PAGE) hasMore = false;
+                if (mediaItems.length < MEDIA_PER_PAGE) {
+                    hasMore = false;
+                } else if (isActivePaginationLoader(container, trigger, options)) {
+                    triggerPreloadNextMedia(page);
+                }
             } else {
                 hasMore = false;
             }

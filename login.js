@@ -103,20 +103,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  let detectTurnstilePromise = null;
+
   async function detectTurnstileRequirement() {
     if (!configuredTurnstileSiteKey || !turnstileContainer || !turnstileWidget) return;
-    try {
-      const response = await fetch(apiUrl('/server/api/status'), {
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data?.turnstile?.enabled) {
-        turnstileEnabled = true;
-        // スクリプトを先行ロード
-        void loadTurnstileScript().catch(() => {});
-      }
-    } catch (_) {}
+    if (detectTurnstilePromise) return detectTurnstilePromise;
+    detectTurnstilePromise = (async () => {
+      try {
+        let data = globalThis.NyaitterServerStatus;
+        if (!data && globalThis.__nyaitterStatusPromise) {
+          const res = await globalThis.__nyaitterStatusPromise;
+          data = res?.data;
+        }
+        if (!data) {
+          const response = await fetch(apiUrl('/server/api/status'), {
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+          });
+          data = await response.json().catch(() => ({}));
+          if (response.ok && data) {
+            globalThis.NyaitterServerStatus = data;
+          }
+        }
+        if (data?.turnstile?.enabled) {
+          turnstileEnabled = true;
+          // スクリプトを先行ロード
+          void loadTurnstileScript().catch(() => {});
+        }
+      } catch (_) {}
+    })();
+    return detectTurnstilePromise;
   }
 
   async function setupTurnstile() {
@@ -900,10 +916,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  void detectTurnstileRequirement().then(async () => {
+  void (async () => {
     const handled = await processLoginCallback();
     if (!handled && new URL(window.location.href).searchParams.get('login') === '1') {
       openLoginModal();
     }
-  });
+  })();
 });

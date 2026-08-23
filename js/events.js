@@ -90,6 +90,7 @@ export function setupGlobalEventListeners() {
     // ---- 「再試行」ボタン ----
     DOM.retryConnectionBtn?.addEventListener('click', async () => {
         DOM.connectionErrorOverlay?.classList.add('hidden');
+        globalThis.__nyaitterStatusPromise = null;
         const { loadServerClientLimits } = await import('./app.js');
         if (!(await loadServerClientLimits())) return;
         const { checkSession } = await import('./modules/auth.js');

@@ -168,7 +168,8 @@ export async function loadPostsWithPagination(container, type, options = {}) {
     options = bindPaginationOptionsToRoute(options);
     const pageSize = getPostsPerPage();
     let localPostLoadObserver;
-    const postPageCache = options.pageCache || null;
+    const postPageCache = options.pageCache || { pages: new Map() };
+    const preloadPromises = new Map();
     setCurrentPagination({ page: 0, hasMore: true, type, options });
 
     const trigger = document.createElement('div');
@@ -180,6 +181,25 @@ export async function loadPostsWithPagination(container, type, options = {}) {
     load_btn.innerText = 'さらに読み込む';
     load_btn.onclick = () => loadMore();
     container.appendChild(load_btn);
+
+    const triggerPreloadNext = (nextPage, cursor) => {
+        if (!getCurrentPagination().hasMore) return;
+        if (postPageCache.pages.has(nextPage) || preloadPromises.has(nextPage)) return;
+
+        const promise = fetchOptimizedPostPage(type, options, nextPage, cursor)
+            .then((result) => {
+                if (result) {
+                    savePostPageCache(postPageCache, nextPage, result);
+                }
+                return result;
+            })
+            .catch(() => null)
+            .finally(() => {
+                preloadPromises.delete(nextPage);
+            });
+
+        preloadPromises.set(nextPage, promise);
+    };
 
     const loadMore = async ({ cachedOnly = false } = {}) => {
         const currentTrigger = container.querySelector('.load-more-trigger');
@@ -202,6 +222,9 @@ export async function loadPostsWithPagination(container, type, options = {}) {
         try {
             const pageNumber = getCurrentPagination().page;
             let optimizedPage = postPageCache?.pages.get(pageNumber);
+            if (!optimizedPage && preloadPromises.has(pageNumber)) {
+                optimizedPage = await preloadPromises.get(pageNumber);
+            }
             if (!optimizedPage && cachedOnly) return false;
             if (!optimizedPage) {
                 const previousPage =
@@ -272,6 +295,12 @@ export async function loadPostsWithPagination(container, type, options = {}) {
             }
             getCurrentPagination().page++;
             getCurrentPagination().hasMore = hasMoreItems;
+            if (hasMoreItems && isActivePaginationLoader(container, currentTrigger, options)) {
+                triggerPreloadNext(
+                    getCurrentPagination().page,
+                    optimizedPage?.nextCursor ?? null,
+                );
+            }
             return true;
         } catch (error) {
             if (!isActivePaginationLoader(container, currentTrigger, options)) {
@@ -381,9 +410,69 @@ export async function loadPostsWithPagination(container, type, options = {}) {
     };
 }
 
+async function fetchUserPageData(type, options, pageNumber, pageSize) {
+    const from = pageNumber * pageSize;
+    const to = from + pageSize - 1 + (type === 'search' ? 1 : 0);
+    const selectColumns = 'id, name, me, scid, icon_data, admin, verify';
+
+    let users = [];
+    let error = null;
+    let hasMoreForPage = true;
+
+    if (type === 'follows') {
+        if (options.userId) {
+            const result = await apiRequest(
+                `/server/api/users/${encodeURIComponent(options.userId)}/following?limit=${pageSize}&offset=${from}`,
+            );
+            users = Array.isArray(result.data?.following)
+                ? result.data.following
+                : [];
+            error = result.error;
+        } else {
+            const idsToFetch = (options.ids || []).slice(from, to + 1);
+            if (idsToFetch.length > 0) {
+                const result = await api
+                    .from('user')
+                    .select(selectColumns)
+                    .in('id', idsToFetch);
+                users = result.data;
+                error = result.error;
+            }
+        }
+    } else if (type === 'followers') {
+        const result = await apiRequest(
+            `/server/api/users/${encodeURIComponent(options.userId)}/followers?limit=${pageSize}&offset=${from}`,
+        );
+        users = Array.isArray(result.data?.followers)
+            ? result.data.followers
+            : [];
+        error = result.error;
+    } else if (type === 'search') {
+        const result = await api
+            .from('user')
+            .select(selectColumns)
+            .or(options.filters || '')
+            .order('id', { ascending: true })
+            .range(from, to);
+        users = Array.isArray(result.data) ? result.data : [];
+        error = result.error;
+        hasMoreForPage = users.length > pageSize;
+        users = users.slice(0, pageSize);
+        if (typeof options.sortResults === 'function') {
+            users.sort(options.sortResults);
+        }
+    }
+    if (type !== 'search') {
+        hasMoreForPage = users.length >= pageSize;
+    }
+    if (error) throw error;
+    return { users, hasMore: hasMoreForPage };
+}
+
 export async function loadUsersWithPagination(container, type, options = {}) {
     options = bindPaginationOptionsToRoute(options);
-    const userPageCache = options.pageCache || null;
+    const userPageCache = options.pageCache || { pages: new Map() };
+    const preloadPromises = new Map();
     const requestedPageSize = Number(options.pageSize) || 20;
     const pageSize = isDataSaverEnabled()
         ? Math.min(requestedPageSize, 10)
@@ -425,6 +514,25 @@ export async function loadUsersWithPagination(container, type, options = {}) {
         return userCard;
     };
 
+    const triggerPreloadNext = (nextPage) => {
+        if (!getCurrentPagination().hasMore) return;
+        if (userPageCache.pages.has(nextPage) || preloadPromises.has(nextPage)) return;
+
+        const promise = fetchUserPageData(type, options, nextPage, pageSize)
+            .then((result) => {
+                if (result) {
+                    savePostPageCache(userPageCache, nextPage, result);
+                }
+                return result;
+            })
+            .catch(() => null)
+            .finally(() => {
+                preloadPromises.delete(nextPage);
+            });
+
+        preloadPromises.set(nextPage, promise);
+    };
+
     const loadMore = async ({ cachedOnly = false } = {}) => {
         if (
             !isActivePaginationLoader(container, trigger, options) ||
@@ -435,14 +543,14 @@ export async function loadUsersWithPagination(container, type, options = {}) {
         setIsLoadingMore(true);
         trigger.innerHTML = '<div class="spinner"></div>';
 
-        const from = getCurrentPagination().page * pageSize;
-        const to = from + pageSize - 1 + (type === 'search' ? 1 : 0);
-
         let users = [];
         let error = null;
         let hasMoreForPage = true;
         const pageNumber = getCurrentPagination().page;
-        const cachedPage = userPageCache?.pages.get(pageNumber);
+        let cachedPage = userPageCache?.pages.get(pageNumber);
+        if (!cachedPage && preloadPromises.has(pageNumber)) {
+            cachedPage = await preloadPromises.get(pageNumber);
+        }
 
         if (cachedPage) {
             users = Array.isArray(cachedPage.users) ? cachedPage.users : [];
@@ -455,59 +563,18 @@ export async function loadUsersWithPagination(container, type, options = {}) {
                 }
                 return false;
             }
-            const selectColumns = 'id, name, me, scid, icon_data, admin, verify';
-
-            if (type === 'follows') {
-                if (options.userId) {
-                    const result = await apiRequest(
-                        `/server/api/users/${encodeURIComponent(options.userId)}/following?limit=${pageSize}&offset=${from}`,
-                    );
-                    users = Array.isArray(result.data?.following)
-                        ? result.data.following
-                        : [];
-                    error = result.error;
-                } else {
-                    const idsToFetch = (options.ids || []).slice(from, to + 1);
-                    if (idsToFetch.length > 0) {
-                        const result = await api
-                            .from('user')
-                            .select(selectColumns)
-                            .in('id', idsToFetch);
-                        users = result.data;
-                        error = result.error;
-                    }
+            try {
+                const result = await fetchUserPageData(type, options, pageNumber, pageSize);
+                users = result.users;
+                hasMoreForPage = result.hasMore;
+                if (userPageCache) {
+                    savePostPageCache(userPageCache, pageNumber, {
+                        users,
+                        hasMore: hasMoreForPage,
+                    });
                 }
-            } else if (type === 'followers') {
-                const result = await apiRequest(
-                    `/server/api/users/${encodeURIComponent(options.userId)}/followers?limit=${pageSize}&offset=${from}`,
-                );
-                users = Array.isArray(result.data?.followers)
-                    ? result.data.followers
-                    : [];
-                error = result.error;
-            } else if (type === 'search') {
-                const result = await api
-                    .from('user')
-                    .select(selectColumns)
-                    .or(options.filters || '')
-                    .order('id', { ascending: true })
-                    .range(from, to);
-                users = Array.isArray(result.data) ? result.data : [];
-                error = result.error;
-                hasMoreForPage = users.length > pageSize;
-                users = users.slice(0, pageSize);
-                if (typeof options.sortResults === 'function') {
-                    users.sort(options.sortResults);
-                }
-            }
-            if (type !== 'search') {
-                hasMoreForPage = users.length >= pageSize;
-            }
-            if (!error && userPageCache) {
-                savePostPageCache(userPageCache, pageNumber, {
-                    users,
-                    hasMore: hasMoreForPage,
-                });
+            } catch (err) {
+                error = err;
             }
         }
 
@@ -522,6 +589,8 @@ export async function loadUsersWithPagination(container, type, options = {}) {
                 getCurrentPagination().page++;
                 if (!hasMoreForPage) {
                     getCurrentPagination().hasMore = false;
+                } else if (isActivePaginationLoader(container, trigger, options)) {
+                    triggerPreloadNext(getCurrentPagination().page);
                 }
             } else {
                 getCurrentPagination().hasMore = false;
