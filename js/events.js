@@ -52,6 +52,31 @@ export function setupGlobalEventListeners() {
         lastPointerDownTarget = e.target;
     }, { passive: true });
 
+    // ---- Global fallback for broken/failed user avatar images ----
+    document.addEventListener(
+        'error',
+        (event) => {
+            const target = event.target;
+            if (target instanceof HTMLImageElement) {
+                const isUserAvatar =
+                    target.classList.contains('user-icon') ||
+                    target.classList.contains('user-icon-large') ||
+                    target.classList.contains('dm-list-item-avatar') ||
+                    target.classList.contains('dm-message-icon') ||
+                    target.classList.contains('dm-search-user-icon') ||
+                    target.classList.contains('dm-manage-member-icon') ||
+                    target.classList.contains('switcher-user-icon') ||
+                    target.classList.contains('nyauth-account-avatar') ||
+                    target.classList.contains('post-account-menu-icon') ||
+                    target.id === 'setting-icon-preview';
+                if (isUserAvatar && !target.src.endsWith('/emoji/neko.svg')) {
+                    target.src = '/emoji/neko.svg';
+                }
+            }
+        },
+        true,
+    );
+
     // ---- Click handler ----
     document.addEventListener('click', handleGlobalClick);
 
