@@ -425,6 +425,7 @@ export const api = (() => {
                                 group_id: params.p_group_id,
                                 group_announcement: params.p_group_announcement,
                                 post_as_user_id: params.p_as_user_id,
+                                client_nonce: params.client_nonce || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`),
                             },
                         },
                         'post',
