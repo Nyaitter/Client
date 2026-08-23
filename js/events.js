@@ -154,7 +154,7 @@ function handleGlobalClick(e) {
     if (action === 'refresh-realtime-timeline') {
         e.preventDefault();
         clearRealtimeTimelineUpdate();
-        void switchTimelineTab(getCurrentTimelineTab(), {
+        void switchTimelineTab('following', {
             forceRefresh: true,
             resetScroll: true,
         });
