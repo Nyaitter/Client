@@ -2125,7 +2125,6 @@ export async function handleFollowMenuToggle(author, menu = null) {
             currentUser.follow = data.updated_follows;
         }
         invalidateTimelinePageCache();
-        showAppAlert(data?.following ? `@${author.name || 'ユーザー'} をフォローしました。` : `@${author.name || 'ユーザー'} のフォローを解除しました。`);
     } catch (e) {
         currentUser.follow = originalFollows;
         console.error('フォロー切り替えエラー:', e);
