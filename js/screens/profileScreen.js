@@ -358,6 +358,17 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         if (getCurrentUser() && !isCurrentUserProfile(user)) {
             const actionsContainer = profileHeader.querySelector('#profile-actions');
             if (actionsContainer) {
+                const notifyButton = document.createElement('button');
+                notifyButton.type = 'button';
+                notifyButton.className = 'profile-notify-button dm-button';
+                const currentMode = getCurrentUser()?.settings?.user_notifications?.[user.id] || 'none';
+                updateNotifyButtonState(notifyButton, currentMode);
+                notifyButton.onclick = (e) => {
+                    e.stopPropagation();
+                    openNotificationMenu(user, notifyButton);
+                };
+                actionsContainer.appendChild(notifyButton);
+
                 const dmButton = document.createElement('button');
                 dmButton.className = 'dm-button';
                 dmButton.title = 'メッセージを送信';
@@ -859,4 +870,130 @@ export function openProfileMenu(targetUser) {
     setTimeout(() => {
         document.addEventListener('click', () => menu.remove(), { once: true });
     }, 0);
+}
+
+export function updateNotifyButtonState(button, mode = 'none') {
+    if (!button) return;
+    const isActive = mode && mode !== 'none';
+    button.classList.toggle('is-active', isActive);
+
+    let title = '通知設定: 通知しない';
+    if (mode === 'important') title = '通知設定: 重要なポストを通知';
+    else if (mode === 'media') title = '通知設定: メディアを通知';
+    else if (mode === 'all') title = '通知設定: 全てのポストを通知';
+
+    button.title = title;
+    button.setAttribute('aria-label', title);
+    button.innerHTML = ICONS.notifications;
+}
+
+export function openNotificationMenu(targetUser, trigger) {
+    document.getElementById('profile-notification-menu')?.remove();
+    document.getElementById('profile-menu')?.remove();
+
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+
+    const currentMode = currentUser.settings?.user_notifications?.[targetUser.id] || 'none';
+    const menu = document.createElement('div');
+    menu.id = 'profile-notification-menu';
+    menu.className = 'post-menu profile-notify-menu is-visible';
+
+    const options = [
+        { mode: 'none', title: '通知しない', desc: '' },
+        { mode: 'important', title: '重要なポストを通知', desc: '見出しの含まれるポストを通知' },
+        { mode: 'media', title: 'メディアを通知', desc: '添付ファイルのあるポストを通知' },
+        { mode: 'all', title: '全てのポストを通知', desc: '返信は対象外' },
+    ];
+
+    options.forEach((opt) => {
+        const itemBtn = document.createElement('button');
+        itemBtn.type = 'button';
+        itemBtn.className = `profile-notify-menu-item${currentMode === opt.mode ? ' is-active' : ''}`;
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'profile-notify-item-content';
+
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'profile-notify-item-label';
+        labelDiv.textContent = opt.title;
+        contentDiv.appendChild(labelDiv);
+
+        if (opt.desc) {
+            const descDiv = document.createElement('div');
+            descDiv.className = 'profile-notify-item-desc';
+            descDiv.textContent = opt.desc;
+            contentDiv.appendChild(descDiv);
+        }
+
+        itemBtn.appendChild(contentDiv);
+
+        if (currentMode === opt.mode) {
+            const checkSpan = document.createElement('span');
+            checkSpan.className = 'profile-notify-check';
+            checkSpan.textContent = '✓';
+            itemBtn.appendChild(checkSpan);
+        }
+
+        itemBtn.onclick = async (e) => {
+            e.stopPropagation();
+            menu.remove();
+            await setUserNotificationMode(targetUser, opt.mode, trigger);
+        };
+
+        menu.appendChild(itemBtn);
+    });
+
+    document.body.appendChild(menu);
+    if (trigger) {
+        const rect = trigger.getBoundingClientRect();
+        menu.style.position = 'absolute';
+        menu.style.top = `${window.scrollY + rect.bottom + 6}px`;
+        const menuWidth = 260;
+        const left = Math.max(10, Math.min(window.scrollX + rect.left, window.innerWidth - menuWidth - 10));
+        menu.style.left = `${left}px`;
+    }
+
+    setTimeout(() => {
+        document.addEventListener('click', (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+            }
+        }, { once: true });
+    }, 0);
+}
+
+async function setUserNotificationMode(targetUser, mode, trigger) {
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+
+    const currentNotifications = { ...(currentUser.settings?.user_notifications || {}) };
+    if (mode === 'none') {
+        delete currentNotifications[targetUser.id];
+    } else {
+        currentNotifications[targetUser.id] = mode;
+    }
+
+    const updatedSettings = {
+        ...(currentUser.settings || {}),
+        user_notifications: currentNotifications,
+    };
+
+    const { data: updatePayload, error } = await apiRequest('/server/api/users/me', {
+        method: 'PUT',
+        body: { settings: updatedSettings },
+    });
+
+    if (!error) {
+        setCurrentUser(
+            updatePayload?.user || {
+                ...currentUser,
+                settings: updatedSettings,
+            },
+        );
+        updateAccountData(getCurrentUser());
+        updateNotifyButtonState(trigger, mode);
+    } else {
+        showAppAlert('通知設定の保存に失敗しました');
+    }
 }

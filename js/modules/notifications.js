@@ -84,6 +84,8 @@ export function notificationActorLabel(notification) {
 
 export function getNotificationMessageSuffix(notification) {
     switch (notification?.type) {
+        case 'post':
+            return ' さんが新しいポストを投稿しました。';
         case 'reply':
             return ' さんがあなたのポストに返信しました。';
         case 'quote':

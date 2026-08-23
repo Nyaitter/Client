@@ -170,3 +170,79 @@ display: flex;
     flex-wrap: nowrap;
     min-width: max-content;
 }
+
+/* プロフィール通知ボタンとメニュー */
+#profile-header .profile-notify-button {
+    position: relative;
+}
+
+#profile-header .profile-notify-button.is-active {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+#profile-header .profile-notify-button.is-active svg {
+    stroke: var(--primary-color);
+    fill: currentColor;
+}
+
+.profile-notify-menu {
+    width: min(18rem, calc(100vw - 2rem));
+    padding: 0.4rem;
+}
+
+.profile-notify-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: auto;
+    padding: 0.6rem 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+    gap: 0.5rem;
+}
+
+.profile-notify-menu-item:hover {
+    background-color: var(--bg-color);
+}
+
+.profile-notify-menu-item.is-active {
+    color: var(--primary-color);
+}
+
+.profile-notify-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1;
+}
+
+.profile-notify-item-label {
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.profile-notify-item-desc {
+    font-size: 0.78rem;
+    color: var(--secondary-text-color);
+    line-height: 1.25;
+}
+
+.profile-notify-menu-item.is-active .profile-notify-item-desc {
+    color: var(--primary-color);
+    opacity: 0.85;
+}
+
+.profile-notify-check {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
