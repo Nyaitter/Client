@@ -400,11 +400,12 @@ function handleGlobalClick(e) {
             return;
         }
 
-        // ポスト文字部分（ND/本文）をクリック、または文字部分でクリック開始した場合は、
-        // 文字選択・コピーやNDインタラクトのみを許可し、親ポストへのイベント伝播（詳細画面遷移）を停止する。
+        // ポスト文字部分（ND/本文）をクリック、またはテキスト選択ドラッグした場合は、
+        // 親ポストへのイベント伝播（詳細画面遷移）を停止する。
         const isContentTarget = Boolean(target.closest('.post-content, .post-mask-title, .nyarkdown'));
         const isPointerDownOnContent = Boolean(lastPointerDownTarget?.closest('.post-content, .post-mask-title, .nyarkdown'));
-        if (isContentTarget || isPointerDownOnContent) {
+        const hasTextSelection = Boolean(window.getSelection()?.toString().trim());
+        if (isContentTarget || (isPointerDownOnContent && hasTextSelection)) {
             return;
         }
 
