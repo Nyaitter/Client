@@ -274,29 +274,16 @@ display: block;
 }
 
 .group-timeline-mode-menu {
-position: fixed;
+    position: fixed;
     z-index: 1000;
     display: grid;
     min-width: 8.5rem;
-    gap: 0.3rem;
-    padding: 0.4rem;
+    gap: 0.2rem;
+    padding: 0.35rem;
     border: 1px solid var(--border-color);
-    border-radius: 10px;
-    background: var(--main-bg-color);
-    box-shadow: 0 0.5rem 1.4rem rgba(0, 0, 0, 0.18);
-}
-
-.post-group-button:disabled,
-.post-reply-control-button:disabled {
-cursor: not-allowed;
-    opacity: 0.6;
-}
-
-.post-form-actions .post-group-button svg,
-.post-form-actions .post-reply-control-button svg {
-width: 20px;
-    height: 20px;
-    stroke-width: 1.5;
+    border-radius: 12px;
+    background: var(--bg-color);
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 22%, transparent);
 }
 
 .post-group-menu,
@@ -305,15 +292,18 @@ width: 20px;
     z-index: 40;
     right: 0.7rem;
     bottom: 3.25rem;
-    display: grid;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     min-width: min(18rem, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
     max-height: min(22rem, calc(100vh - 7rem));
     overflow: auto;
     padding: 0.35rem;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    background: var(--main-bg-color);
-    box-shadow: 0 0.65rem 1.6rem rgba(0, 0, 0, 0.18);
+    background: var(--bg-color);
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 22%, transparent);
 }
 
 .group-create-form,
@@ -631,24 +621,6 @@ margin: 0;
     font-weight: 700;
 }
 
-.post-group-menu-item {
-gap: 0.2rem;
-    padding: 0.65rem 0.7rem;
-    border-radius: 8px;
-}
-
-.post-group-menu-item strong {
-font-size: 0.92rem;
-}
-
-.post-group-menu-item.active {
-background: var(--light-primary-color);
-    color: var(--primary-color);
-}
-
-.post-group-menu-item.active small {
-color: inherit;
-}
 
 .profile-group-tab {
 font-weight: 700;
@@ -1010,8 +982,17 @@ display: block;
 
 
 
+.post-group-button:disabled,
+.post-reply-control-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 .post-form-actions .post-group-button svg,
 .post-form-actions .post-reply-control-button svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 1.5;
     fill: none;
     stroke: currentColor;
 }
@@ -1021,24 +1002,14 @@ display: block;
     stroke: var(--primary-color);
 }
 
-.post-group-menu,
-.post-reply-control-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    min-width: min(18rem, calc(100vw - 2rem));
-    max-width: calc(100vw - 2rem);
-    padding: 0.35rem;
-    border-radius: 12px;
-    background: var(--bg-color);
-    box-shadow: 0 10px 28px color-mix(in srgb, #000 22%, transparent);
-}
-
+.post-form-actions .post-group-menu-item,
+.post-form-actions .post-reply-control-menu-item,
 .post-group-menu-item,
 .post-reply-control-menu-item {
     display: flex;
     align-items: center;
     gap: 0.65rem;
+    width: 100%;
     min-width: 0;
     padding: 0.55rem;
     border-radius: 8px;
@@ -1048,8 +1019,15 @@ display: block;
     text-align: left;
     color: inherit;
     font-family: inherit;
+    font-weight: normal;
 }
 
+.post-form-actions .post-group-menu-item:hover,
+.post-form-actions .post-group-menu-item:focus-visible,
+.post-form-actions .post-group-menu-item.active,
+.post-form-actions .post-reply-control-menu-item:hover,
+.post-form-actions .post-reply-control-menu-item:focus-visible,
+.post-form-actions .post-reply-control-menu-item.active,
 .post-group-menu-item:hover,
 .post-group-menu-item:focus-visible,
 .post-group-menu-item.active,
@@ -1059,6 +1037,8 @@ display: block;
     background: var(--hover-bg-color, var(--main-bg-color));
 }
 
+.post-form-actions .post-group-menu-item:focus-visible,
+.post-form-actions .post-reply-control-menu-item:focus-visible,
 .post-group-menu-item:focus-visible,
 .post-reply-control-menu-item:focus-visible {
     outline: 2px solid var(--primary-color);
@@ -1117,13 +1097,14 @@ display: block;
 
 .post-group-menu-copy strong,
 .post-reply-control-menu-copy strong {
-    font-size: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
 }
 
 .post-group-menu-copy small,
 .post-reply-control-menu-copy small {
     color: var(--secondary-text-color);
-    font-size: inherit;
+    font-size: 0.82rem;
 }
 
 .post-group-menu-item.active,

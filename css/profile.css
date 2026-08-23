@@ -188,7 +188,11 @@ display: flex;
 
 .profile-notify-menu {
     width: min(18rem, calc(100vw - 2rem));
-    padding: 0.4rem;
+    padding: 0.35rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-color);
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 22%, transparent);
 }
 
 .profile-notify-menu-item {
@@ -197,19 +201,25 @@ display: flex;
     justify-content: space-between;
     width: 100%;
     min-height: auto;
-    padding: 0.6rem 0.75rem;
+    padding: 0.55rem 0.65rem;
     border: none;
     border-radius: 8px;
     background: transparent;
     color: var(--text-color);
     text-align: left;
     cursor: pointer;
-    transition: background-color 0.16s ease, color 0.16s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
     gap: 0.5rem;
 }
 
-.profile-notify-menu-item:hover {
-    background-color: var(--bg-color);
+.profile-notify-menu-item:hover,
+.profile-notify-menu-item:focus-visible {
+    background-color: var(--hover-bg-color, var(--main-bg-color));
+}
+
+.profile-notify-menu-item:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
 }
 
 .profile-notify-menu-item.is-active {

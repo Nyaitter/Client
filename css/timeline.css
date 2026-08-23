@@ -488,28 +488,23 @@ display: flex;
 }
 
 .post-menu {
-position: absolute;
+    position: absolute;
     right: 0;
     top: 25px;
     z-index: 101;
-    width: 12rem;
+    min-width: 12rem;
     box-sizing: border-box;
     overflow: hidden;
     padding: 0.35rem;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    background: var(--main-bg-color);
-    box-shadow: 0 0.55rem 1.4rem rgba(0, 0, 0, 0.14);
-    visibility: hidden;
-    opacity: 0;
-    transition: visibility 0.16s;
-    pointer-events: none;
+    background: var(--bg-color);
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 22%, transparent);
+    display: none;
 }
 
 .post-menu.is-visible {
-visibility: visible;
-    opacity: 1;
-    pointer-events: auto;
+    display: block;
 }
 
 .post .user-icon-link {
