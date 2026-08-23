@@ -45,11 +45,15 @@ import {
  * Call this once from initApp().
  */
 let lastPointerDownTarget = null;
+let lastPointerDownTime = 0;
+let lastPointerDownPos = { x: 0, y: 0 };
 
 export function setupGlobalEventListeners() {
     // ---- Pointerdown / mousedown handler to track click start target ----
     document.addEventListener('pointerdown', (e) => {
         lastPointerDownTarget = e.target;
+        lastPointerDownTime = Date.now();
+        lastPointerDownPos = { x: e.clientX, y: e.clientY };
     }, { passive: true });
 
     // ---- Global fallback for broken/failed user avatar images ----
@@ -425,21 +429,33 @@ function handleGlobalClick(e) {
             return;
         }
 
-        // ポスト文字部分（ND/本文）をクリック、またはテキスト選択ドラッグした場合は、
-        // 親ポストへのイベント伝播（詳細画面遷移）を停止する。
-        const isContentTarget = Boolean(target.closest('.post-content, .post-mask-title, .nyarkdown'));
-        const isPointerDownOnContent = Boolean(lastPointerDownTarget?.closest('.post-content, .post-mask-title, .nyarkdown'));
-        const hasTextSelection = Boolean(window.getSelection()?.toString().trim());
-        if (isContentTarget || (isPointerDownOnContent && hasTextSelection)) {
+        // テキスト選択や長押しドラッグされた場合は、詳細画面遷移を阻止する。
+        const selection = window.getSelection();
+        const hasTextSelection = Boolean(selection && !selection.isCollapsed && selection.toString().trim());
+        const pressDuration = Date.now() - (lastPointerDownTime || 0);
+        const isLongPress = lastPointerDownTime > 0 && pressDuration > 500;
+        const dragDistance = Math.hypot(
+            e.clientX - (lastPointerDownPos.x || e.clientX),
+            e.clientY - (lastPointerDownPos.y || e.clientY),
+        );
+        const isDrag = dragDistance > 10;
+
+        if (hasTextSelection || isLongPress || isDrag) {
             return;
         }
 
-        // Navigate to post detail when clicking non-interactive area.
+        // インタラクティブな要素（リンク、ボタン、添付ファイル、メニュー等）以外をクリックした場合は
+        // 詳細画面へ遷移
         if (
             !target.closest('a') &&
+            !target.closest('button') &&
             !target.closest('.post-menu-btn') &&
             !target.closest('.attachment-item') &&
-            !target.closest('.post-clamp-toggle')
+            !target.closest('.post-clamp-toggle') &&
+            !target.closest('.post-action-btn') &&
+            !target.closest('.custom-emoji-btn') &&
+            !target.closest('.markdown-spoiler') &&
+            !target.closest('input, textarea, select')
         ) {
             saveScrollPosition();
             window.location.hash = `#post/${actionTargetPostId}`;
