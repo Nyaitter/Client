@@ -352,6 +352,7 @@ width: 0.95rem;
 .post-content {
     margin-bottom: 1rem;
     min-width: 0;
+    width: fit-content;
     max-width: 100%;
     overflow: hidden;
     overflow-wrap: anywhere;
@@ -360,6 +361,11 @@ width: 0.95rem;
     font-size: 1rem;
     cursor: text;
     user-select: text;
+}
+
+.post-content p {
+    width: fit-content;
+    max-width: 100%;
 }
 
 .post-content a,
@@ -371,7 +377,8 @@ width: 0.95rem;
 
 .post-content-decoration,
 .nyarkdown-decoration {
-max-width: 100%;
+    width: fit-content;
+    max-width: 100%;
     overflow-wrap: anywhere;
 }
 
