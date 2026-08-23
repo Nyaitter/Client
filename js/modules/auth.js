@@ -136,14 +136,22 @@ export function removeAccountFromList(id) {
     setAccountList(list);
 }
 
-export function updateAccountData(user) {
+export function updateAccountData(user, previousId = null) {
     if (!user || !Number.isInteger(Number(user.id))) return;
+    const targetPreviousId = Number.isInteger(Number(previousId)) ? Number(previousId) : null;
     const list = getAccountList();
-    const index = list.findIndex((acc) => Number(acc.id) === Number(user.id));
+    const index = list.findIndex((acc) => (
+        (targetPreviousId != null && Number(acc.id) === targetPreviousId)
+        || Number(acc.id) === Number(user.id)
+        || (user.scid && acc.scid === user.scid)
+        || (user.uuid && acc.uuid === user.uuid)
+    ));
     if (index !== -1) {
         list[index] = {
             ...list[index],
+            id: Number(user.id),
             name: String(user.name || list[index].name),
+            handle: user.handle || list[index].handle,
             icon_data: user.icon_data !== undefined ? user.icon_data : list[index].icon_data,
             nyaitter_id: user.nyaitter_id ?? list[index].nyaitter_id ?? Number(user.id),
         };
