@@ -1608,3 +1608,226 @@ min-width: 5.5rem;
         transform: translateY(0);
     }
 }
+
+/* ==========================================================================
+   Group Management - Modern Dashboard Enhancements
+   ========================================================================== */
+
+/* Visibility Cards Selector */
+.group-visibility-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.35rem;
+}
+
+.group-visibility-card {
+    display: block;
+    position: relative;
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+    padding: 1rem;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.group-visibility-card:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 50%, var(--border-color));
+}
+
+.group-visibility-card.is-selected {
+    border-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 6%, var(--main-bg-color));
+}
+
+.group-visibility-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.group-visibility-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    margin-bottom: 0.35rem;
+}
+
+.group-visibility-card-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 9999px;
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
+
+.group-visibility-card-desc {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--secondary-text-color);
+}
+
+/* Members Management */
+.group-members-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.group-members-search-input {
+    flex: 1;
+    min-width: 14rem;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.group-members-search-input:focus-visible {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.group-member-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--main-bg-color);
+    transition: background-color 0.15s ease;
+}
+
+.group-member-item:first-child {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.group-member-item:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    border-bottom: none;
+}
+
+.group-member-item:hover {
+    background: var(--bg-color);
+}
+
+.group-member-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.group-member-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--bg-color);
+    flex-shrink: 0;
+}
+
+.group-member-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.group-member-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.group-member-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.group-member-handle {
+    font-size: 0.82rem;
+    color: var(--secondary-text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.group-member-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* Join Requests & Invites */
+.group-requests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.group-request-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.group-request-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* Danger Zone Cards */
+.group-danger-card {
+    border: 1.5px solid rgba(239, 68, 68, 0.35);
+    background: color-mix(in srgb, #ef4444 3%, var(--main-bg-color));
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.group-danger-card-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ef4444;
+}
+
+.group-danger-card-desc {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--secondary-text-color);
+}
+
