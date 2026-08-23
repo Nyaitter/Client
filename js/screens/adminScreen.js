@@ -370,58 +370,68 @@ export async function showAdminLogsScreen(showScreenFn = null) {
         setIsLoadingMore(true);
         trigger.innerHTML = '<div class="spinner"></div>';
 
-        const offset = currentPage * LOGS_PER_PAGE;
-        let data;
-        let error;
-        if (preloadLogsPromise) {
-            const res = await preloadLogsPromise;
-            preloadLogsPromise = null;
-            data = res?.data;
-            error = res?.error;
-        } else {
-            const res = await api.rpc('get_logs_with_masked_ip', {
-                p_limit: LOGS_PER_PAGE,
-                p_offset: offset,
-            });
-            data = res?.data;
-            error = res?.error;
-        }
+        try {
+            const offset = currentPage * LOGS_PER_PAGE;
+            let data;
+            let error;
+            if (preloadLogsPromise) {
+                const res = await preloadLogsPromise;
+                preloadLogsPromise = null;
+                data = res?.data;
+                error = res?.error;
+            } else {
+                const res = await api.rpc('get_logs_with_masked_ip', {
+                    p_limit: LOGS_PER_PAGE,
+                    p_offset: offset,
+                });
+                data = res?.data;
+                error = res?.error;
+            }
 
-        if (error) {
-            console.error('ログの取得に失敗:', error);
-            trigger.innerHTML = `<p class="error-message">${escapeHTML(error.message)}</p>`;
-            hasMore = false;
+            if (error) {
+                console.error('ログの取得に失敗:', error);
+                trigger.innerHTML = `<p class="error-message">${escapeHTML(error.message)}</p>`;
+                hasMore = false;
+                return;
+            }
+
+            if (data && data.length > 0) {
+                data.forEach((log) => {
+                    const logItem = document.createElement('div');
+                    logItem.className = 'widget-item';
+                    logItem.style.cssText = 'display: flex; flex-direction: column; gap: 0.25rem;';
+                    logItem.innerHTML = `
+                        <div><strong>SCID:</strong> ${escapeHTML(log.scratch_id)} (#${log.nyaitter_id})</div>
+                        <div style="font-size: 0.9rem; color: var(--secondary-text-color);">${new Date(log.log_time).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}</div>
+                        <div style="font-size: 0.8rem; color: var(--secondary-text-color); font-family: monospace; word-break: break-all;">識別子: ${log.masked_ip_uuid}</div>
+                    `;
+                    contentDiv.insertBefore(logItem, trigger);
+                });
+                currentPage++;
+            }
+
+            if (!data || data.length < LOGS_PER_PAGE) {
+                hasMore = false;
+                trigger.innerHTML =
+                    contentDiv.children.length > 1
+                        ? 'すべてのログを読み込みました'
+                        : 'ログはまだありません。';
+                if (getPostLoadObserver()) getPostLoadObserver().disconnect();
+            } else {
+                trigger.innerHTML = '';
+                triggerPreloadNextLogs(currentPage);
+                requestAnimationFrame(() => {
+                    if (!hasMore || getIsLoadingMore()) return;
+                    const rect = trigger.getBoundingClientRect();
+                    const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+                    if (rect.top <= vh + 300 && rect.bottom >= -300) {
+                        void loadMoreLogs();
+                    }
+                });
+            }
+        } finally {
             setIsLoadingMore(false);
-            return;
         }
-
-        if (data && data.length > 0) {
-            data.forEach((log) => {
-                const logItem = document.createElement('div');
-                logItem.className = 'widget-item';
-                logItem.style.cssText = 'display: flex; flex-direction: column; gap: 0.25rem;';
-                logItem.innerHTML = `
-                    <div><strong>SCID:</strong> ${escapeHTML(log.scratch_id)} (#${log.nyaitter_id})</div>
-                    <div style="font-size: 0.9rem; color: var(--secondary-text-color);">${new Date(log.log_time).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}</div>
-                    <div style="font-size: 0.8rem; color: var(--secondary-text-color); font-family: monospace; word-break: break-all;">識別子: ${log.masked_ip_uuid}</div>
-                `;
-                contentDiv.insertBefore(logItem, trigger);
-            });
-            currentPage++;
-        }
-
-        if (!data || data.length < LOGS_PER_PAGE) {
-            hasMore = false;
-            trigger.innerHTML =
-                contentDiv.children.length > 1
-                    ? 'すべてのログを読み込みました'
-                    : 'ログはまだありません。';
-            if (getPostLoadObserver()) getPostLoadObserver().disconnect();
-        } else {
-            trigger.innerHTML = '';
-            triggerPreloadNextLogs(currentPage);
-        }
-        setIsLoadingMore(false);
     };
 
     setPostLoadObserver(
@@ -429,7 +439,7 @@ export async function showAdminLogsScreen(showScreenFn = null) {
             (entries) => {
                 if (entries[0].isIntersecting) void loadMoreLogs();
             },
-            { rootMargin: '200px' },
+            { rootMargin: '300px' },
         ),
     );
     getPostLoadObserver().observe(trigger);

@@ -199,6 +199,14 @@ export async function showNotificationsScreen(showScreenFn = null) {
                 } else {
                     trigger.textContent = '';
                     triggerPreloadNextNotifications(notificationOffset);
+                    requestAnimationFrame(() => {
+                        if (!hasMoreNotifications || isLoadingMoreNotifications || !getCurrentUser()) return;
+                        const rect = trigger.getBoundingClientRect();
+                        const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+                        if (rect.top <= vh + 300 && rect.bottom >= -300) {
+                            void loadMoreNotifications();
+                        }
+                    });
                 }
             } catch (error) {
                 console.error('通知の取得に失敗しました:', error);
@@ -220,7 +228,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
                         void loadMoreNotifications();
                     }
                 },
-                { rootMargin: '200px' },
+                { rootMargin: '300px' },
             ),
         );
         getPostLoadObserver().observe(trigger);

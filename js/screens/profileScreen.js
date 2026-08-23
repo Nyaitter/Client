@@ -651,83 +651,95 @@ export async function loadMediaGrid(container, options = {}) {
         isLoading = true;
         trigger.innerHTML = '<div class="spinner"></div>';
 
-        const from = page * MEDIA_PER_PAGE;
-        let mediaResponse;
-        let error;
-        if (preloadMediaPromise) {
-            const res = await preloadMediaPromise;
-            preloadMediaPromise = null;
-            mediaResponse = res?.data;
-            error = res?.error;
-        } else {
-            const res = await apiRequest(
-                `/server/api/users/${encodeURIComponent(options.userId)}/media?limit=${MEDIA_PER_PAGE}&offset=${from}`,
-            );
-            mediaResponse = res?.data;
-            error = res?.error;
-        }
-        const mediaItems = Array.isArray(mediaResponse?.media_items)
-            ? mediaResponse.media_items
-            : [];
+        try {
+            const from = page * MEDIA_PER_PAGE;
+            let mediaResponse;
+            let error;
+            if (preloadMediaPromise) {
+                const res = await preloadMediaPromise;
+                preloadMediaPromise = null;
+                mediaResponse = res?.data;
+                error = res?.error;
+            } else {
+                const res = await apiRequest(
+                    `/server/api/users/${encodeURIComponent(options.userId)}/media?limit=${MEDIA_PER_PAGE}&offset=${from}`,
+                );
+                mediaResponse = res?.data;
+                error = res?.error;
+            }
+            const mediaItems = Array.isArray(mediaResponse?.media_items)
+                ? mediaResponse.media_items
+                : [];
 
-        if (!isActivePaginationLoader(container, trigger, options)) return;
+            if (!isActivePaginationLoader(container, trigger, options)) return;
 
-        if (error) {
-            console.error('メディアの読み込みに失敗:', error);
-            trigger.innerHTML = '読み込みに失敗しました。';
-        } else {
-            if (mediaItems && mediaItems.length > 0) {
-                for (const item of mediaItems) {
-                    const { data: publicUrlData } = api.storage
-                        .from('nyaitter')
-                        .getPublicUrl(item.file_id);
+            if (error) {
+                console.error('メディアの読み込みに失敗:', error);
+                trigger.innerHTML = '読み込みに失敗しました。';
+            } else {
+                if (mediaItems && mediaItems.length > 0) {
+                    for (const item of mediaItems) {
+                        const { data: publicUrlData } = api.storage
+                            .from('nyaitter')
+                            .getPublicUrl(item.file_id);
 
-                    const itemLink = document.createElement('a');
-                    itemLink.href = `#post/${item.post_id}`;
-                    itemLink.className = 'media-grid-item';
+                        const itemLink = document.createElement('a');
+                        itemLink.href = `#post/${item.post_id}`;
+                        itemLink.className = 'media-grid-item';
 
-                    const publicUrl = getSafeHttpUrl(publicUrlData?.publicUrl);
-                    if (!publicUrl) continue;
-                    if (item.file_type === 'image') {
-                        const image = document.createElement('img');
-                        configureAttachmentImage(
-                            image,
-                            { id: item.file_id },
-                            publicUrl,
-                        );
-                        image.alt = '投稿メディア';
-                        itemLink.appendChild(image);
-                    } else if (item.file_type === 'video') {
-                        const video = document.createElement('video');
-                        video.src = publicUrl;
-                        video.muted = true;
-                        video.playsInline = true;
-                        video.preload = isDataSaverEnabled() ? 'metadata' : 'auto';
-                        itemLink.appendChild(video);
+                        const publicUrl = getSafeHttpUrl(publicUrlData?.publicUrl);
+                        if (!publicUrl) continue;
+                        if (item.file_type === 'image') {
+                            const image = document.createElement('img');
+                            configureAttachmentImage(
+                                image,
+                                { id: item.file_id },
+                                publicUrl,
+                            );
+                            image.alt = '投稿メディア';
+                            itemLink.appendChild(image);
+                        } else if (item.file_type === 'video') {
+                            const video = document.createElement('video');
+                            video.src = publicUrl;
+                            video.muted = true;
+                            video.playsInline = true;
+                            video.preload = isDataSaverEnabled() ? 'metadata' : 'auto';
+                            itemLink.appendChild(video);
+                        }
+                        gridContainer.appendChild(itemLink);
                     }
-                    gridContainer.appendChild(itemLink);
-                }
-                page++;
-                if (mediaItems.length < MEDIA_PER_PAGE) {
+                    page++;
+                    if (mediaItems.length < MEDIA_PER_PAGE) {
+                        hasMore = false;
+                    } else if (isActivePaginationLoader(container, trigger, options)) {
+                        triggerPreloadNextMedia(page);
+                    }
+                } else {
                     hasMore = false;
-                } else if (isActivePaginationLoader(container, trigger, options)) {
-                    triggerPreloadNextMedia(page);
                 }
-            } else {
-                hasMore = false;
-            }
 
-            if (!hasMore) {
-                trigger.innerHTML =
-                    gridContainer.querySelectorAll('.media-grid-item').length === 0
-                        ? '<p style="padding:2rem;text-align:center;">まだメディアはありません。</p>'
-                        : 'すべてのメディアを読み込みました';
-                mediaObserver?.disconnect();
-            } else {
-                trigger.innerHTML = '';
+                if (!hasMore) {
+                    trigger.innerHTML =
+                        gridContainer.querySelectorAll('.media-grid-item').length === 0
+                            ? '<p style="padding:2rem;text-align:center;">まだメディアはありません。</p>'
+                            : 'すべてのメディアを読み込みました';
+                    mediaObserver?.disconnect();
+                } else {
+                    trigger.innerHTML = '';
+                    requestAnimationFrame(() => {
+                        if (!hasMore || isLoading) return;
+                        if (!isActivePaginationLoader(container, trigger, options)) return;
+                        const rect = trigger.getBoundingClientRect();
+                        const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+                        if (rect.top <= vh + 300 && rect.bottom >= -300) {
+                            void loadMore();
+                        }
+                    });
+                }
             }
+        } finally {
+            isLoading = false;
         }
-        isLoading = false;
     };
 
     const mediaObserver = createViewportObserver(
@@ -736,7 +748,7 @@ export async function loadMediaGrid(container, options = {}) {
                 void loadMore();
             }
         },
-        { rootMargin: '200px' },
+        { rootMargin: '300px' },
     );
     mediaObserver.observe(trigger);
     await loadMore();
