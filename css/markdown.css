@@ -10,9 +10,12 @@ stroke: var(--primary-color);
 }
 
 .markdown-content-editor {
-box-sizing: border-box;
+    box-sizing: border-box;
     width: 100%;
     min-height: 60px;
+    height: auto;
+    resize: none;
+    overflow: hidden;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
     word-break: break-word;
@@ -21,18 +24,23 @@ box-sizing: border-box;
 }
 
 .markdown-textarea-editor {
-position: relative;
+    position: relative;
     box-sizing: border-box;
     width: 100%;
     min-height: 60px;
-    overflow: hidden;
+    height: auto;
+    overflow: visible;
 }
 
 .markdown-textarea-editor .markdown-content-editor {
-position: relative;
+    position: relative;
     z-index: 2;
     display: block;
     width: 100%;
+    min-height: 60px;
+    height: auto;
+    resize: none;
+    overflow: hidden;
     box-sizing: border-box;
     color: transparent !important;
     caret-color: transparent;
@@ -43,20 +51,22 @@ position: relative;
 }
 
 .markdown-textarea-editor .markdown-content-editor::selection {
-color: transparent;
+    color: transparent;
     background: transparent;
 }
 
 .markdown-textarea-editor .markdown-content-editor::placeholder {
-color: transparent !important;
+    color: transparent !important;
     -webkit-text-fill-color: transparent;
     opacity: 0;
 }
 
 .markdown-editor-paint {
-position: absolute;
+    position: absolute;
     z-index: 1;
     inset: 0;
+    width: 100%;
+    height: 100%;
     overflow: visible;
     pointer-events: none;
     transform-origin: top left;
@@ -321,11 +331,119 @@ position: absolute;
 }
 
 .markdown-copy-btn-inline {
-padding: 0.1em 0.3em;
+    padding: 0.1em 0.3em;
     margin-left: 0.4em;
     color: #333;
     background-color: rgba(0, 0, 0, 0.05);
     border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================================================
+   Extended Markdown Styles (Highlight, Kbd, HR, Tables, Task lists)
+   ========================================================================== */
+
+.markdown-mark,
+mark.markdown-mark {
+    background: color-mix(in srgb, #f59e0b 35%, transparent);
+    color: var(--text-color);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+}
+
+.markdown-kbd,
+kbd.markdown-kbd {
+    display: inline-block;
+    padding: 0.15em 0.45em;
+    font-size: 0.85em;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--text-color);
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+    line-height: 1.2;
+}
+
+.markdown-hr,
+hr.markdown-hr {
+    border: 0;
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 1.25rem 0;
+}
+
+.markdown-table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.markdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    text-align: left;
+}
+
+.markdown-table th,
+.markdown-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+.markdown-table th:last-child,
+.markdown-table td:last-child {
+    border-right: none;
+}
+
+.markdown-table tr:last-child td {
+    border-bottom: none;
+}
+
+.markdown-table th {
+    background-color: var(--bg-color);
+    font-weight: 600;
+}
+
+.markdown-table tr:nth-child(even) td {
+    background-color: color-mix(in srgb, var(--bg-color) 40%, transparent);
+}
+
+.markdown-task-item {
+    list-style-type: none;
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+}
+
+.markdown-task-checkbox {
+    margin: 0;
+    cursor: default;
+    pointer-events: none;
+}
+
+.post-content sup,
+.markdown-editor-preview sup {
+    font-size: 0.75em;
+    vertical-align: super;
+    line-height: 0;
+}
+
+.post-content sub,
+.markdown-editor-preview sub {
+    font-size: 0.75em;
+    vertical-align: sub;
+    line-height: 0;
+}
+
+.post-content ins,
+.markdown-editor-preview ins {
+    text-decoration: underline;
 }
 
 .markdown-copy-btn-inline:hover {
