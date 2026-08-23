@@ -355,16 +355,37 @@ export async function showAdminLogsScreen(showScreenFn = null) {
     trigger.className = 'load-more-trigger';
     contentDiv.appendChild(trigger);
 
+    let preloadLogsPromise = null;
+    const triggerPreloadNextLogs = (nextPage) => {
+        if (!hasMore) return;
+        const nextOffset = nextPage * LOGS_PER_PAGE;
+        preloadLogsPromise = api.rpc('get_logs_with_masked_ip', {
+            p_limit: LOGS_PER_PAGE,
+            p_offset: nextOffset,
+        }).catch(() => null);
+    };
+
     const loadMoreLogs = async () => {
         if (getIsLoadingMore() || !hasMore) return;
         setIsLoadingMore(true);
         trigger.innerHTML = '<div class="spinner"></div>';
 
         const offset = currentPage * LOGS_PER_PAGE;
-        const { data, error } = await api.rpc('get_logs_with_masked_ip', {
-            p_limit: LOGS_PER_PAGE,
-            p_offset: offset,
-        });
+        let data;
+        let error;
+        if (preloadLogsPromise) {
+            const res = await preloadLogsPromise;
+            preloadLogsPromise = null;
+            data = res?.data;
+            error = res?.error;
+        } else {
+            const res = await api.rpc('get_logs_with_masked_ip', {
+                p_limit: LOGS_PER_PAGE,
+                p_offset: offset,
+            });
+            data = res?.data;
+            error = res?.error;
+        }
 
         if (error) {
             console.error('ログの取得に失敗:', error);
@@ -398,6 +419,7 @@ export async function showAdminLogsScreen(showScreenFn = null) {
             if (getPostLoadObserver()) getPostLoadObserver().disconnect();
         } else {
             trigger.innerHTML = '';
+            triggerPreloadNextLogs(currentPage);
         }
         setIsLoadingMore(false);
     };

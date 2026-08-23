@@ -129,6 +129,14 @@ export async function showNotificationsScreen(showScreenFn = null) {
             });
         };
 
+        let preloadNotificationsPromise = null;
+        const triggerPreloadNextNotifications = (nextOffset) => {
+            if (!hasMoreNotifications || !getCurrentUser()) return;
+            preloadNotificationsPromise = apiRequest(
+                `/server/api/notifications?limit=${NOTIFICATIONS_PER_PAGE}&offset=${nextOffset}`,
+            ).catch(() => null);
+        };
+
         const loadMoreNotifications = async () => {
             if (isLoadingMoreNotifications || !hasMoreNotifications || !getCurrentUser()) {
                 return;
@@ -137,14 +145,24 @@ export async function showNotificationsScreen(showScreenFn = null) {
             isLoadingMoreNotifications = true;
             trigger.innerHTML = '<div class="spinner"></div>';
             try {
-                const { data: notificationPayload, error } =
-                    await apiRequest(
+                let notificationPayload;
+                let error;
+                if (preloadNotificationsPromise) {
+                    const res = await preloadNotificationsPromise;
+                    preloadNotificationsPromise = null;
+                    notificationPayload = res?.data;
+                    error = res?.error;
+                } else {
+                    const res = await apiRequest(
                         `/server/api/notifications?limit=${NOTIFICATIONS_PER_PAGE}&offset=${notificationOffset}`,
                     );
+                    notificationPayload = res?.data;
+                    error = res?.error;
+                }
                 if (error) throw error;
 
                 const notifications = (
-                    notificationPayload.notifications || []
+                    notificationPayload?.notifications || []
                 )
                     .map(normalizeStructuredNotification)
                     .filter(Boolean);
@@ -165,7 +183,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
                     getCurrentUser().notice = currentNotifications;
                 }
                 getCurrentUser().notification_unread_count = Number(
-                    notificationPayload.notification_unread_count || 0,
+                    notificationPayload?.notification_unread_count || 0,
                 );
                 getCurrentUser().nav_summary_fetched_recently = false;
 
@@ -180,6 +198,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
                     if (getPostLoadObserver()) getPostLoadObserver().disconnect();
                 } else {
                     trigger.textContent = '';
+                    triggerPreloadNextNotifications(notificationOffset);
                 }
             } catch (error) {
                 console.error('通知の取得に失敗しました:', error);
