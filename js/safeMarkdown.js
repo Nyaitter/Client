@@ -40,7 +40,7 @@ function renderInlineMarkdown(
     { renderText, renderLinkLabel, sanitizeUrl, renderSyntax = () => '' },
 ) {
     // `_emoji_` は既存のカスタム絵文字記法なので、下線による斜体は採用しない。
-    const markdownPattern = /`([^`\r\n]{1,500})`|\[([^\]\r\n]{1,200})\]\((https?:\/\/[^\s<>"']{1,2048})\)|\*\*\*([^*\r\n]{1,500})\*\*\*|\*\*([^*\r\n]{1,500})\*\*|__([^_\r\n]{1,500})__|~~([^~\r\n]{1,500})~~|(?:(?<!\*)|(?<=\*\*))\*([^*\r\n]{1,500})\*(?=$|[^*]|\*\*)|==([^=\r\n]{1,500})==|\+\+([^+・\r\n]{1,500})\+\+|\|\|([^|\r\n]{1,1000})\|\||\^([^\^\r\n]{1,200})\^|(?<!~)~([^~\r\n]{1,200})~(?!~)|\[\[([^\]\r\n]{1,100})\]\]/g;
+    const markdownPattern = /`([^`\r\n]{1,500})`|\[([^\]\r\n]{1,200})\]\((https?:\/\/[^\s<>"']{1,2048})\)|\*\*\*([^*\r\n]{1,500})\*\*\*|\*\*([^*\r\n]{1,500})\*\*|__([^_\r\n]{1,500})__|~~([^~\r\n]{1,500})~~|(?:(?<!\*)|(?<=\*\*))\*([^*\r\n]{1,500})\*(?=$|[^*]|\*\*)|==([^=\r\n]{1,500})==|\+\+([^+・\r\n]{1,500})\+\+|\|\|([^|\r\n]{1,1000})\|\||\^([^\^\r\n]{1,200})\^|(?<!~)~([^~\r\n]{1,200})~(?!~)|\[\[([^\]\r\n]{1,100})\]\]|\[(?:ruby|rb)=([^\]\r\n]{1,100})\]([^\[\r\n]{1,200})\[\/(?:ruby|rb)?\]/g;
     let output = '';
     let previousIndex = 0;
     let match;
@@ -75,6 +75,10 @@ function renderInlineMarkdown(
             output += `${renderSyntax('~')}<sub>${renderText(match[13])}</sub>${renderSyntax('~')}`;
         } else if (match[14] !== undefined) {
             output += `${renderSyntax('[[')}<kbd class="markdown-kbd">${escapeHtml(match[14])}</kbd>${renderSyntax(']]')}`;
+        } else if (match[15] !== undefined && match[16] !== undefined) {
+            const rubyText = escapeHtml(match[15]);
+            const baseText = renderText(match[16]);
+            output += `${renderSyntax(`[ruby=${match[15]}]`)}<ruby class="markdown-ruby">${baseText}<rp>(</rp><rt class="markdown-rt">${rubyText}</rt><rp>)</rp></ruby>${renderSyntax('[/ruby]')}`;
         }
         previousIndex = markdownPattern.lastIndex;
     }
