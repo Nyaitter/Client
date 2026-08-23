@@ -76,7 +76,8 @@ background-color: var(--emoji-bg-color);
 .post-mask-button,
     .post-lock-button,
     .post-announcement-button,
-    .post-group-button {
+    .post-group-button,
+    .post-reply-control-button {
 background: none;
     border: none;
     cursor: pointer;
@@ -93,7 +94,8 @@ background: none;
 .post-mask-button:hover,
     .post-lock-button:hover,
     .post-announcement-button:hover,
-    .post-group-button:hover {
+    .post-group-button:hover,
+    .post-reply-control-button:hover {
 background-color: var(--bg-color);
 }
 
