@@ -107,8 +107,33 @@ function attachImageModalListeners() {
 
     // 画像外の背景をクリックしたときに閉じる
     DOM.imagePreviewModal.addEventListener('click', (e) => {
-        if (e.target.closest('#image-preview-modal-content')) return;
-        if (e.target.closest('.image-modal-nav-btn')) return;
+        if (e.target.closest('.image-modal-nav-btn') || e.target.closest('.modal-close-btn')) return;
+        const img = DOM.imagePreviewModalContent;
+        if (e.target === img && img?.naturalWidth && img?.naturalHeight) {
+            const rect = img.getBoundingClientRect();
+            const imgRatio = img.naturalWidth / img.naturalHeight;
+            const containerRatio = rect.width / rect.height;
+            let renderedWidth, renderedHeight, offsetX, offsetY;
+            if (containerRatio > imgRatio) {
+                renderedHeight = rect.height;
+                renderedWidth = rect.height * imgRatio;
+                offsetX = (rect.width - renderedWidth) / 2;
+                offsetY = 0;
+            } else {
+                renderedWidth = rect.width;
+                renderedHeight = rect.width / imgRatio;
+                offsetX = 0;
+                offsetY = (rect.height - renderedHeight) / 2;
+            }
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            const isInsideImage =
+                clickX >= offsetX &&
+                clickX <= offsetX + renderedWidth &&
+                clickY >= offsetY &&
+                clickY <= offsetY + renderedHeight;
+            if (isInsideImage) return;
+        }
         closeImageModal();
     });
 
@@ -247,14 +272,6 @@ document
     .getElementById('mainjs-error-reload-btn')
     ?.addEventListener('click', () => window.location.reload());
 
-// 画像以外の領域（背景、余白、閉じるボタン等）をクリックした時に閉じる
-DOM.imagePreviewModal?.addEventListener('click', (event) => {
-    if (event.target !== DOM.imagePreviewModalContent) {
-        event.preventDefault();
-        event.stopPropagation();
-        closeImageModal();
-    }
-});
 
 // ブラウザの戻る操作で閉じる
 window.addEventListener('popstate', (event) => {
