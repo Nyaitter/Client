@@ -2143,6 +2143,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         if (!(await showAppConfirm('NyaitterIDを再割り当てしますか？ 現在のIDへ戻せない場合があります。'))) return;
         button.disabled = true;
 
+        const previousId = getCurrentUser()?.id != null ? Number(getCurrentUser().id) : null;
         const { data, error } = await apiRequest('/server/api/users/me/nyaitter-id/reassign', {
             method: 'POST',
             body: {},
@@ -2153,8 +2154,16 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
             return;
         }
         if (data?.user) {
-            setCurrentUser(data.user);
-            updateAccountData(getCurrentUser());
+            const newUser = data.user;
+            const newUserId = Number(newUser.id);
+            setCurrentUser(newUser);
+            updateAccountData(newUser, previousId);
+            if (previousId != null) {
+                state.publicProfileCache.delete(previousId);
+                state.allUsersCache.delete(previousId);
+            }
+            state.publicProfileCache.set(newUserId, newUser);
+            state.allUsersCache.set(newUserId, newUser);
             await updateNavAndSidebars();
         }
         showAppAlert('NyaitterIDを再割り当てしました。');
