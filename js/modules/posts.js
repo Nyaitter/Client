@@ -282,6 +282,8 @@ export async function renderPost(post, author, options = {}) {
     postEl.className = 'post';
     postEl.dataset.postId = post.id;
     postEl.dataset.actionTargetId = post.id;
+    postEl._nyaitterPost = post;
+    postEl._displayAuthor = displayAuthor;
 
     const userIconLink = document.createElement('a');
     userIconLink.href = `#profile/${displayAuthor.id}`;
@@ -374,6 +376,9 @@ export async function renderPost(post, author, options = {}) {
     }
 
     if (getCurrentUser()) {
+        const currentUser = getCurrentUser();
+        const isPostOwner = Number(currentUser.id) === Number(post.userid || post.userId);
+
         postHeader.classList.add('has-post-menu');
         const menuBtn = document.createElement('button');
         menuBtn.type = 'button';
@@ -389,7 +394,28 @@ export async function renderPost(post, author, options = {}) {
         shareBtn.textContent = 'URLをコピー';
         menu.appendChild(shareBtn);
 
-        if (Number(getCurrentUser().id) !== Number(post.userid)) {
+        if (!isPostOwner) {
+            const dislikeBtn = document.createElement('button');
+            dislikeBtn.className = 'dislike-btn';
+            dislikeBtn.textContent = '関連性が低いと評価';
+            menu.appendChild(dislikeBtn);
+
+            const isFollowing = Array.isArray(currentUser.follow) && currentUser.follow.some((id) => Number(id) === Number(displayAuthor.id));
+            const followBtn = document.createElement('button');
+            followBtn.className = 'follow-menu-btn';
+            followBtn.textContent = isFollowing
+                ? `@${displayAuthor.name || 'ユーザー'} のフォローを解除`
+                : `@${displayAuthor.name || 'ユーザー'} をフォロー`;
+            menu.appendChild(followBtn);
+
+            const isBlocked = Array.isArray(currentUser.block) && currentUser.block.some((id) => Number(id) === Number(displayAuthor.id));
+            const blockBtn = document.createElement('button');
+            blockBtn.className = 'block-menu-btn';
+            blockBtn.textContent = isBlocked
+                ? `@${displayAuthor.name || 'ユーザー'} のブロックを解除`
+                : `@${displayAuthor.name || 'ユーザー'} をブロック`;
+            menu.appendChild(blockBtn);
+
             const reportBtn = document.createElement('button');
             reportBtn.className = 'report-btn';
             reportBtn.textContent = '報告する';
@@ -407,10 +433,7 @@ export async function renderPost(post, author, options = {}) {
                 menu.classList.remove('is-visible');
             };
             menu.appendChild(reportBtn);
-        }
-
-        const isPostOwner = Number(getCurrentUser().id) === Number(post.userid);
-        if (isPostOwner) {
+        } else {
             const pinBtn = document.createElement('button');
             pinBtn.className = 'pin-btn';
             pinBtn.textContent = isPinnedPost(post.id) ? 'ピン留めを解除' : 'ピン留め';
@@ -421,10 +444,18 @@ export async function renderPost(post, author, options = {}) {
                 editBtn.className = 'edit-btn';
                 editBtn.textContent = '編集';
                 menu.appendChild(editBtn);
+
+                const isReply = Boolean(post.reply_id || post.replyTo || post.reply_to || post.reply_to_post);
+                if (!isReply) {
+                    const replyControlBtn = document.createElement('button');
+                    replyControlBtn.className = 'reply-control-menu-btn';
+                    replyControlBtn.textContent = '返信可能なユーザーの変更';
+                    menu.appendChild(replyControlBtn);
+                }
             }
         }
 
-        if (isPostOwner || getCurrentUser().admin) {
+        if (isPostOwner || currentUser.admin) {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.textContent = '削除';
@@ -606,6 +637,29 @@ export async function renderPost(post, author, options = {}) {
                 Boolean(actionTargetPost.private || actionTargetPost.lock || replyAuthor?.settings?.lock),
             );
             replyBtn._nyaitterPost = actionTargetPost;
+
+            const currentUser = getCurrentUser();
+            let canReply = true;
+            if (actionTargetPost.can_reply !== undefined) {
+                canReply = Boolean(actionTargetPost.can_reply);
+            } else if (!currentUser) {
+                canReply = false;
+            } else if (Number(actionTargetPost.userid || actionTargetPost.userId) === Number(currentUser.id)) {
+                canReply = true;
+            } else {
+                const replyControl = actionTargetPost.reply_control || actionTargetPost.replyControl || 'everyone';
+                if (replyControl === 'mentioned') {
+                    canReply = Boolean(actionTargetPost.content && new RegExp(`@${currentUser.id}\\b`).test(actionTargetPost.content));
+                }
+            }
+
+            if (!canReply) {
+                replyBtn.disabled = true;
+                replyBtn.classList.add('disabled');
+                replyBtn.title = 'このポストに返信できるユーザーが制限されています';
+                replyBtn.setAttribute('aria-disabled', 'true');
+            }
+
             replyBtn.innerHTML = `${ICONS.reply} <span>---</span>`;
             actionsDiv.appendChild(replyBtn);
 
@@ -818,8 +872,10 @@ export function createPostFormHTML(isModal = false) {
                     <input type="file" id="file-input" class="hidden" multiple>
                     <div id="emoji-picker" class="hidden"></div>
                     <div class="post-group-menu hidden" role="menu"></div>
+                    <div class="post-reply-control-menu hidden" role="menu"></div>
                     <button id="post-submit-button" class="float-right">ポスト</button>
                     <button type="button" class="post-group-button float-right" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
+                    <button type="button" class="post-reply-control-button float-right" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
                     <button type="button" class="post-mask-button float-right" title="ワンクッション">
                         ${ICONS.mask}
                     </button>
@@ -831,6 +887,110 @@ export function createPostFormHTML(isModal = false) {
                 </div>
             </div>
         </div>`;
+}
+
+const REPLY_CONTROL_OPTIONS = [
+    {
+        id: 'everyone',
+        title: '誰でも返信可能',
+        description: '全てのユーザーが返信できます',
+        icon: ICONS.globe,
+        buttonTitle: '返信可能なユーザー: 誰でも',
+    },
+    {
+        id: 'following',
+        title: 'フォローしている/メンションしたユーザーのみ返信可能',
+        description: 'フォロー中のユーザーとメンションされたユーザー',
+        icon: ICONS.user_check,
+        buttonTitle: '返信可能なユーザー: フォロー中またはメンション',
+    },
+    {
+        id: 'mentioned',
+        title: 'メンションしたユーザーのみ返信可能',
+        description: 'このポストでメンションされたユーザーのみ',
+        icon: ICONS.mention,
+        buttonTitle: '返信可能なユーザー: メンションしたユーザーのみ',
+    },
+];
+
+function getPostingReplyControl(container) {
+    return container?._replyControl || 'everyone';
+}
+
+function setPostingReplyControl(container, control = 'everyone') {
+    if (!container) return;
+    const normalized = ['everyone', 'following', 'mentioned'].includes(control) ? control : 'everyone';
+    container._replyControl = normalized;
+    const button = container.querySelector('.post-reply-control-button');
+    const option = REPLY_CONTROL_OPTIONS.find((opt) => opt.id === normalized) || REPLY_CONTROL_OPTIONS[0];
+    if (button) {
+        button.title = option.buttonTitle;
+        button.setAttribute('aria-label', option.buttonTitle);
+        button.classList.toggle('active', normalized !== 'everyone');
+    }
+}
+
+function closePostReplyControlMenu(container) {
+    const menu = container?.querySelector('.post-reply-control-menu');
+    const button = container?.querySelector('.post-reply-control-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+    if (container?._postReplyControlMenuOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postReplyControlMenuOutsideHandler, true);
+        container._postReplyControlMenuOutsideHandler = null;
+    }
+}
+
+function bindPostReplyControlMenuOutsideHandler(container) {
+    if (!container || container._postReplyControlMenuOutsideHandler) return;
+    const handler = (event) => {
+        const menu = container.querySelector('.post-reply-control-menu');
+        const button = container.querySelector('.post-reply-control-button');
+        if (!menu || menu.classList.contains('hidden') || menu.contains(event.target) || button?.contains(event.target)) return;
+        closePostReplyControlMenu(container);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+    container._postReplyControlMenuOutsideHandler = handler;
+    document.addEventListener('pointerdown', handler, true);
+}
+
+function renderPostReplyControlMenu(container) {
+    const menu = container?.querySelector('.post-reply-control-menu');
+    if (!menu) return;
+    const current = getPostingReplyControl(container);
+    menu.innerHTML = REPLY_CONTROL_OPTIONS.map((opt) => {
+        const selected = opt.id === current;
+        return `<button type="button" class="post-reply-control-menu-item ${selected ? 'active' : ''}" data-reply-control="${opt.id}" aria-pressed="${String(selected)}">
+            <span class="post-reply-control-menu-icon" aria-hidden="true">${opt.icon}</span>
+            <span class="post-reply-control-menu-copy">
+                <strong>${escapeHTML(opt.title)}</strong>
+                <small>${escapeHTML(opt.description)}</small>
+            </span>
+        </button>`;
+    }).join('');
+    menu.querySelectorAll('[data-reply-control]').forEach((item) => item.addEventListener('click', () => {
+        const control = item.dataset.replyControl;
+        setPostingReplyControl(container, control);
+        closePostReplyControlMenu(container);
+    }));
+}
+
+function togglePostReplyControlMenu(container) {
+    const menu = container?.querySelector('.post-reply-control-menu');
+    const button = container?.querySelector('.post-reply-control-button');
+    if (!menu || !button) return;
+    closePostGroupMenu(container);
+    closePostAccountMenu(container);
+    const willOpen = menu.classList.contains('hidden');
+    if (willOpen) {
+        renderPostReplyControlMenu(container);
+        menu.classList.remove('hidden');
+        button.setAttribute('aria-expanded', 'true');
+        bindPostReplyControlMenuOutsideHandler(container);
+    } else {
+        closePostReplyControlMenu(container);
+    }
 }
 
 function renderPostGroupMenuIcon(group) {
@@ -1078,6 +1238,9 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
     container.querySelector('.post-group-button')?.addEventListener('click', () => {
         void openPostGroupMenu(container);
     });
+    container.querySelector('.post-reply-control-button')?.addEventListener('click', () => {
+        togglePostReplyControlMenu(container);
+    });
     container.querySelector('#post-submit-button')?.addEventListener('click', () => {
         handlePostSubmit(container, onPostSuccess);
     });
@@ -1271,6 +1434,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 p_announcement: Boolean(!postingGroup && announcementActive),
                 p_group_id: postingGroup?.id || null,
                 p_group_announcement: groupAnnouncementActive,
+                p_reply_control: getPostingReplyControl(container),
                 p_as_user_id: postingAccountId,
             })
             .single();
@@ -1282,6 +1446,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
         setSelectedFiles([]);
         setMarkdownEditorValue(contentEl, '');
         setPostingGroup(container, null);
+        setPostingReplyControl(container, 'everyone');
         const previewContainer = container.querySelector('.file-preview-container');
         if (previewContainer) previewContainer.innerHTML = '';
 
@@ -1378,6 +1543,7 @@ export function openPostModal(replyTo = null, quotingPost = null) {
         } else {
             setPostingGroup(modalFormContainer, null, { locked: true });
         }
+        modalFormContainer.querySelector('.post-reply-control-button')?.classList.add('hidden');
     }
 
     if (replyTo?.isPrivate || replyTo?.lock) {
@@ -1532,11 +1698,12 @@ export async function openEditPostModal(postId, onSaved = null) {
     try {
         const { data: post, error } = await api
             .from('post')
-            .select('content, mask, attachments')
+            .select('content, mask, attachments, reply_id, replyTo, reply_to, reply_to_post, reply_control, replyControl, lock')
             .eq('id', postId)
             .single();
         if (error || !post) throw new Error('ポスト情報の取得に失敗しました。');
 
+        const isReply = Boolean(post.reply_id || post.replyTo || post.reply_to || post.reply_to_post);
         let currentAttachments = post.attachments || [];
         let filesToDelete = new Set();
         let filesToAdd = [];
@@ -1580,7 +1747,9 @@ export async function openEditPostModal(postId, onSaved = null) {
                         <button type="button" class="emoji-pic-button float-left" title="絵文字を選択">${ICONS.emoji}</button>
                         <input type="file" id="edit-file-input" class="hidden" multiple>
                         <div id="emoji-picker" class="hidden"></div>
+                        <div class="post-reply-control-menu hidden" role="menu"></div>
                         <button id="update-post-button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700; margin-left: auto;" class="float-right">保存</button>
+                        ${!isReply ? `<button type="button" class="post-reply-control-button float-right" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
                         <button type="button" class="post-mask-button float-right ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
                         <button type="button" class="post-lock-button float-right ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
                         <span class="float-clear"></span>
@@ -1589,10 +1758,14 @@ export async function openEditPostModal(postId, onSaved = null) {
             </div>
         `;
 
+        setPostingReplyControl(DOM.editPostModalContent, post.reply_control || post.replyControl || 'everyone');
         await emoji_picker_create({ triggerButton: DOM.editPostModalContent.querySelector('.emoji-pic-button') });
         const editPostEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
         attachMarkdownContentEditor(editPostEditor);
         setupMarkdownEditorPreviewButton(DOM.editPostModalContent, editPostEditor);
+        DOM.editPostModalContent.querySelector('.post-reply-control-button')?.addEventListener('click', () => {
+            togglePostReplyControlMenu(DOM.editPostModalContent);
+        });
         DOM.editPostModalContent.querySelector('.post-mask-button')?.addEventListener('click', () => {
             handlePostMask(DOM.editPostModalContent);
         });
@@ -1646,6 +1819,7 @@ export async function handleUpdatePost(postId, originalAttachments, filesToAdd, 
     ).trim();
     const maskActive = DOM.editPostModal.querySelector('.post-mask-button')?.classList.contains('active') || false;
     const lockActive = DOM.editPostModal.querySelector('.post-lock-button')?.classList.contains('active') || false;
+    const replyControlValue = getPostingReplyControl(DOM.editPostModalContent);
 
     if (!newContent) return showAppAlert('内容を入力するか、ファイルを添付してください。');
 
@@ -1692,6 +1866,7 @@ export async function handleUpdatePost(postId, originalAttachments, filesToAdd, 
                 attachments: finalAttachments,
                 mask: maskActive,
                 lock: lockActive,
+                reply_control: replyControlValue,
             })
             .eq('id', postId);
 
@@ -1912,9 +2087,165 @@ export async function handleFollowToggle(targetUserId, button, isLock = false) {
         }
         console.error('フォロー切り替えエラー:', e);
         showAppAlert('フォロー状態の更新に失敗しました。');
-    } finally {
-        button.disabled = false;
+export async function handleDislikePost(postId, menu = null) {
+    if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+    menu?.classList.remove('is-visible');
+    try {
+        const { data, error } = await apiRequest(`/server/api/posts/${encodeURIComponent(String(postId))}/dislike`, {
+            method: 'POST',
+        });
+        if (error) throw error;
+        showAppAlert('関連性が低いと評価しました（おすすめスコアから減点されました）。');
+    } catch (e) {
+        console.error('Dislike error:', e);
+        showAppAlert('処理に失敗しました。');
     }
+}
+
+export async function handleFollowMenuToggle(author, menu = null) {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !author?.id) return showAppAlert('ログインが必要です。');
+    menu?.classList.remove('is-visible');
+    const targetUserId = Number(author.id);
+    const isFollowing = Array.isArray(currentUser.follow) && currentUser.follow.some((id) => Number(id) === targetUserId);
+    const originalFollows = Array.isArray(currentUser.follow) ? [...currentUser.follow] : [];
+
+    const nextFollows = new Set(originalFollows.map(Number));
+    if (!isFollowing) nextFollows.add(targetUserId);
+    else nextFollows.delete(targetUserId);
+    currentUser.follow = [...nextFollows];
+
+    try {
+        const { data, error } = await api.rpc('handle_follow', { p_target_user_id: targetUserId });
+        if (error) throw error;
+        if (Array.isArray(data?.updated_follows)) {
+            currentUser.follow = data.updated_follows;
+        }
+        invalidateTimelinePageCache();
+        showAppAlert(data?.following ? `@${author.name || 'ユーザー'} をフォローしました。` : `@${author.name || 'ユーザー'} のフォローを解除しました。`);
+    } catch (e) {
+        currentUser.follow = originalFollows;
+        console.error('フォロー切り替えエラー:', e);
+        showAppAlert('フォロー状態の更新に失敗しました。');
+    }
+}
+
+export async function handleBlockMenuToggle(author, menu = null) {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !author?.id) return showAppAlert('ログインが必要です。');
+    menu?.classList.remove('is-visible');
+    const targetUserId = Number(author.id);
+    const isBlocked = Array.isArray(currentUser.block) && currentUser.block.some((id) => Number(id) === targetUserId);
+
+    if (!isBlocked) {
+        if (!(await showAppConfirm(`@${author.name || 'ユーザー'} をブロックしますか？\nブロックすると、このユーザーのポストは表示されなくなります。`))) {
+            return;
+        }
+    }
+
+    const originalBlock = Array.isArray(currentUser.block) ? [...currentUser.block] : [];
+    const updatedBlock = isBlocked
+        ? originalBlock.filter((id) => Number(id) !== targetUserId)
+        : [...originalBlock, targetUserId];
+
+    try {
+        const { error } = await apiRequest('/server/api/users/me', {
+            method: 'PATCH',
+            body: { block: updatedBlock },
+        });
+        if (error) throw error;
+        currentUser.block = updatedBlock;
+        invalidateTimelinePageCache();
+        showAppAlert(isBlocked ? `@${author.name || 'ユーザー'} のブロックを解除しました。` : `@${author.name || 'ユーザー'} をブロックしました。`);
+        if (!isBlocked) {
+            document.querySelectorAll('.post[data-action-target-id]').forEach((el) => {
+                if (Number(el._nyaitterPost?.userid || el._nyaitterPost?.userId) === targetUserId) {
+                    el.style.opacity = '0.3';
+                }
+            });
+        }
+    } catch (e) {
+        console.error('ブロック切り替えエラー:', e);
+        showAppAlert('ブロック状態の更新に失敗しました。');
+    }
+}
+
+export function openReplyControlModal(post, onUpdated = null) {
+    const existing = document.getElementById('reply-control-modal');
+    if (existing) existing.remove();
+
+    const currentControl = post.reply_control || post.replyControl || 'everyone';
+    const modal = document.createElement('div');
+    modal.id = 'reply-control-modal';
+    modal.className = 'modal-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 440px; padding: 1.25rem;">
+            <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+            <div style="margin-bottom: 1rem;">
+                <h3 style="margin: 0 0 0.4rem 0; font-size: 1.15rem;">返信可能なユーザーの変更</h3>
+                <p style="margin: 0; font-size: 0.85rem; color: var(--secondary-text-color);">
+                    このポストに返信できるユーザーを選択してください。条件を満たさなくなった既存の返信は自動的に削除されます。
+                </p>
+            </div>
+            <div class="reply-control-modal-options" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
+                ${REPLY_CONTROL_OPTIONS.map((opt) => `
+                    <button type="button" class="post-reply-control-menu-item ${opt.id === currentControl ? 'active' : ''}" data-control="${opt.id}" style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 10px; width: 100%; text-align: left;">
+                        <span class="post-reply-control-menu-icon" aria-hidden="true" style="margin-right: 0.5rem;">${opt.icon}</span>
+                        <span class="post-reply-control-menu-copy">
+                            <strong>${escapeHTML(opt.title)}</strong>
+                            <small>${escapeHTML(opt.description)}</small>
+                        </span>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeModal = () => modal.remove();
+    modal.querySelector('.modal-close-btn')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    modal.querySelectorAll('[data-control]').forEach((item) => {
+        item.addEventListener('click', async () => {
+            const nextControl = item.dataset.control;
+            if (nextControl === currentControl) {
+                closeModal();
+                return;
+            }
+            item.disabled = true;
+            try {
+                const { error } = await api
+                    .from('post')
+                    .update({
+                        content: post.content,
+                        attachments: post.attachments,
+                        mask: post.mask,
+                        lock: post.lock,
+                        reply_control: nextControl,
+                    })
+                    .eq('id', post.id);
+                if (error) throw error;
+                post.reply_control = nextControl;
+                post.replyControl = nextControl;
+                invalidateTimelinePageCache();
+                closeModal();
+                showAppAlert('返信可能なユーザーを変更しました。');
+                if (typeof onUpdated === 'function') {
+                    await onUpdated(nextControl);
+                }
+            } catch (err) {
+                console.error(err);
+                showAppAlert('返信設定の更新に失敗しました。');
+                item.disabled = false;
+            }
+        });
+    });
 }
 
 // Bind to window for backwards compatibility if needed
@@ -1926,3 +2257,7 @@ window.handleLike = handleLike;
 window.handleStar = handleStar;
 window.handleShowMaskedPost = handleShowMaskedPost;
 window.handleFollowToggle = handleFollowToggle;
+window.handleDislikePost = handleDislikePost;
+window.handleFollowMenuToggle = handleFollowMenuToggle;
+window.handleBlockMenuToggle = handleBlockMenuToggle;
+window.openReplyControlModal = openReplyControlModal;
