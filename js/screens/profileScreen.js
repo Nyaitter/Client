@@ -98,24 +98,30 @@ function openProfileTimelineModeMenu(button, user, tab) {
     setTimeout(() => document.addEventListener('click', closeProfileTimelineModeMenu, { once: true }), 0);
 }
 
-export async function getPublicProfile(userId) {
+function isFullUserProfile(user) {
+    if (!user || typeof user !== 'object') return false;
+    return (
+        Number.isInteger(Number(user.id)) &&
+        (user.name || user.handle) &&
+        typeof user.follower_count !== 'undefined' &&
+        typeof user.following_count !== 'undefined' &&
+        typeof user.post_count !== 'undefined'
+    );
+}
+
+export async function getPublicProfile(userId, { forceRefresh = false } = {}) {
     const normalizedId = Number(userId);
     if (!Number.isInteger(normalizedId) || normalizedId < 0) {
         return { data: null, error: new Error('Invalid user id') };
     }
-    if (getPublicProfileCache().has(normalizedId)) {
-        return {
-            data: getPublicProfileCache().get(normalizedId),
-            error: null,
-        };
-    }
-    const cachedUser = getAllUsersCache().get(normalizedId);
-    if (cachedUser && (cachedUser.name || cachedUser.handle) && (cachedUser.bio !== undefined || cachedUser.created_at !== undefined)) {
-        getPublicProfileCache().set(normalizedId, cachedUser);
-        return {
-            data: cachedUser,
-            error: null,
-        };
+    if (!forceRefresh && getPublicProfileCache().has(normalizedId)) {
+        const cached = getPublicProfileCache().get(normalizedId);
+        if (isFullUserProfile(cached)) {
+            return {
+                data: cached,
+                error: null,
+            };
+        }
     }
     const result = await apiRequest(
         `/server/api/users/${encodeURIComponent(normalizedId)}`,
