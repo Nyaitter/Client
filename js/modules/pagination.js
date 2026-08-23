@@ -267,7 +267,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                 }
             }
 
-            if (currentPage === 0 && type === 'timeline') {
+            if (pageNumber === 0 && type === 'timeline') {
                 clearRealtimeTimelineUpdate(options.tab);
             }
             getCurrentPagination().page++;
