@@ -885,6 +885,8 @@ export function openProfileMenu(targetUser, triggerElement) {
         menu.style.position = 'absolute';
         menu.style.top = `${top}px`;
         menu.style.left = `${left}px`;
+        menu.style.right = 'auto';
+        menu.style.width = 'max-content';
     }
 
     setTimeout(() => {
@@ -994,6 +996,8 @@ export function openNotificationMenu(targetUser, trigger) {
         menu.style.position = 'absolute';
         menu.style.top = `${top}px`;
         menu.style.left = `${left}px`;
+        menu.style.right = 'auto';
+        menu.style.width = 'max-content';
     }
 
     setTimeout(() => {
