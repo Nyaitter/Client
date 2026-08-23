@@ -319,12 +319,38 @@ export function syncMarkdownEditorDecoration(editor) {
     caret.style.height = `${rect.height}px`;
 }
 
-export function syncMarkdownEditorPreviewHeight(editor, preview) {
-    if (!editor || !preview) return;
+export function autoResizeMarkdownEditor(editor) {
+    if (!(editor instanceof HTMLTextAreaElement)) return;
+    const host = editor.closest('.markdown-textarea-editor');
+    const preview = getMarkdownEditorPreview(editor);
+    const paint = getMarkdownEditorPaint(editor);
+
+    editor.style.height = 'auto';
     const computed = window.getComputedStyle(editor);
-    const minHeight = parseFloat(computed.minHeight) || 0;
-    const targetHeight = Math.max(editor.scrollHeight, minHeight);
-    preview.style.minHeight = `${targetHeight}px`;
+    const minHeight = parseFloat(computed.minHeight) || 60;
+
+    let targetHeight = Math.max(editor.scrollHeight, minHeight);
+
+    if (editor._markdownPreviewEnabled && preview) {
+        const previewHeight = preview.scrollHeight || preview.offsetHeight || 0;
+        targetHeight = Math.max(targetHeight, previewHeight, minHeight);
+    }
+
+    editor.style.height = `${targetHeight}px`;
+    if (host) {
+        host.style.height = `${targetHeight}px`;
+        host.style.minHeight = `${minHeight}px`;
+    }
+    if (preview) {
+        preview.style.minHeight = `${targetHeight}px`;
+    }
+    if (paint) {
+        paint.style.height = `${targetHeight}px`;
+    }
+}
+
+export function syncMarkdownEditorPreviewHeight(editor, preview) {
+    autoResizeMarkdownEditor(editor);
 }
 
 export function setMarkdownEditorPreview(preview, html, mode) {
@@ -363,7 +389,10 @@ export function toggleMarkdownEditorPreview(editor) {
     updateMarkdownEditorPreview(editor, undefined, { published: previewEnabled });
     if (!previewEnabled) {
         editor.focus();
-        scheduleNextFrame(() => syncMarkdownEditorDecoration(editor));
+        scheduleNextFrame(() => {
+            syncMarkdownEditorDecoration(editor);
+            autoResizeMarkdownEditor(editor);
+        });
     }
 }
 
@@ -429,12 +458,15 @@ export function updateMarkdownEditorPreview(
         placeholder.hidden = published || Boolean(rawValue);
     }
 
-    syncMarkdownEditorPreviewHeight(editor, preview);
+    autoResizeMarkdownEditor(editor);
 
     if (published) {
-        scheduleNextFrame(() => syncMarkdownEditorPreviewHeight(editor, preview));
+        scheduleNextFrame(() => autoResizeMarkdownEditor(editor));
     } else {
-        scheduleNextFrame(() => syncMarkdownEditorDecoration(editor));
+        scheduleNextFrame(() => {
+            syncMarkdownEditorDecoration(editor);
+            autoResizeMarkdownEditor(editor);
+        });
     }
 }
 
@@ -490,7 +522,11 @@ export function attachMarkdownContentEditor(editor) {
     if (!(editor instanceof HTMLTextAreaElement)) return;
     applyServerInputLimits(editor);
     const useNyaitterEditor = applyContentEditorPreference(editor);
-    if (!useNyaitterEditor) return;
+    if (!useNyaitterEditor) {
+        editor.addEventListener('input', () => autoResizeMarkdownEditor(editor));
+        autoResizeMarkdownEditor(editor);
+        return;
+    }
     if (editor.dataset.markdownContentEditor === 'true') {
         updateMarkdownEditorPreview(editor);
         return;
@@ -499,7 +535,10 @@ export function attachMarkdownContentEditor(editor) {
     editor.spellcheck = true;
     ensureGlobalSelectionChangeListener();
 
-    const sync = () => syncMarkdownEditorDecoration(editor);
+    const sync = () => {
+        syncMarkdownEditorDecoration(editor);
+        autoResizeMarkdownEditor(editor);
+    };
     const updateComposition = (event) => {
         const previous = editor._markdownEditorComposition;
         editor._markdownEditorComposition = {
