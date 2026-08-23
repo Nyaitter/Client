@@ -2087,6 +2087,9 @@ export async function handleFollowToggle(targetUserId, button, isLock = false) {
         }
         console.error('フォロー切り替えエラー:', e);
         showAppAlert('フォロー状態の更新に失敗しました。');
+    }
+}
+
 export async function handleDislikePost(postId, menu = null) {
     if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
     menu?.classList.remove('is-visible');
