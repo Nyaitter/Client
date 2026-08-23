@@ -217,6 +217,11 @@ export function renderNyarkDown(
             return match;
         });
 
+        processed = processed.replace(
+            /\[(?:ruby|rb)=([^\]\r\n]{1,100})\]([^\[\r\n]{1,200})\[\/(?:ruby|rb)?\]/gi,
+            (_, rt, base) => `<ruby class="nyarkdown-ruby">${base}<rp>(</rp><rt class="nyarkdown-rt">${rt}</rt><rp>)</rp></ruby>`,
+        );
+
         urls.forEach((url, index) => {
             const placeholder = `%%URL_${index}%%`;
             const safeUrl = getSafeHttpUrl(url);
