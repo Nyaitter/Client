@@ -286,12 +286,14 @@ position: fixed;
     box-shadow: 0 0.5rem 1.4rem rgba(0, 0, 0, 0.18);
 }
 
-.post-group-button:disabled {
+.post-group-button:disabled,
+.post-reply-control-button:disabled {
 cursor: not-allowed;
     opacity: 0.6;
 }
 
-.post-form-actions .post-group-button svg {
+.post-form-actions .post-group-button svg,
+.post-form-actions .post-reply-control-button svg {
 width: 20px;
     height: 20px;
     stroke-width: 1.5;
