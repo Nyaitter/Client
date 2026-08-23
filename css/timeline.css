@@ -516,9 +516,26 @@ visibility: visible;
 align-self: flex-start;
 }
 
+.replying-to {
+    color: var(--secondary-text-color);
+    font-size: 0.9em;
+    padding-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25em;
+}
+
 .replying-to a {
-color: var(--primary-color);
+    color: var(--primary-color);
     text-decoration: none;
+}
+
+.replying-to a:hover {
+    text-decoration: underline;
+}
+
+.replying-to span {
+    color: var(--secondary-text-color);
 }
 
 .parent-post-container {
