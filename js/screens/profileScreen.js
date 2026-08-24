@@ -947,16 +947,6 @@ export function openNotificationMenu(targetUser, trigger) {
     if (trigger) {
         positionElementRelativeToAnchor(menu, trigger, { placement: 'bottom-end', gap: 6 });
     }
-        if (left + menuWidth > window.scrollX + viewportWidth - margin) {
-            left = window.scrollX + viewportWidth - menuWidth - margin;
-        }
-
-        menu.style.position = 'absolute';
-        menu.style.top = `${top}px`;
-        menu.style.left = `${left}px`;
-        menu.style.right = 'auto';
-        menu.style.width = 'max-content';
-    }
 
     setTimeout(() => {
         document.addEventListener('click', (e) => {
