@@ -44,6 +44,11 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
     const contentDiv = DOM.postActivityContent;
     const cacheKey = getPostActivityCacheKey(normalizedPostId);
 
+    // 画面進入時は要素を一度消してローディングを表示
+    if (!forceRefresh) {
+        contentDiv.innerHTML = '<div class="spinner" style="margin: 3rem auto;"></div>';
+    }
+
     const fetchActivityData = async (shouldForce = false) => {
         let cached = shouldForce ? null : getScreenDataCache(cacheKey);
         if (cached) return cached;
