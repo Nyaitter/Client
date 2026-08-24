@@ -19,9 +19,10 @@ export async function emoji_picker_create({
     triggerButton = null,
 } = {}) {
     await customEmojiPromise;
-    const customEmojiMart = customEmojiIds.map((item) => ({
+    const custom = customEmojiIds.map((item) => ({
         id: item,
         name: item,
+        keywords: [item, 'NyaitterEmoji'],
         skins: [{ src: `/emoji/${encodeURIComponent(item)}.svg` }],
     }));
 
@@ -33,10 +34,24 @@ export async function emoji_picker_create({
     const pickerOptions = {
         data,
         i18n: i18nJa,
-        custom: [{ id: 'nyaitter', name: 'Nyaitter', emojis: customEmojiMart }],
+        set: 'native',
+        searchPosition: 'none',
+        locale: 'ja',
+        custom: [
+            {
+                id: 'nyaitter',
+                name: 'NyaitterEmoji',
+                emojis: custom,
+            },
+        ],
+        categoryIcons: {
+            nyaitter: {
+                svg: `<svg viewBox="0 0 1 1" aria-label="Nyaitter"><image href="/logo.png" width="1" height="1" preserveAspectRatio="xMidYMid meet"></image></svg>`,
+            },
+        },
         categories: [
-            'nyaitter',
             'frequent',
+            'nyaitter',
             'people',
             'nature',
             'foods',
@@ -46,12 +61,23 @@ export async function emoji_picker_create({
             'symbols',
             'flags',
         ],
-        onEmojiSelect,
+        skinTonePosition: 'none',
+        skin: '1',
+        theme: getEmoji_picker_theme(),
+        onEmojiSelect: (emoji) => {
+            const isNyaitter =
+                (Array.isArray(emoji.keywords) && emoji.keywords.includes('NyaitterEmoji')) ||
+                customEmojiSet.has(emoji.id);
+            const value = isNyaitter
+                ? `_${emoji.id}_`
+                : String(emoji.native || '');
+            if (!value) return;
+            onEmojiSelect(value, emoji);
+        },
         onClickOutside: (event) => {
             if (triggerButton && triggerButton.contains(event.target)) return;
             onClickOutside(event);
         },
-        theme: getEmoji_picker_theme(),
     };
 
     const picker = new EmojiMart.Picker(pickerOptions);
