@@ -2098,10 +2098,8 @@ export async function handleDislikePost(postId, menu = null) {
             method: 'POST',
         });
         if (error) throw error;
-        showAppAlert('関連性が低いと評価しました（おすすめスコアから減点されました）。');
     } catch (e) {
         console.error('Dislike error:', e);
-        showAppAlert('処理に失敗しました。');
     }
 }
 
