@@ -403,6 +403,14 @@ function handleGlobalClick(e) {
             void copyPost(timelinePostId, target.closest('.share-btn'));
             return;
         }
+        if (target.closest('.activity-btn')) {
+            target.closest('.post-menu')?.classList.remove('is-visible');
+            const targetId = Number(actionTargetPostId || timelinePostId);
+            if (targetId) {
+                window.location.hash = `#post/${targetId}/activity`;
+            }
+            return;
+        }
         if (target.closest('.dislike-btn')) {
             void handleDislikePost(actionTargetPostId || timelinePostId, target.closest('.post-menu'));
             return;
