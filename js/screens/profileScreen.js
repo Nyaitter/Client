@@ -571,8 +571,6 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                 }
             };
         });
-    } else if (isMediaTab) {
-        // メディアタブのフィルタは右クリックメニューで行う
     } else {
         document
             .querySelectorAll('#profile-tabs .tab-button')
@@ -643,7 +641,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                 });
                 break;
             case 'media': {
-                const mediaSubType = options?.mediaSubType || 'all';
+                const mediaSubType = getProfileMediaMode(user.id);
                 await loadMediaGrid(contentDiv, { userId: user.id, type: mediaSubType === 'all' ? null : mediaSubType });
                 break;
             }
