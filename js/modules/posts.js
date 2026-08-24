@@ -27,6 +27,7 @@ import {
     autoResizeMarkdownEditor,
     getMarkdownEditorValue,
     setMarkdownEditorValue,
+    insertMarkdownEditorText,
     setupMarkdownEditorPreviewButton,
 } from './editor.js';
 import { isDataSaverEnabled } from './theme.js';
@@ -1276,11 +1277,51 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
         setupMarkdownEditorPreviewButton(container, editor);
     }
 
-    void emoji_picker_create({
-        triggerButton: container.querySelector('.emoji-pic-button'),
-    }).catch((error) => {
-        console.error('絵文字ピッカーの初期化に失敗しました:', error);
-    });
+    const emojiButton = container.querySelector('.emoji-pic-button');
+    if (emojiButton) {
+        let pickerInstance = null;
+        let pickerLoading = false;
+        emojiButton.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            const existingPicker = container.querySelector('#emoji-picker');
+            if (existingPicker && !existingPicker.classList.contains('hidden')) {
+                existingPicker.classList.add('hidden');
+                return;
+            }
+            if (existingPicker && pickerInstance) {
+                existingPicker.classList.remove('hidden');
+                return;
+            }
+            if (pickerLoading) return;
+            pickerLoading = true;
+            try {
+                pickerInstance = await emoji_picker_create({
+                    triggerButton: emojiButton,
+                    onEmojiSelect: (emoji) => {
+                        const targetEditor = container.querySelector('#post-content');
+                        if (targetEditor) {
+                            const val = emoji.native || `:${emoji.id}:`;
+                            insertMarkdownEditorText(targetEditor, val);
+                        }
+                    },
+                    onClickOutside: () => {
+                        container.querySelector('#emoji-picker')?.classList.add('hidden');
+                    },
+                });
+                const pickerPlaceholder = container.querySelector('#emoji-picker');
+                if (pickerPlaceholder) {
+                    pickerPlaceholder.replaceWith(pickerInstance);
+                    pickerInstance.classList.remove('hidden');
+                } else {
+                    container.querySelector('.post-form-actions')?.appendChild(pickerInstance);
+                }
+            } catch (error) {
+                console.error('絵文字ピッカーの初期化に失敗しました:', error);
+            } finally {
+                pickerLoading = false;
+            }
+        });
+    }
 }
 
 export async function handleFileSelection(event, container, { append = false } = {}) {
@@ -1759,7 +1800,51 @@ export async function openEditPostModal(postId, onSaved = null) {
         `;
 
         setPostingReplyControl(DOM.editPostModalContent, post.reply_control || post.replyControl || 'everyone');
-        await emoji_picker_create({ triggerButton: DOM.editPostModalContent.querySelector('.emoji-pic-button') });
+        const editEmojiBtn = DOM.editPostModalContent.querySelector('.emoji-pic-button');
+        if (editEmojiBtn) {
+            let editPickerInstance = null;
+            let editPickerLoading = false;
+            editEmojiBtn.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                const existingPicker = DOM.editPostModalContent.querySelector('#emoji-picker');
+                if (existingPicker && !existingPicker.classList.contains('hidden')) {
+                    existingPicker.classList.add('hidden');
+                    return;
+                }
+                if (existingPicker && editPickerInstance) {
+                    existingPicker.classList.remove('hidden');
+                    return;
+                }
+                if (editPickerLoading) return;
+                editPickerLoading = true;
+                try {
+                    editPickerInstance = await emoji_picker_create({
+                        triggerButton: editEmojiBtn,
+                        onEmojiSelect: (emoji) => {
+                            const targetEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
+                            if (targetEditor) {
+                                const val = emoji.native || `:${emoji.id}:`;
+                                insertMarkdownEditorText(targetEditor, val);
+                            }
+                        },
+                        onClickOutside: () => {
+                            DOM.editPostModalContent.querySelector('#emoji-picker')?.classList.add('hidden');
+                        },
+                    });
+                    const pickerPlaceholder = DOM.editPostModalContent.querySelector('#emoji-picker');
+                    if (pickerPlaceholder) {
+                        pickerPlaceholder.replaceWith(editPickerInstance);
+                        editPickerInstance.classList.remove('hidden');
+                    } else {
+                        DOM.editPostModalContent.querySelector('.post-form-actions')?.appendChild(editPickerInstance);
+                    }
+                } catch (error) {
+                    console.error('絵文字ピッカーの初期化に失敗しました:', error);
+                } finally {
+                    editPickerLoading = false;
+                }
+            });
+        }
         const editPostEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
         attachMarkdownContentEditor(editPostEditor);
         setupMarkdownEditorPreviewButton(DOM.editPostModalContent, editPostEditor);

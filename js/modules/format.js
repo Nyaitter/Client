@@ -25,9 +25,9 @@ export async function emoji_picker_create({
         skins: [{ src: `/emoji/${encodeURIComponent(item)}.svg` }],
     }));
 
-    const response = await fetch('/vendor/emoji-mart-data-native-15.json');
+    const response = await fetch('https://cdn.jsdelivr.net/npm/@emoji-mart/data@1.2.1/sets/15/native.json');
     const data = await response.json();
-    const i18nJaResponse = await fetch('/vendor/emoji-mart-i18n-ja.json');
+    const i18nJaResponse = await fetch('https://cdn.jsdelivr.net/npm/@emoji-mart/data@1.2.1/i18n/ja.json');
     const i18nJa = await i18nJaResponse.json();
 
     const pickerOptions = {
