@@ -541,6 +541,8 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
     const existingSubTabs = document.getElementById('profile-sub-tabs-container');
     if (existingSubTabs) existingSubTabs.remove();
 
+    const isMediaTab = subpage === 'media';
+
     if (isFollowListActive) {
         const subTabsContainer = document.createElement('div');
         subTabsContainer.id = 'profile-sub-tabs-container';
