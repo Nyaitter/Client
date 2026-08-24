@@ -156,8 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    disableAuthActionButtons();
-    turnstileWidgetId = window.turnstile.render(turnstileWidget, {
+    const initialToken = turnstileToken;
+    const widgetId = window.turnstile.render(turnstileWidget, {
       sitekey: configuredTurnstileSiteKey,
       theme: 'auto',
       callback: (token) => {
@@ -173,6 +173,16 @@ document.addEventListener('DOMContentLoaded', () => {
         disableAuthActionButtons();
       },
     });
+    turnstileWidgetId = widgetId;
+    // 即時解決（パススルー等）で既にトークンが取得できている場合は無効化しない
+    if (turnstileToken || (window.turnstile.getResponse && window.turnstile.getResponse(widgetId))) {
+      if (!turnstileToken && window.turnstile.getResponse) {
+        turnstileToken = window.turnstile.getResponse(widgetId);
+      }
+      enableAuthActionButtons();
+    } else {
+      disableAuthActionButtons();
+    }
   }
 
   function mountTurnstile(beforeElement) {
