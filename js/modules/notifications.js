@@ -114,6 +114,8 @@ export function getNotificationMessageSuffix(notification) {
             return ' さんからグループへの参加申請が届いています。';
         case 'group_announcement':
             return ' さんがグループアナウンスを投稿しました。';
+        case 'poll_ended':
+            return ' さんの投票が終了しました。結果を確認しましょう！';
         case 'admin_notice':
             return ' さんからお知らせがあります。';
         default:

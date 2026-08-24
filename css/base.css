@@ -71,14 +71,17 @@ background-color: var(--emoji-bg-color);
 }
 
 .attachment-button,
+.post-poll-button,
 .emoji-pic-button,
 .markdown-preview-button,
 .post-mask-button,
-    .post-lock-button,
-    .post-announcement-button,
-    .post-group-button,
-    .post-reply-control-button {
-background: none;
+.post-lock-button,
+.post-announcement-button,
+.post-group-button,
+.post-reply-control-button,
+.post-tools-overflow-button,
+.post-tools-group .post-tool-btn {
+    background: none;
     border: none;
     cursor: pointer;
     padding: 0.5rem;
@@ -89,14 +92,17 @@ background: none;
 }
 
 .attachment-button:hover,
+.post-poll-button:hover,
 .emoji-pic-button:hover,
 .markdown-preview-button:hover,
 .post-mask-button:hover,
-    .post-lock-button:hover,
-    .post-announcement-button:hover,
-    .post-group-button:hover,
-    .post-reply-control-button:hover {
-background-color: var(--bg-color);
+.post-lock-button:hover,
+.post-announcement-button:hover,
+.post-group-button:hover,
+.post-reply-control-button:hover,
+.post-tools-overflow-button:hover,
+.post-tools-group .post-tool-btn:hover {
+    background-color: var(--bg-color);
 }
 
 .emoji-pic-button svg {
