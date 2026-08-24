@@ -1297,12 +1297,12 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
             try {
                 pickerInstance = await emoji_picker_create({
                     triggerButton: emojiButton,
-                    onEmojiSelect: (emoji) => {
+                    onEmojiSelect: (value) => {
                         const targetEditor = container.querySelector('#post-content');
-                        if (targetEditor) {
-                            const val = emoji.native || `:${emoji.id}:`;
-                            insertMarkdownEditorText(targetEditor, val);
+                        if (targetEditor && value) {
+                            insertMarkdownEditorText(targetEditor, value);
                         }
+                        container.querySelector('#emoji-picker')?.classList.add('hidden');
                     },
                     onClickOutside: () => {
                         container.querySelector('#emoji-picker')?.classList.add('hidden');
@@ -1820,12 +1820,12 @@ export async function openEditPostModal(postId, onSaved = null) {
                 try {
                     editPickerInstance = await emoji_picker_create({
                         triggerButton: editEmojiBtn,
-                        onEmojiSelect: (emoji) => {
+                        onEmojiSelect: (value) => {
                             const targetEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
-                            if (targetEditor) {
-                                const val = emoji.native || `:${emoji.id}:`;
-                                insertMarkdownEditorText(targetEditor, val);
+                            if (targetEditor && value) {
+                                insertMarkdownEditorText(targetEditor, value);
                             }
+                            DOM.editPostModalContent.querySelector('#emoji-picker')?.classList.add('hidden');
                         },
                         onClickOutside: () => {
                             DOM.editPostModalContent.querySelector('#emoji-picker')?.classList.add('hidden');

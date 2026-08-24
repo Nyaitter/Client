@@ -714,12 +714,12 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
                 try {
                     editDmPickerInstance = await emoji_picker_create({
                         triggerButton: editDmEmojiBtn,
-                        onEmojiSelect: (emoji) => {
+                        onEmojiSelect: (value) => {
                             const targetEditor = content.querySelector('#edit-dm-textarea');
-                            if (targetEditor) {
-                                const val = emoji.native || `:${emoji.id}:`;
-                                insertMarkdownEditorText(targetEditor, val);
+                            if (targetEditor && value) {
+                                insertMarkdownEditorText(targetEditor, value);
                             }
+                            content.querySelector('#emoji-picker')?.classList.add('hidden');
                         },
                         onClickOutside: () => {
                             content.querySelector('#emoji-picker')?.classList.add('hidden');
