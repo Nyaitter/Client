@@ -598,7 +598,14 @@ export async function renderPost(post, author, options = {}) {
                 attachmentsContainer.appendChild(itemDiv);
             }
         }
+        attachmentsContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
         postMain.appendChild(attachmentsContainer);
+    }
+
+    if (post.poll) {
+        renderPostPoll(postMain, post.poll, post);
     }
 
     if ((post.repost_to || post.reposted_post) && post.content) {
@@ -864,30 +871,251 @@ export function createPostFormHTML(isModal = false) {
                 <div class="file-preview-container"></div>
                 ${isModal ? '<div id="quoting-preview-container"></div>' : ''}
                 <div class="post-form-actions">
-                    <button type="button" class="attachment-button float-left" title="ファイルを添付">
-                        ${ICONS.attachment}
-                    </button>
-                    <button type="button" class="emoji-pic-button float-left" title="絵文字を選択">
-                        ${ICONS.emoji}
-                    </button>
+                    <div class="post-form-actions-left">
+                        <button type="button" class="attachment-button" title="ファイルを添付">
+                            ${ICONS.attachment}
+                        </button>
+                        <button type="button" class="post-poll-button" title="投票を作成">
+                            ${ICONS.poll}
+                        </button>
+                        <button type="button" class="emoji-pic-button" title="絵文字を選択">
+                            ${ICONS.emoji}
+                        </button>
+                    </div>
                     <input type="file" id="file-input" class="hidden" multiple>
                     <div id="emoji-picker" class="hidden"></div>
                     <div class="post-group-menu hidden" role="menu"></div>
                     <div class="post-reply-control-menu hidden" role="menu"></div>
-                    <button id="post-submit-button" class="float-right">ポスト</button>
-                    <button type="button" class="post-group-button float-right" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
-                    <button type="button" class="post-reply-control-button float-right" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
-                    <button type="button" class="post-mask-button float-right" title="ワンクッション">
-                        ${ICONS.mask}
-                    </button>
-                    <button type="button" class="post-lock-button float-right" title="プライベート" aria-pressed="false">
-                        ${ICONS.lock}
-                    </button>
-                    <button type="button" class="post-announcement-button float-right hidden" title="Nyaitterアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
-                    <span class="float-clear"></span>
+                    <div class="post-tools-overflow-menu hidden" role="menu"></div>
+                    <div class="post-form-actions-right">
+                        <div class="post-tools-group">
+                            <button type="button" class="post-tool-btn post-announcement-button hidden" title="Nyaitterアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
+                            <button type="button" class="post-tool-btn post-lock-button" title="プライベート" aria-pressed="false">
+                                ${ICONS.lock}
+                            </button>
+                            <button type="button" class="post-tool-btn post-mask-button" title="ワンクッション">
+                                ${ICONS.mask}
+                            </button>
+                            <button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
+                            <button type="button" class="post-tool-btn post-group-button" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
+                        </div>
+                        <button type="button" class="post-tools-overflow-button hidden" title="その他のツール" aria-label="その他のツール" aria-haspopup="menu" aria-expanded="false">${ICONS.more}</button>
+                        <button id="post-submit-button">ポスト</button>
+                    </div>
                 </div>
             </div>
         </div>`;
+}
+
+export function closePostToolsOverflowMenu(container) {
+    const menu = container?.querySelector('.post-tools-overflow-menu');
+    const button = container?.querySelector('.post-tools-overflow-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+    if (container?._postToolsOverflowMenuOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postToolsOverflowMenuOutsideHandler, true);
+        container._postToolsOverflowMenuOutsideHandler = null;
+    }
+}
+
+function bindPostToolsOverflowMenuOutsideHandler(container) {
+    if (!container || container._postToolsOverflowMenuOutsideHandler) return;
+    const handler = (event) => {
+        const menu = container.querySelector('.post-tools-overflow-menu');
+        const button = container.querySelector('.post-tools-overflow-button');
+        if (!menu || menu.classList.contains('hidden') || menu.contains(event.target) || button?.contains(event.target)) return;
+        closePostToolsOverflowMenu(container);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+    container._postToolsOverflowMenuOutsideHandler = handler;
+    document.addEventListener('pointerdown', handler, true);
+}
+
+export function renderPostToolsOverflowMenu(container) {
+    const menu = container?.querySelector('.post-tools-overflow-menu');
+    if (!menu) return;
+    const hiddenButtons = Array.from(container.querySelectorAll('.post-tools-group .post-tool-btn.overflow-hidden'));
+    if (hiddenButtons.length === 0) {
+        menu.innerHTML = '<p class="post-tools-overflow-empty" style="padding: 0.5rem; margin: 0; color: var(--secondary-text-color); font-size: 0.9rem;">ツールはありません</p>';
+        return;
+    }
+
+    menu.innerHTML = hiddenButtons.map((btn) => {
+        let label = btn.getAttribute('aria-label') || btn.getAttribute('title') || 'ツール';
+        let subText = '';
+        let isActive = btn.classList.contains('active');
+        let iconHtml = btn.innerHTML;
+
+        if (btn.classList.contains('post-group-button')) {
+            label = getPostingGroup(container)?.name || 'Nyaitter';
+            subText = getPostingGroup(container) ? 'グループポスト' : '通常ポスト';
+        } else if (btn.classList.contains('post-reply-control-button')) {
+            const currentReply = getPostingReplyControl(container);
+            const opt = REPLY_CONTROL_OPTIONS.find((o) => o.id === currentReply) || REPLY_CONTROL_OPTIONS[0];
+            label = opt.title;
+            subText = opt.description;
+        } else if (btn.classList.contains('post-mask-button')) {
+            label = 'ワンクッション';
+            subText = isActive ? '有効' : '無効';
+        } else if (btn.classList.contains('post-lock-button')) {
+            label = 'プライベートポスト';
+            subText = isActive ? 'フォロワー限定' : '公開';
+        } else if (btn.classList.contains('post-announcement-button')) {
+            label = getPostingGroup(container) ? 'グループアナウンス' : 'Nyaitterアナウンス';
+            subText = isActive ? '有効' : '無効';
+        }
+
+        const dataTool = btn.classList.contains('post-group-button') ? 'group'
+            : btn.classList.contains('post-reply-control-button') ? 'reply_control'
+            : btn.classList.contains('post-mask-button') ? 'mask'
+            : btn.classList.contains('post-lock-button') ? 'lock'
+            : btn.classList.contains('post-announcement-button') ? 'announcement'
+            : 'tool';
+
+        return `<button type="button" class="post-tools-overflow-menu-item ${isActive ? 'active' : ''}" data-overflow-tool="${dataTool}">
+            <span class="post-tools-overflow-menu-icon" aria-hidden="true">${iconHtml}</span>
+            <span class="post-tools-overflow-menu-copy">
+                <strong>${escapeHTML(label)}</strong>
+                ${subText ? `<small>${escapeHTML(subText)}</small>` : ''}
+            </span>
+        </button>`;
+    }).join('');
+
+    menu.querySelectorAll('[data-overflow-tool]').forEach((item) => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tool = item.dataset.overflowTool;
+            closePostToolsOverflowMenu(container);
+            if (tool === 'group') {
+                void openPostGroupMenu(container);
+            } else if (tool === 'reply_control') {
+                togglePostReplyControlMenu(container);
+            } else if (tool === 'mask') {
+                handlePostMask(container);
+                updatePostToolsOverflow(container);
+            } else if (tool === 'lock') {
+                handlePostLock(container);
+                updatePostToolsOverflow(container);
+            } else if (tool === 'announcement') {
+                handlePostAnnouncement(container);
+                updatePostToolsOverflow(container);
+            }
+        });
+    });
+}
+
+export function togglePostToolsOverflowMenu(container) {
+    const menu = container?.querySelector('.post-tools-overflow-menu');
+    const button = container?.querySelector('.post-tools-overflow-button');
+    if (!menu || !button) return;
+    closePostGroupMenu(container);
+    closePostReplyControlMenu(container);
+    closePostAccountMenu(container);
+    const willOpen = menu.classList.contains('hidden');
+    if (willOpen) {
+        renderPostToolsOverflowMenu(container);
+        menu.classList.remove('hidden');
+        button.setAttribute('aria-expanded', 'true');
+        bindPostToolsOverflowMenuOutsideHandler(container);
+    } else {
+        closePostToolsOverflowMenu(container);
+    }
+}
+
+/**
+ * ツールボタン群の幅を監視し、改行や幅超過が発生する場合に左側からその他ボタンへ格納する
+ */
+export function updatePostToolsOverflow(container) {
+    if (!container) return;
+    const actions = container.querySelector('.post-form-actions');
+    const actionsLeft = container.querySelector('.post-form-actions-left');
+    const toolsGroup = container.querySelector('.post-tools-group');
+    const moreBtn = container.querySelector('.post-tools-overflow-button');
+    const submitBtn = container.querySelector('#post-submit-button, #update-post-button');
+    if (!actions || !toolsGroup || !moreBtn || !submitBtn) return;
+
+    const visibleCandidateButtons = Array.from(toolsGroup.querySelectorAll('.post-tool-btn:not(.hidden)'));
+    if (visibleCandidateButtons.length === 0) {
+        moreBtn.classList.add('hidden');
+        return;
+    }
+
+    // まず全ボタンの非表示クラスを解除
+    visibleCandidateButtons.forEach((btn) => btn.classList.remove('overflow-hidden'));
+    moreBtn.classList.add('hidden');
+
+    const totalAvailableWidth = actions.getBoundingClientRect?.().width || actions.clientWidth || 300;
+    const leftWidth = actionsLeft ? (actionsLeft.getBoundingClientRect?.().width || actionsLeft.offsetWidth || 80) : 0;
+    const submitWidth = Math.max(submitBtn.getBoundingClientRect?.().width || submitBtn.offsetWidth || 0, 72);
+    const moreButtonWidth = 38;
+    const itemGap = 4;
+    const containerGap = 8;
+
+    // 右側エリア（ツール群 + その他ボタン + 送信ボタン）が利用可能な幅
+    const maxRightAvailableWidth = Math.max(0, totalAvailableWidth - leftWidth - containerGap);
+
+    // 左側（優先度の低いツール: announcement -> lock -> mask -> reply -> group）から順にオーバーフロー対象にする
+    const overflowPriorityList = visibleCandidateButtons.slice();
+
+    let overflowCount = 0;
+    const getRequiredToolsWidth = () => {
+        let width = 0;
+        let count = 0;
+        visibleCandidateButtons.forEach((btn) => {
+            if (!btn.classList.contains('overflow-hidden')) {
+                const btnWidth = Math.max(btn.getBoundingClientRect?.().width || btn.offsetWidth || 0, 36);
+                width += btnWidth + itemGap;
+                count++;
+            }
+        });
+        return width;
+    };
+
+    const isExceeding = () => {
+        const moreWidth = overflowCount > 0 ? (moreButtonWidth + itemGap) : 0;
+        const required = getRequiredToolsWidth() + moreWidth + submitWidth;
+        return required > maxRightAvailableWidth;
+    };
+
+    if (isExceeding()) {
+        moreBtn.classList.remove('hidden');
+        for (const btn of overflowPriorityList) {
+            btn.classList.add('overflow-hidden');
+            overflowCount++;
+            if (!isExceeding()) {
+                break;
+            }
+        }
+    }
+
+    if (overflowCount === 0) {
+        moreBtn.classList.add('hidden');
+    } else {
+        moreBtn.classList.remove('hidden');
+    }
+}
+
+export function setupPostToolsOverflowObserver(container) {
+    if (!container || container._postToolsResizeObserver) return;
+    const actions = container.querySelector('.post-form-actions');
+    if (!actions) return;
+
+    const runUpdate = () => {
+        window.requestAnimationFrame(() => updatePostToolsOverflow(container));
+    };
+
+    if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => {
+            runUpdate();
+        });
+        observer.observe(actions);
+        container._postToolsResizeObserver = observer;
+    }
+
+    window.addEventListener('resize', runUpdate);
+    setTimeout(runUpdate, 0);
+    setTimeout(runUpdate, 100);
 }
 
 const REPLY_CONTROL_OPTIONS = [
@@ -1043,6 +1271,7 @@ function setPostingGroup(container, group = null, { locked = false } = {}) {
         announcementButton.classList.remove('active');
         announcementButton.setAttribute('aria-pressed', 'false');
     }
+    updatePostToolsOverflow(container);
 }
 
 function closePostGroupMenu(container) {
@@ -1206,6 +1435,502 @@ async function openPostGroupMenu(container) {
     }
 }
 
+export function formatPollRemainingTime(expiresAt) {
+    if (!expiresAt) return '無期限';
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    if (diff <= 0) return '終了';
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (days > 0) return `${days}日`;
+    if (hours > 0) return `${hours}時間`;
+    return `${Math.max(1, minutes)}分`;
+}
+
+export function renderPostPoll(parentContainer, poll, post = null) {
+    if (!poll || !parentContainer) return;
+
+    let pollContainer = parentContainer.querySelector(`.post-poll-container[data-poll-id="${poll.id}"]`);
+    if (!pollContainer) {
+        pollContainer = document.createElement('div');
+        pollContainer.className = 'post-poll-container';
+        pollContainer.dataset.pollId = String(poll.id);
+        pollContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        parentContainer.appendChild(pollContainer);
+    }
+
+    const currentUser = getCurrentUser();
+    const isExpired = Boolean(poll.is_expired);
+    const hasVoted = Boolean(poll.has_voted);
+    const showResultsBeforeVoting = Boolean(poll.show_results_before_voting);
+    const isViewingResults = Boolean(pollContainer._isViewingResults);
+
+    // 結果表示モード条件:
+    // 1. 期限終了
+    // 2. 投票済み
+    // 3. 未ログイン
+    // 4. 結果閲覧可能 かつ 閲覧ボタンを押下
+    const showResults = isExpired || hasVoted || !currentUser || isViewingResults;
+
+    let html = `<div class="post-poll-title">${escapeHTML(poll.title || '投票')}</div>`;
+
+    if (!showResults) {
+        const inputType = poll.allow_multiple ? 'checkbox' : 'radio';
+        const inputName = `poll_choice_${poll.id}_${Math.random().toString(36).slice(2, 7)}`;
+
+        html += `<form class="post-poll-form">`;
+        for (const opt of (poll.options || [])) {
+            html += `
+                <label class="post-poll-option-label">
+                    <input type="${inputType}" name="${inputName}" value="${opt.id}" class="poll-option-input">
+                    <span>${escapeHTML(opt.text)}</span>
+                </label>
+            `;
+        }
+
+        if (poll.allow_other) {
+            html += `
+                <div class="post-poll-other-wrapper">
+                    <label class="post-poll-option-label">
+                        <input type="${inputType}" name="${inputName}" value="-1" class="poll-option-input poll-other-radio">
+                        <span>その他（自由記述）</span>
+                    </label>
+                    <input type="text" class="post-poll-other-input hidden" placeholder="その他の回答を入力..." maxlength="200">
+                </div>
+            `;
+        }
+
+        html += `
+            <div class="post-poll-actions">
+                <button type="submit" class="post-poll-vote-btn" disabled>投票する</button>
+                ${showResultsBeforeVoting ? '<button type="button" class="post-poll-view-results-btn">結果を見る</button>' : ''}
+            </div>
+        </form>`;
+    } else {
+        html += `<div class="post-poll-results">`;
+        const myVotes = new Set((poll.my_votes || []).map(Number));
+
+        for (const opt of (poll.options || [])) {
+            const isMyVote = myVotes.has(Number(opt.id));
+            const percent = Number(opt.percentage || 0);
+            html += `
+                <div class="post-poll-result-row ${isMyVote ? 'voted' : ''}">
+                    <div class="post-poll-progress-fill" style="width: ${percent}%;"></div>
+                    <div class="post-poll-result-content">
+                        <div class="post-poll-result-text">
+                            ${isMyVote ? '<span class="post-poll-result-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>' : ''}
+                            <span>${escapeHTML(opt.text)}</span>
+                        </div>
+                        <div class="post-poll-result-percent">
+                            ${percent}% <span style="font-size: 0.8rem; font-weight: normal; color: var(--secondary-text-color);">(${opt.votes_count || 0}票)</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (poll.allow_other && (poll.other_count > 0 || poll.other_votes?.length > 0)) {
+            const isMyVote = myVotes.has(-1);
+            const percent = Number(poll.other_percentage || 0);
+            html += `
+                <div class="post-poll-result-row ${isMyVote ? 'voted' : ''}">
+                    <div class="post-poll-progress-fill" style="width: ${percent}%;"></div>
+                    <div class="post-poll-result-content">
+                        <div class="post-poll-result-text">
+                            ${isMyVote ? '<span class="post-poll-result-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>' : ''}
+                            <span>その他</span>
+                        </div>
+                        <div class="post-poll-result-percent">
+                            ${percent}% <span style="font-size: 0.8rem; font-weight: normal; color: var(--secondary-text-color);">(${poll.other_count || 0}票)</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (poll.other_votes && poll.other_votes.length > 0) {
+                html += `
+                    <div class="post-poll-other-list">
+                        <div class="post-poll-other-list-title">その他の回答:</div>
+                        <div class="post-poll-other-items">
+                            ${poll.other_votes.map((v) => `<div class="post-poll-other-item">${escapeHTML(v.text)}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        html += `</div>`;
+    }
+
+    const totalVotes = poll.total_votes || 0;
+    const totalVoters = poll.total_voters || 0;
+    let expiryText = '';
+    if (isExpired) {
+        expiryText = '・最終結果（投票終了）';
+    } else if (poll.expires_at) {
+        expiryText = `・残り時間: ${formatPollRemainingTime(poll.expires_at)}`;
+    } else {
+        expiryText = '・無期限';
+    }
+
+    html += `
+        <div class="post-poll-footer">
+            <span>${totalVoters}人が投票 (${totalVotes}票) ${expiryText}</span>
+            ${showResults && !isExpired && !hasVoted && currentUser && isViewingResults ? '<button type="button" class="post-poll-back-to-vote-btn">投票する</button>' : ''}
+        </div>
+    `;
+
+    pollContainer.innerHTML = html;
+
+    // イベント設定
+    if (!showResults) {
+        const form = pollContainer.querySelector('.post-poll-form');
+        const voteBtn = form?.querySelector('.post-poll-vote-btn');
+        const otherRadio = form?.querySelector('.poll-other-radio');
+        const otherInput = form?.querySelector('.post-poll-other-input');
+        const viewResultsBtn = form?.querySelector('.post-poll-view-results-btn');
+
+        const updateVoteButtonState = () => {
+            const checkedInputs = Array.from(form.querySelectorAll('.poll-option-input:checked'));
+            const isOtherChecked = otherRadio?.checked;
+            const otherVal = otherInput?.value.trim() || '';
+
+            if (isOtherChecked) {
+                otherInput.classList.remove('hidden');
+                voteBtn.disabled = checkedInputs.length === 0 || (checkedInputs.length === 1 && !otherVal);
+            } else {
+                if (otherInput) otherInput.classList.add('hidden');
+                voteBtn.disabled = checkedInputs.length === 0;
+            }
+        };
+
+        form.querySelectorAll('.poll-option-input').forEach((input) => {
+            input.addEventListener('change', updateVoteButtonState);
+        });
+        otherInput?.addEventListener('input', updateVoteButtonState);
+
+        viewResultsBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            pollContainer._isViewingResults = true;
+            renderPostPoll(parentContainer, poll, post);
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!currentUser) return showAppAlert('投票するにはログインが必要です。');
+
+            const checkedInputs = Array.from(form.querySelectorAll('.poll-option-input:checked'));
+            const selectedOptionIds = checkedInputs.map((i) => Number(i.value));
+            const otherText = otherRadio?.checked ? otherInput?.value.trim() : null;
+
+            if (selectedOptionIds.length === 0) return;
+
+            voteBtn.disabled = true;
+            voteBtn.textContent = '送信中...';
+
+            try {
+                const { data, error } = await apiRequest(`/server/api/polls/${poll.id}/vote`, {
+                    method: 'POST',
+                    body: {
+                        option_ids: selectedOptionIds,
+                        other_text: otherText,
+                    },
+                });
+
+                if (error) throw error;
+                const updatedPoll = data?.poll;
+                if (updatedPoll) {
+                    if (post) post.poll = updatedPoll;
+                    pollContainer._isViewingResults = false;
+                    renderPostPoll(parentContainer, updatedPoll, post);
+                }
+            } catch (err) {
+                showAppAlert(`投票に失敗しました: ${err.message || '不明なエラー'}`);
+                voteBtn.disabled = false;
+                voteBtn.textContent = '投票する';
+            }
+        });
+    } else {
+        const backToVoteBtn = pollContainer.querySelector('.post-poll-back-to-vote-btn');
+        backToVoteBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            pollContainer._isViewingResults = false;
+            renderPostPoll(parentContainer, poll, post);
+        });
+    }
+}
+
+export function renderPollAttachmentPreview(container) {
+    const previewContainer = container?.querySelector('.file-preview-container');
+    if (!previewContainer) return;
+
+    let pollPreview = previewContainer.querySelector('.poll-attachment-preview');
+    if (!container._attachedPoll) {
+        pollPreview?.remove();
+        return;
+    }
+
+    if (!pollPreview) {
+        pollPreview = document.createElement('div');
+        pollPreview.className = 'poll-attachment-preview';
+        previewContainer.appendChild(pollPreview);
+    }
+
+    const poll = container._attachedPoll;
+    let durationLabel = '無期限';
+    if (poll.expires_at) {
+        durationLabel = `期限: ${new Date(poll.expires_at).toLocaleString()}`;
+    }
+
+    const metaTags = [
+        `<span class="poll-preview-tag">${escapeHTML(durationLabel)}</span>`,
+        poll.allow_multiple ? '<span class="poll-preview-tag">複数選択可</span>' : '<span class="poll-preview-tag">単一選択</span>',
+        poll.allow_other ? '<span class="poll-preview-tag">その他あり</span>' : '',
+        poll.show_results_before_voting ? '<span class="poll-preview-tag">結果閲覧可</span>' : '<span class="poll-preview-tag">投票後表示</span>',
+    ].filter(Boolean).join(' ');
+
+    pollPreview.innerHTML = `
+        <div class="poll-attachment-preview-header">
+            <div class="poll-attachment-preview-title">${escapeHTML(poll.title || '投票')}</div>
+            <button type="button" class="poll-attachment-preview-close" title="投票を削除">×</button>
+        </div>
+        <div class="poll-attachment-preview-options">
+            ${poll.options.map((opt, i) => `<div class="poll-attachment-preview-opt">${i + 1}. ${escapeHTML(opt.text)}</div>`).join('')}
+            ${poll.allow_other ? '<div class="poll-attachment-preview-opt">その他（自由記述）</div>' : ''}
+        </div>
+        <div class="poll-attachment-preview-meta">
+            ${metaTags}
+        </div>
+    `;
+
+    pollPreview.querySelector('.poll-attachment-preview-close')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        container._attachedPoll = null;
+        pollPreview.remove();
+    });
+
+    pollPreview.addEventListener('click', () => {
+        openCreatePollModal(container);
+    });
+}
+
+export function openCreatePollModal(container) {
+    let existingModal = document.getElementById('create-poll-modal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'create-poll-modal';
+    modal.className = 'modal-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+
+    const initialPoll = container._attachedPoll || null;
+    const initialTitle = initialPoll?.title || '';
+    let initialOptions = initialPoll?.options && initialPoll.options.length >= 2
+        ? initialPoll.options.map((o) => o.text)
+        : ['', ''];
+    const initialAllowMultiple = initialPoll?.allow_multiple || false;
+    const initialAllowOther = initialPoll?.allow_other || false;
+    const initialShowResults = initialPoll?.show_results_before_voting ?? true;
+
+    modal.innerHTML = `
+        <div class="poll-modal-content">
+            <button type="button" class="modal-close-btn" id="poll-modal-close-btn">×</button>
+            <div class="poll-modal-title">投票を作成</div>
+            
+            <div class="poll-field-group">
+                <label class="poll-field-label" for="poll-title-input">質問 / タイトル</label>
+                <input type="text" id="poll-title-input" class="poll-text-input" placeholder="質問を入力してください" value="${escapeHTML(initialTitle)}">
+            </div>
+
+            <div class="poll-field-group">
+                <label class="poll-field-label">選択肢 (最大10件)</label>
+                <div class="poll-options-list" id="poll-options-list"></div>
+                <button type="button" class="poll-add-option-btn" id="poll-add-option-btn">+ 選択肢を追加</button>
+            </div>
+
+            <div class="poll-field-group">
+                <label class="poll-field-label">投票期限</label>
+                <div class="poll-duration-tabs">
+                    <button type="button" class="poll-duration-tab-btn active" data-duration-tab="relative">相対指定</button>
+                    <button type="button" class="poll-duration-tab-btn" data-duration-tab="absolute">日時指定</button>
+                    <button type="button" class="poll-duration-tab-btn" data-duration-tab="unlimited">無制限</button>
+                </div>
+                <div id="poll-duration-relative" class="poll-duration-content">
+                    <select id="poll-relative-select" class="poll-text-input">
+                        <option value="1h">1時間</option>
+                        <option value="6h">6時間</option>
+                        <option value="12h">12時間</option>
+                        <option value="1d" selected>1日 (24時間)</option>
+                        <option value="3d">3日</option>
+                        <option value="7d">7日</option>
+                    </select>
+                </div>
+                <div id="poll-duration-absolute" class="poll-duration-content hidden">
+                    <input type="datetime-local" id="poll-datetime-input" class="poll-text-input">
+                </div>
+                <div id="poll-duration-unlimited" class="poll-duration-content hidden">
+                    <p style="font-size: 0.85rem; color: var(--secondary-text-color); margin: 0.4rem 0;">期限なしで無制限に投票を受け付けます。</p>
+                </div>
+            </div>
+
+            <div class="poll-field-group">
+                <label class="poll-field-label">設定</label>
+                <label class="poll-checkbox-label">
+                    <input type="checkbox" id="poll-allow-multiple" ${initialAllowMultiple ? 'checked' : ''}>
+                    <span>複数選択を許可する</span>
+                </label>
+                <label class="poll-checkbox-label">
+                    <input type="checkbox" id="poll-allow-other" ${initialAllowOther ? 'checked' : ''}>
+                    <span>「その他」の回答（自由記述）を許可する</span>
+                </label>
+                <label class="poll-checkbox-label">
+                    <input type="checkbox" id="poll-show-results" ${initialShowResults ? 'checked' : ''}>
+                    <span>投票前でも結果・票数を閲覧可能にする</span>
+                </label>
+            </div>
+
+            <div class="poll-modal-actions">
+                <button type="button" class="poll-btn-cancel" id="poll-btn-cancel">キャンセル</button>
+                <button type="button" class="poll-btn-submit" id="poll-btn-submit">投票を追加</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const optionsList = modal.querySelector('#poll-options-list');
+    const addOptionBtn = modal.querySelector('#poll-add-option-btn');
+    const titleInput = modal.querySelector('#poll-title-input');
+
+    function renderOptions() {
+        optionsList.innerHTML = '';
+        initialOptions.forEach((optText, index) => {
+            const row = document.createElement('div');
+            row.className = 'poll-option-input-row';
+            row.innerHTML = `
+                <input type="text" class="poll-text-input poll-opt-input" placeholder="選択肢 ${index + 1}" value="${escapeHTML(optText)}">
+                ${initialOptions.length > 2 ? `<button type="button" class="poll-option-remove-btn" title="削除">×</button>` : ''}
+            `;
+            row.querySelector('.poll-opt-input').addEventListener('input', (e) => {
+                initialOptions[index] = e.target.value;
+            });
+            row.querySelector('.poll-option-remove-btn')?.addEventListener('click', () => {
+                initialOptions.splice(index, 1);
+                renderOptions();
+            });
+            optionsList.appendChild(row);
+        });
+
+        if (initialOptions.length >= 10) {
+            addOptionBtn.classList.add('hidden');
+        } else {
+            addOptionBtn.classList.remove('hidden');
+        }
+    }
+
+    renderOptions();
+
+    addOptionBtn.addEventListener('click', () => {
+        if (initialOptions.length < 10) {
+            initialOptions.push('');
+            renderOptions();
+            const inputs = optionsList.querySelectorAll('.poll-opt-input');
+            inputs[inputs.length - 1]?.focus();
+        }
+    });
+
+    // 期限タブ切り替え
+    let activeDurationTab = 'relative';
+    const durationTabBtns = modal.querySelectorAll('.poll-duration-tab-btn');
+    const durationContents = {
+        relative: modal.querySelector('#poll-duration-relative'),
+        absolute: modal.querySelector('#poll-duration-absolute'),
+        unlimited: modal.querySelector('#poll-duration-unlimited'),
+    };
+
+    durationTabBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            activeDurationTab = btn.dataset.durationTab;
+            durationTabBtns.forEach((b) => b.classList.toggle('active', b === btn));
+            Object.keys(durationContents).forEach((key) => {
+                durationContents[key].classList.toggle('hidden', key !== activeDurationTab);
+            });
+        });
+    });
+
+    // 初期の日時指定値（現在から1日後）を設定
+    const dtInput = modal.querySelector('#poll-datetime-input');
+    const defaultDate = new Date(Date.now() + 24 * 3600 * 1000);
+    const tzOffset = defaultDate.getTimezoneOffset() * 60000;
+    dtInput.value = new Date(defaultDate.getTime() - tzOffset).toISOString().slice(0, 16);
+
+    const closeModal = () => modal.remove();
+    modal.querySelector('#poll-modal-close-btn').addEventListener('click', closeModal);
+    modal.querySelector('#poll-btn-cancel').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    // 投票追加ボタン押下
+    modal.querySelector('#poll-btn-submit').addEventListener('click', () => {
+        const title = titleInput.value.trim();
+        const validOptions = initialOptions
+            .map((t, idx) => ({ id: idx + 1, text: t.trim() }))
+            .filter((o) => o.text.length > 0);
+
+        if (validOptions.length < 2) {
+            return showAppAlert('選択肢を2つ以上入力してください。');
+        }
+
+        let expiresAt = null;
+        if (activeDurationTab === 'relative') {
+            const relVal = modal.querySelector('#poll-relative-select').value;
+            const now = Date.now();
+            const durations = {
+                '1h': 1 * 3600 * 1000,
+                '6h': 6 * 3600 * 1000,
+                '12h': 12 * 3600 * 1000,
+                '1d': 24 * 3600 * 1000,
+                '3d': 3 * 24 * 3600 * 1000,
+                '7d': 7 * 24 * 3600 * 1000,
+            };
+            expiresAt = new Date(now + (durations[relVal] || durations['1d'])).toISOString();
+        } else if (activeDurationTab === 'absolute') {
+            const dtVal = dtInput.value;
+            if (!dtVal) return showAppAlert('期限の日時を選択してください。');
+            const targetDate = new Date(dtVal);
+            if (targetDate.getTime() <= Date.now()) {
+                return showAppAlert('未来の日時を選択してください。');
+            }
+            expiresAt = targetDate.toISOString();
+        } else {
+            expiresAt = null; // 無制限
+        }
+
+        const allowMultiple = modal.querySelector('#poll-allow-multiple').checked;
+        const allowOther = modal.querySelector('#poll-allow-other').checked;
+        const showResults = modal.querySelector('#poll-show-results').checked;
+
+        container._attachedPoll = {
+            title: title || '投票',
+            options: validOptions,
+            allow_multiple: allowMultiple,
+            allow_other: allowOther,
+            show_results_before_voting: showResults,
+            expires_at: expiresAt,
+        };
+
+        renderPollAttachmentPreview(container);
+        closeModal();
+    });
+}
+
 export function handleCtrlEnter(e) {
     if (e.ctrlKey && e.key === 'Enter') {
         e.target
@@ -1223,6 +1948,9 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
     });
     container.querySelector('.attachment-button')?.addEventListener('click', () => {
         container.querySelector('#file-input')?.click();
+    });
+    container.querySelector('.post-poll-button')?.addEventListener('click', () => {
+        openCreatePollModal(container);
     });
     container.querySelector('#file-input')?.addEventListener('change', (e) => {
         handleFileSelection(e, container);
@@ -1242,6 +1970,10 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
     container.querySelector('.post-reply-control-button')?.addEventListener('click', () => {
         togglePostReplyControlMenu(container);
     });
+    container.querySelector('.post-tools-overflow-button')?.addEventListener('click', () => {
+        togglePostToolsOverflowMenu(container);
+    });
+    setupPostToolsOverflowObserver(container);
     container.querySelector('#post-submit-button')?.addEventListener('click', () => {
         handlePostSubmit(container, onPostSuccess);
     });
@@ -1464,6 +2196,13 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
             });
         }
 
+        if (container._attachedPoll) {
+            attachmentsData.push({
+                type: 'poll',
+                ...container._attachedPoll,
+            });
+        }
+
         const { data: newPost, error: rpcError } = await api
             .rpc('create_post_new', {
                 p_content: content,
@@ -1485,6 +2224,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
         const replyTargetId = getReplyingTo()?.id || null;
         invalidateTimelinePageCache();
         setSelectedFiles([]);
+        container._attachedPoll = null;
         setMarkdownEditorValue(contentEl, '');
         setPostingGroup(container, null);
         setPostingReplyControl(container, 'everyone');
@@ -1607,6 +2347,7 @@ export function openPostModal(replyTo = null, quotingPost = null) {
 
     modalFormContainer.querySelector('.modal-close-btn')?.addEventListener('click', closePostModal);
     postModal.classList.remove('hidden');
+    updatePostToolsOverflow(modalFormContainer);
     const postEditor = modalFormContainer.querySelector('#post-content');
     if (postEditor) {
         autoResizeMarkdownEditor(postEditor);
@@ -1784,16 +2525,23 @@ export async function openEditPostModal(postId, onSaved = null) {
                     <div class="markdown-textarea-editor post-form-textarea"><textarea id="edit-post-textarea" class="markdown-content-editor" rows="5" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length">${escapeHTML(String(post.content || ''))}</textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
                     <div class="file-preview-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">${renderAttachments()}</div>
                     <div class="post-form-actions" style="padding-top: 1rem;">
-                        <button type="button" class="attachment-button float-left" title="ファイルを追加">${ICONS.attachment}</button>
-                        <button type="button" class="emoji-pic-button float-left" title="絵文字を選択">${ICONS.emoji}</button>
+                        <div class="post-form-actions-left">
+                            <button type="button" class="attachment-button" title="ファイルを追加">${ICONS.attachment}</button>
+                            <button type="button" class="emoji-pic-button" title="絵文字を選択">${ICONS.emoji}</button>
+                        </div>
                         <input type="file" id="edit-file-input" class="hidden" multiple>
                         <div id="emoji-picker" class="hidden"></div>
                         <div class="post-reply-control-menu hidden" role="menu"></div>
-                        <button id="update-post-button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700; margin-left: auto;" class="float-right">保存</button>
-                        ${!isReply ? `<button type="button" class="post-reply-control-button float-right" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
-                        <button type="button" class="post-mask-button float-right ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
-                        <button type="button" class="post-lock-button float-right ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
-                        <span class="float-clear"></span>
+                        <div class="post-tools-overflow-menu hidden" role="menu"></div>
+                        <div class="post-form-actions-right">
+                            <div class="post-tools-group">
+                                <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
+                                <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
+                                ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
+                            </div>
+                            <button type="button" class="post-tools-overflow-button hidden" title="その他のツール" aria-label="その他のツール" aria-haspopup="menu" aria-expanded="false">${ICONS.more}</button>
+                            <button id="update-post-button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700;">保存</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1857,6 +2605,10 @@ export async function openEditPostModal(postId, onSaved = null) {
         DOM.editPostModalContent.querySelector('.post-lock-button')?.addEventListener('click', () => {
             handlePostLock(DOM.editPostModalContent);
         });
+        DOM.editPostModalContent.querySelector('.post-tools-overflow-button')?.addEventListener('click', () => {
+            togglePostToolsOverflowMenu(DOM.editPostModalContent);
+        });
+        setupPostToolsOverflowObserver(DOM.editPostModalContent);
 
         DOM.editPostModal.querySelector('#update-post-button').onclick = () =>
             handleUpdatePost(postId, currentAttachments, filesToAdd, Array.from(filesToDelete), onSaved);
@@ -1886,6 +2638,7 @@ export async function openEditPostModal(postId, onSaved = null) {
         };
 
         DOM.editPostModal.classList.remove('hidden');
+        updatePostToolsOverflow(DOM.editPostModalContent);
         if (editPostEditor) {
             autoResizeMarkdownEditor(editPostEditor);
             editPostEditor.focus();

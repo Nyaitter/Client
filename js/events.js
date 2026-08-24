@@ -479,11 +479,14 @@ function handleGlobalClick(e) {
             !target.closest('button') &&
             !target.closest('.post-menu-btn') &&
             !target.closest('.attachment-item') &&
+            !target.closest('.attachments-container') &&
+            !target.closest('.post-poll-container') &&
+            !target.closest('.nested-repost-container') &&
             !target.closest('.post-clamp-toggle') &&
             !target.closest('.post-action-btn') &&
             !target.closest('.custom-emoji-btn') &&
             !target.closest('.markdown-spoiler') &&
-            !target.closest('input, textarea, select')
+            !target.closest('input, textarea, select, label')
         ) {
             saveScrollPosition();
             window.location.hash = `#post/${actionTargetPostId}`;

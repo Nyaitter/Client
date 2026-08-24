@@ -193,28 +193,88 @@ width: 100%;
 }
 
 .post-form-actions {
-display: inline-block;
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
     justify-content: space-between;
     align-items: center;
     padding-top: 0.5rem;
     width: 100%;
+    gap: 0.5rem;
+    box-sizing: border-box;
 }
 
-.post-form-actions svg {
-width: 20px;
+.post-form-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.post-form-actions-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.post-tools-group {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.post-tools-group .post-tool-btn {
+    flex-shrink: 0;
+}
+
+.post-tools-group .post-tool-btn.overflow-hidden {
+    display: none !important;
+}
+
+.post-tools-overflow-button {
+    flex-shrink: 0;
+}
+
+.post-form-actions #post-submit-button,
+.post-form-actions #update-post-button {
+    flex-shrink: 0 !important;
+    white-space: nowrap;
+}
+
+.post-tools-overflow-button svg {
+    width: 20px;
     height: 20px;
 }
 
+.post-form-actions > .post-form-actions-left svg,
+.post-form-actions > .post-form-actions-right svg,
+.post-form-actions > button svg {
+    width: 20px;
+    height: 20px;
+}
+
+.post-tools-overflow-menu .post-tools-overflow-menu-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: block;
+}
+
 .float-left {
-float: left;
+    float: left;
 }
 
 .float-right {
-float: right;
+    float: right;
 }
 
 .float-clear {
-clear: both;
+    clear: both;
 }
 
 .file-preview-container {
