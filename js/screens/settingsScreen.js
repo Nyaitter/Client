@@ -476,7 +476,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                     <fieldset class="settings-ng-words"><legend>ミュート・フィルター</legend>
                         <label for="setting-ng-words">NGワード</label>
                         <textarea id="setting-ng-words" placeholder="改行またはカンマ（,）区切りで入力">${escapeHTML(Array.isArray(getCurrentUser().settings?.ng_words) ? getCurrentUser().settings.ng_words.join('\n') : (getCurrentUser().settings?.ng_words || ''))}</textarea>
-                        <p class="settings-help-text">設定したワードが含まれるポストをタイムラインやおすすめ・検索結果から除外します（改行またはカンマ区切り）。</p>
+                        <p class="settings-help-text">設定したワードが含まれるポストを検索から除外します。</p>
                     </fieldset>
                     <fieldset class="settings-dm-privacy"><legend>ダイレクトメッセージ</legend>
                         <label for="setting-dm-invitation">DMの招待</label>
