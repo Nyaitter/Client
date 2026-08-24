@@ -428,20 +428,25 @@ export async function renderPost(post, author, options = {}) {
             dislikeBtn.textContent = '関連性が低いと評価';
             menu.appendChild(dislikeBtn);
 
+            const authorRawName = String(displayAuthor.name || 'ユーザー').trim();
+            const authorShortName = authorRawName.length > 12 ? `${authorRawName.slice(0, 12)}...` : authorRawName;
+
             const isFollowing = Array.isArray(currentUser.follow) && currentUser.follow.some((id) => Number(id) === Number(displayAuthor.id));
             const followBtn = document.createElement('button');
             followBtn.className = 'follow-menu-btn';
+            followBtn.title = isFollowing ? `@${authorRawName} のフォローを解除` : `@${authorRawName} をフォロー`;
             followBtn.textContent = isFollowing
-                ? `@${displayAuthor.name || 'ユーザー'} のフォローを解除`
-                : `@${displayAuthor.name || 'ユーザー'} をフォロー`;
+                ? `@${authorShortName} のフォローを解除`
+                : `@${authorShortName} をフォロー`;
             menu.appendChild(followBtn);
 
             const isBlocked = Array.isArray(currentUser.block) && currentUser.block.some((id) => Number(id) === Number(displayAuthor.id));
             const blockBtn = document.createElement('button');
             blockBtn.className = 'block-menu-btn';
+            blockBtn.title = isBlocked ? `@${authorRawName} のブロックを解除` : `@${authorRawName} をブロック`;
             blockBtn.textContent = isBlocked
-                ? `@${displayAuthor.name || 'ユーザー'} のブロックを解除`
-                : `@${displayAuthor.name || 'ユーザー'} をブロック`;
+                ? `@${authorShortName} のブロックを解除`
+                : `@${authorShortName} をブロック`;
             menu.appendChild(blockBtn);
 
             const reportBtn = document.createElement('button');
