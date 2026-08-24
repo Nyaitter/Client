@@ -90,18 +90,21 @@ function doPersistPageCaches() {
             ],
         );
         const screenData = Array.from(screenDataCaches.entries());
-        sessionStorage.setItem(
-            PAGE_CACHE_STORAGE_KEY,
-            JSON.stringify({
-                timelineCaches,
-                profileCaches,
-                auxiliaryPostCaches,
-                userCaches,
-                screenData,
-            }),
-        );
+        const serialized = JSON.stringify({
+            timelineCaches,
+            profileCaches,
+            auxiliaryPostCaches,
+            userCaches,
+            screenData,
+        });
+        try {
+            sessionStorage.setItem(PAGE_CACHE_STORAGE_KEY, serialized);
+        } catch (_) {}
+        try {
+            localStorage.setItem(PAGE_CACHE_STORAGE_KEY, serialized);
+        } catch (_) {}
     } catch (_) {
-        // Continue using in-memory cache if sessionStorage is full or unavailable
+        // Continue using in-memory cache if storage is full or unavailable
     }
 }
 
@@ -122,7 +125,8 @@ export function persistPageCaches() {
 
 export function restorePageCaches() {
     try {
-        const stored = sessionStorage.getItem(PAGE_CACHE_STORAGE_KEY);
+        const stored = sessionStorage.getItem(PAGE_CACHE_STORAGE_KEY) ||
+            localStorage.getItem(PAGE_CACHE_STORAGE_KEY);
         if (!stored) return;
         const parsed = JSON.parse(stored);
         if (!parsed || typeof parsed !== 'object') return;
@@ -478,3 +482,7 @@ export function clearRealtimeTimelineUpdate(tab = null) {
     }
     updateRealtimeTimelineIndicator(getCurrentTimelineTab());
 }
+
+// モジュールロード時に即座にストレージからキャッシュを復元
+restorePageCaches();
+

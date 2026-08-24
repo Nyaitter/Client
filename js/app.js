@@ -15,6 +15,7 @@ import { setupGlobalEventListeners } from './events.js';
 import { router } from './router.js';
 import { registerPwaServiceWorker, handlePendingPushNotificationOpen } from './modules/pwa.js';
 import { checkSession } from './modules/auth.js';
+import { restorePageCaches } from './modules/cache.js';
 import { applyInterfaceTheme, applyColorTheme } from './modules/theme.js';
 import {
     showAppAlert,
@@ -34,6 +35,9 @@ export { loadServerClientLimits, applyServerInputLimits, getServerClientLimits, 
  * Main entry-point called by main.js after the DOM is ready.
  */
 export function initApp() {
+    // ── Restore cached data immediately for instant initial display ────────
+    restorePageCaches();
+
     // ── Initial theme (prevents flash before user prefs are loaded) ─────────
     applyInterfaceTheme('auto');
 
