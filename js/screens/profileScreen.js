@@ -66,6 +66,7 @@ import {
 
 let activeProfilePullRefreshUser = null;
 const profileTimelineModes = new Map();
+const profileMediaModes = new Map();
 
 function getProfileTimelineMode(userId, tab) {
     return profileTimelineModes.get(`${Number(userId)}:${String(tab)}`) || 'posts_only';
@@ -74,6 +75,15 @@ function getProfileTimelineMode(userId, tab) {
 function setProfileTimelineMode(userId, tab, mode) {
     if (!['posts_only', 'replies_only'].includes(mode)) return;
     profileTimelineModes.set(`${Number(userId)}:${String(tab)}`, mode);
+}
+
+function getProfileMediaMode(userId) {
+    return profileMediaModes.get(Number(userId)) || 'all';
+}
+
+function setProfileMediaMode(userId, mode) {
+    if (!['all', 'image', 'video'].includes(mode)) return;
+    profileMediaModes.set(Number(userId), mode);
 }
 
 function closeProfileTimelineModeMenu() {
@@ -94,6 +104,26 @@ function openProfileTimelineModeMenu(button, user, tab) {
         void loadProfileTabContent(user, tab);
     }));
     setTimeout(() => document.addEventListener('click', closeProfileTimelineModeMenu, { once: true }), 0);
+}
+
+function closeProfileMediaModeMenu() {
+    document.querySelector('.profile-media-mode-menu')?.remove();
+}
+
+function openProfileMediaModeMenu(button, user) {
+    closeProfileMediaModeMenu();
+    const menu = document.createElement('div');
+    menu.className = 'group-timeline-mode-menu profile-media-mode-menu';
+    const mode = getProfileMediaMode(user.id);
+    menu.innerHTML = ['all', 'image', 'video'].map((value) => `<button type="button" class="${value === mode ? 'active' : ''}" data-profile-media-mode="${value}">${value === 'all' ? 'すべて' : value === 'image' ? '画像' : '動画'}</button>`).join('');
+    document.body.appendChild(menu);
+    positionElementRelativeToAnchor(menu, button, { placement: 'bottom-start', gap: 6 });
+    menu.querySelectorAll('[data-profile-media-mode]').forEach((item) => item.addEventListener('click', () => {
+        setProfileMediaMode(user.id, item.dataset.profileMediaMode);
+        closeProfileMediaModeMenu();
+        void loadProfileTabContent(user, 'media');
+    }));
+    setTimeout(() => document.addEventListener('click', closeProfileMediaModeMenu, { once: true }), 0);
 }
 
 function isFullUserProfile(user) {
@@ -204,14 +234,7 @@ export async function refreshActiveProfileTab({ userId, subpage } = {}) {
 }
 
 export async function showProfileScreen(userId, subpage = 'posts', showScreenFn = null) {
-    let mediaSubType = 'all';
-    if (subpage.startsWith('media')) {
-        const urlParams = new URLSearchParams(subpage.includes('?') ? subpage.split('?')[1] : '');
-        mediaSubType = urlParams.get('type') || 'all';
-        subpage = 'media';
-    } else {
-        subpage = subpage === 'replies' ? 'posts' : subpage;
-    }
+    subpage = subpage === 'replies' ? 'posts' : subpage;
     DOM.pageHeader.innerHTML = `
         <div class="header-with-back-button">
             <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
@@ -438,17 +461,19 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         profileTabs.querySelectorAll('.tab-button').forEach((button) => {
             const tab = button.dataset.tab;
             const canSwitchTimelineMode = tab === 'posts' || String(tab).startsWith('group:');
+            const canSwitchMediaMode = tab === 'media';
             let longPressTimer = null;
             let suppressNextClick = false;
-            const openTimelineModeMenu = (event) => {
+            const openModeMenu = (event) => {
                 event?.preventDefault();
                 suppressNextClick = !event || event.type !== 'contextmenu';
                 if (canSwitchTimelineMode) openProfileTimelineModeMenu(button, user, tab);
+                else if (canSwitchMediaMode) openProfileMediaModeMenu(button, user);
             };
-            if (canSwitchTimelineMode) {
-                button.addEventListener('contextmenu', openTimelineModeMenu);
+            if (canSwitchTimelineMode || canSwitchMediaMode) {
+                button.addEventListener('contextmenu', openModeMenu);
                 button.addEventListener('touchstart', () => {
-                    longPressTimer = window.setTimeout(() => openTimelineModeMenu(), 600);
+                    longPressTimer = window.setTimeout(() => openModeMenu(), 600);
                 }, { passive: true });
                 ['touchend', 'touchcancel', 'touchmove'].forEach((eventName) => button.addEventListener(eventName, () => {
                     if (longPressTimer) window.clearTimeout(longPressTimer);
@@ -472,7 +497,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
 
         activeProfilePullRefreshUser = user;
         currentProfileTab = subpage;
-        await loadProfileTabContent(user, subpage, { mediaSubType });
+        await loadProfileTabContent(user, subpage);
         const currentHash = window.location.hash || `#profile/${user.id}`;
         restoreScrollPosition(getScrollRouteKey(currentHash));
     } catch (err) {
@@ -485,7 +510,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
 
 export async function loadProfileTabContent(user, subpage, options = {}) {
     subpage = subpage === 'replies' ? 'posts' : subpage;
-    const mediaSubType = options?.mediaSubType || 'all';
+    const mediaSubType = getProfileMediaMode(user.id);
     const profileHeader = document.getElementById('profile-header');
     const profileTabs = document.getElementById('profile-tabs');
     const contentDiv = document.getElementById('profile-content');
@@ -506,15 +531,15 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
     if (isFollowListActive) {
         pageTitleSub.textContent = `${getNyaitterId(user)}`;
     } else if (subpage === 'media') {
-        pageTitleSub.textContent = `${user.mediaCount || 0} 件の画像と動画`;
+        const mediaMode = getProfileMediaMode(user.id);
+        const modeLabel = mediaMode === 'all' ? '画像と動画' : mediaMode === 'image' ? '画像' : '動画';
+        pageTitleSub.textContent = `${user.mediaCount || 0} 件の${modeLabel}`;
     } else {
         pageTitleSub.textContent = `${user.postCount || 0} 件のポスト`;
     }
 
     const existingSubTabs = document.getElementById('profile-sub-tabs-container');
     if (existingSubTabs) existingSubTabs.remove();
-
-    const isMediaTab = subpage === 'media';
 
     if (isFollowListActive) {
         const subTabsContainer = document.createElement('div');
@@ -545,30 +570,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             };
         });
     } else if (isMediaTab) {
-        const subTabsContainer = document.createElement('div');
-        subTabsContainer.id = 'profile-sub-tabs-container';
-        subTabsContainer.innerHTML = `
-            <div class="profile-sub-tabs">
-                <button class="tab-button ${mediaSubType === 'all' ? 'active' : ''}" data-media-sub-type="all">すべて</button>
-                <button class="tab-button ${mediaSubType === 'image' ? 'active' : ''}" data-media-sub-type="image">画像</button>
-                <button class="tab-button ${mediaSubType === 'video' ? 'active' : ''}" data-media-sub-type="video">動画</button>
-            </div>`;
-
-        DOM.pageHeader.parentNode.insertBefore(
-            subTabsContainer,
-            DOM.pageHeader.nextSibling,
-        );
-        const headerHeight = DOM.pageHeader.offsetHeight;
-        subTabsContainer.style.top = `${headerHeight}px`;
-
-        subTabsContainer.querySelectorAll('.tab-button').forEach((button) => {
-            button.onclick = (e) => {
-                e.stopPropagation();
-                const mediaSubType = button.dataset.mediaSubType;
-                const hash = `#profile/${user.id}/media${mediaSubType !== 'all' ? `?type=${mediaSubType}` : ''}`;
-                window.location.hash = hash;
-            };
-        });
+        // メディアタブのフィルタは右クリックメニューで行う
     } else {
         document
             .querySelectorAll('#profile-tabs .tab-button')
