@@ -191,10 +191,12 @@ export async function togglePushSubscription() {
 
 export function getPendingPushNotificationOpen() {
     const currentUrl = new URL(window.location.href);
+    const pushNotificationId = currentUrl.searchParams.get('push_notification_id');
+    const pushUserId = currentUrl.searchParams.get('push_user_id');
     const openType = currentUrl.searchParams.get('push_open_type');
     const openTarget = currentUrl.searchParams.get('push_open_target');
-    if (!openType && !openTarget) return null;
-    return { openType, openTarget, currentUrl };
+    if (!pushNotificationId && !pushUserId && !openType && !openTarget) return null;
+    return { pushNotificationId, pushUserId, openType, openTarget, currentUrl };
 }
 
 export function replaceCurrentLocation(url) {
@@ -205,9 +207,24 @@ export function replaceCurrentLocation(url) {
 export async function handlePendingPushNotificationOpen() {
     const pending = getPendingPushNotificationOpen();
     if (!pending) return false;
-    const { openType, openTarget, currentUrl } = pending;
+    const { pushNotificationId, openType, openTarget, currentUrl } = pending;
+
+    // クエリパラメータをクリーンアップ
+    currentUrl.searchParams.delete('push_notification_id');
+    currentUrl.searchParams.delete('push_user_id');
     currentUrl.searchParams.delete('push_open_type');
     currentUrl.searchParams.delete('push_open_target');
+
+    // プッシュ通知を開いたときは自動でその通知を既読(clicked)にする
+    if (pushNotificationId) {
+        try {
+            await apiRequest(`/server/api/notifications/${encodeURIComponent(String(pushNotificationId))}/clicked`, {
+                method: 'PUT',
+            });
+        } catch (error) {
+            console.warn('[pwa] Failed to auto-mark push notification as clicked:', error);
+        }
+    }
 
     if (openType === 'dm') {
         const dmId = String(openTarget || '').trim();

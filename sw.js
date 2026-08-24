@@ -174,13 +174,27 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const notificationId = parsePushIdentifier(event.notification.data?.notificationId, 1);
   const targetUrl = getPushOpenUrl(
     event.notification.data?.url,
     event.notification.data?.userId,
-    event.notification.data?.notificationId,
+    notificationId,
   );
 
   event.waitUntil((async () => {
+    // 通知クリック時に自動でその通知を既読(clicked)にする
+    if (notificationId) {
+      try {
+        await fetch(apiUrl(`/server/api/notifications/${encodeURIComponent(String(notificationId))}/clicked`), {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        });
+      } catch (_) {
+        // オフラインまたはエラー時はアプリ起動側の処理へフォールバック
+      }
+    }
+
     const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
     if (existing) {
