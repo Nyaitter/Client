@@ -415,7 +415,10 @@ export async function renderPost(post, author, options = {}) {
         activityBtn.onclick = (e) => {
             e.stopPropagation();
             menu.classList.remove('is-visible');
-            window.location.hash = `#post/${post.id}/activity`;
+            const targetId = Number(post?.id ?? post?.postId ?? post?.post_id);
+            if (targetId) {
+                window.location.hash = `#post/${targetId}/activity`;
+            }
         };
         menu.appendChild(activityBtn);
 

@@ -182,11 +182,20 @@ export async function router() {
     );
 
     try {
-        const postActivityMatch = hash.match(/^#post\/(\d+)\/activity(?:\/([^/]+))?$/);
+        const postActivityMatch = hash.match(/^#\/?post\/(\d+)\/activity(?:\/([^/]+))?$/i);
+        const postDetailMatch = hash.match(/^#\/?post\/(\d+)$/i);
         if (postActivityMatch) {
             await showPostActivityScreen(postActivityMatch[1], postActivityMatch[2] || 'quotes', showScreen);
+        } else if (postDetailMatch) {
+            await showPostDetail(postDetailMatch[1], showScreen);
         } else if (hash.startsWith('#post/')) {
-            await showPostDetail(hash.substring(6), showScreen);
+            const rawId = hash.substring(6).split('/')[0];
+            if (rawId && /^\d+$/.test(rawId)) {
+                await showPostDetail(rawId, showScreen);
+            } else {
+                window.location.hash = '#';
+                return;
+            }
         } else if (hash.startsWith('#profile/')) {
             const path = hash.substring(9);
             const userId = parseInt(path, 10);
