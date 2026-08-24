@@ -1647,4 +1647,25 @@ overscroll-behavior-y: contain;
     border-bottom: 1px solid var(--border-color, #f0f0f0);
 }
 
+/* ==================== Universal Viewport Clamping for All Menus & Popovers ==================== */
+.post-menu,
+.group-timeline-mode-menu,
+.profile-timeline-mode-menu,
+.post-reply-control-menu,
+.post-tools-overflow-menu,
+.post-group-menu,
+.post-account-menu,
+.profile-notify-menu,
+.dm-message-menu-popover,
+.sidebar-overflow-panel,
+.user-menu-popover,
+#emoji-picker,
+.emoji-picker-container {
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100vh - 16px) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    box-sizing: border-box !important;
+}
+
 

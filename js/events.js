@@ -43,6 +43,7 @@ import {
     copyTextToClipboard,
     showAppAlert,
 } from './utils/helpers.js';
+import { positionElementRelativeToAnchor } from './utils/viewport.js';
 
 /**
  * Attach all global delegated event listeners.
@@ -309,6 +310,9 @@ function handleGlobalClick(e) {
             if (!isCurrentlyVisible) {
                 if (menuButton.classList.contains('dm-message-menu-btn')) {
                     positionDmMessageMenu(menuToToggle, menuButton);
+                } else {
+                    menuToToggle.classList.add('is-visible');
+                    positionElementRelativeToAnchor(menuToToggle, menuButton, { placement: 'bottom-end', gap: 4 });
                 }
                 menuToToggle.classList.add('is-visible');
             }

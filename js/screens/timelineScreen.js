@@ -19,6 +19,7 @@ import {
 import { setupTimelinePullToRefresh } from '../modules/theme.js';
 import { loadPostsWithPagination } from '../modules/pagination.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
+import { positionElementRelativeToAnchor } from '../utils/viewport.js';
 import { apiRequest } from '../api.js';
 import {
     saveScrollPosition,
@@ -64,9 +65,7 @@ function openGroupTimelineMenu(button, groupId) {
     const mode = getGroupTimelineMode(groupId);
     menu.innerHTML = ['all', 'recommended', 'announcements'].map((value) => `<button type="button" class="${value === mode ? 'active' : ''}" data-group-mode="${value}">${({ all: 'すべて', recommended: 'おすすめ', announcements: 'アナウンス' })[value]}</button>`).join('');
     document.body.appendChild(menu);
-    const rect = button.getBoundingClientRect();
-    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
-    menu.style.top = `${Math.min(window.innerHeight - menu.offsetHeight - 8, rect.bottom + 6)}px`;
+    positionElementRelativeToAnchor(menu, button, { placement: 'bottom-start', gap: 6 });
     menu.querySelectorAll('[data-group-mode]').forEach((item) => item.addEventListener('click', () => {
         setGroupTimelineMode(groupId, item.dataset.groupMode);
         closeGroupTimelineMenu();

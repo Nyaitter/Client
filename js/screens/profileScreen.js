@@ -50,7 +50,7 @@ import {
 } from '../modules/scroll.js';
 import { isDataSaverEnabled, getMediaPerPage } from '../modules/theme.js';
 import { updateAccountData } from '../modules/auth.js';
-import { createViewportObserver } from '../utils/viewport.js';
+import { createViewportObserver, positionElementRelativeToAnchor } from '../utils/viewport.js';
 import {
     escapeHTML,
     getUserIconUrl,
@@ -87,9 +87,7 @@ function openProfileTimelineModeMenu(button, user, tab) {
     const mode = getProfileTimelineMode(user.id, tab);
     menu.innerHTML = ['posts_only', 'replies_only'].map((value) => `<button type="button" class="${value === mode ? 'active' : ''}" data-profile-timeline-mode="${value}">${value === 'posts_only' ? 'ポスト' : '返信'}</button>`).join('');
     document.body.appendChild(menu);
-    const rect = button.getBoundingClientRect();
-    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
-    menu.style.top = `${Math.min(window.innerHeight - menu.offsetHeight - 8, rect.bottom + 6)}px`;
+    positionElementRelativeToAnchor(menu, button, { placement: 'bottom-start', gap: 6 });
     menu.querySelectorAll('[data-profile-timeline-mode]').forEach((item) => item.addEventListener('click', () => {
         setProfileTimelineMode(user.id, tab, item.dataset.profileTimelineMode);
         closeProfileTimelineModeMenu();
@@ -861,32 +859,7 @@ export function openProfileMenu(targetUser, triggerElement) {
     document.body.appendChild(menu);
     const trigger = triggerElement || document.querySelector('.profile-menu-button');
     if (trigger) {
-        const rect = trigger.getBoundingClientRect();
-        const menuRect = menu.getBoundingClientRect();
-        const menuWidth = menuRect.width || 180;
-        const menuHeight = menuRect.height || 120;
-        const margin = 8;
-        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-
-        let top = window.scrollY + rect.bottom + 6;
-        if (rect.bottom + 6 + menuHeight > viewportHeight && rect.top - menuHeight - 6 >= 0) {
-            top = window.scrollY + rect.top - menuHeight - 6;
-        }
-
-        let left = window.scrollX + rect.right - menuWidth;
-        if (left < window.scrollX + margin) {
-            left = window.scrollX + margin;
-        }
-        if (left + menuWidth > window.scrollX + viewportWidth - margin) {
-            left = window.scrollX + viewportWidth - menuWidth - margin;
-        }
-
-        menu.style.position = 'absolute';
-        menu.style.top = `${top}px`;
-        menu.style.left = `${left}px`;
-        menu.style.right = 'auto';
-        menu.style.width = 'max-content';
+        positionElementRelativeToAnchor(menu, trigger, { placement: 'bottom-end', gap: 6 });
     }
 
     setTimeout(() => {
@@ -972,23 +945,8 @@ export function openNotificationMenu(targetUser, trigger) {
 
     document.body.appendChild(menu);
     if (trigger) {
-        const rect = trigger.getBoundingClientRect();
-        const menuRect = menu.getBoundingClientRect();
-        const menuWidth = menuRect.width || 260;
-        const menuHeight = menuRect.height || 160;
-        const margin = 8;
-        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-
-        let top = window.scrollY + rect.bottom + 6;
-        if (rect.bottom + 6 + menuHeight > viewportHeight && rect.top - menuHeight - 6 >= 0) {
-            top = window.scrollY + rect.top - menuHeight - 6;
-        }
-
-        let left = window.scrollX + rect.right - menuWidth;
-        if (left < window.scrollX + margin) {
-            left = window.scrollX + margin;
-        }
+        positionElementRelativeToAnchor(menu, trigger, { placement: 'bottom-end', gap: 6 });
+    }
         if (left + menuWidth > window.scrollX + viewportWidth - margin) {
             left = window.scrollX + viewportWidth - menuWidth - margin;
         }
