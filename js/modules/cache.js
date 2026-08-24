@@ -5,11 +5,11 @@ import {
     getRealtimeChannel,
 } from '../state.js';
 
-export const MAX_USER_CACHE_LIMIT = 2000;
-export const MAX_TIMELINE_PAGE_CACHES = 60;
-export const MAX_PROFILE_POST_PAGE_CACHES = 60;
-export const MAX_AUXILIARY_PAGE_CACHES = 100;
-export const MAX_SCREEN_DATA_CACHES = 100;
+export const MAX_USER_CACHE_LIMIT = 5000;
+export const MAX_TIMELINE_PAGE_CACHES = 150;
+export const MAX_PROFILE_POST_PAGE_CACHES = 150;
+export const MAX_AUXILIARY_PAGE_CACHES = 250;
+export const MAX_SCREEN_DATA_CACHES = 250;
 export const PAGE_CACHE_STORAGE_KEY = 'nyaitter_page_cache';
 
 export const timelinePageCaches = new Map();
