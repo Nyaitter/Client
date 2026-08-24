@@ -53,6 +53,32 @@ let lastPointerDownTarget = null;
 let lastPointerDownTime = 0;
 let lastPointerDownPos = { x: 0, y: 0 };
 
+function adjustPostMenuPosition(menu) {
+    if (!menu) return;
+    menu.style.top = '';
+    menu.style.bottom = '';
+    menu.style.left = '';
+    menu.style.right = '';
+    menu.classList.add('is-visible');
+
+    const rect = menu.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight || 640;
+    const margin = 8;
+
+    // 画面下端にはみ出る場合は上側に反転表示
+    if (rect.bottom > vh - margin) {
+        menu.style.top = 'auto';
+        menu.style.bottom = '25px';
+    }
+
+    // 画面左端にはみ出る場合は左揃えに調整
+    const updatedRect = menu.getBoundingClientRect();
+    if (updatedRect.left < margin) {
+        menu.style.right = 'auto';
+        menu.style.left = '0';
+    }
+}
+
 export function setupGlobalEventListeners() {
     // ---- Pointerdown / mousedown handler to track click start target ----
     document.addEventListener('pointerdown', (e) => {
@@ -306,15 +332,19 @@ function handleGlobalClick(e) {
         }
         if (menuToToggle) {
             const isCurrentlyVisible = menuToToggle.classList.contains('is-visible');
-            document.querySelectorAll('.post-menu.is-visible').forEach((m) => m.classList.remove('is-visible'));
+            document.querySelectorAll('.post-menu.is-visible').forEach((m) => {
+                m.classList.remove('is-visible');
+                m.style.top = '';
+                m.style.bottom = '';
+                m.style.left = '';
+                m.style.right = '';
+            });
             if (!isCurrentlyVisible) {
                 if (menuButton.classList.contains('dm-message-menu-btn')) {
                     positionDmMessageMenu(menuToToggle, menuButton);
                 } else {
-                    menuToToggle.classList.add('is-visible');
-                    positionElementRelativeToAnchor(menuToToggle, menuButton, { placement: 'bottom-end', gap: 4 });
+                    adjustPostMenuPosition(menuToToggle);
                 }
-                menuToToggle.classList.add('is-visible');
             }
         }
         return;
@@ -324,9 +354,13 @@ function handleGlobalClick(e) {
     if (!target.closest('.post-menu')) {
         const openMenus = [...document.querySelectorAll('.post-menu.is-visible')];
         if (openMenus.length > 0) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            openMenus.forEach((m) => m.classList.remove('is-visible'));
+            openMenus.forEach((m) => {
+                m.classList.remove('is-visible');
+                m.style.top = '';
+                m.style.bottom = '';
+                m.style.left = '';
+                m.style.right = '';
+            });
             return;
         }
     }
@@ -367,6 +401,14 @@ function handleGlobalClick(e) {
 
         if (target.closest('.share-btn')) {
             void copyPost(timelinePostId, target.closest('.share-btn'));
+            return;
+        }
+        if (target.closest('.activity-btn')) {
+            target.closest('.post-menu')?.classList.remove('is-visible');
+            const targetId = Number(actionTargetPostId || timelinePostId);
+            if (targetId) {
+                window.location.hash = `#post/${targetId}/activity`;
+            }
             return;
         }
         if (target.closest('.dislike-btn')) {

@@ -21,6 +21,11 @@ export function getScrollRouteKey(hash = window.location.hash || '#', tab = null
     if (normalizedHash === '#dm' && tab) {
         return `${userScope}:#dm:${tab}`;
     }
+    const postActivityMatch = normalizedHash.match(/^#\/?post\/(\d+)\/activity(?:\/([^/]+))?/i);
+    if (postActivityMatch) {
+        const currentTab = tab || postActivityMatch[2] || 'quotes';
+        return `${userScope}:#post/${postActivityMatch[1]}/activity:${currentTab}`;
+    }
     return `${userScope}:${normalizedHash}`;
 }
 

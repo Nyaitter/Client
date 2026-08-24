@@ -169,6 +169,17 @@ export function getActivePullToRefreshContext() {
             return { type: 'group' };
         }
     }
+    const postActivityMatch = currentHash.match(/^#\/?post\/(\d+)\/activity(?:\/([^/]+))?/i);
+    if (postActivityMatch) {
+        const postActivityScreen = document.getElementById('post-activity-screen');
+        if (postActivityScreen && !postActivityScreen.classList.contains('hidden')) {
+            return {
+                type: 'post-activity',
+                postId: Number(postActivityMatch[1]),
+                tab: postActivityMatch[2] || '',
+            };
+        }
+    }
     const postDetailMatch = currentHash.match(/^#\/?post\/(\d+)/i);
     if (postDetailMatch) {
         const postDetailScreen = document.getElementById('post-detail-screen');

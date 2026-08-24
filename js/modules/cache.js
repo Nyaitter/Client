@@ -386,6 +386,11 @@ export function getPostDetailCacheKey(postId) {
     return `${userScope}:post_detail:${postId}`;
 }
 
+export function getPostActivityCacheKey(postId) {
+    const userScope = getCurrentUser()?.id ?? 'guest';
+    return `${userScope}:post_activity:${postId}`;
+}
+
 export function getDmCacheKey(...parts) {
     const userScope = getCurrentUser()?.id ?? 'guest';
     const cleanParts = parts.filter((p) => p !== null && p !== undefined && p !== '');

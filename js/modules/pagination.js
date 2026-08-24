@@ -473,6 +473,37 @@ async function fetchUserPageData(type, options, pageNumber, pageSize) {
     return { users, hasMore: hasMoreForPage };
 }
 
+export function renderUserCard(u) {
+    const userCard = document.createElement('div');
+    userCard.className = 'profile-card widget-item';
+
+    const userId = u.id || u.user_id;
+    const userLink = document.createElement('a');
+    userLink.href = `#profile/${userId}`;
+    userLink.className = 'profile-link';
+    userLink.style.cssText =
+        'display:flex; align-items:center; gap:0.8rem; text-decoration:none; color:inherit;';
+
+    const badgeHTML = (u.admin
+        ? ` <img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">`
+        : u.verify
+          ? ` <img src="icons/verify.png" class="verify-badge" title="認証済み">`
+          : '') + getGroupBadgesHtml(u);
+
+    const bioText = u.me || u.bio || '';
+
+    userLink.innerHTML = `
+        <img src="${getUserIconUrl(u)}" style="width:48px; height:48px; border-radius:50%; object-fit:cover;" alt="${escapeHTML(u.name || '')}'s icon">
+        <div>
+            <span class="name" style="font-weight:700;">${getEmoji(escapeHTML(u.name || '不明'))}${badgeHTML}</span>
+            <span class="id" style="color:var(--secondary-text-color);">${getNyaitterId(u)}</span>
+            ${bioText ? `<p class="me" style="margin:0.2rem 0 0;">${getEmoji(escapeHTML(bioText))}</p>` : ''}
+        </div>`;
+
+    userCard.appendChild(userLink);
+    return userCard;
+}
+
 export async function loadUsersWithPagination(container, type, options = {}) {
     options = bindPaginationOptionsToRoute(options);
     const userPageCache = options.pageCache || { pages: new Map() };
@@ -489,34 +520,6 @@ export async function loadUsersWithPagination(container, type, options = {}) {
     trigger = document.createElement('div');
     trigger.className = 'load-more-trigger';
     container.appendChild(trigger);
-
-    const renderUserCard = (u) => {
-        const userCard = document.createElement('div');
-        userCard.className = 'profile-card widget-item';
-
-        const userLink = document.createElement('a');
-        userLink.href = `#profile/${u.id}`;
-        userLink.className = 'profile-link';
-        userLink.style.cssText =
-            'display:flex; align-items:center; gap:0.8rem; text-decoration:none; color:inherit;';
-
-        const badgeHTML = (u.admin
-            ? ` <img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">`
-            : u.verify
-              ? ` <img src="icons/verify.png" class="verify-badge" title="認証済み">`
-              : '') + getGroupBadgesHtml(u);
-
-        userLink.innerHTML = `
-            <img src="${getUserIconUrl(u)}" style="width:48px; height:48px; border-radius:50%;" alt="${escapeHTML(u.name)}'s icon">
-            <div>
-                <span class="name" style="font-weight:700;">${getEmoji(escapeHTML(u.name))}${badgeHTML}</span>
-                <span class="id" style="color:var(--secondary-text-color);">${getNyaitterId(u)}</span>
-                <p class="me" style="margin:0.2rem 0 0;">${getEmoji(escapeHTML(u.me || ''))}</p>
-            </div>`;
-
-        userCard.appendChild(userLink);
-        return userCard;
-    };
 
     const triggerPreloadNext = (nextPage) => {
         if (!getCurrentPagination().hasMore) return;

@@ -269,6 +269,16 @@ export async function renderPost(post, author, options = {}) {
                     menuBtn.innerHTML = ICONS.more;
                     const menu = document.createElement('div');
                     menu.className = 'post-menu';
+                    const activityBtn = document.createElement('button');
+                    activityBtn.className = 'activity-btn';
+                    activityBtn.textContent = 'ポストアクティビティを表示';
+                    activityBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        menu.classList.remove('is-visible');
+                        const targetId = post.repost_to || post.repostTo || post.id;
+                        window.location.hash = `#post/${targetId}/activity`;
+                    };
+                    menu.appendChild(activityBtn);
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'delete-btn';
                     deleteBtn.textContent = 'リポストを削除';
@@ -398,6 +408,16 @@ export async function renderPost(post, author, options = {}) {
         shareBtn.className = 'share-btn';
         shareBtn.textContent = 'URLをコピー';
         menu.appendChild(shareBtn);
+
+        const activityBtn = document.createElement('button');
+        activityBtn.className = 'activity-btn';
+        activityBtn.textContent = 'ポストアクティビティを表示';
+        activityBtn.onclick = (e) => {
+            e.stopPropagation();
+            menu.classList.remove('is-visible');
+            window.location.hash = `#post/${post.id}/activity`;
+        };
+        menu.appendChild(activityBtn);
 
         if (!isPostOwner) {
             const dislikeBtn = document.createElement('button');
@@ -3093,6 +3113,217 @@ export function openReplyControlModal(post, onUpdated = null) {
     });
 }
 
+export async function openPostActivityModal(postId) {
+    if (!postId) return;
+
+    let existingModal = document.getElementById('post-activity-modal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.className = 'modal post-activity-modal';
+    modal.id = 'post-activity-modal';
+
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content post-activity-modal-content';
+
+    modalContent.innerHTML = `
+        <div class="post-activity-header">
+            <h3 class="post-activity-title">ポストアクティビティ</h3>
+            <button type="button" class="modal-close-btn" id="post-activity-close-btn" aria-label="閉じる">×</button>
+        </div>
+        <div class="post-activity-tabs" id="post-activity-tabs">
+            <button type="button" class="post-activity-tab is-active" data-tab="quotes">引用</button>
+            <button type="button" class="post-activity-tab" data-tab="reposts">リポスト</button>
+        </div>
+        <div class="post-activity-body" id="post-activity-body">
+            <div class="post-activity-loading">
+                <div class="loading-spinner"></div>
+                <p>アクティビティを読み込み中...</p>
+            </div>
+        </div>
+    `;
+
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    const closeModal = () => {
+        modal.remove();
+        document.removeEventListener('keydown', handleKeyDown);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Escape') closeModal();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    modal.querySelector('#post-activity-close-btn').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    const tabsContainer = modal.querySelector('#post-activity-tabs');
+    const bodyContainer = modal.querySelector('#post-activity-body');
+
+    try {
+        const { data, error } = await apiRequest(`/server/api/posts/${postId}/activity`);
+        if (error || !data) {
+            bodyContainer.innerHTML = `<div class="post-activity-empty"><p>${escapeHTML(error || 'アクティビティの取得に失敗しました')}</p></div>`;
+            return;
+        }
+
+        const isAuthor = Boolean(data.is_author);
+        const quotes = Array.isArray(data.quotes) ? data.quotes : [];
+        const reposts = Array.isArray(data.reposts) ? data.reposts : [];
+        const likes = Array.isArray(data.likes) ? data.likes : [];
+        const stars = Array.isArray(data.stars) ? data.stars : [];
+
+        // タブバーを再生成
+        let tabsHtml = `
+            <button type="button" class="post-activity-tab is-active" data-tab="quotes">引用 <span class="tab-count">${quotes.length}</span></button>
+            <button type="button" class="post-activity-tab" data-tab="reposts">リポスト <span class="tab-count">${reposts.length}</span></button>
+        `;
+
+        if (isAuthor) {
+            tabsHtml += `
+                <button type="button" class="post-activity-tab" data-tab="likes">いいね <span class="tab-count">${likes.length}</span></button>
+                <button type="button" class="post-activity-tab" data-tab="stars">お気に入り <span class="tab-count">${stars.length}</span></button>
+            `;
+        }
+
+        tabsContainer.innerHTML = tabsHtml;
+
+        // タブ切り替えとコンテンツ描画関数
+        let currentActiveTab = 'quotes';
+
+        if (quotes.length === 0 && reposts.length > 0) {
+            currentActiveTab = 'reposts';
+        } else if (quotes.length === 0 && reposts.length === 0 && isAuthor && likes.length > 0) {
+            currentActiveTab = 'likes';
+        } else if (quotes.length === 0 && reposts.length === 0 && isAuthor && stars.length > 0) {
+            currentActiveTab = 'stars';
+        }
+
+        const renderActiveTabContent = (tabName) => {
+            tabsContainer.querySelectorAll('.post-activity-tab').forEach((t) => {
+                t.classList.toggle('is-active', t.dataset.tab === tabName);
+            });
+
+            bodyContainer.innerHTML = '';
+
+            if (tabName === 'quotes') {
+                if (quotes.length === 0) {
+                    bodyContainer.innerHTML = '<div class="post-activity-empty"><p>引用ポストはまだありません</p></div>';
+                    return;
+                }
+                const list = document.createElement('div');
+                list.className = 'post-activity-quotes-list';
+                for (const q of quotes) {
+                    const el = renderPostElement(q);
+                    if (el) list.appendChild(el);
+                }
+                bodyContainer.appendChild(list);
+            } else {
+                let userList = [];
+                let emptyText = '';
+                if (tabName === 'reposts') {
+                    userList = reposts;
+                    emptyText = 'リポストしたユーザーはいません';
+                } else if (tabName === 'likes') {
+                    userList = likes;
+                    emptyText = 'いいねしたユーザーはいません';
+                } else if (tabName === 'stars') {
+                    userList = stars;
+                    emptyText = 'お気に入り登録したユーザーはいません';
+                }
+
+                if (userList.length === 0) {
+                    bodyContainer.innerHTML = `<div class="post-activity-empty"><p>${emptyText}</p></div>`;
+                    return;
+                }
+
+                const list = document.createElement('div');
+                list.className = 'post-activity-users-list';
+
+                for (const u of userList) {
+                    const item = document.createElement('div');
+                    item.className = 'post-activity-user-item';
+
+                    const avatarLink = document.createElement('a');
+                    avatarLink.href = `#profile/${u.id || u.user_id}`;
+                    avatarLink.className = 'user-icon-link';
+                    avatarLink.onclick = () => closeModal();
+
+                    const img = document.createElement('img');
+                    img.src = u.icon_url || '/emoji/neko.svg';
+                    img.className = 'user-icon';
+                    img.alt = `${u.name || 'User'}'s icon`;
+                    img.onerror = () => { img.src = '/emoji/neko.svg'; };
+                    avatarLink.appendChild(img);
+
+                    const info = document.createElement('div');
+                    info.className = 'post-activity-user-info';
+
+                    const nameRow = document.createElement('div');
+                    nameRow.className = 'post-activity-user-name-row';
+
+                    const nameLink = document.createElement('a');
+                    nameLink.href = `#profile/${u.id || u.user_id}`;
+                    nameLink.className = 'post-author-name';
+                    nameLink.innerHTML = getEmoji(escapeHTML(u.name || '不明'));
+                    nameLink.onclick = () => closeModal();
+                    nameRow.appendChild(nameLink);
+
+                    if (u.admin) {
+                        const adminBadge = document.createElement('img');
+                        adminBadge.src = 'icons/admin.png';
+                        adminBadge.className = 'admin-badge';
+                        adminBadge.title = 'NyaitterTeam';
+                        nameRow.appendChild(adminBadge);
+                    } else if (u.verify) {
+                        const verifyBadge = document.createElement('img');
+                        verifyBadge.src = 'icons/verify.png';
+                        verifyBadge.className = 'verify-badge';
+                        verifyBadge.title = '認証済み';
+                        nameRow.appendChild(verifyBadge);
+                    }
+
+                    info.appendChild(nameRow);
+
+                    const handle = document.createElement('div');
+                    handle.className = 'post-activity-user-handle';
+                    handle.textContent = getNyaitterId(u);
+                    info.appendChild(handle);
+
+                    if (u.bio) {
+                        const bio = document.createElement('div');
+                        bio.className = 'post-activity-user-bio';
+                        bio.innerHTML = getEmoji(escapeHTML(u.bio));
+                        info.appendChild(bio);
+                    }
+
+                    item.appendChild(avatarLink);
+                    item.appendChild(info);
+                    list.appendChild(item);
+                }
+
+                bodyContainer.appendChild(list);
+            }
+        };
+
+        tabsContainer.addEventListener('click', (e) => {
+            const tabBtn = e.target.closest('.post-activity-tab');
+            if (tabBtn && tabBtn.dataset.tab) {
+                renderActiveTabContent(tabBtn.dataset.tab);
+            }
+        });
+
+        renderActiveTabContent(currentActiveTab);
+    } catch (err) {
+        console.error(err);
+        bodyContainer.innerHTML = '<div class="post-activity-empty"><p>アクティビティの取得に失敗しました</p></div>';
+    }
+}
+
 // Bind to window for backwards compatibility if needed
 window.copyPost = copyPost;
 window.pinPost = pinPost;
@@ -3106,3 +3337,5 @@ window.handleDislikePost = handleDislikePost;
 window.handleFollowMenuToggle = handleFollowMenuToggle;
 window.handleBlockMenuToggle = handleBlockMenuToggle;
 window.openReplyControlModal = openReplyControlModal;
+window.openPostActivityModal = openPostActivityModal;
+

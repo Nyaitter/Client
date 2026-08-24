@@ -1668,4 +1668,87 @@ overscroll-behavior-y: contain;
     box-sizing: border-box !important;
 }
 
+/* ==================== Post Activity Screen ==================== */
+.post-activity-screen-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.post-activity-screen-body {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.post-activity-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: var(--secondary-text-color);
+    font-size: 0.95rem;
+}
+
+.post-activity-users-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.post-activity-user-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1.2rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s ease;
+}
+
+.post-activity-user-item:last-child {
+    border-bottom: none;
+}
+
+.post-activity-user-item:hover {
+    background-color: var(--hover-bg, rgba(255, 255, 255, 0.03));
+}
+
+.post-activity-user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.post-activity-user-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.post-activity-user-handle {
+    font-size: 0.85rem;
+    color: var(--secondary-text-color);
+    margin-top: 0.1rem;
+}
+
+.post-activity-user-bio {
+    font-size: 0.88rem;
+    color: var(--main-text-color);
+    margin-top: 0.3rem;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.post-activity-quotes-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.post-activity-quotes-list .post {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+}
+
+
+
 

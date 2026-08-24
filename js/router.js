@@ -27,6 +27,7 @@ import { showSearchResults } from './screens/searchScreen.js';
 import { showNotificationsScreen } from './screens/notificationsScreen.js';
 import { showLikesScreen, showStarsScreen } from './screens/likesStarsScreen.js';
 import { showPostDetail } from './screens/postDetailScreen.js';
+import { showPostActivityScreen } from './screens/postActivityScreen.js';
 import { showDmScreen } from './screens/dmScreen.js';
 import {
     showProfileScreen,
@@ -64,6 +65,10 @@ async function refreshPullToRefreshContext(context) {
     }
     if (context?.type === 'notifications') {
         await showNotificationsScreen(showScreen);
+        return;
+    }
+    if (context?.type === 'post-activity') {
+        await showPostActivityScreen(context.postId, context.tab || 'quotes', { forceRefresh: true, resetScroll: true }, showScreen);
         return;
     }
     if (context?.type === 'post-detail') {
@@ -177,7 +182,10 @@ export async function router() {
     );
 
     try {
-        if (hash.startsWith('#post/')) {
+        const postActivityMatch = hash.match(/^#post\/(\d+)\/activity(?:\/([^/]+))?$/);
+        if (postActivityMatch) {
+            await showPostActivityScreen(postActivityMatch[1], postActivityMatch[2] || 'quotes', showScreen);
+        } else if (hash.startsWith('#post/')) {
             await showPostDetail(hash.substring(6), showScreen);
         } else if (hash.startsWith('#profile/')) {
             const path = hash.substring(9);

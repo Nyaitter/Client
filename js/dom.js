@@ -33,6 +33,8 @@ export const DOM = {
     likesContent: document.getElementById('likes-content'),
     starsContent: document.getElementById('stars-content'),
     postDetailContent: document.getElementById('post-detail-content'),
+    postActivityScreen: document.getElementById('post-activity-screen'),
+    postActivityContent: document.getElementById('post-activity-content'),
     searchResultsScreen: document.getElementById('search-results-screen'),
     searchResultsContent: document.getElementById('search-results-content'),
     ruleScreen: document.getElementById('rule-screen'),
