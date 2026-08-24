@@ -137,6 +137,13 @@ function attachImageModalListeners() {
         closeImageModal();
     });
 
+    // 閉じるボタン
+    const closeBtn = DOM.imagePreviewModal.querySelector('.modal-close-btn');
+    closeBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeImageModal();
+    });
+
     // 左右ボタン
     const prevBtn = DOM.imagePreviewModal.querySelector('.image-modal-prev-btn');
     const nextBtn = DOM.imagePreviewModal.querySelector('.image-modal-next-btn');
