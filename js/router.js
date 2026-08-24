@@ -19,6 +19,7 @@ import {
     restoreScrollPosition,
 } from './modules/scroll.js';
 import { openLoginApprovalModal } from './modules/auth.js';
+import { handlePendingPushNotificationOpen } from './modules/pwa.js';
 
 import { showMainScreen, switchTimelineTab } from './screens/timelineScreen.js';
 import { showExploreScreen } from './screens/exploreScreen.js';
@@ -130,6 +131,7 @@ export function showScreen(screenId) {
 }
 
 export async function router() {
+    await handlePendingPushNotificationOpen();
     const generation = ++routerGeneration;
     beginScrollRouteTransition();
     // 進行中の古い復元処理を無効化する。

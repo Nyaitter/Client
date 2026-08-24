@@ -50,6 +50,10 @@ import {
     renderGroupBadgesElement,
     getGroupIconUrl,
 } from '../utils/helpers.js';
+import {
+    clampElementToViewport,
+    positionElementRelativeToAnchor,
+} from '../utils/viewport.js';
 
 export const METRICS_FALLBACK = '?';
 
@@ -1018,6 +1022,7 @@ export function togglePostToolsOverflowMenu(container) {
         menu.classList.remove('hidden');
         button.setAttribute('aria-expanded', 'true');
         bindPostToolsOverflowMenuOutsideHandler(container);
+        clampElementToViewport(menu);
     } else {
         closePostToolsOverflowMenu(container);
     }
@@ -1217,6 +1222,7 @@ function togglePostReplyControlMenu(container) {
         menu.classList.remove('hidden');
         button.setAttribute('aria-expanded', 'true');
         bindPostReplyControlMenuOutsideHandler(container);
+        clampElementToViewport(menu);
     } else {
         closePostReplyControlMenu(container);
     }
@@ -1428,9 +1434,11 @@ async function openPostGroupMenu(container) {
         if (container._postingAccountVersion !== postingAccountVersion || menu.classList.contains('hidden')) return;
         container._postingAccountGroups = groups;
         renderPostGroupMenu(container, groups);
+        clampElementToViewport(menu);
     } catch (_) {
         if (container._postingAccountVersion === postingAccountVersion) {
             menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
+            clampElementToViewport(menu);
         }
     }
 }
@@ -2391,11 +2399,10 @@ export function openRepostModal(post, triggerButton) {
 
     if (triggerButton) {
         document.body.appendChild(menu);
-        const btnRect = triggerButton.getBoundingClientRect();
-        menu.style.position = 'absolute';
-        menu.style.top = `${window.scrollY + btnRect.top - menu.offsetHeight}px`;
-        menu.style.left = `${window.scrollX + btnRect.left}px`;
-        menu.style.right = 'auto';
+        positionElementRelativeToAnchor(menu, triggerButton, {
+            placement: 'top-start',
+            gap: 6,
+        });
     }
 
     setTimeout(() => {
