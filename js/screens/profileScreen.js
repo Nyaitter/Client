@@ -10,6 +10,9 @@ import {
     getPostLoadObserver,
 } from '../state.js';
 import {
+    setCurrentPagination,
+} from '../state.js';
+import {
     cacheUser,
     getProfilePostPageCache,
     getUserPageCache,
@@ -667,6 +670,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
 
 export async function loadMediaGrid(container, options = {}) {
     options = bindPaginationOptionsToRoute(options);
+    setCurrentPagination({ page: 0, hasMore: true, type: 'media', options });
     const gridContainer = document.createElement('div');
     gridContainer.className = 'media-grid-container';
     container.appendChild(gridContainer);
