@@ -780,7 +780,7 @@ export function getGroupBadgesHtml(user) {
         .slice(0, 3);
     if (validBadges.length === 0) return '';
     return `<span class="user-group-badges">${validBadges
-        .map((b) => `<span role="link" tabindex="0" class="user-group-badge-link" title="${escapeHTML(b.name || '参加グループ')}" onclick="event.preventDefault(); event.stopPropagation(); window.location.hash='#group/${encodeURIComponent(b.id)}';"><img src="${escapeHTML(getGroupIconUrl(b))}" class="user-group-badge" alt="${escapeHTML(b.name || 'グループ')}"></span>`)
+        .map((b) => `<a href="#group/${encodeURIComponent(b.id)}" class="user-group-badge-link" title="${escapeHTML(b.name || '参加グループ')}" onclick="event.stopPropagation();"><img src="${escapeHTML(getGroupIconUrl(b))}" class="user-group-badge" alt="${escapeHTML(b.name || 'グループ')}"></a>`)
         .join('')}</span>`;
 }
 

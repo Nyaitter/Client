@@ -60,7 +60,86 @@ import {
     showAppConfirm,
 } from '../utils/helpers.js';
 
-const { resourceLinks: RESOURCE_LINKS, apiUrl } = globalThis.NyaitterClientConfig || {};
+const { resourceLinks: RESOURCE_LINKS, apiUrl, turnstileSiteKey } = globalThis.NyaitterClientConfig || {};
+
+function loadTurnstileScript() {
+    return new Promise((resolve, reject) => {
+        if (window.turnstile) {
+            resolve();
+            return;
+        }
+        const existing = document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]');
+        if (existing) {
+            existing.addEventListener('load', () => resolve(), { once: true });
+            existing.addEventListener('error', () => reject(new Error('Turnstileの読み込みに失敗しました。')), { once: true });
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Turnstileの読み込みに失敗しました。'));
+        document.head.appendChild(script);
+    });
+}
+
+async function requestTurnstileTokenModal() {
+    const siteKey = String(turnstileSiteKey || '').trim();
+    if (!siteKey) return null;
+
+    try {
+        await loadTurnstileScript();
+    } catch (e) {
+        console.error('Turnstile load error:', e);
+        return null;
+    }
+
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 360px; padding: 1.5rem; text-align: center;">
+                <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+                <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem;">セキュリティ確認</h3>
+                <p class="settings-help-text" style="margin-bottom: 1.25rem;">続行するには認証を完了してください。</p>
+                <div id="settings-turnstile-container" style="display: flex; justify-content: center; min-height: 65px;"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        let resolved = false;
+        const cleanup = (token = null) => {
+            if (resolved) return;
+            resolved = true;
+            modal.remove();
+            resolve(token);
+        };
+
+        modal.querySelector('.modal-close-btn')?.addEventListener('click', () => cleanup(null));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) cleanup(null);
+        });
+
+        const container = modal.querySelector('#settings-turnstile-container');
+        try {
+            window.turnstile.render(container, {
+                sitekey: siteKey,
+                theme: 'auto',
+                callback: (token) => {
+                    // チャレンジ成功時に自動でクローズ
+                    cleanup(token);
+                },
+                'expired-callback': () => {},
+                'error-callback': () => cleanup(null),
+            });
+        } catch (err) {
+            console.error('Turnstile render error:', err);
+            cleanup(null);
+        }
+    });
+}
 
 export const ALL_HOME_TABS = [
     { key: 'all', name: 'すべて', description: 'すべての投稿を表示' },
@@ -195,6 +274,12 @@ export async function saveSettings(form) {
                     form.querySelector('#setting-color-theme')?.value,
                 ),
                 custom_colors: getCustomColorsFromInputs(form),
+                ng_words: form.querySelector('#setting-ng-words')
+                    ? (form.querySelector('#setting-ng-words').value || '')
+                        .split(/[\n,]+/)
+                        .map((w) => w.trim())
+                        .filter(Boolean)
+                    : (getCurrentUser().settings?.ng_words || []),
             },
         };
         if (!updatedData.name) throw new Error('ユーザー名は必須です。');
@@ -377,6 +462,11 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         <label><input type="checkbox" id="setting-show-star" ${getCurrentUser().settings?.show_star ? 'checked' : ''}> お気に入りを公開する</label>
                         <label><input type="checkbox" id="setting-show-scid" ${getCurrentUser().settings?.show_scid ? 'checked' : ''}> Scratchアカウント名を公開する</label>
                         <label><input type="checkbox" id="setting-lock" ${getCurrentUser().settings?.lock ? 'checked' : ''}> ポストを非公開にする</label>
+                    </fieldset>
+                    <fieldset class="settings-ng-words"><legend>ミュート・フィルター</legend>
+                        <label for="setting-ng-words">NGワード</label>
+                        <textarea id="setting-ng-words" placeholder="改行またはカンマ（,）区切りで入力">${escapeHTML(Array.isArray(getCurrentUser().settings?.ng_words) ? getCurrentUser().settings.ng_words.join('\n') : (getCurrentUser().settings?.ng_words || ''))}</textarea>
+                        <p class="settings-help-text">設定したワードが含まれるポストをタイムラインやおすすめ・検索結果から除外します（改行またはカンマ区切り）。</p>
                     </fieldset>
                     <fieldset class="settings-dm-privacy"><legend>ダイレクトメッセージ</legend>
                         <label for="setting-dm-invitation">DMの招待</label>
@@ -911,10 +1001,22 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         const code = await showAppPrompt(`「${email.trim()}」に認証コードを送信しました。\nメールに記載されている6桁の認証コードを入力してください:`);
                         if (!code || !code.trim()) return;
 
+                        let turnstileToken = null;
+                        if (provider.turnstileRequired && turnstileSiteKey) {
+                            turnstileToken = await requestTurnstileTokenModal();
+                            if (!turnstileToken) {
+                                return showAppAlert('Turnstile認証がキャンセルされたか失敗しました。');
+                            }
+                        }
+
                         showLoading(true);
                         const { error: verifyError } = await apiRequest('/server/auth/link/email/verify', {
                             method: 'POST',
-                            body: { email: email.trim(), code: code.trim() },
+                            body: {
+                                email: email.trim(),
+                                code: code.trim(),
+                                ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+                            },
                         });
                         showLoading(false);
 
@@ -941,10 +1043,22 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         const projId = initData?.verificationProjectId || provider.verificationProjectId || '1239738451';
                         await showAppAlert(`Scratchの認証プロジェクト（https://scratch.mit.edu/projects/${projId}/）のコメント欄に、以下の認証コードを投稿してください:\n\n${initData.code}\n\nコメントを投稿したら「OK」を押して次へ進んでください。`);
 
+                        let turnstileToken = null;
+                        if (provider.turnstileRequired && turnstileSiteKey) {
+                            turnstileToken = await requestTurnstileTokenModal();
+                            if (!turnstileToken) {
+                                return showAppAlert('Turnstile認証がキャンセルされたか失敗しました。');
+                            }
+                        }
+
                         showLoading(true);
                         const { error: verifyError } = await apiRequest('/server/auth/link/scratch/verify', {
                             method: 'POST',
-                            body: { username: username.trim(), code: initData.code },
+                            body: {
+                                username: username.trim(),
+                                code: initData.code,
+                                ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+                            },
                         });
                         showLoading(false);
 

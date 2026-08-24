@@ -30,6 +30,7 @@ import {
     attachMarkdownContentEditor,
     getMarkdownEditorValue,
     setMarkdownEditorValue,
+    insertMarkdownEditorText,
     setupMarkdownEditorPreviewButton,
 } from './editor.js';
 import {
@@ -693,7 +694,51 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
             </div>
         `;
 
-        await emoji_picker_create({ triggerButton: content.querySelector('.emoji-pic-button') });
+        const editDmEmojiBtn = content.querySelector('.emoji-pic-button');
+        if (editDmEmojiBtn) {
+            let editDmPickerInstance = null;
+            let editDmPickerLoading = false;
+            editDmEmojiBtn.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                const existingPicker = content.querySelector('#emoji-picker');
+                if (existingPicker && !existingPicker.classList.contains('hidden')) {
+                    existingPicker.classList.add('hidden');
+                    return;
+                }
+                if (existingPicker && editDmPickerInstance) {
+                    existingPicker.classList.remove('hidden');
+                    return;
+                }
+                if (editDmPickerLoading) return;
+                editDmPickerLoading = true;
+                try {
+                    editDmPickerInstance = await emoji_picker_create({
+                        triggerButton: editDmEmojiBtn,
+                        onEmojiSelect: (emoji) => {
+                            const targetEditor = content.querySelector('#edit-dm-textarea');
+                            if (targetEditor) {
+                                const val = emoji.native || `:${emoji.id}:`;
+                                insertMarkdownEditorText(targetEditor, val);
+                            }
+                        },
+                        onClickOutside: () => {
+                            content.querySelector('#emoji-picker')?.classList.add('hidden');
+                        },
+                    });
+                    const pickerPlaceholder = content.querySelector('#emoji-picker');
+                    if (pickerPlaceholder) {
+                        pickerPlaceholder.replaceWith(editDmPickerInstance);
+                        editDmPickerInstance.classList.remove('hidden');
+                    } else {
+                        content.querySelector('.dm-edit-tools')?.appendChild(editDmPickerInstance);
+                    }
+                } catch (error) {
+                    console.error('絵文字ピッカーの初期化に失敗しました:', error);
+                } finally {
+                    editDmPickerLoading = false;
+                }
+            });
+        }
         const editDmEditor = content.querySelector('#edit-dm-textarea');
         attachMarkdownContentEditor(editDmEditor);
         setupMarkdownEditorPreviewButton(content, editDmEditor);
