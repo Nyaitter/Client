@@ -83,8 +83,18 @@ function loadTurnstileScript() {
     });
 }
 
+function getTurnstileSiteKey() {
+    return String(
+        turnstileSiteKey ||
+        globalThis.NyaitterClientConfig?.turnstileSiteKey ||
+        globalThis.NyaitterServerStatus?.turnstile?.sitekey ||
+        globalThis.NyaitterServerStatus?.turnstile?.siteKey ||
+        ''
+    ).trim();
+}
+
 async function requestTurnstileTokenModal() {
-    const siteKey = String(turnstileSiteKey || '').trim();
+    const siteKey = getTurnstileSiteKey();
     if (!siteKey) return null;
 
     try {
@@ -1002,7 +1012,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         if (!code || !code.trim()) return;
 
                         let turnstileToken = null;
-                        if (provider.turnstileRequired && turnstileSiteKey) {
+                        if (provider.turnstileRequired || globalThis.NyaitterServerStatus?.turnstile?.enabled) {
                             turnstileToken = await requestTurnstileTokenModal();
                             if (!turnstileToken) {
                                 return showAppAlert('Turnstile認証がキャンセルされたか失敗しました。');
@@ -1044,7 +1054,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                         await showAppAlert(`Scratchの認証プロジェクト（https://scratch.mit.edu/projects/${projId}/）のコメント欄に、以下の認証コードを投稿してください:\n\n${initData.code}\n\nコメントを投稿したら「OK」を押して次へ進んでください。`);
 
                         let turnstileToken = null;
-                        if (provider.turnstileRequired && turnstileSiteKey) {
+                        if (provider.turnstileRequired || globalThis.NyaitterServerStatus?.turnstile?.enabled) {
                             turnstileToken = await requestTurnstileTokenModal();
                             if (!turnstileToken) {
                                 return showAppAlert('Turnstile認証がキャンセルされたか失敗しました。');
@@ -1072,10 +1082,20 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                             return showAppAlert('このブラウザはパスキー認証に対応していません。');
                         }
 
+                        let turnstileToken = null;
+                        if (provider.turnstileRequired || globalThis.NyaitterServerStatus?.turnstile?.enabled) {
+                            turnstileToken = await requestTurnstileTokenModal();
+                            if (!turnstileToken) {
+                                return showAppAlert('Turnstile認証がキャンセルされたか失敗しました。');
+                            }
+                        }
+
                         showLoading(true);
                         const { data: initiateData, error: initError } = await apiRequest('/server/auth/link/passkey/initiate', {
                             method: 'POST',
-                            body: {},
+                            body: {
+                                ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+                            },
                         });
                         showLoading(false);
 
@@ -1171,6 +1191,7 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
                             },
                             type: credential.type,
                             name: getCurrentUser()?.name,
+                            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
                         };
                         const { error: verifyError } = await apiRequest('/server/auth/link/passkey/verify', {
                             method: 'POST',
