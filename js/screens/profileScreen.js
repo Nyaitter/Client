@@ -113,6 +113,12 @@ function closeProfileMediaModeMenu() {
     document.querySelector('.profile-media-mode-menu')?.remove();
 }
 
+function updateProfileMediaLabel(user) {
+    const pageTitleSub = document.getElementById('page-title-sub');
+    if (!pageTitleSub) return;
+    pageTitleSub.textContent = `${user.mediaCount || 0} 件の画像と動画`;
+}
+
 function openProfileMediaModeMenu(button, user) {
     closeProfileMediaModeMenu();
     const menu = document.createElement('div');
@@ -124,6 +130,7 @@ function openProfileMediaModeMenu(button, user) {
     menu.querySelectorAll('[data-profile-media-mode]').forEach((item) => item.addEventListener('click', () => {
         setProfileMediaMode(user.id, item.dataset.profileMediaMode);
         closeProfileMediaModeMenu();
+        updateProfileMediaLabel(user);
         void loadProfileTabContent(user, 'media');
     }));
     setTimeout(() => document.addEventListener('click', closeProfileMediaModeMenu, { once: true }), 0);
@@ -534,9 +541,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
     if (isFollowListActive) {
         pageTitleSub.textContent = `${getNyaitterId(user)}`;
     } else if (subpage === 'media') {
-        const mediaMode = getProfileMediaMode(user.id);
-        const modeLabel = mediaMode === 'all' ? '画像と動画' : mediaMode === 'image' ? '画像' : '動画';
-        pageTitleSub.textContent = `${user.mediaCount || 0} 件の${modeLabel}`;
+        pageTitleSub.textContent = `${user.mediaCount || 0} 件の画像と動画`;
     } else {
         pageTitleSub.textContent = `${user.postCount || 0} 件のポスト`;
     }
