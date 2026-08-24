@@ -520,23 +520,28 @@ function handleGlobalClick(e) {
 
         // インタラクティブな要素（リンク、ボタン、添付ファイル、メニュー等）以外をクリックした場合は
         // 詳細画面へ遷移
-        if (
-            !target.closest('a') &&
-            !target.closest('button') &&
-            !target.closest('.post-menu-btn') &&
-            !target.closest('.attachment-item') &&
-            !target.closest('.attachments-container') &&
-            !target.closest('.post-poll-container') &&
-            !target.closest('.nested-repost-container') &&
-            !target.closest('.post-clamp-toggle') &&
-            !target.closest('.post-action-btn') &&
-            !target.closest('.custom-emoji-btn') &&
-            !target.closest('.markdown-spoiler') &&
-            !target.closest('input, textarea, select, label')
-        ) {
-            saveScrollPosition();
-            window.location.hash = `#post/${actionTargetPostId}`;
-            return;
+        const isInteractive = Boolean(
+            target.closest('a') ||
+            target.closest('button') ||
+            target.closest('.post-menu-btn') ||
+            target.closest('.attachment-item') ||
+            target.closest('.attachments-container') ||
+            target.closest('.post-poll-container') ||
+            target.closest('.post-clamp-toggle') ||
+            target.closest('.post-action-btn') ||
+            target.closest('.custom-emoji-btn') ||
+            target.closest('.markdown-spoiler') ||
+            target.closest('.deleted-post-container') ||
+            target.closest('input, textarea, select, label')
+        );
+
+        if (!isInteractive) {
+            const targetId = Number(actionTargetPostId || timelinePostId);
+            if (targetId) {
+                saveScrollPosition();
+                window.location.hash = `#post/${targetId}`;
+                return;
+            }
         }
     }
 
