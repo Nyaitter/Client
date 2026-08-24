@@ -204,7 +204,14 @@ export async function refreshActiveProfileTab({ userId, subpage } = {}) {
 }
 
 export async function showProfileScreen(userId, subpage = 'posts', showScreenFn = null) {
-    subpage = subpage === 'replies' ? 'posts' : subpage;
+    let mediaSubType = 'all';
+    if (subpage.startsWith('media')) {
+        const urlParams = new URLSearchParams(subpage.includes('?') ? subpage.split('?')[1] : '');
+        mediaSubType = urlParams.get('type') || 'all';
+        subpage = 'media';
+    } else {
+        subpage = subpage === 'replies' ? 'posts' : subpage;
+    }
     DOM.pageHeader.innerHTML = `
         <div class="header-with-back-button">
             <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
@@ -465,7 +472,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
 
         activeProfilePullRefreshUser = user;
         currentProfileTab = subpage;
-        await loadProfileTabContent(user, subpage);
+        await loadProfileTabContent(user, subpage, { mediaSubType });
         const currentHash = window.location.hash || `#profile/${user.id}`;
         restoreScrollPosition(getScrollRouteKey(currentHash));
     } catch (err) {
@@ -476,8 +483,9 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
     }
 }
 
-export async function loadProfileTabContent(user, subpage) {
+export async function loadProfileTabContent(user, subpage, options = {}) {
     subpage = subpage === 'replies' ? 'posts' : subpage;
+    const mediaSubType = options?.mediaSubType || 'all';
     const profileHeader = document.getElementById('profile-header');
     const profileTabs = document.getElementById('profile-tabs');
     const contentDiv = document.getElementById('profile-content');
@@ -506,6 +514,9 @@ export async function loadProfileTabContent(user, subpage) {
     const existingSubTabs = document.getElementById('profile-sub-tabs-container');
     if (existingSubTabs) existingSubTabs.remove();
 
+    const isMediaTab = subpage === 'media';
+    const mediaSubType = options?.mediaSubType || 'all';
+
     if (isFollowListActive) {
         const subTabsContainer = document.createElement('div');
         subTabsContainer.id = 'profile-sub-tabs-container';
@@ -532,6 +543,31 @@ export async function loadProfileTabContent(user, subpage) {
                 } else {
                     void switchProfileTab(user, subTab);
                 }
+            };
+        });
+    } else if (isMediaTab) {
+        const subTabsContainer = document.createElement('div');
+        subTabsContainer.id = 'profile-sub-tabs-container';
+        subTabsContainer.innerHTML = `
+            <div class="profile-sub-tabs">
+                <button class="tab-button ${mediaSubType === 'all' ? 'active' : ''}" data-media-sub-type="all">すべて</button>
+                <button class="tab-button ${mediaSubType === 'image' ? 'active' : ''}" data-media-sub-type="image">画像</button>
+                <button class="tab-button ${mediaSubType === 'video' ? 'active' : ''}" data-media-sub-type="video">動画</button>
+            </div>`;
+
+        DOM.pageHeader.parentNode.insertBefore(
+            subTabsContainer,
+            DOM.pageHeader.nextSibling,
+        );
+        const headerHeight = DOM.pageHeader.offsetHeight;
+        subTabsContainer.style.top = `${headerHeight}px`;
+
+        subTabsContainer.querySelectorAll('.tab-button').forEach((button) => {
+            button.onclick = (e) => {
+                e.stopPropagation();
+                const mediaSubType = button.dataset.mediaSubType;
+                const hash = `#profile/${user.id}/media${mediaSubType !== 'all' ? `?type=${mediaSubType}` : ''}`;
+                window.location.hash = hash;
             };
         });
     } else {
@@ -603,9 +639,11 @@ export async function loadProfileTabContent(user, subpage) {
                     ),
                 });
                 break;
-            case 'media':
-                await loadMediaGrid(contentDiv, { userId: user.id });
+            case 'media': {
+                const mediaSubType = options?.mediaSubType || 'all';
+                await loadMediaGrid(contentDiv, { userId: user.id, type: mediaSubType === 'all' ? null : mediaSubType });
                 break;
+            }
             default:
                 if (String(subpage).startsWith('group:')) {
                     const groupId = String(subpage).slice('group:'.length);
@@ -645,12 +683,18 @@ export async function loadMediaGrid(container, options = {}) {
     let isLoading = false;
     let preloadMediaPromise = null;
 
+    const buildMediaUrl = (from) => {
+        let url = `/server/api/users/${encodeURIComponent(options.userId)}/media?limit=${MEDIA_PER_PAGE}&offset=${from}`;
+        if (options.type) {
+            url += `&type=${encodeURIComponent(options.type)}`;
+        }
+        return url;
+    };
+
     const triggerPreloadNextMedia = (nextPage) => {
         if (!hasMore || !isActivePaginationLoader(container, trigger, options)) return;
         const nextFrom = nextPage * MEDIA_PER_PAGE;
-        preloadMediaPromise = apiRequest(
-            `/server/api/users/${encodeURIComponent(options.userId)}/media?limit=${MEDIA_PER_PAGE}&offset=${nextFrom}`,
-        ).catch(() => null);
+        preloadMediaPromise = apiRequest(buildMediaUrl(nextFrom)).catch(() => null);
     };
 
     const loadMore = async () => {
@@ -670,9 +714,7 @@ export async function loadMediaGrid(container, options = {}) {
                 mediaResponse = res?.data;
                 error = res?.error;
             } else {
-                const res = await apiRequest(
-                    `/server/api/users/${encodeURIComponent(options.userId)}/media?limit=${MEDIA_PER_PAGE}&offset=${from}`,
-                );
+                const res = await apiRequest(buildMediaUrl(from));
                 mediaResponse = res?.data;
                 error = res?.error;
             }
