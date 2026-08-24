@@ -67,8 +67,34 @@ document.addEventListener('DOMContentLoaded', () => {
   let turnstileWidgetId = null;
   let turnstileToken = null;
 
+  function isTurnstileResolved() {
+    if (!turnstileEnabled) return true;
+    if (turnstileToken) return true;
+    if (turnstileWidgetId != null && window.turnstile?.getResponse) {
+      try {
+        const resp = window.turnstile.getResponse(turnstileWidgetId);
+        if (resp) {
+          turnstileToken = resp;
+          return true;
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  function updateAuthButtonsState() {
+    if (isTurnstileResolved()) {
+      enableAuthActionButtons();
+    } else {
+      disableAuthActionButtons();
+    }
+  }
+
   function disableAuthActionButtons() {
-    if (!turnstileEnabled || turnstileToken) return;
+    if (isTurnstileResolved()) {
+      enableAuthActionButtons();
+      return;
+    }
     if (verifyCommentBtn) verifyCommentBtn.disabled = true;
     if (verifyEmailCodeBtn) verifyEmailCodeBtn.disabled = true;
     if (passkeySigninBtn) passkeySigninBtn.disabled = true;
@@ -136,7 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function setupTurnstile() {
-    if (!turnstileEnabled || !turnstileContainer || !turnstileWidget) return;
+    if (!turnstileEnabled || !turnstileContainer || !turnstileWidget) {
+      enableAuthActionButtons();
+      return;
+    }
     if (!turnstileInitialized) {
       turnstileInitialized = true;
       try {
@@ -148,15 +177,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     if (turnstileWidgetId != null) {
-      if (turnstileToken) {
-        enableAuthActionButtons();
-      } else {
-        disableAuthActionButtons();
-      }
+      updateAuthButtonsState();
       return;
     }
 
-    const initialToken = turnstileToken;
     const widgetId = window.turnstile.render(turnstileWidget, {
       sitekey: configuredTurnstileSiteKey,
       theme: 'auto',
@@ -166,27 +190,22 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       'expired-callback': () => {
         turnstileToken = null;
-        disableAuthActionButtons();
+        updateAuthButtonsState();
       },
       'error-callback': () => {
         turnstileToken = null;
-        disableAuthActionButtons();
+        updateAuthButtonsState();
       },
     });
     turnstileWidgetId = widgetId;
-    // 即時解決（パススルー等）で既にトークンが取得できている場合は無効化しない
-    if (turnstileToken || (window.turnstile.getResponse && window.turnstile.getResponse(widgetId))) {
-      if (!turnstileToken && window.turnstile.getResponse) {
-        turnstileToken = window.turnstile.getResponse(widgetId);
-      }
-      enableAuthActionButtons();
-    } else {
-      disableAuthActionButtons();
-    }
+    updateAuthButtonsState();
   }
 
   function mountTurnstile(beforeElement) {
-    if (!turnstileEnabled || !turnstileContainer || !beforeElement) return;
+    if (!turnstileEnabled || !turnstileContainer || !beforeElement) {
+      enableAuthActionButtons();
+      return;
+    }
     if (beforeElement.parentNode && turnstileContainer.parentNode !== beforeElement.parentNode) {
       beforeElement.parentNode.insertBefore(turnstileContainer, beforeElement);
     }
