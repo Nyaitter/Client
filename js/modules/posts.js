@@ -198,6 +198,7 @@ export async function renderPost(post, author, options = {}) {
         metricsPromise,
         isPinned = false,
         clampHeight = false,
+        quoteDepth = 0,
         onReportClick,
     } = options;
 
@@ -638,14 +639,14 @@ export async function renderPost(post, author, options = {}) {
         renderPostPoll(postBody, post.poll, post);
     }
 
-    if ((post.repost_to || post.reposted_post) && post.content) {
+    if ((post.repost_to || post.reposted_post) && post.content && quoteDepth < 2) {
         const nestedContainer = document.createElement('div');
         nestedContainer.className = 'nested-repost-container';
         if (post.reposted_post) {
             const nestedPostEl = await renderPost(
                 post.reposted_post,
                 post.reposted_post.author,
-                { ...options, isNested: true, clampHeight: true },
+                { ...options, isNested: true, clampHeight: true, quoteDepth: quoteDepth + 1 },
             );
             if (nestedPostEl) {
                 nestedContainer.appendChild(nestedPostEl);

@@ -72,7 +72,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         const metricsPromise = Promise.resolve();
         contentDiv.innerHTML = '';
 
-        // ── 祖先（親チェーン）の解決とツリー描画 ─────────────────────────
+        // ── 祖先（親チェーン）の解決とツリー描画 (無条件で表示) ──────────
         let ancestorsList = Array.isArray(threadPayload?.ancestors) ? [...threadPayload.ancestors] : [];
         if (ancestorsList.length === 0 && mainPost.reply_to_post) {
             let current = mainPost.reply_to_post;
@@ -169,31 +169,57 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         );
         const mainPostAuthorId = Number(mainPost?.userId ?? mainPost?.user_id ?? mainPost?.author?.id);
 
-        const flatReplyList = [];
+        // ── 返信ブランチ（子ポスト＋孫ポスト群）の構築 ─────────────────
         const visitedReplyIds = new Set();
-        const buildFlatList = (parentId, depth = 0, parentPostObj = null) => {
+        const collectDescendants = (parentId, depth, chainAuthorIds, resultList) => {
             const children = repliesByParentId.get(Number(parentId)) || [];
             for (const child of children) {
                 if (visitedReplyIds.has(child.id)) continue;
 
-                // 返信への返信（depth >= 1）は、返信者がポスト主または子ポスト主（直前親の投稿者）の場合にのみ表示
-                if (depth >= 1) {
-                    const childAuthorId = Number(child.author?.id ?? child.author_id ?? child.userId ?? child.user_id);
-                    const parentAuthorId = Number(parentPostObj?.author?.id ?? parentPostObj?.author_id ?? parentPostObj?.userId ?? parentPostObj?.user_id);
-                    const isMainAuthor = Number.isInteger(mainPostAuthorId) && childAuthorId === mainPostAuthorId;
-                    const isParentAuthor = Number.isInteger(parentAuthorId) && childAuthorId === parentAuthorId;
+                const childAuthorId = Number(child.author?.id ?? child.author_id ?? child.userId ?? child.user_id);
 
-                    if (!isMainAuthor && !isParentAuthor) {
+                // 返信への返信（depth >= 1）は、返信者がポスト主または会話チェーン参加者（子ポスト主等）の場合にのみ表示
+                if (depth >= 1) {
+                    const isMainAuthor = Number.isInteger(mainPostAuthorId) && childAuthorId === mainPostAuthorId;
+                    const isChainParticipant = Number.isInteger(childAuthorId) && chainAuthorIds.has(childAuthorId);
+
+                    if (!isMainAuthor && !isChainParticipant) {
                         continue;
                     }
                 }
 
                 visitedReplyIds.add(child.id);
-                flatReplyList.push({ ...child, thread_depth: depth });
-                buildFlatList(child.id, depth + 1, child);
+                resultList.push({ ...child, thread_depth: depth });
+
+                const nextChainAuthorIds = new Set(chainAuthorIds);
+                if (Number.isInteger(childAuthorId)) {
+                    nextChainAuthorIds.add(childAuthorId);
+                }
+                collectDescendants(child.id, depth + 1, nextChainAuthorIds, resultList);
             }
         };
-        buildFlatList(rootPostId, 0, mainPost);
+
+        const directChildren = repliesByParentId.get(rootPostId) || [];
+        const replyBranches = [];
+
+        for (const directReply of directChildren) {
+            if (visitedReplyIds.has(directReply.id)) continue;
+            visitedReplyIds.add(directReply.id);
+
+            const directAuthorId = Number(directReply.author?.id ?? directReply.author_id ?? directReply.userId ?? directReply.user_id);
+            const branchDescendants = [];
+            const chainAuthorIds = new Set();
+            if (Number.isInteger(directAuthorId)) {
+                chainAuthorIds.add(directAuthorId);
+            }
+
+            collectDescendants(directReply.id, 1, chainAuthorIds, branchDescendants);
+
+            replyBranches.push({
+                directReply: { ...directReply, thread_depth: 0 },
+                descendants: branchDescendants,
+            });
+        }
 
         const repliesContainer = document.createElement('div');
         contentDiv.appendChild(repliesContainer);
@@ -201,77 +227,120 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         trigger.className = 'load-more-trigger';
         contentDiv.appendChild(trigger);
 
-        let pagination = { page: 0, hasMore: flatReplyList.length > 0 };
-        const REPLIES_PER_PAGE = 10;
+        let pagination = { page: 0, hasMore: replyBranches.length > 0 };
+        const BRANCHES_PER_PAGE = 5;
         let isLoadingReplies = false;
+
+        async function createReplyNode(reply) {
+            const replyDepth = Math.max(0, Number(reply.thread_depth) || 0);
+            const postForRender = { ...reply };
+
+            const authorForRender = reply.author || {
+                id: reply.author_id,
+                name: reply.author_name,
+                scid: reply.author_scid,
+                icon_data: reply.author_icon_data,
+                admin: reply.author_admin,
+                verify: reply.author_verify,
+            };
+
+            if (replyDepth > 0) {
+                const parentReply = repliesById.get(reply.reply_id);
+                if (!postForRender.reply_to_post && parentReply) {
+                    postForRender.reply_to_post = {
+                        ...parentReply,
+                        author: parentReply.author || parentReply.user || null,
+                    };
+                }
+                if (!postForRender.reply_to_post && reply.reply_to_user_id) {
+                    postForRender.reply_to_post = {
+                        author: {
+                            id: reply.reply_to_user_id,
+                            name: reply.reply_to_user_name,
+                        },
+                    };
+                }
+            }
+
+            const isDirectReply = replyDepth === 0;
+            const postEl = await renderPost(postForRender, authorForRender, {
+                userCache: getAllUsersCache(),
+                isDirectReply,
+                metricsPromise,
+            });
+
+            if (!postEl) return null;
+
+            if (replyDepth > 0) {
+                const nestedWrapper = document.createElement('div');
+                nestedWrapper.className = 'thread-nested-reply';
+                // 1段インデントした後はさらに階層が深くなってもインデントしない (1段分固定)
+                nestedWrapper.style.setProperty('--reply-indent', '2rem');
+                nestedWrapper.dataset.replyDepth = String(replyDepth);
+                nestedWrapper.appendChild(postEl);
+                return nestedWrapper;
+            }
+            return postEl;
+        }
 
         const loadMoreReplies = async () => {
             if (isLoadingReplies || !pagination.hasMore) return;
             isLoadingReplies = true;
             trigger.innerHTML = '<div class="spinner"></div>';
 
-            const from = pagination.page * REPLIES_PER_PAGE;
-            const to = from + REPLIES_PER_PAGE;
-            const repliesToRender = flatReplyList.slice(from, to);
+            const from = pagination.page * BRANCHES_PER_PAGE;
+            const to = from + BRANCHES_PER_PAGE;
+            const branchesToRender = replyBranches.slice(from, to);
 
-            for (const reply of repliesToRender) {
-                const replyDepth = Math.max(0, Number(reply.thread_depth) || 0);
-                const postForRender = { ...reply };
+            for (const branch of branchesToRender) {
+                const branchContainer = document.createElement('div');
+                branchContainer.className = 'thread-branch-container';
 
-                const authorForRender = reply.author || {
-                    id: reply.author_id,
-                    name: reply.author_name,
-                    scid: reply.author_scid,
-                    icon_data: reply.author_icon_data,
-                    admin: reply.author_admin,
-                    verify: reply.author_verify,
-                };
-
-                if (replyDepth > 0) {
-                    const parentReply = repliesById.get(reply.reply_id);
-                    if (!postForRender.reply_to_post && parentReply) {
-                        postForRender.reply_to_post = {
-                            ...parentReply,
-                            author: parentReply.author || parentReply.user || null,
-                        };
-                    }
-                    if (!postForRender.reply_to_post && reply.reply_to_user_id) {
-                        postForRender.reply_to_post = {
-                            author: {
-                                id: reply.reply_to_user_id,
-                                name: reply.reply_to_user_name,
-                            },
-                        };
-                    }
+                // 1. 直下の子ポストをレンダリング
+                const directNode = await createReplyNode(branch.directReply);
+                if (directNode) {
+                    branchContainer.appendChild(directNode);
                 }
 
-                const isDirectReply = replyDepth === 0;
-                const postEl = await renderPost(postForRender, authorForRender, {
-                    userCache: getAllUsersCache(),
-                    isDirectReply,
-                    metricsPromise,
-                });
+                // 2. 孫ポスト群（descendants）のレンダリング
+                const descendants = branch.descendants || [];
+                if (descendants.length === 1) {
+                    // 孫ポストが1件のみの場合はそのまま表示
+                    const childNode = await createReplyNode(descendants[0]);
+                    if (childNode) branchContainer.appendChild(childNode);
+                } else if (descendants.length >= 2) {
+                    // 孫ポストが2件以上続く場合: 1件目を表示し、2件目以降を折りたたんで「続きを表示」ボタンを設置
+                    const firstChildNode = await createReplyNode(descendants[0]);
+                    if (firstChildNode) branchContainer.appendChild(firstChildNode);
 
-                if (postEl) {
-                    let replyNode = postEl;
-                    if (replyDepth > 0) {
-                        const nestedWrapper = document.createElement('div');
-                        nestedWrapper.className = 'thread-nested-reply';
-                        // 1段インデントした後はさらに階層が深くなってもインデントしない (1段分固定)
-                        nestedWrapper.style.setProperty(
-                            '--reply-indent',
-                            '2rem',
-                        );
-                        nestedWrapper.dataset.replyDepth = String(replyDepth);
-                        nestedWrapper.appendChild(postEl);
-                        replyNode = nestedWrapper;
+                    const remainingDescendants = descendants.slice(1);
+                    const collapsedContainer = document.createElement('div');
+                    collapsedContainer.className = 'thread-collapsed-replies hidden';
+
+                    for (const remainingReply of remainingDescendants) {
+                        const remNode = await createReplyNode(remainingReply);
+                        if (remNode) collapsedContainer.appendChild(remNode);
                     }
-                    repliesContainer.appendChild(replyNode);
+
+                    const showMoreBtn = document.createElement('button');
+                    showMoreBtn.type = 'button';
+                    showMoreBtn.className = 'thread-show-more-btn';
+                    showMoreBtn.textContent = `続きを表示 (他 ${remainingDescendants.length} 件の返信)`;
+
+                    showMoreBtn.addEventListener('click', () => {
+                        collapsedContainer.classList.remove('hidden');
+                        showMoreBtn.remove();
+                    });
+
+                    branchContainer.appendChild(showMoreBtn);
+                    branchContainer.appendChild(collapsedContainer);
                 }
+
+                repliesContainer.appendChild(branchContainer);
             }
 
             pagination.page++;
-            if (pagination.page * REPLIES_PER_PAGE >= flatReplyList.length) {
+            if (pagination.page * BRANCHES_PER_PAGE >= replyBranches.length) {
                 pagination.hasMore = false;
             }
 
