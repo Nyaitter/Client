@@ -1102,65 +1102,63 @@ export function updatePostToolsOverflow(container) {
     const submitBtn = container.querySelector('#post-submit-button, #update-post-button');
     if (!actions || !toolsGroup || !moreBtn || !submitBtn) return;
 
-    const visibleCandidateButtons = Array.from(toolsGroup.querySelectorAll('.post-tool-btn:not(.hidden)'));
-    if (visibleCandidateButtons.length === 0) {
+    // 可視対象のツールボタン一覧（hiddenでないもの）
+    const candidateButtons = Array.from(toolsGroup.querySelectorAll('.post-tool-btn'));
+    const activeCandidates = candidateButtons.filter((btn) => !btn.classList.contains('hidden') || btn.classList.contains('overflow-hidden'));
+    if (activeCandidates.length === 0) {
         moreBtn.classList.add('hidden');
         return;
     }
 
-    // まず全ボタンの非表示クラスを解除
-    visibleCandidateButtons.forEach((btn) => btn.classList.remove('overflow-hidden'));
-    moreBtn.classList.add('hidden');
+    // 利用可能幅の取得
+    const containerWidth = actions.clientWidth || actions.getBoundingClientRect?.().width || container.clientWidth || (window.innerWidth - 32);
+    if (containerWidth <= 0) return;
 
-    const totalAvailableWidth = actions.getBoundingClientRect?.().width || actions.clientWidth || 300;
-    const leftWidth = actionsLeft ? (actionsLeft.getBoundingClientRect?.().width || actionsLeft.offsetWidth || 80) : 0;
-    const submitWidth = Math.max(submitBtn.getBoundingClientRect?.().width || submitBtn.offsetWidth || 0, 72);
-    const moreButtonWidth = 38;
-    const itemGap = 4;
-    const containerGap = 8;
+    // 各要素の幅を自然なサイズで計算
+    let leftWidth = 0;
+    if (actionsLeft) {
+        const leftBtns = Array.from(actionsLeft.querySelectorAll('button:not(.hidden)'));
+        leftWidth = leftBtns.length * 36 + Math.max(0, leftBtns.length - 1) * 4;
+    }
 
-    // 右側エリア（ツール群 + その他ボタン + 送信ボタン）が利用可能な幅
-    const maxRightAvailableWidth = Math.max(0, totalAvailableWidth - leftWidth - containerGap);
+    const submitWidth = Math.max(submitBtn.offsetWidth || submitBtn.getBoundingClientRect?.().width || 72, 72);
+    const moreButtonWidth = 36;
+    const gap = 8;
 
-    // 左側（優先度の低いツール: announcement -> lock -> mask -> reply -> group）から順にオーバーフロー対象にする
-    const overflowPriorityList = visibleCandidateButtons.slice();
+    // 右側エリアでツール群が使用可能な最大幅
+    const availableForRight = Math.max(0, containerWidth - leftWidth - gap);
 
-    let overflowCount = 0;
-    const getRequiredToolsWidth = () => {
-        let width = 0;
-        let count = 0;
-        visibleCandidateButtons.forEach((btn) => {
-            if (!btn.classList.contains('overflow-hidden')) {
-                const btnWidth = Math.max(btn.getBoundingClientRect?.().width || btn.offsetWidth || 0, 36);
-                width += btnWidth + itemGap;
-                count++;
-            }
-        });
-        return width;
-    };
+    // ツールボタン 1 個あたりの必要幅 (34px + 4px gap)
+    const TOOL_BTN_WIDTH = 38;
 
-    const isExceeding = () => {
-        const moreWidth = overflowCount > 0 ? (moreButtonWidth + itemGap) : 0;
-        const required = getRequiredToolsWidth() + moreWidth + submitWidth;
-        return required > maxRightAvailableWidth;
-    };
+    // まず全ボタンを表示したときに収まるか判定
+    const totalWithoutMore = activeCandidates.length * TOOL_BTN_WIDTH + submitWidth;
 
-    if (isExceeding()) {
-        moreBtn.classList.remove('hidden');
-        for (const btn of overflowPriorityList) {
+    if (totalWithoutMore <= availableForRight) {
+        // すべて収まる場合
+        activeCandidates.forEach((btn) => btn.classList.remove('overflow-hidden'));
+        moreBtn.classList.add('hidden');
+        return;
+    }
+
+    // はみ出る場合: moreBtn を表示した上で収まる最大ボタン数を計算
+    const availableForToolsWithMore = Math.max(0, availableForRight - submitWidth - moreButtonWidth - gap);
+    const maxVisibleTools = Math.max(0, Math.floor(availableForToolsWithMore / TOOL_BTN_WIDTH));
+
+    // 右側（重要度の高いツール: group -> reply_control -> mask -> lock -> announcement）を優先して残し、
+    // 左側（優先度の低いツール）から overflow-hidden にする
+    const hideCount = Math.max(1, activeCandidates.length - maxVisibleTools);
+
+    for (let i = 0; i < activeCandidates.length; i++) {
+        const btn = activeCandidates[i];
+        if (i < hideCount) {
             btn.classList.add('overflow-hidden');
-            overflowCount++;
-            if (!isExceeding()) {
-                break;
-            }
+        } else {
+            btn.classList.remove('overflow-hidden');
         }
     }
 
-    if (overflowCount === 0) {
-        moreBtn.classList.add('hidden');
-    } else {
-        moreBtn.classList.remove('hidden');
-    }
+    moreBtn.classList.remove('hidden');
 }
 
 export function setupPostToolsOverflowObserver(container) {
