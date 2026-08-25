@@ -177,15 +177,49 @@ export function beginScrollRouteTransition() {
     }
 }
 
+export function setSavedScrollPosition(routeKey = getScrollRouteKey(), positionY = 0) {
+    if (!routeKey) return;
+    const targetY = Math.max(0, Math.floor(Number(positionY) || 0));
+    const positions = getSavedScrollPositions();
+    positions.set(routeKey, targetY);
+    savedScrollMemory.set(routeKey, targetY);
+    try {
+        sessionStorage.setItem(
+            SCROLL_STORAGE_KEY,
+            JSON.stringify(Object.fromEntries(positions)),
+        );
+    } catch (_) {}
+}
+
 let scrollRestoreVersion = 0;
 
 export function restoreScrollPosition(targetRouteKey = null) {
     const routeKey = targetRouteKey || getScrollRouteKey();
     activeScrollRouteKey = routeKey;
+    const positions = getSavedScrollPositions();
+    const hasSavedValue = positions.has(routeKey);
     const targetY = getSavedScrollTargetY(routeKey);
     const version = ++scrollRestoreVersion;
 
-    if (targetY <= 0) return;
+    if (!hasSavedValue || targetY <= 0) {
+        if (!hasSavedValue) {
+            // SSに値がないときは0にセットして保存
+            positions.set(routeKey, 0);
+            savedScrollMemory.set(routeKey, 0);
+            try {
+                sessionStorage.setItem(
+                    SCROLL_STORAGE_KEY,
+                    JSON.stringify(Object.fromEntries(positions)),
+                );
+            } catch (_) {}
+        }
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: 'instant',
+        });
+        return;
+    }
 
     // 複数フレームにわたってスクロール位置の適用を試行（非同期レイアウトや画像読込に対応）
     const tryScroll = (attemptsLeft = 5) => {
