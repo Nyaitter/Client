@@ -100,8 +100,9 @@ function doPersistPageCaches() {
         try {
             sessionStorage.setItem(PAGE_CACHE_STORAGE_KEY, serialized);
         } catch (_) {}
+        // localStorage に誤って残ったキーがあれば確実に削除
         try {
-            localStorage.setItem(PAGE_CACHE_STORAGE_KEY, serialized);
+            localStorage.removeItem(PAGE_CACHE_STORAGE_KEY);
         } catch (_) {}
     } catch (_) {
         // Continue using in-memory cache if storage is full or unavailable
@@ -125,8 +126,12 @@ export function persistPageCaches() {
 
 export function restorePageCaches() {
     try {
-        const stored = sessionStorage.getItem(PAGE_CACHE_STORAGE_KEY) ||
-            localStorage.getItem(PAGE_CACHE_STORAGE_KEY);
+        // localStorage に誤って残ったキーがあれば削除
+        try {
+            localStorage.removeItem(PAGE_CACHE_STORAGE_KEY);
+        } catch (_) {}
+
+        const stored = sessionStorage.getItem(PAGE_CACHE_STORAGE_KEY);
         if (!stored) return;
         const parsed = JSON.parse(stored);
         if (!parsed || typeof parsed !== 'object') return;
