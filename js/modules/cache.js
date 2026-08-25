@@ -444,6 +444,87 @@ export function invalidateTimelinePageCache() {
     persistPageCaches();
 }
 
+/**
+ * Update a post's data or reaction metrics across all in-memory and persistent caches.
+ * @param {number|string} postId
+ * @param {Function|Object} updater - Updater function (post) => void or partial patch object
+ */
+export function updateCachedPost(postId, updater) {
+    const targetId = Number(postId);
+    if (!Number.isInteger(targetId) || targetId <= 0) return;
+
+    let changed = false;
+
+    const applyUpdate = (post) => {
+        if (!post || Number(post.id) !== targetId) return false;
+        if (typeof updater === 'function') {
+            updater(post);
+        } else if (updater && typeof updater === 'object') {
+            Object.assign(post, updater);
+        }
+        return true;
+    };
+
+    const updatePostList = (posts) => {
+        if (!Array.isArray(posts)) return;
+        for (const post of posts) {
+            if (applyUpdate(post)) changed = true;
+            if (post?.quoted_post && applyUpdate(post.quoted_post)) changed = true;
+            if (post?.reposted_post && applyUpdate(post.reposted_post)) changed = true;
+        }
+    };
+
+    // 1. timelinePageCaches
+    for (const pageCache of timelinePageCaches.values()) {
+        if (pageCache?.timelines) {
+            for (const tabCache of pageCache.timelines.values()) {
+                if (tabCache?.pages) {
+                    for (const payload of tabCache.pages.values()) {
+                        updatePostList(payload?.posts || payload?.items);
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. profilePostPageCaches
+    for (const pageCache of profilePostPageCaches.values()) {
+        if (pageCache?.pages) {
+            for (const payload of pageCache.pages.values()) {
+                updatePostList(payload?.posts || payload?.items);
+            }
+        }
+    }
+
+    // 3. auxiliaryPostPageCaches
+    for (const pageCache of auxiliaryPostPageCaches.values()) {
+        if (pageCache?.pages) {
+            for (const payload of pageCache.pages.values()) {
+                updatePostList(payload?.posts || payload?.items);
+            }
+        }
+    }
+
+    // 4. screenDataCaches (ポスト詳細キャッシュなど)
+    for (const [key, data] of screenDataCaches.entries()) {
+        if (key.includes(`:post_detail:${targetId}`)) {
+            if (data?.post) {
+                if (applyUpdate(data.post)) changed = true;
+            } else if (data && typeof data === 'object') {
+                if (applyUpdate(data)) changed = true;
+            }
+        } else if (Array.isArray(data)) {
+            updatePostList(data);
+        } else if (Array.isArray(data?.posts || data?.items || data?.quotes)) {
+            updatePostList(data.posts || data.items || data.quotes);
+        }
+    }
+
+    if (changed) {
+        persistPageCaches();
+    }
+}
+
 export function hasPendingRealtimeTimelineUpdate(tab = getCurrentTimelineTab()) {
     const normalizedTab = tab === 'following' ? 'following' : 'foryou';
     return pendingRealtimeTimelineUpdates[normalizedTab].length > 0;

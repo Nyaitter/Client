@@ -19,6 +19,7 @@ import {
     invalidateTimelinePageCache,
     invalidateProfileTabPageCache,
     normalizePostId,
+    updateCachedPost,
 } from './cache.js';
 import { getEmoji, emoji_picker_create } from './format.js';
 import { renderNyarkDown } from './nyarkdown.js';
@@ -555,12 +556,6 @@ export async function renderPost(post, author, options = {}) {
         const attachmentsContainer = document.createElement('div');
         attachmentsContainer.className = 'attachments-container';
         if (post.mask) {
-            attachmentsContainer.classList.add('hidden');
-        } else if (post.attachments.length > 2) {
-            const postAlert = document.createElement('button');
-            postAlert.className = 'post-mask-alert';
-            postAlert.innerText = `${post.attachments.length}件のファイル`;
-            postMain.appendChild(postAlert);
             attachmentsContainer.classList.add('hidden');
         }
 
@@ -2452,6 +2447,10 @@ export async function handleSimpleRepost(postId, onComplete = null) {
 
         if (rpcError) throw rpcError;
 
+        updateCachedPost(postId, (p) => {
+            p.repost_count = (Number(p.repost_count ?? p.reposts) || 0) + 1;
+            p.reposts = p.repost_count;
+        });
         invalidateTimelinePageCache();
         if (typeof onComplete === 'function') {
             await onComplete();
@@ -2864,14 +2863,40 @@ export async function handleLike(button, postId) {
     });
     button.disabled = true;
 
+    // 楽観的にキャッシュのいいね状態とカウントを更新
+    updateCachedPost(postId, (p) => {
+        p.liked_by_me = optimistic.isActive;
+        p.liked = optimistic.isActive;
+        const currentCount = Number(p.like_count ?? p.likes) || 0;
+        const newCount = Math.max(0, currentCount + (optimistic.isActive ? 1 : -1));
+        p.like_count = newCount;
+        p.likes = newCount;
+    });
+
     try {
         const { data, error } = await api.rpc('handle_like', { p_post_id: postId });
         if (error) throw error;
 
         optimistic.applyServerState(data.liked, data.updated_likes, data.count);
+        // サーバー確定値でキャッシュを更新
+        updateCachedPost(postId, (p) => {
+            p.liked_by_me = Boolean(data.liked);
+            p.liked = Boolean(data.liked);
+            p.like_count = Number(data.count) || 0;
+            p.likes = Number(data.count) || 0;
+        });
         invalidateTimelinePageCache();
     } catch (e) {
         optimistic.restore();
+        // 失敗時は元に戻す
+        updateCachedPost(postId, (p) => {
+            p.liked_by_me = !optimistic.isActive;
+            p.liked = !optimistic.isActive;
+            const currentCount = Number(p.like_count ?? p.likes) || 0;
+            const restoredCount = Math.max(0, currentCount + (!optimistic.isActive ? 1 : -1));
+            p.like_count = restoredCount;
+            p.likes = restoredCount;
+        });
         console.error('いいね更新エラー:', e);
         showAppAlert('いいねの更新に失敗しました。');
     } finally {
@@ -2887,14 +2912,40 @@ export async function handleStar(button, postId) {
     });
     button.disabled = true;
 
+    // 楽観的にキャッシュのお気に入り状態とカウントを更新
+    updateCachedPost(postId, (p) => {
+        p.starred_by_me = optimistic.isActive;
+        p.starred = optimistic.isActive;
+        const currentCount = Number(p.star_count ?? p.stars) || 0;
+        const newCount = Math.max(0, currentCount + (optimistic.isActive ? 1 : -1));
+        p.star_count = newCount;
+        p.stars = newCount;
+    });
+
     try {
         const { data, error } = await api.rpc('handle_star', { p_post_id: postId });
         if (error) throw error;
 
         optimistic.applyServerState(data.starred, data.updated_stars, data.count);
+        // サーバー確定値でキャッシュを更新
+        updateCachedPost(postId, (p) => {
+            p.starred_by_me = Boolean(data.starred);
+            p.starred = Boolean(data.starred);
+            p.star_count = Number(data.count) || 0;
+            p.stars = Number(data.count) || 0;
+        });
         invalidateTimelinePageCache();
     } catch (e) {
         optimistic.restore();
+        // 失敗時は元に戻す
+        updateCachedPost(postId, (p) => {
+            p.starred_by_me = !optimistic.isActive;
+            p.starred = !optimistic.isActive;
+            const currentCount = Number(p.star_count ?? p.stars) || 0;
+            const restoredCount = Math.max(0, currentCount + (!optimistic.isActive ? 1 : -1));
+            p.star_count = restoredCount;
+            p.stars = restoredCount;
+        });
         console.error('お気に入り更新エラー:', e);
         showAppAlert('お気に入りの更新に失敗しました。');
     } finally {
