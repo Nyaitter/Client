@@ -755,33 +755,43 @@ export async function renderPost(post, author, options = {}) {
 
             const measure = () => {
                 if (!postEl.isConnected || !targetEl.isConnected) return null;
-                const wasExpanded = targetEl.classList.contains('post-content-expanded');
-                if (!wasExpanded) targetEl.classList.add('post-content-expanded');
-                const naturalHeight = targetEl.getBoundingClientRect().height;
-                if (!wasExpanded) targetEl.classList.remove('post-content-expanded');
-                const clampLimit = Number.parseFloat(window.getComputedStyle(targetEl).maxHeight);
-                if (Number.isFinite(clampLimit) && naturalHeight > clampLimit + 1) {
+                if (targetEl.classList.contains('post-content-expanded')) {
                     toggleBtn.classList.add('is-visible');
-                } else if (!targetEl.classList.contains('post-content-expanded')) {
+                    return true;
+                }
+
+                const scrollHeight = targetEl.scrollHeight || 0;
+                const clientHeight = targetEl.clientHeight || 0;
+                const clampLimit = Number.parseFloat(window.getComputedStyle(targetEl).maxHeight);
+
+                const isOverflowing = (Number.isFinite(clampLimit) && scrollHeight > clampLimit + 1) ||
+                                      (clientHeight > 0 && scrollHeight > clientHeight + 1);
+
+                if (isOverflowing) {
+                    toggleBtn.classList.add('is-visible');
+                } else {
                     toggleBtn.classList.remove('is-visible');
                 }
                 return true;
             };
 
             if (typeof ResizeObserver !== 'undefined') {
+                let rafId = null;
                 const ro = new ResizeObserver(() => {
-                    if (!targetEl.classList.contains('post-content-expanded')) {
+                    if (targetEl.classList.contains('post-content-expanded')) return;
+                    if (rafId) cancelAnimationFrame(rafId);
+                    rafId = requestAnimationFrame(() => {
+                        rafId = null;
                         measure();
-                    }
+                    });
                 });
                 ro.observe(targetEl);
-                ro.observe(postEl);
             }
 
             targetEl.querySelectorAll('img').forEach((img) => {
                 if (!img.complete) {
-                    img.addEventListener('load', () => measure(), { once: true });
-                    img.addEventListener('error', () => measure(), { once: true });
+                    img.addEventListener('load', () => requestAnimationFrame(measure), { once: true });
+                    img.addEventListener('error', () => requestAnimationFrame(measure), { once: true });
                 }
             });
 
