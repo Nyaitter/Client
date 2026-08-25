@@ -501,6 +501,9 @@ export async function renderPost(post, author, options = {}) {
     }
     postMain.appendChild(postHeader);
 
+    const postBody = document.createElement('div');
+    postBody.className = 'post-body';
+
     if (post.content) {
         const postContent = document.createElement('div');
         postContent.className = 'post-content';
@@ -515,7 +518,7 @@ export async function renderPost(post, author, options = {}) {
                     userCache,
                     { allowMarkdown: true, allowContentDecorations: true },
                 );
-                postMain.appendChild(masktitle);
+                postBody.appendChild(masktitle);
                 postContent.innerHTML = renderNyarkDown(
                     post.content.slice(1),
                     userCache,
@@ -535,9 +538,9 @@ export async function renderPost(post, author, options = {}) {
                 { allowMarkdown: true, allowContentDecorations: true },
             );
         }
-        postMain.appendChild(postContent);
+        postBody.appendChild(postContent);
         if (!post.mask) {
-            appendUrlCard(postMain, post.content, {
+            appendUrlCard(postBody, post.content, {
                 hasExistingQuote: Boolean(post.repost_to && post.reposted_post),
                 renderPost,
                 options,
@@ -549,7 +552,7 @@ export async function renderPost(post, author, options = {}) {
         const postAlert = document.createElement('button');
         postAlert.className = 'post-mask-alert';
         postAlert.innerText = 'このポストにはワンクッションが付与されています';
-        postMain.appendChild(postAlert);
+        postBody.appendChild(postAlert);
     }
 
     if (post.attachments && post.attachments.length > 0) {
@@ -628,11 +631,11 @@ export async function renderPost(post, author, options = {}) {
         attachmentsContainer.addEventListener('click', (e) => {
             e.stopPropagation();
         });
-        postMain.appendChild(attachmentsContainer);
+        postBody.appendChild(attachmentsContainer);
     }
 
     if (post.poll) {
-        renderPostPoll(postMain, post.poll, post);
+        renderPostPoll(postBody, post.poll, post);
     }
 
     if ((post.repost_to || post.reposted_post) && post.content) {
@@ -653,8 +656,10 @@ export async function renderPost(post, author, options = {}) {
             deletedContainer.textContent = 'このポストは削除されました。';
             nestedContainer.appendChild(deletedContainer);
         }
-        postMain.appendChild(nestedContainer);
+        postBody.appendChild(nestedContainer);
     }
+
+    postMain.appendChild(postBody);
 
     if (getCurrentUser() && !isNested) {
         const actionsDiv = document.createElement('div');
@@ -733,37 +738,57 @@ export async function renderPost(post, author, options = {}) {
 
     postEl.appendChild(postMain);
 
-    if (clampHeight && !post.mask && post.content) {
-        postEl.dataset.clampContent = '1';
-        const contentEl = postMain.querySelector('.post-content');
-        if (contentEl) {
+    if (clampHeight && !post.mask) {
+        const targetEl = postBody || postMain.querySelector('.post-body, .post-content');
+        if (targetEl && (post.content || (post.attachments && post.attachments.length > 0) || post.reposted_post || post.poll)) {
+            postEl.dataset.clampContent = '1';
             const toggleBtn = document.createElement('button');
             toggleBtn.type = 'button';
             toggleBtn.className = 'post-clamp-toggle';
             toggleBtn.textContent = '続きを表示';
             toggleBtn.addEventListener('click', () => {
-                const expanded = contentEl.classList.toggle('post-content-expanded');
+                const expanded = targetEl.classList.toggle('post-content-expanded');
                 toggleBtn.textContent = expanded ? '閉じる' : '続きを表示';
                 toggleBtn.classList.toggle('expanded', expanded);
             });
-            contentEl.after(toggleBtn);
+            targetEl.after(toggleBtn);
 
             const measure = () => {
-                if (!postEl.isConnected || !contentEl.isConnected) return null;
-                const wasExpanded = contentEl.classList.contains('post-content-expanded');
-                if (!wasExpanded) contentEl.classList.add('post-content-expanded');
-                const naturalHeight = contentEl.getBoundingClientRect().height;
-                if (!wasExpanded) contentEl.classList.remove('post-content-expanded');
-                const clampLimit = Number.parseFloat(window.getComputedStyle(contentEl).maxHeight);
+                if (!postEl.isConnected || !targetEl.isConnected) return null;
+                const wasExpanded = targetEl.classList.contains('post-content-expanded');
+                if (!wasExpanded) targetEl.classList.add('post-content-expanded');
+                const naturalHeight = targetEl.getBoundingClientRect().height;
+                if (!wasExpanded) targetEl.classList.remove('post-content-expanded');
+                const clampLimit = Number.parseFloat(window.getComputedStyle(targetEl).maxHeight);
                 if (Number.isFinite(clampLimit) && naturalHeight > clampLimit + 1) {
                     toggleBtn.classList.add('is-visible');
+                } else if (!targetEl.classList.contains('post-content-expanded')) {
+                    toggleBtn.classList.remove('is-visible');
                 }
                 return true;
             };
+
+            if (typeof ResizeObserver !== 'undefined') {
+                const ro = new ResizeObserver(() => {
+                    if (!targetEl.classList.contains('post-content-expanded')) {
+                        measure();
+                    }
+                });
+                ro.observe(targetEl);
+                ro.observe(postEl);
+            }
+
+            targetEl.querySelectorAll('img').forEach((img) => {
+                if (!img.complete) {
+                    img.addEventListener('load', () => measure(), { once: true });
+                    img.addEventListener('error', () => measure(), { once: true });
+                }
+            });
+
             let attempts = 0;
             const timer = setInterval(() => {
-                if (measure() === true || ++attempts >= 20) clearInterval(timer);
-            }, 50);
+                if (measure() === true || ++attempts >= 15) clearInterval(timer);
+            }, 60);
         }
     }
 
