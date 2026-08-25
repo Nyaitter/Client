@@ -289,10 +289,8 @@ display: block;
 .post-group-menu,
 .post-reply-control-menu,
 .post-tools-overflow-menu {
-    position: absolute;
+    position: fixed;
     z-index: 40;
-    right: 0.7rem;
-    bottom: 3.25rem;
     display: flex;
     flex-direction: column;
     gap: 0;

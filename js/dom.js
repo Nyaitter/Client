@@ -269,7 +269,28 @@ export function showMainJsError(message) {
     overlay.classList.remove('hidden');
 }
 
+function isThirdPartyError(event) {
+    const filename = String(event?.filename || '');
+    const message = String(event?.message || '');
+    if (
+        filename.includes('extension://') ||
+        filename.includes('challenges.cloudflare.com') ||
+        filename.includes('cloudflareinsights.com') ||
+        filename.includes('beacon.min.js') ||
+        message.includes('startTime') ||
+        message.includes('reportAllChanges') ||
+        message.includes('ResizeObserver loop')
+    ) {
+        return true;
+    }
+    return false;
+}
+
 window.addEventListener('error', (event) => {
+    if (isThirdPartyError(event)) {
+        console.warn('[nyaitter] Ignored third-party / non-fatal error:', event.message);
+        return;
+    }
     showMainJsError(`JavaScriptエラー: ${event.message || '不明なエラー'}`);
 });
 window.addEventListener('unhandledrejection', (event) => {
@@ -277,7 +298,15 @@ window.addEventListener('unhandledrejection', (event) => {
         event.reason instanceof Error
             ? event.reason.message
             : String(event.reason || '不明なエラー');
-    // 詳細は画面へ露出させず、運用者がブラウザコンソールで原因を調査できるようにする。
+    if (
+        reason.includes('startTime') ||
+        reason.includes('reportAllChanges') ||
+        reason.includes('extension://') ||
+        reason.includes('ResizeObserver')
+    ) {
+        console.warn('[nyaitter] Ignored third-party unhandled rejection:', event.reason);
+        return;
+    }
     console.error('[nyaitter] Unhandled promise rejection:', event.reason);
     showMainJsError(`未処理のPromise例外: ${reason}`);
 });
