@@ -1,0 +1,366 @@
+/**
+ * appShell.js — アプリケーションのUIシェル（DOM構造）を動的に構築・マウントします。
+ */
+
+export function renderAppShellHTML() {
+    return `
+        <div class="app-container">
+            <!-- 左側ナビゲーションメニュー -->
+            <nav id="left-nav">
+                <div id="nav-logo"></div>
+                <div id="nav-menu-top"></div>
+                <div id="nav-menu-bottom"></div>
+            </nav>
+            <!-- 中央メインコンテンツ -->
+            <main id="main-content">
+                <header id="page-header">
+                    <!-- ヘッダー内容はJSで動的に生成されます -->
+                </header>
+                <div id="content-area">
+                    <div id="pull-to-refresh-indicator" class="pull-to-refresh-indicator" role="status" aria-live="polite" aria-hidden="true">
+                        <svg class="pull-to-refresh-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v15M6 13l6 6 6-6" /></svg>
+                        <span class="pull-to-refresh-label">引いて更新</span>
+                    </div>
+                    <div id="main-screen" class="screen hidden">
+                        <div class="timeline-tabs-sticky-container">
+                            <div class="timeline-tabs">
+                                <button class="timeline-tab-button active" data-tab="foryou">すべて</button>
+                                <button class="timeline-tab-button" data-tab="following">フォロー中</button>
+                            </div>
+                        </div>
+                        <div id="new-posts-indicator" class="new-posts-indicator hidden" aria-live="polite">
+                            <button type="button" data-action="refresh-realtime-timeline">新しいポストを表示</button>
+                        </div>
+                        <div class="post-form-sticky-container">
+                            <div class="post-form-container"></div>
+                        </div>
+                        <div id="timeline"></div>
+                    </div>
+                    <div id="explore-screen" class="screen hidden">
+                        <div id="explore-content"></div>
+                    </div>
+                    <div id="notifications-screen" class="screen hidden">
+                        <div id="notifications-content"></div>
+                    </div>
+                    <div id="likes-screen" class="screen hidden">
+                        <div id="likes-content"></div>
+                    </div>
+                    <div id="stars-screen" class="screen hidden">
+                        <div id="stars-content"></div>
+                    </div>
+                    <div id="profile-screen" class="screen hidden">
+                        <div id="profile-header"></div>
+                        <div id="profile-tabs"></div>
+                        <div id="profile-content"></div>
+                    </div>
+                    <div id="groups-screen" class="screen hidden">
+                        <div id="groups-content"></div>
+                    </div>
+                    <div id="settings-screen" class="screen hidden"></div>
+                    <div id="post-detail-screen" class="screen hidden">
+                        <div id="post-detail-content"></div>
+                    </div>
+                    <div id="post-activity-screen" class="screen hidden">
+                        <div id="post-activity-content"></div>
+                    </div>
+                    <div id="search-results-screen" class="screen hidden">
+                        <div id="search-results-content"></div>
+                    </div>
+                    <div id="dm-screen" class="screen hidden">
+                        <div id="dm-content"></div>
+                    </div>
+                    <div id="admin-logs-screen" class="screen hidden">
+                        <div id="admin-logs-content"></div>
+                    </div>
+                    <div id="admin-reports-screen" class="screen hidden">
+                        <div id="admin-reports-content"></div>
+                    </div>
+                    <div id="rule-screen" class="screen hidden">
+                        <div id="rule-content" class="rule-content-container"></div>
+                    </div>
+                    <div id="nyaitter-auth-screen" class="screen hidden">
+                        <div id="nyaitter-auth-content" class="nyaitter-auth-content-container"></div>
+                    </div>
+                    <div id="docs-portal-screen" class="screen hidden">
+                        <div id="docs-portal-content" class="docs-portal-container"></div>
+                    </div>
+                    <div id="docs-api-screen" class="screen hidden">
+                        <div id="docs-api-content" class="docs-api-container"></div>
+                    </div>
+                    <div id="doc-detail-screen" class="screen hidden">
+                        <div id="doc-detail-content" class="doc-detail-container"></div>
+                    </div>
+                </div>
+            </main>
+            <!-- 右側サイドバー -->
+            <aside id="right-sidebar">
+                <div id="right-sidebar-search-widget-container"></div>
+                <div id="recommendations-widget-container"></div>
+                <div id="right-sidebar-links-container"></div>
+            </aside>
+        </div>
+
+        <!-- ログインバナー -->
+        <div id="login-banner" class="hidden">
+            <div class="login-banner-content">
+                <h2>NyaitterはScratcherのためのSNSです</h2>
+                <h4>Scratchアカウントがあれば簡単に参加できます</h4>
+            </div>
+            <div class="login-banner-actions">
+                <button id="banner-login-button">ログイン</button>
+                <button id="banner-signup-button">参加</button>
+            </div>
+        </div>
+
+        <!-- ログインモーダル -->
+        <div id="login-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
+            <div class="modal-content login-modal-content">
+                <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+                <div class="login-modal-heading">
+                    <button type="button" id="login-back-btn" class="login-modal-back-btn hidden" aria-label="ログイン方法選択に戻る">←</button>
+                    <h3 id="login-title">ログイン方法を選択</h3>
+                </div>
+
+                <!-- Provider Selection Screen -->
+                <div id="auth-provider-select">
+                    <p class="settings-help-text">利用するログイン方法を選択してください。</p>
+                    <div id="login-provider-buttons" class="login-provider-list"></div>
+                </div>
+
+                <!-- Scratch Flow -->
+                <div id="auth-scratch-panel" class="hidden">
+                    <div id="auth-step1">
+                        <p id="login-instruction" class="settings-help-text">ScratchIDを入力してください。</p>
+                        <label class="login-modal-field" for="username-input">ScratchID</label>
+                        <input type="text" id="username-input" placeholder="ScratchID" autocomplete="username" />
+                        <button type="button" id="get-code-btn" class="settings-primary-button login-auth-action">認証コードを取得</button>
+                    </div>
+                    <div id="auth-step2" class="hidden">
+                        <p class="settings-help-text">この認証コードをコピーして、下のいずれかにコメントしてください。</p>
+                        <button type="button" id="verification-code" class="login-verification-code" title="クリックしてコピー"></button>
+                        <div class="login-modal-links">
+                            <a class="login-secondary-button" href="https://scratch.mit.edu/projects/1239738451/" target="_blank" rel="noopener noreferrer" id="projlink">認証用プロジェクトを開く</a>
+                            <a class="login-secondary-button" href="https://scratch.mit.edu/" target="_blank" rel="noopener noreferrer" id="pflink">プロフィールを開く</a>
+                        </div>
+                        <button type="button" id="verify-comment-btn" class="settings-primary-button login-auth-action">コメントを認証</button>
+                    </div>
+                </div>
+
+                <!-- Email Flow -->
+                <div id="auth-email-panel" class="hidden">
+                    <div id="auth-email-step1">
+                        <p class="settings-help-text">メールアドレスを入力してください。</p>
+                        <label class="login-modal-field" for="login-email-input">メールアドレス</label>
+                        <input type="email" id="login-email-input" placeholder="you@example.com" autocomplete="email" />
+                        <button type="button" id="get-email-code-btn" class="settings-primary-button login-auth-action">認証コードを送信</button>
+                    </div>
+                    <div id="auth-email-step2" class="hidden">
+                        <p class="settings-help-text">メールに届いた6桁の認証コードを入力してください。</p>
+                        <label class="login-modal-field" for="login-email-code-input">認証コード</label>
+                        <input type="text" id="login-email-code-input" placeholder="123456" maxlength="8" autocomplete="one-time-code" />
+                        <button type="button" id="verify-email-code-btn" class="settings-primary-button login-auth-action">ログイン</button>
+                        <div class="login-modal-links">
+                            <button type="button" id="resend-email-code-btn" class="login-secondary-button">認証コードを再送信</button>
+                        </div>
+                    </div>
+                    <div id="auth-email-step3" class="hidden">
+                        <p class="settings-help-text">ユーザー名を設定してください。</p>
+                        <label class="login-modal-field" for="login-email-name-input">ユーザー名</label>
+                        <input type="text" id="login-email-name-input" placeholder="ユーザー名" maxlength="50" autocomplete="nickname" />
+                        <button type="button" id="submit-email-signup-btn" class="settings-primary-button login-auth-action">登録を完了</button>
+                    </div>
+                </div>
+
+                <!-- Passkey Flow -->
+                <div id="auth-passkey-panel" class="hidden">
+                    <p class="settings-help-text">端末に保存されているパスキーでサインインします。</p>
+                    <button type="button" id="passkey-signin-btn" class="settings-primary-button login-auth-action">パスキーでサインイン</button>
+                </div>
+
+                <!-- NyaitterAuth Flow -->
+                <div id="auth-nyaitter-panel" class="hidden">
+                    <p class="settings-help-text">NyaitterサーバーのURLを入力してください。</p>
+                    <label class="login-modal-field" for="login-nyaitter-server-input">NyaitterサーバーURL</label>
+                    <input type="url" id="login-nyaitter-server-input" placeholder="https://example.com" autocomplete="url" required />
+                    <button type="button" id="nyaitter-signin-btn" class="settings-primary-button login-auth-action">ログイン</button>
+                </div>
+
+                <div id="login-turnstile-container" class="login-turnstile-container hidden">
+                    <p class="login-turnstile-hint settings-help-text">認証チャレンジを完了すると続行できます。</p>
+                    <div id="login-turnstile-widget"></div>
+                </div>
+
+                <p id="error-message" class="login-modal-message login-modal-error hidden" role="alert"></p>
+                <p id="copy-message" class="login-modal-message login-modal-copy hidden" role="status">認証コードをコピーしました。</p>
+                <div id="login-loading-overlay" class="login-loading-overlay hidden" aria-live="polite"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <div id="login-approval-wait-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="login-approval-wait-title">
+            <section class="modal-content login-approval-modal-content login-approval-wait-content">
+                <div class="login-modal-heading">
+                    <h3 id="login-approval-wait-title">ログインの許可を待っています</h3>
+                </div>
+                <p class="settings-help-text">ログイン済みの端末に許可リクエストを送信しました。そちらで許可されると、自動的にログインします。</p>
+                <div class="login-approval-wait-progress" aria-hidden="true"><div class="spinner"></div><span>確認中</span></div>
+                <p id="login-approval-wait-status" class="login-approval-detail login-approval-wait-status" role="status">許可を待機しています…</p>
+                <div class="login-approval-actions login-approval-wait-actions">
+                    <button type="button" id="login-approval-wait-cancel-btn" class="login-secondary-button">ログインをキャンセル</button>
+                </div>
+            </section>
+        </div>
+
+        <div id="post-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="post-form-container-modal"></div>
+            </div>
+        </div>
+
+        <div id="image-preview-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="画像プレビュー">
+            <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+            <button type="button" class="image-modal-nav-btn image-modal-prev-btn hidden" aria-label="前の画像">
+                <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="image-preview-wrapper">
+                <img id="image-preview-modal-content" src="" alt="拡大画像" />
+            </div>
+            <button type="button" class="image-modal-nav-btn image-modal-next-btn hidden" aria-label="次の画像">
+                <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="image-modal-counter hidden"></div>
+        </div>
+
+        <div id="edit-post-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div id="edit-post-modal-content"></div>
+            </div>
+        </div>
+
+        <div id="create-dm-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="create-dm-modal-title">
+            <div class="modal-content dm-modal-content">
+                <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+                <div id="create-dm-modal-content"></div>
+            </div>
+        </div>
+
+        <div id="dm-manage-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dm-manage-modal-title">
+            <div class="modal-content dm-modal-content">
+                <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+                <div id="dm-manage-modal-content"></div>
+            </div>
+        </div>
+
+        <div id="report-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
+            <div class="modal-content report-modal-content">
+                <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+                <div class="report-modal-heading">
+                    <h3 id="report-modal-title">報告する</h3>
+                    <p id="report-modal-target" class="settings-help-text"></p>
+                </div>
+                <form id="report-form">
+                    <label for="report-description">説明（任意）</label>
+                    <textarea id="report-description" maxlength="2000" rows="5" placeholder="状況や確認してほしい点を入力してください"></textarea>
+                    <p class="report-modal-note">報告者の情報は、対応する管理者には表示されません。</p>
+                    <div class="report-modal-actions">
+                        <button type="button" class="login-secondary-button" data-action="close-report-modal">キャンセル</button>
+                        <button type="submit" class="settings-primary-button">送信</button>
+                    </div>
+                    <p id="report-modal-error" class="login-modal-message login-modal-error hidden" role="alert"></p>
+                </form>
+            </div>
+        </div>
+
+        <div id="account-switcher-modal" class="modal-overlay hidden">
+            <div class="modal-content" style="max-width: 400px">
+                <button class="modal-close-btn">×</button>
+                <div id="account-switcher-modal-content"></div>
+            </div>
+        </div>
+
+        <div id="login-approval-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="login-approval-modal-title">
+            <div class="modal-content login-approval-modal-content">
+                <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+                <div id="login-approval-modal-body"></div>
+            </div>
+        </div>
+
+        <div id="app-dialog-modal" class="modal-overlay app-dialog-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message">
+            <div class="modal-content app-dialog-content">
+                <button type="button" id="app-dialog-close-btn" class="modal-close-btn" aria-label="閉じる">×</button>
+                <div class="login-modal-heading">
+                    <h3 id="app-dialog-title">通知</h3>
+                </div>
+                <p id="app-dialog-message" class="app-dialog-message" role="alert"></p>
+                <div id="app-dialog-input-group" class="app-dialog-input-group hidden">
+                    <label for="app-dialog-input">入力内容</label>
+                    <input id="app-dialog-input" type="text" autocomplete="off" />
+                </div>
+                <div class="app-dialog-actions">
+                    <button type="button" id="app-dialog-cancel-btn" class="login-secondary-button">キャンセル</button>
+                    <button type="button" id="app-dialog-submit-btn" class="settings-primary-button">閉じる</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="freeze-overlay" class="modal-overlay freeze-overlay hidden">
+            <section class="freeze-panel" aria-labelledby="freeze-title">
+                <div class="freeze-panel-mark" aria-hidden="true">!</div>
+                <p class="freeze-panel-eyebrow">ACCOUNT RESTRICTED</p>
+                <h2 id="freeze-title">アカウントは凍結されています</h2>
+                <p class="freeze-panel-lead">現在、このアカウントからNyaitterの機能を利用することはできません。</p>
+                <div class="freeze-reason-card">
+                    <span>凍結理由</span>
+                    <p id="freeze-reason"></p>
+                </div>
+                <p id="freeze-appeal-status" class="freeze-appeal-status hidden" role="status"></p>
+                <button id="open-freeze-appeal-btn" type="button" class="freeze-appeal-button">異議申し立てを行う</button>
+                <p class="freeze-panel-help">判断に誤りがあると思われる場合は、説明を添えて再審査を申し立てられます。</p>
+            </section>
+        </div>
+
+        <div id="freeze-appeal-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="freeze-appeal-title">
+            <section class="modal-content freeze-appeal-modal-content">
+                <button type="button" class="modal-close-btn" data-action="close-freeze-appeal" aria-label="閉じる">×</button>
+                <p class="freeze-panel-eyebrow">REVIEW REQUEST</p>
+                <h2 id="freeze-appeal-title">異議申し立てを送信</h2>
+                <p>凍結の判断について、再審査を希望する理由を説明してください。内容は担当管理者が確認します。</p>
+                <form id="freeze-appeal-form">
+                    <label for="freeze-appeal-description">説明 <span aria-hidden="true">*</span></label>
+                    <textarea id="freeze-appeal-description" maxlength="2000" rows="7" required placeholder="再審査を希望する理由や、確認してほしい事情を入力してください。"></textarea>
+                    <p id="freeze-appeal-error" class="login-modal-message login-modal-error hidden" role="alert"></p>
+                    <div class="freeze-appeal-modal-actions">
+                        <button type="button" class="cancel-button" data-action="close-freeze-appeal">キャンセル</button>
+                        <button type="submit" class="freeze-appeal-button">送信する</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <div id="edit-dm-message-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-dm-modal-title">
+            <div class="modal-content dm-modal-content">
+                <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+                <div id="edit-dm-message-modal-content"></div>
+            </div>
+        </div>
+    `;
+}
+
+let isAppShellMounted = false;
+
+export function mountAppShell() {
+    if (isAppShellMounted) return;
+    const root = document.getElementById('app-root') || document.body;
+    const container = document.getElementById('app-root');
+    if (container) {
+        container.innerHTML = renderAppShellHTML();
+    } else {
+        const div = document.createElement('div');
+        div.id = 'app-root';
+        div.innerHTML = renderAppShellHTML();
+        root.appendChild(div);
+    }
+    isAppShellMounted = true;
+    if (typeof globalThis.initNyaitterLoginModal === 'function') {
+        globalThis.initNyaitterLoginModal();
+    }
+}

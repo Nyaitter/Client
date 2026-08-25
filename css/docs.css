@@ -1,0 +1,427 @@
+/* ==========================================================================
+   Nyaitter - Docs & API Reference Stylesheet (Native Nyaitter Style)
+   ========================================================================== */
+
+/* ── Container ───────────────────────────────────────────────────────────── */
+
+.docs-portal-container,
+.docs-api-container,
+.doc-detail-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 0 4rem;
+    box-sizing: border-box;
+}
+
+.docs-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-color);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s;
+}
+
+.docs-btn-outline svg {
+    width: 20px;
+    height: 20px;
+}
+
+.docs-btn-outline:hover {
+    background-color: var(--bg-color);
+}
+
+/* ── Controls (Search & Tabs) ────────────────────────────────────────────── */
+
+.docs-controls {
+    position: sticky;
+    top: var(--page-header-height, 62px);
+    z-index: 10;
+    background: var(--main-bg-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.docs-search-wrapper {
+    position: relative;
+    padding: 0.75rem 1rem 0.5rem;
+}
+
+.docs-search-icon {
+    position: absolute;
+    left: 1.75rem;
+    top: calc(50% + 0.125rem);
+    transform: translateY(-50%);
+    color: var(--secondary-text-color);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+}
+
+.docs-search-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.docs-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.65rem 1rem 0.65rem 2.6rem;
+    font-size: 0.95rem;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    outline: none;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.docs-search-input:focus {
+    background: var(--main-bg-color);
+    border-color: var(--primary-color);
+}
+
+.docs-category-tags {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid var(--border-color);
+}
+
+.docs-category-tags::-webkit-scrollbar {
+    display: none;
+}
+
+.docs-tag-btn {
+    flex: 1 0 auto;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: none;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    position: relative;
+    text-align: center;
+    white-space: nowrap;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.docs-tag-btn:hover {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.docs-tag-btn.active {
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.docs-tag-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 48px;
+    height: 4px;
+    background-color: var(--primary-color);
+    border-radius: 9999px;
+}
+
+/* ── Portal List (Flat List Style matching Nyaitter) ─────────────────────── */
+
+.docs-portal-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.docs-portal-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 0.15s;
+    cursor: pointer;
+}
+
+.docs-portal-item:hover {
+    background-color: var(--bg-color);
+}
+
+.docs-portal-item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.docs-portal-item:hover .docs-portal-item-icon {
+    background: var(--light-primary-color);
+}
+
+.docs-portal-item-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.docs-portal-item-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.docs-portal-item-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.docs-portal-item-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.docs-portal-item-desc {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--secondary-text-color);
+    line-height: 1.45;
+}
+
+.docs-portal-item-arrow {
+    color: var(--secondary-text-color);
+    align-self: center;
+    display: flex;
+    align-items: center;
+}
+
+.docs-portal-item-arrow svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* ── API Endpoints List (Flat Border List Style matching Nyaitter) ────────── */
+
+.docs-api-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.docs-api-item {
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s;
+}
+
+.docs-api-item:hover {
+    background-color: var(--bg-color);
+}
+
+.docs-api-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.docs-api-item-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.docs-api-method-badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: 0.5px;
+    text-align: center;
+    min-width: 54px;
+    flex-shrink: 0;
+}
+
+.docs-api-method-GET {
+    background: rgba(0, 150, 255, 0.15);
+    color: #0077dd;
+    border: 1px solid rgba(0, 150, 255, 0.3);
+}
+
+.docs-api-method-POST {
+    background: rgba(0, 186, 124, 0.15);
+    color: #00ba7c;
+    border: 1px solid rgba(0, 186, 124, 0.3);
+}
+
+.docs-api-method-PUT {
+    background: rgba(255, 122, 0, 0.15);
+    color: #ff7a00;
+    border: 1px solid rgba(255, 122, 0, 0.3);
+}
+
+.docs-api-method-PATCH {
+    background: rgba(147, 51, 234, 0.15);
+    color: #9333ea;
+    border: 1px solid rgba(147, 51, 234, 0.3);
+}
+
+.docs-api-method-DELETE {
+    background: rgba(244, 33, 46, 0.15);
+    color: #f4212e;
+    border: 1px solid rgba(244, 33, 46, 0.3);
+}
+
+.docs-api-path {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-color);
+    word-break: break-all;
+}
+
+.docs-api-summary {
+    font-size: 0.85rem;
+    color: var(--secondary-text-color);
+    margin-left: 0.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.docs-api-item-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.docs-api-auth-tag {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    background: var(--bg-color);
+    color: var(--secondary-text-color);
+    border: 1px solid var(--border-color);
+}
+
+.docs-api-auth-required {
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.docs-api-auth-admin {
+    background: var(--danger-color);
+    color: #f4212e;
+    border-color: #f4212e;
+}
+
+.docs-api-chevron {
+    color: var(--secondary-text-color);
+    display: flex;
+    align-items: center;
+}
+
+.docs-api-chevron svg {
+    width: 16px;
+    height: 16px;
+}
+
+.docs-api-item.open .docs-api-chevron svg {
+    transform: rotate(180deg);
+}
+
+/* ── Endpoint Detail Expanded Body ───────────────────────────────────────── */
+
+.docs-api-item-body {
+    display: none;
+    padding: 0.75rem 1rem 1.25rem 1rem;
+    background: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.docs-api-item.open .docs-api-item-body {
+    display: block;
+}
+
+.docs-api-section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--secondary-text-color);
+    margin: 0.75rem 0 0.35rem;
+}
+
+.docs-api-section-title:first-child {
+    margin-top: 0;
+}
+
+.docs-api-code-block {
+    position: relative;
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--text-color);
+    overflow-x: auto;
+    margin: 0.35rem 0 0.75rem;
+}
+
+.docs-api-code-block pre {
+    margin: 0;
+}
+
+.docs-api-copy-btn {
+    position: absolute;
+    right: 0.5rem;
+    top: 0.5rem;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.docs-api-copy-btn:hover {
+    background: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+}
+
+.docs-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--secondary-text-color);
+}

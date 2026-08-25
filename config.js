@@ -26,6 +26,10 @@
         // 設定画面の「リンク」に表示するリソースです。
         resourceLinks: [
             {
+                name: 'ドキュメント',
+                url: '#docs',
+            },
+            {
                 name: 'Nyaitter(Github)',
                 url: 'https://github.com/Nyaitter',
             },
@@ -37,6 +41,10 @@
                 name: 'クライアント(Github)',
                 url: 'https://github.com/Nyaitter/Client',
             },
+            {
+                name: 'Nyaitter.js(Github)',
+                url: 'https://github.com/Nyaitter/Nyaitter.js',
+            },
         ],
 
         // 右サイドバーに表示するリンクです。
@@ -44,6 +52,10 @@
             {
                 name: 'ルール',
                 url: '#rule',
+            },
+            {
+                name: 'ドキュメント',
+                url: '#docs',
             },
             {
                 name: 'GitHub',

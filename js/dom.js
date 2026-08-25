@@ -1,4 +1,8 @@
+import { mountAppShell } from './appShell.js';
 import { getSafeHttpUrl } from './utils/helpers.js';
+
+// DOM がまだ生成されていない場合は自動的にシェルをマウント
+mountAppShell();
 
 export const DOM = {
     mainContent: document.getElementById('main-content'),

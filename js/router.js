@@ -42,6 +42,9 @@ import {
 } from './screens/adminScreen.js';
 import { showRuleScreen } from './screens/ruleScreen.js';
 import { showNyaitterAuthScreen } from './screens/nyaitterAuthScreen.js';
+import { showDocsPortalScreen } from './screens/docsPortalScreen.js';
+import { showDocsApiScreen } from './screens/docsApiScreen.js';
+import { showDocDetailScreen } from './screens/docDetailScreen.js';
 import { showLoading } from './utils/helpers.js';
 
 let routerGeneration = 0;
@@ -246,6 +249,13 @@ export async function router() {
             await showStarsScreen(showScreen);
         } else if (hash === '#rule' || hash === '#rules') {
             await showRuleScreen(showScreen);
+        } else if (hash === '#docs/api' || hash.startsWith('#docs/api/') || hash === '#api/docs') {
+            await showDocsApiScreen(showScreen);
+        } else if (hash.startsWith('#docs/') && hash !== '#docs/' && hash !== '#docs') {
+            const docId = hash.substring('#docs/'.length).split('/')[0];
+            await showDocDetailScreen(docId, showScreen);
+        } else if (hash === '#docs' || hash === '#docs/') {
+            await showDocsPortalScreen(showScreen);
         } else if (hash.startsWith('#nyaitter-auth') || hash.startsWith('#auth/authorize') || hash.startsWith('#oauth/authorize')) {
             await showNyaitterAuthScreen(showScreen);
         } else {

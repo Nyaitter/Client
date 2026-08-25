@@ -1,5 +1,6 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const { apiUrl, turnstileSiteKey } = globalThis.NyaitterClientConfig;
+function setupLoginModal() {
+  const { apiUrl, turnstileSiteKey } = globalThis.NyaitterClientConfig || {};
+  if (!apiUrl) return;
   const AUTH_API = apiUrl('/server/auth');
 
   const loginModal = document.getElementById('login-modal');
@@ -951,4 +952,12 @@ document.addEventListener('DOMContentLoaded', () => {
       openLoginModal();
     }
   })();
-});
+}
+
+globalThis.initNyaitterLoginModal = setupLoginModal;
+if (document.readyState !== 'loading') {
+  setupLoginModal();
+} else {
+  document.addEventListener('DOMContentLoaded', setupLoginModal, { once: true });
+}
+
