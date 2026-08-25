@@ -2076,8 +2076,9 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     if (!postingAccountId) return showAppAlert('投稿アカウントを確認できません。');
     const contentEl = container.querySelector('#post-content');
     const content = getMarkdownEditorValue(contentEl).trim();
-    if (!content && getSelectedFiles().length === 0 && !getQuotingPost()) {
-        return showAppAlert('内容を入力するか、ファイルを添付してください。');
+    const hasAttachments = getSelectedFiles().length > 0 || Boolean(container._attachedPoll);
+    if (!content && !hasAttachments && !getQuotingPost()) {
+        return showAppAlert('内容を入力するか、ファイルまたは投票を添付してください。');
     }
 
     const maskActive = container.querySelector('.post-mask-button')?.classList.contains('active') || false;
