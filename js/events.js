@@ -80,6 +80,13 @@ function adjustPostMenuPosition(menu) {
 }
 
 export function setupGlobalEventListeners() {
+    // ---- Suppress harmless browser notification for ResizeObserver loop limit ----
+    window.addEventListener('error', (event) => {
+        if (event?.message && /ResizeObserver loop/i.test(event.message)) {
+            event.stopImmediatePropagation();
+        }
+    });
+
     // ---- Pointerdown / mousedown handler to track click start target ----
     document.addEventListener('pointerdown', (e) => {
         lastPointerDownTarget = e.target;
