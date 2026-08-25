@@ -72,26 +72,58 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         const metricsPromise = Promise.resolve();
         contentDiv.innerHTML = '';
 
-        if (mainPost.reply_to_post) {
-            const parentPostEl = await renderPost(
-                mainPost.reply_to_post,
-                mainPost.reply_to_post.author,
-                { userCache: getAllUsersCache(), metricsPromise },
-            );
-            if (parentPostEl) {
-                const parentContainer = document.createElement('div');
-                parentContainer.className = 'parent-post-container';
-                parentContainer.appendChild(parentPostEl);
-                contentDiv.appendChild(parentContainer);
+        // ── 祖先（親チェーン）の解決とツリー描画 ─────────────────────────
+        let ancestorsList = Array.isArray(threadPayload?.ancestors) ? [...threadPayload.ancestors] : [];
+        if (ancestorsList.length === 0 && mainPost.reply_to_post) {
+            let current = mainPost.reply_to_post;
+            while (current) {
+                ancestorsList.unshift(current);
+                current = current.reply_to_post;
             }
         }
 
+        let immediateParentEl = null;
+        if (ancestorsList.length > 0) {
+            const ancestorsContainer = document.createElement('div');
+            ancestorsContainer.className = 'parent-posts-tree';
+
+            for (let i = 0; i < ancestorsList.length; i++) {
+                const ancestorPost = ancestorsList[i];
+                const author = ancestorPost.author || ancestorPost.user || null;
+                const ancestorEl = await renderPost(ancestorPost, author, {
+                    userCache: getAllUsersCache(),
+                    metricsPromise,
+                    isThreadAncestor: true,
+                });
+                if (ancestorEl) {
+                    const itemContainer = document.createElement('div');
+                    itemContainer.className = 'parent-post-container';
+                    itemContainer.appendChild(ancestorEl);
+                    ancestorsContainer.appendChild(itemContainer);
+
+                    // 対象ポストの直前の親（直近の親）を記録
+                    if (i === ancestorsList.length - 1) {
+                        immediateParentEl = itemContainer;
+                    }
+                }
+            }
+            contentDiv.appendChild(ancestorsContainer);
+        }
+
+        // ── メインポスト（現在の対象ポスト）の描画 ───────────────────────
         const mainPostEl = await renderPost(mainPost, mainPost.author, {
             userCache: getAllUsersCache(),
             metricsPromise,
+            isMainPost: true,
         });
-        if (mainPostEl) contentDiv.appendChild(mainPostEl);
+        if (mainPostEl) {
+            if (ancestorsList.length > 0) {
+                mainPostEl.classList.add('main-post-reply-focus');
+            }
+            contentDiv.appendChild(mainPostEl);
+        }
 
+        // ── 返信セクション ─────────────────────────────────────────────
         const repliesHeader = document.createElement('h3');
         repliesHeader.textContent = '返信';
         repliesHeader.style.cssText =
@@ -135,18 +167,33 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         const repliesById = new Map(
             normalizedReplies.map((reply) => [reply.id, reply]),
         );
+        const mainPostAuthorId = Number(mainPost?.userId ?? mainPost?.user_id ?? mainPost?.author?.id);
+
         const flatReplyList = [];
         const visitedReplyIds = new Set();
-        const buildFlatList = (parentId, depth = 0) => {
+        const buildFlatList = (parentId, depth = 0, parentPostObj = null) => {
             const children = repliesByParentId.get(Number(parentId)) || [];
             for (const child of children) {
                 if (visitedReplyIds.has(child.id)) continue;
+
+                // 返信への返信（depth >= 1）は、返信者がポスト主または子ポスト主（直前親の投稿者）の場合にのみ表示
+                if (depth >= 1) {
+                    const childAuthorId = Number(child.author?.id ?? child.author_id ?? child.userId ?? child.user_id);
+                    const parentAuthorId = Number(parentPostObj?.author?.id ?? parentPostObj?.author_id ?? parentPostObj?.userId ?? parentPostObj?.user_id);
+                    const isMainAuthor = Number.isInteger(mainPostAuthorId) && childAuthorId === mainPostAuthorId;
+                    const isParentAuthor = Number.isInteger(parentAuthorId) && childAuthorId === parentAuthorId;
+
+                    if (!isMainAuthor && !isParentAuthor) {
+                        continue;
+                    }
+                }
+
                 visitedReplyIds.add(child.id);
                 flatReplyList.push({ ...child, thread_depth: depth });
-                buildFlatList(child.id, depth + 1);
+                buildFlatList(child.id, depth + 1, child);
             }
         };
-        buildFlatList(rootPostId);
+        buildFlatList(rootPostId, 0, mainPost);
 
         const repliesContainer = document.createElement('div');
         contentDiv.appendChild(repliesContainer);
@@ -210,9 +257,10 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                     if (replyDepth > 0) {
                         const nestedWrapper = document.createElement('div');
                         nestedWrapper.className = 'thread-nested-reply';
+                        // 1段インデントした後はさらに階層が深くなってもインデントしない (1段分固定)
                         nestedWrapper.style.setProperty(
                             '--reply-indent',
-                            `${Math.min(replyDepth, 3) * 2}rem`,
+                            '2rem',
                         );
                         nestedWrapper.dataset.replyDepth = String(replyDepth);
                         nestedWrapper.appendChild(postEl);
@@ -258,8 +306,8 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         const savedDetailPosition =
             getSavedScrollPositions()[getScrollRouteKey()];
         const savedDetailY = Number(savedDetailPosition?.y);
-        const restoreTargetY =
-            Number.isFinite(savedDetailY) && savedDetailY > 0 ? savedDetailY : 0;
+        const hasSavedScroll = Number.isFinite(savedDetailY) && savedDetailY > 0;
+        const restoreTargetY = hasSavedScroll ? savedDetailY : 0;
 
         if (pagination.hasMore) {
             await loadMoreReplies();
@@ -274,6 +322,20 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         }
 
         if (pagination.hasMore) repliesLoadObserver.observe(trigger);
+
+        // ── スクロール位置の初期設定 ─────────────────────────────────────
+        // 過去のスクロール復元位置がない場合、返信の親の頭が画面上側に来るように位置を合わせる
+        if (!hasSavedScroll && immediateParentEl) {
+            requestAnimationFrame(() => {
+                const headerEl = DOM.pageHeader;
+                const headerOffset = headerEl ? headerEl.offsetHeight : 60;
+                const rect = immediateParentEl.getBoundingClientRect();
+                const targetTop = window.scrollY + rect.top - headerOffset;
+                if (targetTop > 0) {
+                    window.scrollTo({ top: Math.max(0, targetTop), behavior: 'instant' });
+                }
+            });
+        }
     } catch (e) {
         console.error('ポスト詳細表示エラー:', e);
         contentDiv.innerHTML = `<p class="error-message">ポストの読み込みに失敗しました。</p>`;
