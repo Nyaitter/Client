@@ -937,7 +937,7 @@ export function createPostFormHTML(isModal = false) {
                 <div class="file-preview-container"></div>
                 ${isModal ? '<div id="quoting-preview-container"></div>' : ''}
                 <div class="post-form-actions">
-                    <div class="post-form-actions-left">
+                    <div class="post-form-tools-row">
                         <button type="button" class="attachment-button" title="ファイルを添付">
                             ${ICONS.attachment}
                         </button>
@@ -947,27 +947,23 @@ export function createPostFormHTML(isModal = false) {
                         <button type="button" class="emoji-pic-button" title="絵文字を選択">
                             ${ICONS.emoji}
                         </button>
+                        <button type="button" class="post-tool-btn post-announcement-button hidden" title="Nyaitterアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
+                        <button type="button" class="post-tool-btn post-lock-button" title="プライベート" aria-pressed="false">
+                            ${ICONS.lock}
+                        </button>
+                        <button type="button" class="post-tool-btn post-mask-button" title="ワンクッション">
+                            ${ICONS.mask}
+                        </button>
+                        <button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
+                        <button type="button" class="post-tool-btn post-group-button" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
+                    </div>
+                    <div class="post-form-submit-row">
+                        <button id="post-submit-button">ポスト</button>
                     </div>
                     <input type="file" id="file-input" class="hidden" multiple>
                     <div id="emoji-picker" class="hidden"></div>
                     <div class="post-group-menu hidden" role="menu"></div>
                     <div class="post-reply-control-menu hidden" role="menu"></div>
-                    <div class="post-tools-overflow-menu hidden" role="menu"></div>
-                    <div class="post-form-actions-right">
-                        <div class="post-tools-group">
-                            <button type="button" class="post-tool-btn post-announcement-button hidden" title="Nyaitterアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
-                            <button type="button" class="post-tool-btn post-lock-button" title="プライベート" aria-pressed="false">
-                                ${ICONS.lock}
-                            </button>
-                            <button type="button" class="post-tool-btn post-mask-button" title="ワンクッション">
-                                ${ICONS.mask}
-                            </button>
-                            <button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
-                            <button type="button" class="post-tool-btn post-group-button" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
-                        </div>
-                        <button type="button" class="post-tools-overflow-button hidden" title="その他のツール" aria-label="その他のツール" aria-haspopup="menu" aria-expanded="false">${ICONS.more}</button>
-                        <button id="post-submit-button">ポスト</button>
-                    </div>
                 </div>
             </div>
         </div>`;
@@ -984,181 +980,38 @@ export function closePostToolsOverflowMenu(container) {
     }
 }
 
-function bindPostToolsOverflowMenuOutsideHandler(container) {
-    if (!container || container._postToolsOverflowMenuOutsideHandler) return;
-    const handler = (event) => {
-        const menu = container.querySelector('.post-tools-overflow-menu');
-        const button = container.querySelector('.post-tools-overflow-button');
-        if (!menu || menu.classList.contains('hidden') || menu.contains(event.target) || button?.contains(event.target)) return;
-        closePostToolsOverflowMenu(container);
-        event.preventDefault();
-        event.stopImmediatePropagation();
-    };
-    container._postToolsOverflowMenuOutsideHandler = handler;
-    document.addEventListener('pointerdown', handler, true);
-}
+export function renderPostToolsOverflowMenu(_container) {}
 
-export function renderPostToolsOverflowMenu(container) {
-    const menu = container?.querySelector('.post-tools-overflow-menu');
-    if (!menu) return;
-    const hiddenButtons = Array.from(container.querySelectorAll('.post-tools-group .post-tool-btn.overflow-hidden'));
-    if (hiddenButtons.length === 0) {
-        menu.innerHTML = '<p class="post-tools-overflow-empty" style="padding: 0.5rem; margin: 0; color: var(--secondary-text-color); font-size: 0.9rem;">ツールはありません</p>';
-        return;
-    }
+export function togglePostToolsOverflowMenu(_container) {}
 
-    menu.innerHTML = hiddenButtons.map((btn) => {
-        let label = btn.getAttribute('aria-label') || btn.getAttribute('title') || 'ツール';
-        let subText = '';
-        let isActive = btn.classList.contains('active');
-        let iconHtml = btn.innerHTML;
-
-        if (btn.classList.contains('post-group-button')) {
-            label = getPostingGroup(container)?.name || 'Nyaitter';
-            subText = getPostingGroup(container) ? 'グループポスト' : '通常ポスト';
-        } else if (btn.classList.contains('post-reply-control-button')) {
-            const currentReply = getPostingReplyControl(container);
-            const opt = REPLY_CONTROL_OPTIONS.find((o) => o.id === currentReply) || REPLY_CONTROL_OPTIONS[0];
-            label = opt.title;
-            subText = opt.description;
-        } else if (btn.classList.contains('post-mask-button')) {
-            label = 'ワンクッション';
-            subText = isActive ? '有効' : '無効';
-        } else if (btn.classList.contains('post-lock-button')) {
-            label = 'プライベートポスト';
-            subText = isActive ? 'フォロワー限定' : '公開';
-        } else if (btn.classList.contains('post-announcement-button')) {
-            label = getPostingGroup(container) ? 'グループアナウンス' : 'Nyaitterアナウンス';
-            subText = isActive ? '有効' : '無効';
-        }
-
-        const dataTool = btn.classList.contains('post-group-button') ? 'group'
-            : btn.classList.contains('post-reply-control-button') ? 'reply_control'
-            : btn.classList.contains('post-mask-button') ? 'mask'
-            : btn.classList.contains('post-lock-button') ? 'lock'
-            : btn.classList.contains('post-announcement-button') ? 'announcement'
-            : 'tool';
-
-        return `<button type="button" class="post-tools-overflow-menu-item ${isActive ? 'active' : ''}" data-overflow-tool="${dataTool}">
-            <span class="post-tools-overflow-menu-icon" aria-hidden="true">${iconHtml}</span>
-            <span class="post-tools-overflow-menu-copy">
-                <strong>${escapeHTML(label)}</strong>
-                ${subText ? `<small>${escapeHTML(subText)}</small>` : ''}
-            </span>
-        </button>`;
-    }).join('');
-
-    menu.querySelectorAll('[data-overflow-tool]').forEach((item) => {
-        item.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const tool = item.dataset.overflowTool;
-            closePostToolsOverflowMenu(container);
-            if (tool === 'group') {
-                void openPostGroupMenu(container);
-            } else if (tool === 'reply_control') {
-                togglePostReplyControlMenu(container);
-            } else if (tool === 'mask') {
-                handlePostMask(container);
-                updatePostToolsOverflow(container);
-            } else if (tool === 'lock') {
-                handlePostLock(container);
-                updatePostToolsOverflow(container);
-            } else if (tool === 'announcement') {
-                handlePostAnnouncement(container);
-                updatePostToolsOverflow(container);
-            }
-        });
-    });
-}
-
-export function togglePostToolsOverflowMenu(container) {
-    const menu = container?.querySelector('.post-tools-overflow-menu');
-    const button = container?.querySelector('.post-tools-overflow-button');
-    if (!menu || !button) return;
-    closePostGroupMenu(container);
-    closePostReplyControlMenu(container);
-    closePostAccountMenu(container);
-    const willOpen = menu.classList.contains('hidden');
-    if (willOpen) {
-        renderPostToolsOverflowMenu(container);
-        menu.classList.remove('hidden');
-        button.setAttribute('aria-expanded', 'true');
-        bindPostToolsOverflowMenuOutsideHandler(container);
-        clampElementToViewport(menu);
-    } else {
-        closePostToolsOverflowMenu(container);
-    }
-}
-
-/**
- * ツールボタン群の幅を監視し、改行や幅超過が発生する場合に左側からその他ボタンへ格納する
- */
 export function updatePostToolsOverflow(container) {
     if (!container) return;
     const actions = container.querySelector('.post-form-actions');
-    const actionsLeft = container.querySelector('.post-form-actions-left');
-    const toolsGroup = container.querySelector('.post-tools-group');
-    const moreBtn = container.querySelector('.post-tools-overflow-button');
-    const submitBtn = container.querySelector('#post-submit-button, #update-post-button');
-    if (!actions || !toolsGroup || !moreBtn || !submitBtn) return;
+    const toolsRow = container.querySelector('.post-form-tools-row');
+    const submitRow = container.querySelector('.post-form-submit-row');
+    if (!actions || !toolsRow || !submitRow) return;
 
-    // 可視対象のツールボタン一覧（hiddenでないもの）
-    const candidateButtons = Array.from(toolsGroup.querySelectorAll('.post-tool-btn'));
-    const activeCandidates = candidateButtons.filter((btn) => !btn.classList.contains('hidden') || btn.classList.contains('overflow-hidden'));
-    if (activeCandidates.length === 0) {
-        moreBtn.classList.add('hidden');
-        return;
-    }
+    const visibleToolButtons = Array.from(toolsRow.querySelectorAll('button:not(.hidden)'));
+    let toolsRequiredWidth = 0;
+    visibleToolButtons.forEach((btn) => {
+        const w = Math.max(btn.getBoundingClientRect?.().width || btn.offsetWidth || 0, 36);
+        toolsRequiredWidth += w + 6;
+    });
 
-    // 利用可能幅の取得
-    const containerWidth = actions.clientWidth || actions.getBoundingClientRect?.().width || container.clientWidth || (window.innerWidth - 32);
-    if (containerWidth <= 0) return;
+    const submitBtn = submitRow.querySelector('#post-submit-button, #update-post-button');
+    const submitRequiredWidth = Math.max(submitBtn?.getBoundingClientRect?.().width || submitBtn?.offsetWidth || 0, 72) + 8;
+    const totalRequired = toolsRequiredWidth + submitRequiredWidth;
 
-    // 各要素の幅を自然なサイズで計算
-    let leftWidth = 0;
-    if (actionsLeft) {
-        const leftBtns = Array.from(actionsLeft.querySelectorAll('button:not(.hidden)'));
-        leftWidth = leftBtns.length * 36 + Math.max(0, leftBtns.length - 1) * 4;
-    }
+    const availableWidth = actions.clientWidth || container.clientWidth || 0;
 
-    const submitWidth = Math.max(submitBtn.offsetWidth || submitBtn.getBoundingClientRect?.().width || 72, 72);
-    const moreButtonWidth = 36;
-    const gap = 8;
-
-    // 右側エリアでツール群が使用可能な最大幅
-    const availableForRight = Math.max(0, containerWidth - leftWidth - gap);
-
-    // ツールボタン 1 個あたりの必要幅 (34px + 4px gap)
-    const TOOL_BTN_WIDTH = 38;
-
-    // まず全ボタンを表示したときに収まるか判定
-    const totalWithoutMore = activeCandidates.length * TOOL_BTN_WIDTH + submitWidth;
-
-    if (totalWithoutMore <= availableForRight) {
-        // すべて収まる場合
-        activeCandidates.forEach((btn) => btn.classList.remove('overflow-hidden'));
-        moreBtn.classList.add('hidden');
-        return;
-    }
-
-    // はみ出る場合: moreBtn を表示した上で収まる最大ボタン数を計算
-    const availableForToolsWithMore = Math.max(0, availableForRight - submitWidth - moreButtonWidth - gap);
-    const maxVisibleTools = Math.max(0, Math.floor(availableForToolsWithMore / TOOL_BTN_WIDTH));
-
-    // 右側（重要度の高いツール: group -> reply_control -> mask -> lock -> announcement）を優先して残し、
-    // 左側（優先度の低いツール）から overflow-hidden にする
-    const hideCount = Math.max(1, activeCandidates.length - maxVisibleTools);
-
-    for (let i = 0; i < activeCandidates.length; i++) {
-        const btn = activeCandidates[i];
-        if (i < hideCount) {
-            btn.classList.add('overflow-hidden');
-        } else {
-            btn.classList.remove('overflow-hidden');
+    if (availableWidth > 0) {
+        const isOverflowing = actions.scrollWidth > actions.clientWidth + 1 || availableWidth < totalRequired;
+        if (isOverflowing) {
+            actions.classList.add('post-form-stacked');
+        } else if (availableWidth >= totalRequired + 10) {
+            actions.classList.remove('post-form-stacked');
         }
     }
-
-    moreBtn.classList.remove('hidden');
 }
 
 export function setupPostToolsOverflowObserver(container) {
@@ -1175,12 +1028,14 @@ export function setupPostToolsOverflowObserver(container) {
             runUpdate();
         });
         observer.observe(actions);
+        observer.observe(container);
         container._postToolsResizeObserver = observer;
     }
 
     window.addEventListener('resize', runUpdate);
     setTimeout(runUpdate, 0);
-    setTimeout(runUpdate, 100);
+    setTimeout(runUpdate, 50);
+    setTimeout(runUpdate, 150);
 }
 
 const REPLY_CONTROL_OPTIONS = [
@@ -2596,23 +2451,19 @@ export async function openEditPostModal(postId, onSaved = null) {
                     <div class="markdown-textarea-editor post-form-textarea"><textarea id="edit-post-textarea" class="markdown-content-editor" rows="5" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length">${escapeHTML(String(post.content || ''))}</textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
                     <div class="file-preview-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">${renderAttachments()}</div>
                     <div class="post-form-actions" style="padding-top: 1rem;">
-                        <div class="post-form-actions-left">
+                        <div class="post-form-tools-row">
                             <button type="button" class="attachment-button" title="ファイルを追加">${ICONS.attachment}</button>
                             <button type="button" class="emoji-pic-button" title="絵文字を選択">${ICONS.emoji}</button>
+                            <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
+                            <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
+                            ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
+                        </div>
+                        <div class="post-form-submit-row">
+                            <button id="update-post-button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700;">保存</button>
                         </div>
                         <input type="file" id="edit-file-input" class="hidden" multiple>
                         <div id="emoji-picker" class="hidden"></div>
                         <div class="post-reply-control-menu hidden" role="menu"></div>
-                        <div class="post-tools-overflow-menu hidden" role="menu"></div>
-                        <div class="post-form-actions-right">
-                            <div class="post-tools-group">
-                                <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
-                                <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
-                                ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
-                            </div>
-                            <button type="button" class="post-tools-overflow-button hidden" title="その他のツール" aria-label="その他のツール" aria-haspopup="menu" aria-expanded="false">${ICONS.more}</button>
-                            <button id="update-post-button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700;">保存</button>
-                        </div>
                     </div>
                 </div>
             </div>

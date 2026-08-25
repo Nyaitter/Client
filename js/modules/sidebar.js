@@ -392,13 +392,28 @@ export async function loadRightSidebar() {
 }
 
 export function setupSidebarOverflowMenu() {
-    if (sidebarOverflowResizeHandler) {
-        window.removeEventListener('resize', sidebarOverflowResizeHandler);
-        sidebarOverflowResizeHandler = null;
-    }
     if (sidebarOverflowAbortController) {
         sidebarOverflowAbortController.abort();
         sidebarOverflowAbortController = null;
+    }
+
+    if (!sidebarOverflowResizeHandler) {
+        sidebarOverflowResizeHandler = () => {
+            window.clearTimeout(sidebarOverflowResizeTimer);
+            sidebarOverflowResizeTimer = window.setTimeout(
+                setupSidebarOverflowMenu,
+                100,
+            );
+        };
+        window.addEventListener('resize', sidebarOverflowResizeHandler, { passive: true });
+
+        const mql = window.matchMedia?.('(max-width: 680px)');
+        if (mql?.addEventListener) {
+            mql.addEventListener('change', () => {
+                window.clearTimeout(sidebarOverflowResizeTimer);
+                sidebarOverflowResizeTimer = window.setTimeout(setupSidebarOverflowMenu, 50);
+            });
+        }
     }
 
     const sidebar = document.getElementById('left-nav');
@@ -421,15 +436,6 @@ export function setupSidebarOverflowMenu() {
         ? [...menu.querySelectorAll(':scope > a.nav-item')]
         : [];
     if (!sidebar || !menu || menuLinks.length === 0) return;
-
-    sidebarOverflowResizeHandler = () => {
-        window.clearTimeout(sidebarOverflowResizeTimer);
-        sidebarOverflowResizeTimer = window.setTimeout(
-            setupSidebarOverflowMenu,
-            120,
-        );
-    };
-    window.addEventListener('resize', sidebarOverflowResizeHandler, { passive: true });
 
     const availableMenuHeight = () =>
         Math.max(

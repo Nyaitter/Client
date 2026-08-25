@@ -195,50 +195,37 @@ width: 100%;
 .post-form-actions {
     position: relative;
     display: flex;
+    flex-direction: row;
     flex-wrap: nowrap;
     justify-content: space-between;
     align-items: center;
-    padding-top: 0.5rem;
     width: 100%;
     gap: 0.5rem;
+    padding-top: 0.5rem;
     box-sizing: border-box;
 }
 
-.post-form-actions-left {
+.post-form-tools-row {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    flex-shrink: 0;
-}
-
-.post-form-actions-right {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.25rem;
+    justify-content: flex-start;
+    gap: 0.35rem;
     flex: 1;
     min-width: 0;
+    flex-wrap: nowrap;
 }
 
-.post-tools-group {
+.post-form-tools-row button {
+    flex-shrink: 0;
+}
+
+.post-form-submit-row {
     display: flex;
-    align-items: center;
     justify-content: flex-end;
-    gap: 0.25rem;
-    flex: 1;
-    min-width: 0;
-}
-
-.post-tools-group .post-tool-btn {
+    align-items: center;
     flex-shrink: 0;
-}
-
-.post-tools-group .post-tool-btn.overflow-hidden {
-    display: none !important;
-}
-
-.post-tools-overflow-button {
-    flex-shrink: 0;
+    gap: 0.5rem;
+    margin-left: auto;
 }
 
 .post-form-actions #post-submit-button,
@@ -247,14 +234,32 @@ width: 100%;
     white-space: nowrap;
 }
 
-.post-tools-overflow-button svg {
-    width: 20px;
-    height: 20px;
+/* 幅を超過した場合は上下段に分割（上段: ポストボタン、下段: ツールボタン群） */
+.post-form-actions.post-form-stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
 }
 
-.post-form-actions > .post-form-actions-left svg,
-.post-form-actions > .post-form-actions-right svg,
-.post-form-actions > button svg {
+.post-form-actions.post-form-stacked .post-form-submit-row {
+    order: 1;
+    width: 100%;
+    justify-content: flex-end;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
+    margin-left: 0;
+}
+
+.post-form-actions.post-form-stacked .post-form-tools-row {
+    order: 2;
+    width: 100%;
+    flex-wrap: wrap;
+    padding-top: 0.25rem;
+}
+
+.post-form-actions svg,
+.post-form-tools-row svg,
+.post-form-actions button svg {
     width: 20px;
     height: 20px;
 }
