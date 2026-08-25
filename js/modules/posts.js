@@ -748,6 +748,10 @@ export async function renderPost(post, author, options = {}) {
             toggleBtn.textContent = '続きを表示';
             toggleBtn.addEventListener('click', () => {
                 const expanded = targetEl.classList.toggle('post-content-expanded');
+                postEl.classList.toggle('post-expanded', expanded);
+                targetEl.querySelectorAll('.post-content').forEach((c) => {
+                    c.classList.toggle('post-content-expanded', expanded);
+                });
                 toggleBtn.textContent = expanded ? '閉じる' : '続きを表示';
                 toggleBtn.classList.toggle('expanded', expanded);
             });
