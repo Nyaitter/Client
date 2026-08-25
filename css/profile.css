@@ -85,7 +85,7 @@ display: flex;
 
 #profile-tabs {
     position: sticky;
-    top: 90px;
+    top: var(--page-header-height, 62px);
     background-color: var(--pg-bg-color);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -102,7 +102,7 @@ display: flex;
 
 #profile-sub-tabs-container {
     position: sticky;
-    top: 56px;
+    top: var(--page-header-height, 62px);
     background-color: var(--pg-bg-color);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -126,22 +126,22 @@ display: flex;
 }
 
 .profile-card {
-padding: 1rem;
+    padding: 1rem;
     border-bottom: 1px solid var(--border-color);
 }
 
 #profile-header .user-stats a {
-color: inherit; /* 通常時は周りのテキストと同じ色 */
+    color: inherit; /* 通常時は周りのテキストと同じ色 */
     text-decoration: none; /* 下線を消す */
     transition: text-decoration 0.2s;
 }
 
 #profile-header .user-stats a:hover {
-text-decoration: underline; /* ホバー時に下線を表示 */
+    text-decoration: underline; /* ホバー時に下線を表示 */
 }
 
 #profile-header .profile-joined {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 0.5rem;
     color: var(--secondary-text-color);
@@ -150,25 +150,10 @@ display: flex;
 }
 
 #profile-header .profile-joined .calendar-icon {
-width: 1rem;
+    width: 1rem;
     height: 1rem;
     flex-shrink: 0;
     stroke-width: 1.8;
-}
-
-#profile-sub-tabs-container {
-border-bottom: 1px solid var(--border-color);
-    position: sticky;
-        top: calc(1rem + 1.25rem + 1rem + 1px); /* ヘッダーの実際の高さに合わせる */
-    background-color: var(--pg-bg-color);
-    backdrop-filter: blur(12px);
-    z-index: 9;
-}
-
-.profile-sub-tabs {
-display: flex;
-    flex-wrap: nowrap;
-    min-width: max-content;
 }
 
 /* プロフィール通知ボタンとメニュー */

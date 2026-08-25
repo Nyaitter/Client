@@ -36,7 +36,7 @@ color: var(--secondary-text-color);
 
 .timeline-tabs-sticky-container {
 position: sticky;
-    top: 62px;
+    top: var(--page-header-height, 62px);
     background-color: var(--pg-bg-color);
     backdrop-filter: blur(12px);
     z-index: 9;
@@ -64,7 +64,7 @@ background-color: var(
 
 .new-posts-indicator {
 position: sticky;
-    top: calc(56px + 50px); /* ヘッダー + タブの高さ */
+    top: calc(var(--page-header-height, 62px) + 50px); /* ヘッダー + タブの高さ */
     z-index: 9; /* ポストフォームより手前に表示 */
     text-align: center;
     padding-bottom: 0.5rem; /* ボタンの下に少し余白 */

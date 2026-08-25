@@ -80,6 +80,23 @@ function adjustPostMenuPosition(menu) {
 }
 
 export function setupGlobalEventListeners() {
+    // ---- Page Header Height Observer ----
+    const updatePageHeaderHeight = () => {
+        const header = DOM.pageHeader || document.getElementById('page-header');
+        if (header) {
+            const h = header.offsetHeight || header.getBoundingClientRect().height || 62;
+            document.documentElement.style.setProperty('--page-header-height', `${h}px`);
+        }
+    };
+    if (typeof ResizeObserver !== 'undefined') {
+        const headerEl = DOM.pageHeader || document.getElementById('page-header');
+        if (headerEl) {
+            new ResizeObserver(updatePageHeaderHeight).observe(headerEl);
+        }
+    }
+    window.addEventListener('resize', updatePageHeaderHeight, { passive: true });
+    updatePageHeaderHeight();
+
     // ---- Suppress harmless browser notification for ResizeObserver loop limit ----
     window.addEventListener('error', (event) => {
         if (event?.message && /ResizeObserver loop/i.test(event.message)) {
