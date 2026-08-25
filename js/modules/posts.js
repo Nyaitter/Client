@@ -1138,7 +1138,10 @@ function togglePostReplyControlMenu(container) {
         menu.classList.remove('hidden');
         button.setAttribute('aria-expanded', 'true');
         bindPostReplyControlMenuOutsideHandler(container);
-        clampElementToViewport(menu);
+        positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        window.requestAnimationFrame(() => {
+            positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        });
     } else {
         closePostReplyControlMenu(container);
     }
@@ -1298,11 +1301,20 @@ async function syncPostGroupDestinationsForPostingAccount(container, postingAcco
         }
         if (!container.querySelector('.post-group-menu')?.classList.contains('hidden')) {
             renderPostGroupMenu(container, groups);
+            const button = container.querySelector('.post-group-button');
+            const menu = container.querySelector('.post-group-menu');
+            if (menu && button) {
+                positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+            }
         }
     } catch (_) {
         const menu = container.querySelector('.post-group-menu');
         if (container._postingAccountVersion === postingAccountVersion && menu && !menu.classList.contains('hidden')) {
             menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
+            const button = container.querySelector('.post-group-button');
+            if (button) {
+                positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+            }
         }
     }
 }
@@ -1340,21 +1352,30 @@ async function openPostGroupMenu(container) {
         closePostGroupMenu(container);
         return;
     }
+    closePostReplyControlMenu(container);
+    closePostAccountMenu(container);
     const postingAccountVersion = Number(container._postingAccountVersion || 0);
     menu.classList.remove('hidden');
     button.setAttribute('aria-expanded', 'true');
     bindPostGroupMenuOutsideHandler(container);
     menu.innerHTML = '<div class="post-group-menu-loading"><div class="spinner"></div></div>';
+    positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
     try {
         const groups = await getPostingAccountGroups(container);
         if (container._postingAccountVersion !== postingAccountVersion || menu.classList.contains('hidden')) return;
         container._postingAccountGroups = groups;
         renderPostGroupMenu(container, groups);
-        clampElementToViewport(menu);
+        positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        window.requestAnimationFrame(() => {
+            positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        });
     } catch (_) {
         if (container._postingAccountVersion === postingAccountVersion) {
             menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
-            clampElementToViewport(menu);
+            positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+            window.requestAnimationFrame(() => {
+                positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+            });
         }
     }
 }
