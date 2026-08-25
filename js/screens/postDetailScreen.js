@@ -167,18 +167,33 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         const repliesById = new Map(
             normalizedReplies.map((reply) => [reply.id, reply]),
         );
+        const mainPostAuthorId = Number(mainPost?.userId ?? mainPost?.user_id ?? mainPost?.author?.id);
+
         const flatReplyList = [];
         const visitedReplyIds = new Set();
-        const buildFlatList = (parentId, depth = 0) => {
+        const buildFlatList = (parentId, depth = 0, parentPostObj = null) => {
             const children = repliesByParentId.get(Number(parentId)) || [];
             for (const child of children) {
                 if (visitedReplyIds.has(child.id)) continue;
+
+                // 返信への返信（depth >= 1）は、返信者がポスト主または子ポスト主（直前親の投稿者）の場合にのみ表示
+                if (depth >= 1) {
+                    const childAuthorId = Number(child.author?.id ?? child.author_id ?? child.userId ?? child.user_id);
+                    const parentAuthorId = Number(parentPostObj?.author?.id ?? parentPostObj?.author_id ?? parentPostObj?.userId ?? parentPostObj?.user_id);
+                    const isMainAuthor = Number.isInteger(mainPostAuthorId) && childAuthorId === mainPostAuthorId;
+                    const isParentAuthor = Number.isInteger(parentAuthorId) && childAuthorId === parentAuthorId;
+
+                    if (!isMainAuthor && !isParentAuthor) {
+                        continue;
+                    }
+                }
+
                 visitedReplyIds.add(child.id);
                 flatReplyList.push({ ...child, thread_depth: depth });
-                buildFlatList(child.id, depth + 1);
+                buildFlatList(child.id, depth + 1, child);
             }
         };
-        buildFlatList(rootPostId);
+        buildFlatList(rootPostId, 0, mainPost);
 
         const repliesContainer = document.createElement('div');
         contentDiv.appendChild(repliesContainer);
@@ -242,9 +257,10 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                     if (replyDepth > 0) {
                         const nestedWrapper = document.createElement('div');
                         nestedWrapper.className = 'thread-nested-reply';
+                        // 1段インデントした後はさらに階層が深くなってもインデントしない (1段分固定)
                         nestedWrapper.style.setProperty(
                             '--reply-indent',
-                            `${Math.min(replyDepth, 3) * 2}rem`,
+                            '2rem',
                         );
                         nestedWrapper.dataset.replyDepth = String(replyDepth);
                         nestedWrapper.appendChild(postEl);
