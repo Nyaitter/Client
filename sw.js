@@ -127,16 +127,26 @@ self.addEventListener('fetch', (event) => {
 
   const isStaticAsset = STATIC_ASSET_PATTERN.test(url.pathname);
   if (request.mode === 'navigate' || isStaticAsset) {
+    const cacheKey = request.mode === 'navigate' ? '/index.html' : request;
     event.respondWith(
-      fetch(request)
-        .then((response) => {
+      caches.match(cacheKey).then((cachedResponse) => {
+        const updateCache = fetch(request).then((response) => {
           if (isCacheableStaticResponse(response)) {
             const copy = response.clone();
-            caches.open('nyaitter-client-v4').then((cache) => cache.put(request.mode === 'navigate' ? '/index.html' : request, copy));
+            return caches.open('nyaitter-client-v4')
+              .then((cache) => cache.put(cacheKey, copy))
+              .then(() => response);
           }
           return response;
-        })
-        .catch(() => caches.match(request.mode === 'navigate' ? '/index.html' : request)),
+        });
+
+        if (cachedResponse) {
+          event.waitUntil(updateCache.catch(() => {}));
+          return cachedResponse;
+        }
+
+        return updateCache.catch(() => caches.match(cacheKey));
+      }),
     );
     return;
   }
