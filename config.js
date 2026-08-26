@@ -6,8 +6,7 @@
 
     const CLIENT_CONFIG = {
         // APIルート。静的サイトと同一オリジンで配信する場合は変更不要です。
-        apiEndpoint: '/server',
-
+        apiEndpoint: 'https://api.nyaitter.jp',
     };
 
     const getStatusConfig = (name, fallback) => {
