@@ -158,7 +158,7 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                         return;
                     const errorElement = document.getElementById('verification-decision-error');
                     const { error: decisionError } = await apiRequest(
-                        `/server/api/reports/${Number(report.id)}/verification-decision`,
+                        `/server/api/reports/${Number(report.id)}/resolve`,
                         {
                             method: 'POST',
                             body: { decision },
