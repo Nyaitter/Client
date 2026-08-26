@@ -1,10 +1,5 @@
 /*
- * NyaitterClientの公開設定
- *
- * apiEndpoint には、相対パス（例: "/server"）または絶対URL
- * （例: "https://api.example.com/server"）を指定できます。
- * userFileEndpoint には、ユーザーファイルを配信する相対パスまたは絶対URLを指定できます。
- * resourceLinks と widgetLinks の url にはHTTPS URLまたはアプリ内ハッシュURLを指定します。
+ * NyaitterClientのAPIエンドポイント設定
  */
 (() => {
     'use strict';
@@ -12,70 +7,11 @@
     const CLIENT_CONFIG = {
         // APIルート。静的サイトと同一オリジンで配信する場合は変更不要です。
         apiEndpoint: 'https://api.nyaitter.jp',
+    };
 
-        // ユーザーファイルの公開URLです。nullの場合はAPIルートの /uploads を使用します。
-        // R2の公開ドメインなどを使う場合は、'/uploads' または 'https://media.example.com' を指定します。
-        // 空文字列の場合、ClientはユーザーファイルのURLを生成しません。
-        userFileEndpoint: 'https://files.nyaitter.jp',
-
-        // ポスト共有/コピー時のURLです。
-        // Discord や SNS で投稿カード（Embed）を表示させたい場合は、サーバー側のURL（例: 'https://link.example.com'）を指定します。
-        // null の場合は現在のブラウザのURL（window.location.origin）が使われます。
-        postShareUrl: 'https://link.nyaitter.jp',
-
-        // 設定画面の「リンク」に表示するリソースです。
-        resourceLinks: [
-            {
-                name: 'ドキュメント',
-                url: '#docs',
-            },
-            {
-                name: 'Nyaitter(Github)',
-                url: 'https://github.com/Nyaitter',
-            },
-            {
-                name: 'サーバー(Github)',
-                url: 'https://github.com/nyantorusabu/Server',
-            },
-            {
-                name: 'クライアント(Github)',
-                url: 'https://github.com/nyantorusabu/Client',
-            },
-            {
-                name: 'ステータス',
-                url: 'https://stats.uptimerobot.com/H09ggXwBKe',
-            },
-            {
-                name: 'Nyaitter.js(Github)',
-                url: 'https://github.com/Nyaitter/Nyaitter.js',
-            },
-        ],
-
-        // 右サイドバーに表示するリンクです。
-        widgetLinks: [
-            {
-                name: 'ルール',
-                url: '#rule',
-            },
-            {
-                name: 'ドキュメント',
-                url: '#docs',
-            },
-            {
-                name: 'GitHub',
-                url: 'https://github.com/Nyaitter',
-            },
-            {
-                name: 'ステータス',
-                url: 'https://stats.uptimerobot.com/H09ggXwBKe',
-            },
-        ],
-
-        // Cloudflare Turnstileのサイトキーです（例: '0x4AAAAA...'）。
-        // 空文字列ならログインモーダルのTurnstileチャレンジは表示されません。
-        // サーバー側（TURNSTILE_SECRET_KEY または turnstile.secret）でも設定されている場合のみ、
-        // ログインモーダルの認証コード取得にチャレンジ完了が必須になります。
-        turnstileSiteKey: '0x4AAAAAAEVcjtnn1xqNSl6-',
+    const getStatusConfig = (name, fallback) => {
+        const status = globalThis.NyaitterServerStatus?.client_config;
+        return status?.[name] ?? fallback;
     };
 
     function normalizeEndpoint(value) {
@@ -98,9 +34,8 @@
     }
 
     function getUserFileEndpoint() {
-        if (CLIENT_CONFIG.userFileEndpoint !== null && CLIENT_CONFIG.userFileEndpoint !== undefined) {
-            return String(CLIENT_CONFIG.userFileEndpoint).trim();
-        }
+        const configuredEndpoint = getStatusConfig('user_file_endpoint', null);
+        if (configuredEndpoint) return String(configuredEndpoint).trim();
 
         const apiEndpoint = normalizeEndpoint(CLIENT_CONFIG.apiEndpoint);
         const basePath = apiEndpoint.pathname.replace(/\/+$/, '');
@@ -175,18 +110,21 @@
         return endpoint.href;
     }
 
-    globalThis.NyaitterClientConfig = Object.freeze({
+    const clientConfig = {
         apiEndpoint: CLIENT_CONFIG.apiEndpoint,
-        userFileEndpoint: CLIENT_CONFIG.userFileEndpoint,
-        postShareUrl: CLIENT_CONFIG.postShareUrl,
-        turnstileSiteKey: String(CLIENT_CONFIG.turnstileSiteKey || '').trim(),
-        resourceLinks: Object.freeze([...CLIENT_CONFIG.resourceLinks]),
-        widgetLinks: Object.freeze([...CLIENT_CONFIG.widgetLinks]),
         apiUrl,
         apiServerUrl,
         userFileUrl,
         apiWebSocketUrl,
+    };
+    Object.defineProperties(clientConfig, {
+        userFileEndpoint: { get: () => getStatusConfig('user_file_endpoint', null) },
+        postShareUrl: { get: () => getStatusConfig('post_share_url', null) },
+        turnstileSiteKey: { get: () => String(getStatusConfig('turnstile_site_key', '') || '').trim() },
+        resourceLinks: { get: () => Object.freeze([...(getStatusConfig('resource_links', []) || [])]) },
+        widgetLinks: { get: () => Object.freeze([...(getStatusConfig('widget_links', []) || [])]) },
     });
+    globalThis.NyaitterClientConfig = Object.freeze(clientConfig);
 
     function installGetCodeButtonFailureRecovery() {
         const getCodeButton = document.getElementById('get-code-btn');
