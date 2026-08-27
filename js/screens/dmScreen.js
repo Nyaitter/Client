@@ -494,8 +494,7 @@ export async function showDmConversation(dmId) {
                 fileInput?.click();
             });
 
-            fileInput?.addEventListener('change', (event) => {
-                dmSelectedFiles = Array.from(event.target.files);
+            const renderSelectedFiles = () => {
                 previewContainer.innerHTML = '';
                 dmSelectedFiles.forEach((file, index) => {
                     const previewItem = document.createElement('div');
@@ -524,6 +523,31 @@ export async function showDmConversation(dmId) {
                     }
                     previewContainer.appendChild(previewItem);
                 });
+            };
+
+            fileInput?.addEventListener('change', (event) => {
+                dmSelectedFiles = Array.from(event.target.files);
+                renderSelectedFiles();
+            });
+
+            messageInput?.addEventListener('paste', (event) => {
+                const pastedFiles = Array.from(event.clipboardData?.items || [])
+                    .filter((item) => item.kind === 'file')
+                    .map((item, index) => {
+                        const file = item.getAsFile();
+                        if (!file) return null;
+                        if (file.name) return file;
+                        const extension = item.type.split('/')[1]?.replace(/[^a-z0-9]/gi, '') || 'bin';
+                        return new File([file], `pasted-file-${Date.now()}-${index}.${extension}`, {
+                            type: item.type || 'application/octet-stream',
+                        });
+                    })
+                    .filter(Boolean);
+                if (pastedFiles.length === 0) return;
+
+                event.preventDefault();
+                dmSelectedFiles.push(...pastedFiles);
+                renderSelectedFiles();
             });
 
             previewContainer?.addEventListener('click', (e) => {
