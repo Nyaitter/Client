@@ -7,7 +7,7 @@
     const CLIENT_CONFIG = {
         // APIルート。既定ではこのページと同一オリジンのサーバーを使用します。
         // 別インスタンスへ接続する場合だけ、デプロイ時に明示的なURLへ変更してください。
-        apiEndpoint: '/server',
+        apiEndpoint: 'https://api.nyaitter.jp',
     };
 
     const getStatusConfig = (name, fallback) => {
