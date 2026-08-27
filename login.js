@@ -1,5 +1,5 @@
 function setupLoginModal() {
-  const { apiUrl, turnstileSiteKey } = globalThis.NyaitterClientConfig || {};
+  const { apiUrl } = globalThis.NyaitterClientConfig || {};
   if (!apiUrl) return;
   const AUTH_API = apiUrl('/server/auth');
 
@@ -62,7 +62,6 @@ function setupLoginModal() {
   let cachedProviders = [];
 
   // Cloudflare Turnstile
-  const configuredTurnstileSiteKey = String(turnstileSiteKey || '').trim();
   let turnstileEnabled = false;
   let turnstileInitialized = false;
   let turnstileWidgetId = null;
@@ -133,7 +132,7 @@ function setupLoginModal() {
   let detectTurnstilePromise = null;
 
   async function detectTurnstileRequirement() {
-    if (!configuredTurnstileSiteKey || !turnstileContainer || !turnstileWidget) return;
+    if (!turnstileContainer || !turnstileWidget) return;
     if (detectTurnstilePromise) return detectTurnstilePromise;
     detectTurnstilePromise = (async () => {
       try {
@@ -152,7 +151,8 @@ function setupLoginModal() {
             globalThis.NyaitterServerStatus = data;
           }
         }
-        if (data?.turnstile?.enabled) {
+        const configuredTurnstileSiteKey = String(globalThis.NyaitterClientConfig?.turnstileSiteKey || '').trim();
+        if (data?.turnstile?.enabled && configuredTurnstileSiteKey) {
           turnstileEnabled = true;
           // スクリプトを先行ロード
           void loadTurnstileScript().catch(() => {});
@@ -179,6 +179,12 @@ function setupLoginModal() {
     }
     if (turnstileWidgetId != null) {
       updateAuthButtonsState();
+      return;
+    }
+
+    const configuredTurnstileSiteKey = String(globalThis.NyaitterClientConfig?.turnstileSiteKey || '').trim();
+    if (!configuredTurnstileSiteKey) {
+      enableAuthActionButtons();
       return;
     }
 
