@@ -447,10 +447,11 @@ function setupLoginModal() {
     else hideMessages();
 
     // Turnstileの要件を検出してスクリプトを先行ロード
-    void detectTurnstileRequirement();
+    await detectTurnstileRequirement();
 
     await renderProviderButtons();
     loginModal.classList.remove('hidden');
+    if (turnstileEnabled) mountTurnstile(authProviderSelect);
   }
 
   function closeLoginModal() {
@@ -553,7 +554,7 @@ function setupLoginModal() {
   });
 
   verifyCommentBtn?.addEventListener('click', async () => {
-    if (turnstileEnabled && !turnstileToken) {
+    if (turnstileEnabled && !isTurnstileResolved()) {
       showError('認証チャレンジを完了してください。');
       return;
     }
@@ -640,7 +641,7 @@ function setupLoginModal() {
       showError('認証コードを入力してください。');
       return;
     }
-    if (turnstileEnabled && !turnstileToken) {
+    if (turnstileEnabled && !isTurnstileResolved()) {
       showError('認証チャレンジを完了してください。');
       return;
     }
@@ -691,6 +692,10 @@ function setupLoginModal() {
       loginEmailNameInput?.focus();
       return;
     }
+    if (turnstileEnabled && !isTurnstileResolved()) {
+      showError('認証チャレンジを完了してください。');
+      return;
+    }
 
     showLoading(true);
     hideMessages();
@@ -703,6 +708,7 @@ function setupLoginModal() {
           email: currentEmail,
           code,
           name,
+          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
         }),
       });
       let data = await response.json().catch(() => ({}));
@@ -775,7 +781,7 @@ function setupLoginModal() {
       showError('このブラウザはパスキー認証に対応していません。');
       return;
     }
-    if (turnstileEnabled && !turnstileToken) {
+    if (turnstileEnabled && !isTurnstileResolved()) {
       showError('認証チャレンジを完了してください。');
       return;
     }
@@ -865,7 +871,7 @@ function setupLoginModal() {
       showError('NyaitterサーバーURLを入力してください。');
       return;
     }
-    if (turnstileEnabled && !turnstileToken) {
+    if (turnstileEnabled && !isTurnstileResolved()) {
       showError('認証チャレンジを完了してください。');
       return;
     }
