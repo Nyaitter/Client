@@ -58,35 +58,42 @@ import {
 
 export const METRICS_FALLBACK = '?';
 
-export async function uploadFileViaEdgeFunction(file, { asUserId = null } = {}) {
-    const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result).split(',')[1]);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-    });
+export async function uploadFileViaEdgeFunction(file, { asUserId = null, replaceId = null } = {}) {
     const normalizedAsUserId = Number(asUserId);
-    const { data, error } = await apiRequest('/server/api/uploads', {
+    const { data: prepareData, error: prepareError } = await apiRequest('/server/api/uploads/prepare', {
         method: 'POST',
         body: {
-            file: base64,
             fileName: file.name,
             contentType: file.type,
+            ...(replaceId ? { replaceId } : {}),
             ...(Number.isInteger(normalizedAsUserId) && normalizedAsUserId > 0
                 ? { as_user_id: normalizedAsUserId }
                 : {}),
         },
     });
 
-    if (error) {
-        throw new Error(`ファイルアップロードに失敗しました: ${error.message}`);
+    if (prepareError) {
+        throw new Error(`ファイルアップロードの準備に失敗しました: ${prepareError.message}`);
     }
 
-    const responseData = data.data || data;
-    if (responseData.error) {
-        throw new Error(`ファイルアップロードに失敗しました: ${responseData.error}`);
+    const uploadId = prepareData?.id || prepareData?.data?.id;
+    if (!uploadId) {
+        throw new Error('ファイルアップロード用IDを取得できませんでした。');
     }
 
+    const response = await fetch(globalThis.NyaitterClientConfig.apiUrl(`/server/api/uploads/${uploadId}`), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+            ...(Number.isInteger(normalizedAsUserId) && normalizedAsUserId > 0 ? { 'X-As-User-Id': String(normalizedAsUserId) } : {}),
+        },
+        body: file,
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok || responseData.error) {
+        throw new Error(`ファイルアップロードに失敗しました: ${responseData.error || `HTTP ${response.status}`}`);
+    }
     return responseData.id;
 }
 

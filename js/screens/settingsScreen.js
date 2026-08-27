@@ -314,10 +314,10 @@ export async function saveSettings(form) {
             } else if (getNewIconDataUrl()) {
                 const fileId = await uploadFileViaEdgeFunction(
                     imageDataUrlToFile(getNewIconDataUrl()),
+                    { replaceId: previousStoredIconId },
                 );
-                uploadedFileIds.push(fileId);
+                if (!previousStoredIconId) uploadedFileIds.push(fileId);
                 updatedData.icon_data = fileId;
-                if (previousStoredIconId) previousStoredFileIds.add(previousStoredIconId);
             }
             if (getResetHeaderToDefault()) {
                 updatedData.header_image = null;
@@ -325,10 +325,10 @@ export async function saveSettings(form) {
             } else if (getNewHeaderDataUrl()) {
                 const fileId = await uploadFileViaEdgeFunction(
                     imageDataUrlToFile(getNewHeaderDataUrl()),
+                    { replaceId: previousStoredHeaderId },
                 );
-                uploadedFileIds.push(fileId);
+                if (!previousStoredHeaderId) uploadedFileIds.push(fileId);
                 updatedData.header_image = fileId;
-                if (previousStoredHeaderId) previousStoredFileIds.add(previousStoredHeaderId);
             }
         } catch (error) {
             if (uploadedFileIds.length > 0) await deleteFilesViaEdgeFunction(uploadedFileIds);

@@ -320,26 +320,28 @@ function openGroupModal(group = null) {
         };
         const uploadedFileIds = [];
         const previousFileIds = new Set();
-        const shouldReplaceIcon = resetIcon || Boolean(newIconDataUrl);
-        const shouldReplaceHeader = resetHeader || Boolean(newHeaderDataUrl);
         try {
             showLoading(true);
             if (resetIcon) {
                 body.icon_data = null;
             } else if (newIconDataUrl) {
-                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newIconDataUrl));
-                uploadedFileIds.push(fileId);
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newIconDataUrl), {
+                    replaceId: editing && isStoredImageId(group?.icon_data) ? group.icon_data : null,
+                });
+                if (!editing || !isStoredImageId(group?.icon_data)) uploadedFileIds.push(fileId);
                 body.icon_data = fileId;
             }
             if (resetHeader) {
                 body.header_image = null;
             } else if (newHeaderDataUrl) {
-                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newHeaderDataUrl));
-                uploadedFileIds.push(fileId);
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newHeaderDataUrl), {
+                    replaceId: editing && isStoredImageId(group?.header_image) ? group.header_image : null,
+                });
+                if (!editing || !isStoredImageId(group?.header_image)) uploadedFileIds.push(fileId);
                 body.header_image = fileId;
             }
-            if (shouldReplaceIcon && isStoredImageId(group?.icon_data)) previousFileIds.add(group.icon_data);
-            if (shouldReplaceHeader && isStoredImageId(group?.header_image)) previousFileIds.add(group.header_image);
+            if (resetIcon && isStoredImageId(group?.icon_data)) previousFileIds.add(group.icon_data);
+            if (resetHeader && isStoredImageId(group?.header_image)) previousFileIds.add(group.header_image);
 
             const data = await request(editing ? groupPath(group.id) : '/server/api/groups', {
                 method: editing ? 'PATCH' : 'POST',
@@ -949,19 +951,25 @@ function bindGroupProfileForm(group) {
             if (resetIcon) {
                 body.icon_data = null;
             } else if (newIconDataUrl) {
-                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newIconDataUrl));
-                uploadedFileIds.push(fileId);
+                const existingIconId = isStoredImageId(group?.icon_data) ? group.icon_data : null;
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newIconDataUrl), {
+                    replaceId: existingIconId,
+                });
+                if (!existingIconId) uploadedFileIds.push(fileId);
                 body.icon_data = fileId;
             }
             if (resetHeader) {
                 body.header_image = null;
             } else if (newHeaderDataUrl) {
-                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newHeaderDataUrl));
-                uploadedFileIds.push(fileId);
+                const existingHeaderId = isStoredImageId(group?.header_image) ? group.header_image : null;
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newHeaderDataUrl), {
+                    replaceId: existingHeaderId,
+                });
+                if (!existingHeaderId) uploadedFileIds.push(fileId);
                 body.header_image = fileId;
             }
-            if (shouldReplaceIcon && isStoredImageId(group?.icon_data)) previousFileIds.add(group.icon_data);
-            if (shouldReplaceHeader && isStoredImageId(group?.header_image)) previousFileIds.add(group.header_image);
+            if (resetIcon && isStoredImageId(group?.icon_data)) previousFileIds.add(group.icon_data);
+            if (resetHeader && isStoredImageId(group?.header_image)) previousFileIds.add(group.header_image);
 
             const data = await request(groupPath(group.id), { method: 'PATCH', body });
             if (shouldReplaceIcon) {
