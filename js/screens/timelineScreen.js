@@ -18,7 +18,7 @@ import {
 } from '../modules/posts.js';
 import { setupTimelinePullToRefresh } from '../modules/theme.js';
 import { loadPostsWithPagination } from '../modules/pagination.js';
-import { escapeHTML, showLoading } from '../utils/helpers.js';
+import { showLoading } from '../utils/helpers.js';
 import { positionElementRelativeToAnchor } from '../utils/viewport.js';
 import { apiRequest } from '../api.js';
 import {
@@ -28,7 +28,9 @@ import {
     getScrollRouteKey,
     clearSavedScrollPosition,
 } from '../modules/scroll.js';
-import { getSavedHomeTabs } from './settingsScreen.js';
+import { getSavedHomeTabs } from './settings/homeTabs.js';
+import { renderHeader, renderTabs } from './timeline/view.js';
+import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
 
 export const LAST_TIMELINE_TAB_KEY = 'nyaitter_last_timeline_tab';
 
@@ -136,11 +138,13 @@ export async function switchTimelineTab(
             groupId,
             mode: getGroupTimelineMode(groupId),
             pageCache,
+            signal: getActiveScreenContext()?.signal,
         });
     } else {
         await loadPostsWithPagination(DOM.timeline, 'timeline', {
             tab,
             pageCache,
+            signal: getActiveScreenContext()?.signal,
         });
     }
 
@@ -150,13 +154,10 @@ export async function switchTimelineTab(
 }
 
 export async function showMainScreen(showScreenFn) {
-    DOM.pageHeader.innerHTML = `<h2 id="page-title">ホーム</h2>`;
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('main-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('main-screen')?.classList.remove('hidden');
-    }
+    renderHeader();
+    showScreenCompat('main-screen', showScreenFn);
+
+    const screenSignal = getActiveScreenContext()?.signal;
 
     setupTimelinePullToRefresh(async () => {
         await switchTimelineTab(getCurrentTimelineTab(), { forceRefresh: true });
@@ -171,32 +172,15 @@ export async function showMainScreen(showScreenFn) {
 
         if (getCurrentUser()) {
             try {
-                const { data, error } = await apiRequest('/server/api/groups/mine?limit=200');
-                if (!error) {
+                const { data, error } = await apiRequest('/server/api/groups/mine?limit=200', {
+                    signal: screenSignal,
+                });
+            if (!error) {
                     joinedGroups = Array.isArray(data?.groups) ? data.groups : [];
                     homeTabLimit = Math.max(0, Number(data?.home_tab_limit) || 0);
                 }
             } catch (_) {}
-            const visibleGroups = homeTabLimit > 0 ? joinedGroups.slice(0, homeTabLimit) : joinedGroups;
-
-            const tabButtonsHTML = [];
-            savedTabs.forEach((tabKey) => {
-                if (tabKey === 'all') {
-                    tabButtonsHTML.push('<button class="timeline-tab-button" data-tab="all">すべて</button>');
-                } else if (tabKey === 'foryou') {
-                    tabButtonsHTML.push('<button class="timeline-tab-button" data-tab="foryou">おすすめ</button>');
-                } else if (tabKey === 'following') {
-                    tabButtonsHTML.push('<button class="timeline-tab-button" data-tab="following">フォロー中</button>');
-                } else if (tabKey === 'announce') {
-                    tabButtonsHTML.push('<button class="timeline-tab-button" data-tab="announce">お知らせ</button>');
-                } else if (tabKey === 'groups') {
-                    visibleGroups.forEach((group) => {
-                        tabButtonsHTML.push(`<button class="timeline-tab-button group-timeline-tab" data-tab="group:${escapeHTML(String(group.id))}" title="${escapeHTML(group.name || 'グループ')}" data-group-id="${escapeHTML(String(group.id))}"><span>${escapeHTML(group.name || '無題のグループ')}</span></button>`);
-                    });
-                }
-            });
-
-            tabsContainer.innerHTML = tabButtonsHTML.join('');
+            renderTabs(tabsContainer, savedTabs, { joinedGroups, homeTabLimit });
 
             tabsContainer.querySelectorAll('.group-timeline-tab').forEach((button) => {
                 const groupId = button.dataset.groupId;
@@ -220,15 +204,7 @@ export async function showMainScreen(showScreenFn) {
             const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'all');
             setCurrentTimelineTab(initialTab);
         } else {
-            const guestButtons = [];
-            savedTabs.forEach((tabKey) => {
-                if (tabKey === 'all') {
-                    guestButtons.push('<button class="timeline-tab-button" data-tab="all">すべて</button>');
-                } else if (tabKey === 'announce') {
-                    guestButtons.push('<button class="timeline-tab-button" data-tab="announce">お知らせ</button>');
-                }
-            });
-            tabsContainer.innerHTML = guestButtons.length > 0 ? guestButtons.join('') : '<button class="timeline-tab-button" data-tab="all">すべて</button>';
+            renderTabs(tabsContainer, savedTabs, { guest: true });
             const renderedTabs = Array.from(tabsContainer.querySelectorAll('.timeline-tab-button')).map((b) => b.dataset.tab);
             const restoredTab = getLastTimelineTab();
             const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'all');
@@ -243,6 +219,8 @@ export async function showMainScreen(showScreenFn) {
         DOM.postFormContainer.innerHTML = '';
     }
 
-    await switchTimelineTab(getCurrentTimelineTab());
-    showLoading(false);
+    if (!screenSignal?.aborted) {
+        await switchTimelineTab(getCurrentTimelineTab());
+        showLoading(false);
+    }
 }

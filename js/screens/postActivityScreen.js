@@ -2,6 +2,7 @@ import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { apiRequest } from '../api.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
+import { showScreenCompat } from '../screenManager.js';
 import { setupTabbedListView } from '../modules/tabbedView.js';
 import {
     getPostActivityCacheKey,
@@ -34,12 +35,7 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
             <h2 id="page-title">ポストアクティビティ</h2>
         </div>`;
 
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('post-activity-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('post-activity-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('post-activity-screen', showScreenFn);
 
     const contentDiv = DOM.postActivityContent;
     const baseCacheKey = getPostActivityCacheKey(normalizedPostId);

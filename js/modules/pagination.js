@@ -87,6 +87,7 @@ export async function fetchOptimizedPostPage(
         if (options.authorId != null) params.set('author_id', String(options.authorId));
         const { data, error } = await apiRequest(
             `/server/api/groups/${encodeURIComponent(groupId)}/posts?${params.toString()}`,
+            { signal: options.signal },
         );
         if (error) throw error;
         return {
@@ -101,6 +102,7 @@ export async function fetchOptimizedPostPage(
         if (options.userId) {
             const { data, error } = await apiRequest(
                 `/server/api/users/${encodeURIComponent(options.userId)}/${type}?limit=${pageSize}&offset=${from}`,
+                { signal: options.signal },
             );
             if (error) throw error;
             return {
@@ -118,6 +120,7 @@ export async function fetchOptimizedPostPage(
         params.set('offset', '0');
         const { data, error } = await apiRequest(
             `/server/api/posts/page?${params.toString()}`,
+            { signal: options.signal },
         );
         if (error) throw error;
         return {
@@ -133,6 +136,7 @@ export async function fetchOptimizedPostPage(
 
     const { data, error } = await apiRequest(
         `/server/api/posts/page?${params.toString()}`,
+        { signal: options.signal },
     );
     if (error) throw error;
     return {
@@ -427,6 +431,7 @@ async function fetchUserPageData(type, options, pageNumber, pageSize) {
         if (options.userId) {
             const result = await apiRequest(
                 `/server/api/users/${encodeURIComponent(options.userId)}/following?limit=${pageSize}&offset=${from}`,
+                { signal: options.signal },
             );
             users = Array.isArray(result.data?.following)
                 ? result.data.following
@@ -438,7 +443,8 @@ async function fetchUserPageData(type, options, pageNumber, pageSize) {
                 const result = await api
                     .from('user')
                     .select(selectColumns)
-                    .in('id', idsToFetch);
+                    .in('id', idsToFetch)
+                    .signal(options.signal);
                 users = result.data;
                 error = result.error;
             }
@@ -446,6 +452,7 @@ async function fetchUserPageData(type, options, pageNumber, pageSize) {
     } else if (type === 'followers') {
         const result = await apiRequest(
             `/server/api/users/${encodeURIComponent(options.userId)}/followers?limit=${pageSize}&offset=${from}`,
+            { signal: options.signal },
         );
         users = Array.isArray(result.data?.followers)
             ? result.data.followers
@@ -457,7 +464,8 @@ async function fetchUserPageData(type, options, pageNumber, pageSize) {
             .select(selectColumns)
             .or(options.filters || '')
             .order('id', { ascending: true })
-            .range(from, to);
+            .range(from, to)
+            .signal(options.signal);
         users = Array.isArray(result.data) ? result.data : [];
         error = result.error;
         hasMoreForPage = users.length > pageSize;

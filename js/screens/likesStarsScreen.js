@@ -3,21 +3,17 @@ import { getCurrentUser } from '../state.js';
 import { getAuxiliaryPostPageCache } from '../modules/cache.js';
 import { loadPostsWithPagination } from '../modules/pagination.js';
 import { showLoading } from '../utils/helpers.js';
+import { clearContent, renderHeader, renderLoggedOut } from './likesStars/view.js';
+import { showScreenCompat } from '../screenManager.js';
 
 export async function showLikesScreen(showScreenFn = null) {
-    DOM.pageHeader.innerHTML = `<h2 id="page-title">いいね</h2>`;
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('likes-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('likes-screen')?.classList.remove('hidden');
-    }
+    renderHeader('いいね');
+    showScreenCompat('likes-screen', showScreenFn);
 
-    DOM.likesContent.innerHTML = '';
+    clearContent(DOM.likesContent);
     const user = getCurrentUser();
     if (!user) {
-        DOM.likesContent.innerHTML =
-            '<p style="padding: 2rem; text-align: center; color: var(--secondary-text-color);">ログインが必要です。</p>';
+        renderLoggedOut(DOM.likesContent);
         showLoading(false);
         return;
     }
@@ -33,19 +29,13 @@ export async function showLikesScreen(showScreenFn = null) {
 }
 
 export async function showStarsScreen(showScreenFn = null) {
-    DOM.pageHeader.innerHTML = `<h2 id="page-title">お気に入り</h2>`;
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('stars-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('stars-screen')?.classList.remove('hidden');
-    }
+    renderHeader('お気に入り');
+    showScreenCompat('stars-screen', showScreenFn);
 
-    DOM.starsContent.innerHTML = '';
+    clearContent(DOM.starsContent);
     const user = getCurrentUser();
     if (!user) {
-        DOM.starsContent.innerHTML =
-            '<p style="padding: 2rem; text-align: center; color: var(--secondary-text-color);">ログインが必要です。</p>';
+        renderLoggedOut(DOM.starsContent);
         showLoading(false);
         return;
     }

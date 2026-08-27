@@ -66,6 +66,8 @@ import {
     showAppConfirm,
     getGroupBadgesHtml,
 } from '../utils/helpers.js';
+import { renderHeader, renderTabs } from './profile/view.js';
+import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
 
 let activeProfilePullRefreshUser = null;
 const profileTimelineModes = new Map();
@@ -245,21 +247,9 @@ export async function refreshActiveProfileTab({ userId, subpage } = {}) {
 
 export async function showProfileScreen(userId, subpage = 'posts', showScreenFn = null) {
     subpage = subpage === 'replies' ? 'posts' : subpage;
-    DOM.pageHeader.innerHTML = `
-        <div class="header-with-back-button">
-            <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
-            <h2 id="page-title">
-                <div id="page-title-main">プロフィール</div>
-                <small id="page-title-sub"></small>
-            </h2>
-        </div>`;
+    renderHeader();
 
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('profile-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('profile-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('profile-screen', showScreenFn);
 
     const profileHeader = document.getElementById('profile-header');
     const profileTabs = document.getElementById('profile-tabs');
@@ -448,25 +438,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
             return;
         }
 
-        const mainTabs = [
-            { key: 'posts', name: 'ポスト' },
-            { key: 'media', name: 'メディア' },
-            { key: 'likes', name: 'いいね' },
-            { key: 'stars', name: 'お気に入り' },
-            ...sharedGroups.map((group) => ({
-                key: `group:${group.id}`,
-                name: group.name || 'グループ',
-                className: 'profile-group-tab',
-                title: group.name || 'グループ',
-            })),
-        ];
-
-        profileTabs.innerHTML = mainTabs
-            .map(
-                (tab) =>
-                    `<button class="tab-button ${tab.className || ''} ${tab.key === subpage ? 'active' : ''}" data-tab="${escapeHTML(tab.key)}" title="${escapeHTML(tab.title || tab.name)}">${escapeHTML(tab.name)}</button>`,
-            )
-            .join('');
+        renderTabs(profileTabs, user, subpage);
 
         profileTabs.querySelectorAll('.tab-button').forEach((button) => {
             const tab = button.dataset.tab;
@@ -519,6 +491,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
 }
 
 export async function loadProfileTabContent(user, subpage, options = {}) {
+    const signal = getActiveScreenContext()?.signal;
     subpage = subpage === 'replies' ? 'posts' : subpage;
     const mediaSubType = getProfileMediaMode(user.id);
     const profileHeader = document.getElementById('profile-header');
@@ -597,6 +570,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                     subType,
                     pinId: pinnedPostId,
                     pageCache: getProfilePostPageCache(user.id, subType, pinnedPostId),
+                    signal,
                 });
                 break;
             }
@@ -609,6 +583,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                 await loadPostsWithPagination(contentDiv, 'likes', {
                     userId: user.id,
                     pageCache: getProfilePostPageCache(user.id, 'likes'),
+                    signal,
                 });
                 break;
             case 'stars':
@@ -620,6 +595,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                 await loadPostsWithPagination(contentDiv, 'stars', {
                     userId: user.id,
                     pageCache: getProfilePostPageCache(user.id, 'stars'),
+                    signal,
                 });
                 break;
             case 'following':
@@ -633,6 +609,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                     pageCache: getUserPageCache(
                         `${getCurrentUser()?.id ?? 'guest'}:profile-users:${user.id}:following`,
                     ),
+                    signal,
                 });
                 break;
             case 'followers':
@@ -646,6 +623,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                     pageCache: getUserPageCache(
                         `${getCurrentUser()?.id ?? 'guest'}:profile-users:${user.id}:followers`,
                     ),
+                    signal,
                 });
                 break;
             case 'media': {
@@ -663,6 +641,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                         authorId: user.id,
                         subType,
                         pageCache: getProfilePostPageCache(user.id, `group:${groupId}:${subType}`),
+                        signal,
                     });
                 }
                 break;

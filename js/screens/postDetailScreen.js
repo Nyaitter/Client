@@ -11,6 +11,7 @@ import { renderPost } from '../modules/posts.js';
 import { getScrollRouteKey, getSavedScrollPositions } from '../modules/scroll.js';
 import { createViewportObserver } from '../utils/viewport.js';
 import { showLoading } from '../utils/helpers.js';
+import { showScreenCompat } from '../screenManager.js';
 
 export async function showPostDetail(postId, options = {}, maybeShowScreenFn = null) {
     const normalizedPostId = Number(postId);
@@ -33,12 +34,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
             <h2 id="page-title">ポスト</h2>
         </div>`;
 
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('post-detail-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('post-detail-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('post-detail-screen', showScreenFn);
 
     const contentDiv = DOM.postDetailContent;
     contentDiv.innerHTML = '<div class="spinner"></div>';

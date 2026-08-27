@@ -4,6 +4,7 @@ import { getCurrentUser } from '../state.js';
 import { refreshAccountList, checkSession } from '../modules/auth.js';
 import { apiRequest } from '../api.js';
 import { escapeHTML, showLoading, getSafeHttpUrl, getUserIconUrl, formatNyaitterId } from '../utils/helpers.js';
+import { showScreenCompat } from '../screenManager.js';
 
 const { apiUrl } = globalThis.NyaitterClientConfig || {};
 
@@ -34,12 +35,7 @@ export async function showNyaitterAuthScreen(showScreenFn) {
         </div>
     `;
 
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('nyaitter-auth-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('nyaitter-auth-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('nyaitter-auth-screen', showScreenFn);
 
     const contentDiv = document.getElementById('nyaitter-auth-content') || DOM.mainContent;
     if (!contentDiv) return;

@@ -44,6 +44,14 @@ import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { applyDataSaverRealtimePreference, unsubscribeFromChanges } from '../modules/realtime.js';
 import { refreshMarkdownContentEditors } from '../modules/editor.js';
 import { router } from '../router.js';
+import {
+    getSettingsGroupFromHash,
+    normalizeDmInvitation,
+    SETTINGS_GROUP_DETAILS,
+} from './settings/config.js';
+import { readSettingsForm } from './settings/formModel.js';
+import { ALL_HOME_TABS, DEFAULT_HOME_TABS, getSavedHomeTabs } from './settings/homeTabs.js';
+import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
 import { uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
 import {
     escapeHTML,
@@ -151,40 +159,6 @@ async function requestTurnstileTokenModal() {
     });
 }
 
-export const ALL_HOME_TABS = [
-    { key: 'all', name: 'すべて', description: 'すべての投稿を表示' },
-    { key: 'foryou', name: 'おすすめ', description: 'おすすめの投稿を表示' },
-    { key: 'following', name: 'フォロー中', description: 'フォロー中のユーザーの投稿を表示' },
-    { key: 'announce', name: 'お知らせ', description: '運営によるアナウンスを表示' },
-    { key: 'groups', name: 'グループ', description: '参加中のグループタブを表示' },
-];
-
-export const DEFAULT_HOME_TABS = ['all', 'foryou', 'following', 'announce', 'groups'];
-
-export function getSavedHomeTabs() {
-    const user = getCurrentUser();
-    const userId = user?.id ?? 'guest';
-    let tabs = null;
-    if (Array.isArray(user?.settings?.home_tabs) && user.settings.home_tabs.length > 0) {
-        tabs = user.settings.home_tabs;
-    } else {
-        try {
-            const stored = localStorage.getItem(`nyaitter_home_tabs_${userId}`);
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    tabs = parsed;
-                }
-            }
-        } catch (_) {}
-    }
-    if (!tabs) return [...DEFAULT_HOME_TABS];
-
-    const validKeys = ALL_HOME_TABS.map((t) => t.key);
-    const filtered = tabs.filter((k) => validKeys.includes(k));
-    return filtered.length > 0 ? filtered : [...DEFAULT_HOME_TABS];
-}
-
 export function saveHomeTabs(tabs) {
     const validKeys = ALL_HOME_TABS.map((t) => t.key);
     const sanitized = (Array.isArray(tabs) ? tabs : [])
@@ -202,17 +176,6 @@ export function saveHomeTabs(tabs) {
         user.settings.home_tabs = finalTabs;
         requestSettingsSave();
     }
-}
-
-export function normalizeDmInvitation(value) {
-    if (value === 'always' || value === 'allow') return 'always';
-    if (value === 'deny' || value === 'reject') return 'deny';
-    return 'require_approval';
-}
-
-export function getSettingsGroupFromHash(hash = window.location.hash) {
-    const match = /^#settings\/([a-z0-9_-]+)/i.exec(hash || '');
-    return match ? match[1].toLowerCase() : 'profile';
 }
 
 export function imageDataUrlToFile(dataUrl) {
@@ -239,59 +202,26 @@ export function imageDataUrlToFile(dataUrl) {
     return new File([bytes], `upload.${extension}`, { type: mimeType });
 }
 
-export function requestSettingsSave(form = document.getElementById('settings-form')) {
+export function requestSettingsSave(
+    form = document.getElementById('settings-form'),
+    context = getActiveScreenContext(),
+) {
     if (!getCurrentUser() || !form) return;
     if (getSettingsSaveInFlight()) {
         setSettingsSaveQueued(true);
         return;
     }
-    void saveSettings(form);
+    void saveSettings(form, context);
 }
 
-export async function saveSettings(form) {
+export async function saveSettings(form, context = getActiveScreenContext()) {
     if (!getCurrentUser() || !form) return;
     if (!form.reportValidity()) return;
 
     setSettingsSaveInFlight(true);
 
     try {
-        const updatedData = {
-            name: form.querySelector('#setting-username')?.value.trim(),
-            me: form.querySelector('#setting-me')?.value.trim(),
-            settings: {
-                ...(getCurrentUser().settings || {}),
-                lock: form.querySelector('#setting-lock')?.checked || false,
-                show_like: form.querySelector('#setting-show-like')?.checked || false,
-                show_follow: form.querySelector('#setting-show-follow')?.checked || false,
-                show_follower: form.querySelector('#setting-show-follower')?.checked ?? true,
-                show_star: form.querySelector('#setting-show-star')?.checked || false,
-                show_scid: form.querySelector('#setting-show-scid')?.checked || false,
-                reject_unknown_login: form.querySelector('#setting-reject-unknown-login')?.checked ?? true,
-                dm_invitation: normalizeDmInvitation(
-                    form.querySelector('#setting-dm-invitation')?.value,
-                ),
-                post_timestamp_format: normalizePostTimestampFormat(
-                    form.querySelector('#setting-post-timestamp-format')?.value,
-                ),
-                emoji: form.querySelector('#setting-emoji-kind')?.value || 'twemoji',
-                content_editor:
-                    form.querySelector('#setting-content-editor')?.value === 'nyaitter'
-                        ? 'nyaitter'
-                        : 'textarea',
-                data_saver: form.querySelector('#setting-data-saver')?.checked || false,
-                theme: form.querySelector('#setting-theme')?.value || 'light',
-                color_theme: normalizeColorTheme(
-                    form.querySelector('#setting-color-theme')?.value,
-                ),
-                custom_colors: getCustomColorsFromInputs(form),
-                ng_words: form.querySelector('#setting-ng-words')
-                    ? (form.querySelector('#setting-ng-words').value || '')
-                        .split(/[\n,]+/)
-                        .map((w) => w.trim())
-                        .filter(Boolean)
-                    : (getCurrentUser().settings?.ng_words || []),
-            },
-        };
+        const updatedData = readSettingsForm(form, getCurrentUser().settings || {});
         if (!updatedData.name) throw new Error('ユーザー名は必須です。');
 
         const previousStoredFileIds = new Set();
@@ -355,6 +285,7 @@ export async function saveSettings(form) {
         if (!data || typeof data !== 'object') {
             throw new Error('サーバーから更新後の設定を取得できませんでした。');
         }
+        if (context?.signal?.aborted) return;
         const updatedUser = {
             ...getCurrentUser(),
             ...data,
@@ -377,28 +308,35 @@ export async function saveSettings(form) {
         setNewHeaderDataUrl(null);
         setResetHeaderToDefault(false);
     } catch (error) {
+        if (context?.signal?.aborted) return;
         console.error('設定の自動保存に失敗:', error);
     } finally {
         setSettingsSaveInFlight(false);
-        if (getSettingsSaveQueued()) {
+        if (getSettingsSaveQueued() && !context?.signal?.aborted) {
             setSettingsSaveQueued(false);
-            requestSettingsSave(form);
+            requestSettingsSave(form, context);
+        } else if (context?.signal?.aborted) {
+            setSettingsSaveQueued(false);
         }
     }
 }
 
-export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash(), showScreenFn = null) {
+export async function showSettingsScreen(
+    initialGroup = getSettingsGroupFromHash(),
+    showScreenFn = null,
+    context = {},
+) {
+    // Controller移行中も既存の呼び出し形式を維持する。
+    if (initialGroup && typeof initialGroup === 'object') {
+        initialGroup = initialGroup.group || getSettingsGroupFromHash();
+    }
     if (!getCurrentUser()) {
         window.location.hash = '#';
         return;
     }
     DOM.pageHeader.innerHTML = `<h2 id="page-title">設定</h2>`;
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('settings-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('settings-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('settings-screen', showScreenFn);
+    const settingsScreenContext = getActiveScreenContext();
 
     setNewIconDataUrl(null);
     setResetIconToDefault(false);
@@ -2050,52 +1988,9 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
         }
     }
 
-    const settingsGroupDetails = {
-        profile: {
-            title: 'プロフィール',
-            description: 'プロフィールに表示される情報と画像を設定します。',
-        },
-        home: {
-            title: 'ホームのカスタマイズ',
-            description: 'ホーム画面のタイムラインタブの追加・削除や並び順をカスタマイズします。',
-        },
-        privacy: {
-            title: 'プライバシーとセキュリティ',
-            description: '公開範囲、ログイン保護、アカウント管理を設定します。',
-        },
-        ui: {
-            title: 'UI / フォント',
-            description: '表示形式、テーマ、フォントなどの見た目を設定します。',
-        },
-        notifications: {
-            title: '通知',
-            description: 'この端末でのプッシュ通知の状態を確認・変更します。',
-        },
-        storage: {
-            title: 'ストレージ',
-            description: 'アップロード済みのファイルとストレージ使用量を管理します。',
-        },
-        apps: {
-            title: '連携アプリ',
-            description: 'NyaitterAuthでアクセスを許可したアプリケーションを管理します。',
-        },
-        api: {
-            title: 'API / Bot',
-            description: 'Bot用APIキーを生成・管理します。',
-        },
-        imposter: {
-            title: 'インポスター',
-            description: 'インポスターの作成、共同運用者、権限を管理します。',
-        },
-        resources: {
-            title: 'リソース',
-            description: 'Nyaitterに関するリソースへのリンクを表示します。',
-        },
-    };
-
     const selectSettingsGroup = (group) => {
-        const activeGroup = settingsGroupDetails[group] ? group : 'profile';
-        const details = settingsGroupDetails[activeGroup];
+        const activeGroup = SETTINGS_GROUP_DETAILS[group] ? group : 'profile';
+        const details = SETTINGS_GROUP_DETAILS[activeGroup];
         const title = document.getElementById('settings-group-title');
         const description = document.getElementById('settings-group-description');
         if (title) title.textContent = details.title;
@@ -2246,6 +2141,9 @@ export async function showSettingsScreen(initialGroup = getSettingsGroupFromHash
     const settingsForm = document.getElementById('settings-form');
     settingsForm?.addEventListener('submit', (e) => e.preventDefault());
     let settingsChangeDebouncetimer;
+    settingsScreenContext?.addCleanup(() => {
+        if (settingsChangeDebouncetimer) clearTimeout(settingsChangeDebouncetimer);
+    });
     settingsForm?.querySelectorAll('select, input[type="checkbox"]').forEach((control) => {
         control.addEventListener('change', async () => {
             if (control.dataset.imposterControl === 'true') return;

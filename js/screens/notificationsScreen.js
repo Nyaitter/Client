@@ -7,47 +7,45 @@ import {
 } from '../state.js';
 import {
     normalizeStructuredNotification,
-    appendNotificationDisplay,
 } from '../modules/notifications.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { createViewportObserver } from '../utils/viewport.js';
 import { getNotificationsPerPage, setupTimelinePullToRefresh } from '../modules/theme.js';
 import { showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
+import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
+import {
+    createNotificationElement,
+    renderEmptyState,
+    renderError,
+    renderHeader,
+    renderLoadError,
+    renderLoading,
+    renderLoggedOut,
+} from './notifications/view.js';
 
 export async function showNotificationsScreen(showScreenFn = null) {
     if (!getCurrentUser()) {
         DOM.pageHeader.innerHTML = `<h2 id="page-title">通知</h2>`;
-        if (typeof showScreenFn === 'function') {
-            showScreenFn('notifications-screen');
-        } else {
-            document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-            document.getElementById('notifications-screen')?.classList.remove('hidden');
-        }
-        DOM.notificationsContent.innerHTML =
-            '<p style="padding: 2rem; text-align:center; color: var(--secondary-text-color);">通知を見るにはログインが必要です。</p>';
+        showScreenCompat('notifications-screen', showScreenFn);
+        renderLoggedOut();
         showLoading(false);
         return;
     }
 
-    DOM.pageHeader.innerHTML = `
-        <div class="header-with-action-button">
-            <h2 id="page-title">通知</h2>
-            <button id="mark-all-read-btn" class="header-action-btn">すべて既読</button>
-        </div>`;
+    renderHeader();
 
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('notifications-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('notifications-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('notifications-screen', showScreenFn);
+
+    const screenContext = getActiveScreenContext();
+    const signal = screenContext?.signal;
+    const requestOptions = (options = {}) => ({ ...options, signal });
 
     if (getPostLoadObserver()) {
         getPostLoadObserver().disconnect();
         setPostLoadObserver(null);
     }
     const contentDiv = DOM.notificationsContent;
-    contentDiv.innerHTML = '<div class="spinner"></div>';
+    renderLoading(contentDiv);
 
     setupTimelinePullToRefresh(async (context) => {
         if (context?.type !== 'notifications') return;
@@ -103,28 +101,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
                 if (renderedNotificationIds.has(notificationId)) return;
                 renderedNotificationIds.add(notificationId);
 
-                const noticeEl = document.createElement('div');
-                noticeEl.className = 'widget-item notification-item';
-                if (!notification.clicked) {
-                    noticeEl.classList.add('notification-new');
-                }
-                if (notification.clicked) {
-                    noticeEl.classList.add('notification-clicked');
-                }
-                noticeEl.dataset.notificationId = notification.id;
-                noticeEl.dataset.notificationClicked = String(notification.clicked);
-
-                const content = document.createElement('div');
-                content.className = 'notification-item-content';
-                appendNotificationDisplay(content, notification);
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'notification-delete-btn';
-                deleteBtn.innerHTML = '×';
-                deleteBtn.title = '通知を削除';
-
-                noticeEl.appendChild(content);
-                noticeEl.appendChild(deleteBtn);
+                const noticeEl = createNotificationElement(notification);
                 contentDiv.insertBefore(noticeEl, trigger);
             });
         };
@@ -134,11 +111,12 @@ export async function showNotificationsScreen(showScreenFn = null) {
             if (!hasMoreNotifications || !getCurrentUser()) return;
             preloadNotificationsPromise = apiRequest(
                 `/server/api/notifications?limit=${NOTIFICATIONS_PER_PAGE}&offset=${nextOffset}`,
+                requestOptions(),
             ).catch(() => null);
         };
 
         const loadMoreNotifications = async () => {
-            if (isLoadingMoreNotifications || !hasMoreNotifications || !getCurrentUser()) {
+            if (signal?.aborted || isLoadingMoreNotifications || !hasMoreNotifications || !getCurrentUser()) {
                 return;
             }
 
@@ -155,11 +133,13 @@ export async function showNotificationsScreen(showScreenFn = null) {
                 } else {
                     const res = await apiRequest(
                         `/server/api/notifications?limit=${NOTIFICATIONS_PER_PAGE}&offset=${notificationOffset}`,
+                        requestOptions(),
                     );
                     notificationPayload = res?.data;
                     error = res?.error;
                 }
                 if (error) throw error;
+                if (signal?.aborted) return;
 
                 const notifications = (
                     notificationPayload?.notifications || []
@@ -191,16 +171,13 @@ export async function showNotificationsScreen(showScreenFn = null) {
                 notificationOffset += notifications.length;
                 if (notifications.length < NOTIFICATIONS_PER_PAGE) {
                     hasMoreNotifications = false;
-                    trigger.textContent =
-                        notificationOffset > 0
-                            ? 'すべての通知を読み込みました'
-                            : '通知はまだありません。';
+                    renderEmptyState(trigger, notificationOffset > 0);
                     if (getPostLoadObserver()) getPostLoadObserver().disconnect();
                 } else {
                     trigger.textContent = '';
                     triggerPreloadNextNotifications(notificationOffset);
                     requestAnimationFrame(() => {
-                        if (!hasMoreNotifications || isLoadingMoreNotifications || !getCurrentUser()) return;
+                        if (signal?.aborted || !hasMoreNotifications || isLoadingMoreNotifications || !getCurrentUser()) return;
                         const rect = trigger.getBoundingClientRect();
                         const vh = window.innerHeight || document.documentElement.clientHeight || 0;
                         if (rect.top <= vh + 300 && rect.bottom >= -300) {
@@ -211,10 +188,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
             } catch (error) {
                 console.error('通知の取得に失敗しました:', error);
                 hasMoreNotifications = false;
-                trigger.textContent =
-                    notificationOffset > 0
-                        ? '通知の追加読み込みに失敗しました。'
-                        : '通知の読み込みに失敗しました。';
+                renderLoadError(trigger, notificationOffset > 0);
                 if (getPostLoadObserver()) getPostLoadObserver().disconnect();
             } finally {
                 isLoadingMoreNotifications = false;
@@ -231,14 +205,16 @@ export async function showNotificationsScreen(showScreenFn = null) {
                 { rootMargin: '300px' },
             ),
         );
-        getPostLoadObserver().observe(trigger);
+        const notificationObserver = getPostLoadObserver();
+        notificationObserver.observe(trigger);
+        screenContext?.addCleanup(() => notificationObserver.disconnect());
         await loadMoreNotifications();
 
         try {
             const { data: readAllOnOpenData, error: readAllOnOpenError } =
-                await apiRequest('/server/api/notifications/read-all', {
+                await apiRequest('/server/api/notifications/read-all', requestOptions({
                     method: 'PUT',
-                });
+                }));
             if (readAllOnOpenError) {
                 console.error('通知一覧表示後の既読化に失敗しました:', readAllOnOpenError);
             } else {
@@ -260,8 +236,8 @@ export async function showNotificationsScreen(showScreenFn = null) {
         }
     } catch (e) {
         console.error('通知画面エラー:', e);
-        contentDiv.innerHTML = `<p class="error-message">通知の読み込みに失敗しました。</p>`;
+        if (!signal?.aborted) renderError(contentDiv);
     } finally {
-        showLoading(false);
+        if (!signal?.aborted) showLoading(false);
     }
 }
