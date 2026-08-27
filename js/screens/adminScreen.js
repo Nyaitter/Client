@@ -18,6 +18,14 @@ import {
     showAppConfirm,
     showAppPrompt,
 } from '../utils/helpers.js';
+import {
+    renderEmpty,
+    renderError,
+    renderHeader,
+    renderLoading,
+    renderReportList,
+} from './admin/view.js';
+import { showScreenCompat } from '../screenManager.js';
 
 export function formatModerationDate(value) {
     if (!value) return '日時不明';
@@ -44,54 +52,25 @@ export function renderModerationSubject(user) {
 }
 
 export async function showAdminReportsScreen(showScreenFn = null) {
-    DOM.pageHeader.innerHTML = `
-        <div class="header-with-back-button">
-            <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
-            <h2 id="page-title">リクエスト</h2>
-        </div>`;
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('admin-reports-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('admin-reports-screen')?.classList.remove('hidden');
-    }
+    renderHeader('リクエスト');
+    showScreenCompat('admin-reports-screen', showScreenFn);
 
     const contentDiv = document.getElementById('admin-reports-content');
     if (!contentDiv) return;
-    contentDiv.innerHTML = '<div class="admin-reports-container"><div class="spinner"></div></div>';
+    renderLoading(contentDiv);
 
     try {
         const { data, error } = await apiRequest('/server/api/reports/assigned');
         if (error) throw error;
         const reports = Array.isArray(data?.reports) ? data.reports : [];
         if (reports.length === 0) {
-            contentDiv.innerHTML =
-                '<div class="admin-reports-container"><p class="moderation-help-text">現在、あなたに割り当てられているリクエストはありません。</p></div>';
+            renderEmpty(contentDiv, '現在、あなたに割り当てられているリクエストはありません。');
             return;
         }
-        contentDiv.innerHTML = `
-            <div class="admin-reports-container">
-                <div class="admin-reports-list">
-                    ${reports
-                        .map(
-                            (report) => `
-                        <button type="button" class="moderation-report-card" data-action="open-admin-report" data-report-id="${Number(report.id)}">
-                            <strong>${report.assignment_type === 'freeze_appeal' ? '凍結異議申し立て' : report.assignment_type === 'verification_application' ? '認証申請' : `${moderationTargetLabel(report.target_kind)}の報告`}</strong>
-                            <div class="moderation-report-meta">
-                                <span>割当: ${escapeHTML(formatModerationDate(report.assigned_at))}</span>
-                                <span>リクエストID: ${Number(report.id)}</span>
-                            </div>
-                            <p>${escapeHTML(report.description || '説明は添付されていません。')}</p>
-                        </button>
-                    `,
-                        )
-                        .join('')}
-                </div>
-            </div>`;
+        renderReportList(contentDiv, reports, formatModerationDate, moderationTargetLabel);
     } catch (error) {
         console.error('リクエスト一覧の取得に失敗:', error);
-        contentDiv.innerHTML =
-            '<div class="admin-reports-container"><p class="error-message">リクエスト一覧の取得に失敗しました。</p></div>';
+        renderError(contentDiv, 'リクエスト一覧の取得に失敗しました。');
     } finally {
         showLoading(false);
     }
@@ -103,21 +82,12 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
         window.location.hash = '#admin/reports';
         return;
     }
-    DOM.pageHeader.innerHTML = `
-        <div class="header-with-back-button">
-            <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
-            <h2 id="page-title">報告を確認</h2>
-        </div>`;
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('admin-reports-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('admin-reports-screen')?.classList.remove('hidden');
-    }
+    renderHeader('報告を確認');
+    showScreenCompat('admin-reports-screen', showScreenFn);
 
     const contentDiv = document.getElementById('admin-reports-content');
     if (!contentDiv) return;
-    contentDiv.innerHTML = '<div class="admin-reports-container"><div class="spinner"></div></div>';
+    renderLoading(contentDiv);
 
     try {
         const { data, error } = await apiRequest(`/server/api/reports/${normalizedReportId}`);
@@ -330,17 +300,8 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
 }
 
 export async function showAdminLogsScreen(showScreenFn = null) {
-    DOM.pageHeader.innerHTML = `
-        <div class="header-with-back-button">
-            <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
-            <h2 id="page-title">アクセスログ</h2>
-        </div>`;
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('admin-logs-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('admin-logs-screen')?.classList.remove('hidden');
-    }
+    renderHeader('アクセスログ');
+    showScreenCompat('admin-logs-screen', showScreenFn);
 
     const contentDiv = document.getElementById('admin-logs-content');
     if (!contentDiv) return;

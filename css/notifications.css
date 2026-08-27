@@ -71,6 +71,20 @@ background: none;
 background-color: #e0e0e0;
 }
 
+.notifications-empty-message {
+    margin: 0;
+    padding: 2rem 1rem;
+    color: var(--secondary-text-color);
+    text-align: center;
+}
+
+.list-empty-message {
+    margin: 0;
+    padding: 2rem 1rem;
+    color: var(--secondary-text-color);
+    text-align: center;
+}
+
 @keyframes highlight-bg-fade {
 0%,
     50% {

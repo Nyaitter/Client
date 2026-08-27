@@ -58,6 +58,8 @@ import {
     showAppConfirm,
     scheduleNextFrame,
 } from '../utils/helpers.js';
+import { renderConversationShell, renderListHeader, renderListShell } from './dm/view.js';
+import { showScreenCompat } from '../screenManager.js';
 
 let activeDmListTab = 'inbox';
 
@@ -121,40 +123,16 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
         window.location.hash = '#';
         return;
     }
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('dm-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('dm-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('dm-screen', showScreenFn);
 
     const contentDiv = DOM.dmContent;
 
     if (dmId) {
-        DOM.pageHeader.innerHTML = '';
-        contentDiv.innerHTML = '<div id="dm-conversation-container"></div>';
+        renderConversationShell(contentDiv);
         await showDmConversation(dmId);
     } else {
-        DOM.pageHeader.innerHTML = `
-            <div class="header-with-action-button">
-                <h2 id="page-title">メッセージ</h2>
-                <button type="button" class="header-action-btn" data-action="open-create-dm">新しいメッセージ</button>
-            </div>
-        `;
-        contentDiv.innerHTML = `
-            <div class="dm-tabs-container">
-                <button type="button" class="dm-tab-button ${activeDmListTab === 'inbox' ? 'active' : ''}" data-dm-tab="inbox">
-                    <span>メッセージ</span>
-                </button>
-                <button type="button" class="dm-tab-button ${activeDmListTab === 'requests' ? 'active' : ''}" data-dm-tab="requests">
-                    <span>リクエスト</span>
-                    <span class="dm-tab-badge hidden" id="dm-request-tab-badge">0</span>
-                </button>
-            </div>
-            <div id="dm-list-container" class="dm-list-container">
-                <div id="dm-list-items-wrapper" class="dm-list-items-wrapper spinner"></div>
-            </div>
-        `;
+        renderListHeader();
+        renderListShell(contentDiv, activeDmListTab);
         const tabsContainer = contentDiv.querySelector('.dm-tabs-container');
         const badgeEl = document.getElementById('dm-request-tab-badge');
         const listItemsWrapper = document.getElementById('dm-list-items-wrapper');
@@ -828,4 +806,3 @@ export function openCreateDmModal() {
         DOM.createDmModal.classList.add('hidden');
     });
 }
-

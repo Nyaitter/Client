@@ -618,6 +618,270 @@ background-color: var(--primary-hover-color);
 transform: scale(0.97);
 }
 
+/* --------------------------------------------------------------------------
+   Settings UI refresh
+   Keep the existing Nyaitter palette and controls, but give the screen a
+   clearer hierarchy and a compact, keyboard-friendly layout.
+   -------------------------------------------------------------------------- */
+
+#settings-screen {
+    --settings-content-width: 58rem;
+    width: 100%;
+    max-width: var(--settings-content-width);
+    margin: 0 auto;
+}
+
+#settings-screen,
+#settings-screen * {
+    transition: none !important;
+}
+
+.settings-layout {
+    grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+    gap: 1.25rem;
+    padding: 1.25rem;
+}
+
+.settings-group-list {
+    gap: 0.2rem;
+    padding: 0.35rem;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgb(15 20 25 / 5%);
+}
+
+.settings-group-button {
+    min-height: 2.6rem;
+    padding: 0.65rem 0.75rem;
+    border-left: 3px solid transparent;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    line-height: 1.35;
+}
+
+.settings-group-button:hover,
+.settings-group-button:focus-visible {
+    background: var(--bg-color);
+}
+
+.settings-group-button:focus-visible,
+.settings-select:focus-visible,
+#settings-form input:focus-visible,
+#settings-form textarea:focus-visible,
+#settings-form button:focus-visible,
+#settings-form a:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.settings-group-button.active {
+    border-left-color: var(--primary-color);
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+}
+
+#settings-form.settings-detail {
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--main-bg-color);
+    box-shadow: 0 1px 2px rgb(15 20 25 / 5%);
+}
+
+.settings-detail-heading {
+    padding: 1.25rem 1.35rem 1rem;
+    background: var(--bg-color);
+}
+
+.settings-detail-heading h3 {
+    font-size: 1.15rem;
+    line-height: 1.35;
+}
+
+.settings-group-description {
+    max-width: 48rem;
+    font-size: 0.9rem;
+}
+
+.settings-group-panel {
+    gap: 0.85rem;
+    padding: 1.35rem;
+}
+
+.settings-group-panel > label:not(.settings-color-field) {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.9rem;
+}
+
+#settings-form input[type='text'],
+#settings-form input[type='search'],
+#settings-form textarea,
+.settings-select {
+    min-height: 2.65rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+#settings-form textarea {
+    min-height: 7rem;
+    line-height: 1.55;
+    resize: vertical;
+}
+
+#settings-form fieldset,
+.settings-custom-colors,
+.settings-bot-create-container,
+.settings-resource-links a {
+    border-radius: 8px;
+}
+
+#settings-form fieldset {
+    margin: 0;
+    padding: 1rem;
+}
+
+#settings-form fieldset legend {
+    font-size: 0.95rem;
+}
+
+#settings-form fieldset label {
+    line-height: 1.5;
+}
+
+#settings-form input[type='checkbox'] {
+    width: 1rem;
+    height: 1rem;
+    margin: 0 0.5rem 0 0;
+    accent-color: var(--primary-color);
+    vertical-align: -0.15rem;
+}
+
+.settings-help-text {
+    font-size: 0.86rem;
+}
+
+.settings-group-panel > section,
+.settings-group-panel > .settings-bot-section,
+.settings-group-panel > .home-tabs-customizer {
+    min-width: 0;
+}
+
+.settings-group-panel > section:not(.settings-danger-zone),
+.settings-bot-section,
+.home-tabs-customizer {
+    padding: 0;
+}
+
+.settings-group-panel h4 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.settings-save-row {
+    padding: 1rem 1.35rem 1.35rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.settings-primary-button,
+.settings-secondary-button,
+.settings-danger-button,
+#settings-reassign-nyaitter-id-btn,
+#settings-logout-btn,
+#settings-showlog-btn,
+#settings-account-switcher-btn {
+    min-height: 2.5rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.settings-primary-button,
+#settings-form button[type='submit'] {
+    padding-inline: 1rem;
+}
+
+.settings-danger-zone {
+    margin: 0.75rem 0 0;
+    padding: 1.1rem 0 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.settings-account-delete {
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.settings-resource-links {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.settings-resource-links a {
+    padding: 0.85rem;
+    font-size: 0.9rem;
+}
+
+.settings-session-item {
+    padding: 0.9rem 0;
+}
+
+.settings-session-actions button,
+.settings-bot-create-form button,
+.settings-bot-copy-button {
+    min-height: 2.4rem;
+    border-radius: 6px;
+}
+
+.home-tabs-divider {
+    min-height: 1px;
+    margin: 0.25rem 0;
+    background: var(--border-color);
+}
+
+.home-tabs-divider-icon {
+    display: none;
+}
+
+@media (max-width: 700px) {
+    .settings-layout {
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    .settings-group-list {
+        position: static;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .settings-group-button {
+        min-height: 2.45rem;
+        padding: 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    .settings-group-panel,
+    .settings-detail-heading {
+        padding: 1rem;
+    }
+
+    .settings-save-row {
+        padding: 0.9rem 1rem 1rem;
+    }
+
+    .settings-bot-create-form,
+    .settings-bot-new-key-display {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .settings-bot-create-form button,
+    .settings-bot-copy-button {
+        width: 100%;
+    }
+}
+
 .settings-bot-secondary-button {
 padding: 0.45rem 1rem;
     border: 1px solid var(--border-color);
@@ -911,4 +1175,21 @@ overflow: hidden;
 #reset-home-tabs-btn {
     margin-top: 0.75rem;
     font-size: 0.9rem;
+}
+
+/* Keep the settings screen static and free of decorative divider symbols. */
+#settings-screen,
+#settings-screen * {
+    transition: none !important;
+}
+
+#settings-screen .home-tabs-divider {
+    display: block;
+    min-height: 1px;
+    margin: 0.25rem 0;
+    background: var(--border-color);
+}
+
+#settings-screen .home-tabs-divider-icon {
+    display: none;
 }

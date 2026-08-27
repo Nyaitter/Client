@@ -1,6 +1,5 @@
 import { apiRequest } from '../api.js';
 import { DOM } from '../dom.js';
-import { ICONS } from '../icons.js';
 import {
     getCurrentUser,
     getCurrentSearchTab,
@@ -24,57 +23,17 @@ import {
 } from '../modules/pagination.js';
 import { getEmoji } from '../modules/format.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
+import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
+import {
+    renderGroupResults,
+    renderSearchError,
+    renderSearchHeader,
+} from './search/view.js';
 
 let activeSearchRequestVersion = 0;
 
-const GROUP_VISIBILITY_LABELS = {
-    open: 'Open',
-    open_invite: 'OpenInvite',
-};
-
-function getGroupImageUrl(value) {
-    const image = typeof value === 'string' ? value.trim() : '';
-    if (!image) return '';
-    if (/^data:image\//i.test(image) || /^https?:\/\//i.test(image)) return image;
-    const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(image);
-    return typeof configuredUrl === 'string' ? configuredUrl : image;
-}
-
-function renderGroupSearchResult(group) {
-    const id = encodeURIComponent(String(group?.id || ''));
-    const name = escapeHTML(group?.name || '無題のグループ');
-    const description = escapeHTML(group?.description || '説明はありません。');
-    const visibility = escapeHTML(GROUP_VISIBILITY_LABELS[group?.visibility] || group?.visibility || 'Open');
-    const memberCount = Math.max(0, Number(group?.member_count || 0));
-    const imageUrl = getGroupImageUrl(group?.icon_data);
-    const avatar = imageUrl
-        ? `<img class="group-ui-avatar" src="${escapeHTML(imageUrl)}" alt="">`
-        : `<div class="group-ui-avatar group-ui-avatar-fallback" aria-hidden="true">${ICONS.group}</div>`;
-    return `<article class="settings-session-item group-ui-list-item">
-        <a class="group-ui-list-link" href="#group/${id}">
-            ${avatar}
-            <div class="settings-session-details">
-                <span class="settings-session-title">${name}</span>
-                <p>${visibility} ・ ${memberCount}人<br>${description}</p>
-            </div>
-        </a>
-    </article>`;
-}
-
 export async function showSearchResults(query, tab = 'posts', showScreenFn = null) {
-    DOM.pageHeader.innerHTML = `
-        <div class="header-search-bar">
-            ${ICONS.explore}
-            <input type="search" id="search-input" placeholder="検索">
-        </div>
-        <br>
-        <h2 id="page-title">検索結果: "${getEmoji(escapeHTML(query))}"</h2>
-        <div class="search-tabs" id="search-tabs-container">
-            <button class="tab-button ${tab === 'posts' ? 'active' : ''}" data-search-tab="posts">ポスト</button>
-            <button class="tab-button ${tab === 'users' ? 'active' : ''}" data-search-tab="users">ユーザー</button>
-            <button class="tab-button ${tab === 'groups' ? 'active' : ''}" data-search-tab="groups">グループ</button>
-        </div>
-    `;
+    renderSearchHeader(query, tab, getEmoji(escapeHTML(query)));
 
     const searchInput = document.getElementById('search-input');
     let searchDebounceTimer;
@@ -108,18 +67,14 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
             };
         });
 
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('search-results-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('search-results-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('search-results-screen', showScreenFn);
 
     await loadSearchTabContent(query, tab);
 }
 
 export async function loadSearchTabContent(query, tab) {
     const searchRequestVersion = ++activeSearchRequestVersion;
+    const signal = getActiveScreenContext()?.signal;
     setCurrentSearchTab(tab);
     document
         .querySelectorAll('#search-tabs-container .tab-button')
@@ -132,15 +87,17 @@ export async function loadSearchTabContent(query, tab) {
     contentDiv.innerHTML = '';
 
     if (tab === 'groups') {
-        const { data, error } = await apiRequest(`/server/api/groups?q=${encodeURIComponent(String(query || ''))}&limit=100`);
+        const { data, error } = await apiRequest(
+            `/server/api/groups?q=${encodeURIComponent(String(query || ''))}&limit=100`,
+            { signal },
+        );
         if (searchRequestVersion !== activeSearchRequestVersion || getCurrentSearchTab() !== 'groups') return;
+        if (signal?.aborted) return;
         if (error) {
-            contentDiv.innerHTML = `<p class="error-message">グループの検索に失敗しました。${escapeHTML(error.message || '')}</p>`;
+            renderSearchError(contentDiv, error.message || '');
         } else {
             const groups = Array.isArray(data?.groups) ? data.groups : [];
-            contentDiv.innerHTML = groups.length
-                ? `<div class="settings-sessions-list">${groups.map(renderGroupSearchResult).join('')}</div>`
-                : '<p class="settings-help-text">該当する公開グループはありません。</p>';
+            renderGroupResults(contentDiv, groups);
         }
         showLoading(false);
     } else if (tab === 'users') {
@@ -178,6 +135,7 @@ export async function loadSearchTabContent(query, tab) {
             filters: filters.join(','),
             pageSize: 15,
             pageCache: getUserPageCache(searchUsersCacheKey),
+            signal,
             sortResults: (left, right) =>
                 scoreUser(left) - scoreUser(right) ||
                 Number(left.id) - Number(right.id),
@@ -221,6 +179,7 @@ export async function loadSearchTabContent(query, tab) {
             pageCache: getAuxiliaryPostPageCache(
                 `${userScope}:search:posts:${query}`,
             ),
+            signal: getActiveScreenContext()?.signal,
         });
         showLoading(false);
     }

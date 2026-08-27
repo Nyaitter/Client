@@ -5,6 +5,7 @@ import { loadPostsWithPagination } from '../modules/pagination.js';
 import { uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
 import { initTabGroup } from '../modules/tabSwipe.js';
 import { escapeHTML, getNyaitterId, getUserIconUrl, showAppAlert, showAppConfirm, showLoading } from '../utils/helpers.js';
+import { showScreenCompat } from '../screenManager.js';
 
 const VISIBILITY_LABELS = {
     open: 'Open',
@@ -137,11 +138,7 @@ function renderGroupCard(group, { joined = false } = {}) {
 }
 
 function showScreen(showScreenFn) {
-    if (typeof showScreenFn === 'function') showScreenFn('groups-screen');
-    else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('groups-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('groups-screen', showScreenFn);
 }
 
 function renderGroupSection(title, content, description = '') {

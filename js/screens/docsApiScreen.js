@@ -1,6 +1,7 @@
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
+import { showScreenCompat } from '../screenManager.js';
 
 const { apiUrl } = globalThis.NyaitterClientConfig || {};
 
@@ -139,12 +140,7 @@ export async function showDocsApiScreen(showScreenFn) {
         </div>
     `;
 
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('docs-api-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('docs-api-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('docs-api-screen', showScreenFn);
 
     const contentDiv = document.getElementById('docs-api-content');
     if (!contentDiv) return;

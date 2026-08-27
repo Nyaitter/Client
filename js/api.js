@@ -2,7 +2,7 @@ import { getAllUsersCache } from './state.js';
 
 const { apiUrl, userFileUrl } = globalThis.NyaitterClientConfig;
 
-export async function apiRequest(path, { method = 'GET', body } = {}) {
+export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
     const headers = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     // 本人専用の認証状態は設定・リアクション更新後に変化するため、ブラウザの
@@ -15,6 +15,7 @@ export async function apiRequest(path, { method = 'GET', body } = {}) {
             credentials: 'include',
             cache: isAuthStateRequest ? 'no-store' : 'default',
             body: body === undefined ? undefined : JSON.stringify(body),
+            signal,
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok)
@@ -47,9 +48,10 @@ export const api = (() => {
             values: null,
             single: false,
             limit: null,
+            signal: undefined,
         };
         const queryRequest = async (path, options, key) => {
-            const res = await request(path, options, key);
+            const res = await request(path, { ...options, signal: state.signal }, key);
             if (state.single && Array.isArray(res.data)) {
                 res.data = res.data[0] || null;
             }
@@ -121,6 +123,10 @@ export const api = (() => {
             },
             limit(value) {
                 state.limit = value;
+                return chain;
+            },
+            signal(value) {
+                state.signal = value;
                 return chain;
             },
             single() {

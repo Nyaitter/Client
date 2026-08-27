@@ -1,6 +1,7 @@
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
+import { showScreenCompat } from '../screenManager.js';
 
 const { apiUrl } = globalThis.NyaitterClientConfig || {};
 
@@ -63,12 +64,7 @@ export async function showDocsPortalScreen(showScreenFn) {
         </div>
     `;
 
-    if (typeof showScreenFn === 'function') {
-        showScreenFn('docs-portal-screen');
-    } else {
-        document.querySelectorAll('.screen').forEach((screen) => screen.classList.add('hidden'));
-        document.getElementById('docs-portal-screen')?.classList.remove('hidden');
-    }
+    showScreenCompat('docs-portal-screen', showScreenFn);
 
     const contentDiv = document.getElementById('docs-portal-content');
     if (!contentDiv) return;

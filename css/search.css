@@ -47,6 +47,13 @@ display: flex;
 border-top: 1px solid var(--border-color);
 }
 
+.explore-empty-message {
+    margin: 0;
+    padding: 2rem 1rem;
+    color: var(--secondary-text-color);
+    text-align: center;
+}
+
 .trends-widget-title {
 font-size: 1.25rem;
     font-weight: 800;
