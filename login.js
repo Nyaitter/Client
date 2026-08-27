@@ -66,6 +66,7 @@ function setupLoginModal() {
   let turnstileInitialized = false;
   let turnstileWidgetId = null;
   let turnstileToken = null;
+  let turnstileRequiredForModal = false;
 
   function isTurnstileResolved() {
     if (!turnstileEnabled) return true;
@@ -194,6 +195,11 @@ function setupLoginModal() {
       callback: (token) => {
         turnstileToken = token;
         enableAuthActionButtons();
+        // Turnstile専用画面で完了したらプロバイダ選択へ遷移
+        if (turnstileRequiredForModal) {
+          turnstileRequiredForModal = false;
+          showProviderSelect();
+        }
       },
       'expired-callback': () => {
         turnstileToken = null;
@@ -232,6 +238,27 @@ function setupLoginModal() {
       } catch (_) {}
     }
     disableAuthActionButtons();
+  }
+
+  function showTurnstileInline(anchorElement, onSuccess) {
+    if (!turnstileEnabled || !turnstileContainer || !anchorElement) {
+      onSuccess?.();
+      return;
+    }
+    if (anchorElement.parentNode && turnstileContainer.parentNode !== anchorElement.parentNode) {
+      anchorElement.parentNode.insertBefore(turnstileContainer, anchorElement.nextSibling);
+    }
+    turnstileContainer.classList.remove('hidden');
+    const prevCallback = window.turnstile?.render ? null : undefined;
+    void setupTurnstile().then(() => {
+      const checkToken = setInterval(() => {
+        if (turnstileToken) {
+          clearInterval(checkToken);
+          turnstileContainer.classList.add('hidden');
+          onSuccess?.();
+        }
+      }, 300);
+    });
   }
 
   function showLoading(show) {
@@ -354,10 +381,20 @@ function setupLoginModal() {
     hideMessages();
   }
 
+  function showTurnstileOnlyScreen() {
+    hideAllPanels();
+    hideTurnstile();
+    loginBackBtn?.classList.add('hidden');
+    if (loginTitle) loginTitle.textContent = '認証チャレンジ';
+    hideMessages();
+    mountTurnstile(authProviderSelect); // mount inside the provider select area
+  }
+
   function resetLoginModal() {
     scratchUsername = '';
     currentEmail = '';
     turnstileToken = null;
+    turnstileRequiredForModal = false;
     if (usernameInput) usernameInput.value = '';
     if (loginEmailInput) loginEmailInput.value = '';
     if (loginEmailCodeInput) loginEmailCodeInput.value = '';
@@ -405,11 +442,9 @@ function setupLoginModal() {
     } else if (name === 'passkey') {
       if (loginTitle) loginTitle.textContent = 'パスキーでログイン';
       authPasskeyPanel?.classList.remove('hidden');
-      mountTurnstile(passkeySigninBtn);
     } else if (name === 'nyaitter' || name === 'nyaitterauth' || name === 'nyaitter-auth') {
       if (loginTitle) loginTitle.textContent = 'Nyaitterでログイン';
       authNyaitterPanel?.classList.remove('hidden');
-      mountTurnstile(nyaitterSigninBtn);
       window.setTimeout(() => loginNyaitterServerInput?.focus(), 0);
     } else {
       if (loginTitle) loginTitle.textContent = `${provider?.displayName || name}でログイン`;
@@ -456,8 +491,16 @@ function setupLoginModal() {
     await detectTurnstileRequirement();
 
     await renderProviderButtons();
+
+    // Turnstileが必要で未解決の場合は先にチャレンジ画面を表示
+    turnstileRequiredForModal = Boolean(turnstileEnabled && !isTurnstileResolved());
+    if (turnstileRequiredForModal) {
+      showTurnstileOnlyScreen();
+    } else {
+      showProviderSelect();
+    }
+
     loginModal.classList.remove('hidden');
-    if (turnstileEnabled) mountTurnstile(authProviderSelect);
   }
 
   function closeLoginModal() {
@@ -536,7 +579,6 @@ function setupLoginModal() {
       if (profileLink) profileLink.href = `https://scratch.mit.edu/users/${encodeURIComponent(scratchUsername)}/#comments`;
       authStep1?.classList.add('hidden');
       authStep2?.classList.remove('hidden');
-      mountTurnstile(verifyCommentBtn);
     } catch (error) {
       showError(error.message);
     } finally {
@@ -560,39 +602,41 @@ function setupLoginModal() {
   });
 
   verifyCommentBtn?.addEventListener('click', async () => {
-    if (turnstileEnabled && !isTurnstileResolved()) {
-      showError('認証チャレンジを完了してください。');
-      return;
-    }
-
-    showLoading(true);
-    hideMessages();
-    try {
-      const response = await fetch(`${AUTH_API}/scratch/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          type: 'verifyComment',
-          username: scratchUsername,
-          code: verificationCodeElem?.textContent,
-          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-        }),
-      });
-      let data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) {
-        if (response.status === 403 || data.code === 'turnstile_required') resetTurnstile();
-        throw new Error(data.error || '認証に失敗しました。');
+    const attemptVerify = async () => {
+      showLoading(true);
+      hideMessages();
+      try {
+        const response = await fetch(`${AUTH_API}/scratch/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            type: 'verifyComment',
+            username: scratchUsername,
+            code: verificationCodeElem?.textContent,
+            turnstile_token: turnstileEnabled ? turnstileToken : undefined,
+          }),
+        });
+        let data = await response.json().catch(() => ({}));
+        if (!response.ok || data.error) {
+          if (response.status === 403 || data.code === 'turnstile_required') {
+            resetTurnstile();
+            showTurnstileInline(verifyCommentBtn, attemptVerify);
+            return;
+          }
+          throw new Error(data.error || '認証に失敗しました。');
+        }
+        resetTurnstile();
+        if (data.approval_required) data = await completeApprovedLogin(data);
+        if (!data.success) throw new Error('セッションの設定に失敗しました。');
+        finishLogin();
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        showLoading(false);
       }
-      resetTurnstile();
-      if (data.approval_required) data = await completeApprovedLogin(data);
-      if (!data.success) throw new Error('セッションの設定に失敗しました。');
-      finishLogin();
-    } catch (error) {
-      showError(error.message);
-    } finally {
-      showLoading(false);
-    }
+    };
+    await attemptVerify();
   });
 
   // --- Email Flow Handlers ---
@@ -622,7 +666,6 @@ function setupLoginModal() {
 
       authEmailStep1?.classList.add('hidden');
       authEmailStep2?.classList.remove('hidden');
-      mountTurnstile(verifyEmailCodeBtn);
       window.setTimeout(() => loginEmailCodeInput?.focus(), 0);
     } catch (error) {
       showError(error.message);
@@ -647,47 +690,50 @@ function setupLoginModal() {
       showError('認証コードを入力してください。');
       return;
     }
-    if (turnstileEnabled && !isTurnstileResolved()) {
-      showError('認証チャレンジを完了してください。');
-      return;
-    }
 
-    showLoading(true);
-    hideMessages();
-    try {
-      const response = await fetch(`${AUTH_API}/email/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: currentEmail,
-          code,
-          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-        }),
-      });
-      let data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) {
-        if (response.status === 403 || data.code === 'turnstile_required') resetTurnstile();
-        if (data.code === 'username_required') {
-          hideMessages();
-          if (loginTitle) loginTitle.textContent = 'ユーザー名の設定';
-          authEmailStep2?.classList.add('hidden');
-          authEmailStep3?.classList.remove('hidden');
-          hideTurnstile();
-          window.setTimeout(() => loginEmailNameInput?.focus(), 0);
-          return;
+    const attemptVerify = async () => {
+      showLoading(true);
+      hideMessages();
+      try {
+        const response = await fetch(`${AUTH_API}/email/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: currentEmail,
+            code,
+            turnstile_token: turnstileEnabled ? turnstileToken : undefined,
+          }),
+        });
+        let data = await response.json().catch(() => ({}));
+        if (!response.ok || data.error) {
+          if (response.status === 403 || data.code === 'turnstile_required') {
+            resetTurnstile();
+            showTurnstileInline(verifyEmailCodeBtn, attemptVerify);
+            return;
+          }
+          if (data.code === 'username_required') {
+            hideMessages();
+            if (loginTitle) loginTitle.textContent = 'ユーザー名の設定';
+            authEmailStep2?.classList.add('hidden');
+            authEmailStep3?.classList.remove('hidden');
+            hideTurnstile();
+            window.setTimeout(() => loginEmailNameInput?.focus(), 0);
+            return;
+          }
+          throw new Error(data.error || '認証に失敗しました。');
         }
-        throw new Error(data.error || '認証に失敗しました。');
+        resetTurnstile();
+        if (data.approval_required) data = await completeApprovedLogin(data);
+        if (!data.success) throw new Error('セッションの設定に失敗しました。');
+        finishLogin();
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        showLoading(false);
       }
-      resetTurnstile();
-      if (data.approval_required) data = await completeApprovedLogin(data);
-      if (!data.success) throw new Error('セッションの設定に失敗しました。');
-      finishLogin();
-    } catch (error) {
-      showError(error.message);
-    } finally {
-      showLoading(false);
-    }
+    };
+    await attemptVerify();
   });
 
   async function submitEmailSignup() {
@@ -698,37 +744,41 @@ function setupLoginModal() {
       loginEmailNameInput?.focus();
       return;
     }
-    if (turnstileEnabled && !isTurnstileResolved()) {
-      showError('認証チャレンジを完了してください。');
-      return;
-    }
 
-    showLoading(true);
-    hideMessages();
-    try {
-      const response = await fetch(`${AUTH_API}/email/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: currentEmail,
-          code,
-          name,
-          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-        }),
-      });
-      let data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) {
-        throw new Error(data.error || '登録に失敗しました。');
+    const attemptSignup = async () => {
+      showLoading(true);
+      hideMessages();
+      try {
+        const response = await fetch(`${AUTH_API}/email/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: currentEmail,
+            code,
+            name,
+            turnstile_token: turnstileEnabled ? turnstileToken : undefined,
+          }),
+        });
+        let data = await response.json().catch(() => ({}));
+        if (!response.ok || data.error) {
+          if (response.status === 403 || data.code === 'turnstile_required') {
+            resetTurnstile();
+            showTurnstileInline(submitEmailSignupBtn, attemptSignup);
+            return;
+          }
+          throw new Error(data.error || '登録に失敗しました。');
+        }
+        if (data.approval_required) data = await completeApprovedLogin(data);
+        if (!data.success) throw new Error('セッションの設定に失敗しました。');
+        finishLogin();
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        showLoading(false);
       }
-      if (data.approval_required) data = await completeApprovedLogin(data);
-      if (!data.success) throw new Error('セッションの設定に失敗しました。');
-      finishLogin();
-    } catch (error) {
-      showError(error.message);
-    } finally {
-      showLoading(false);
-    }
+    };
+    await attemptSignup();
   }
 
   submitEmailSignupBtn?.addEventListener('click', submitEmailSignup);
@@ -787,87 +837,97 @@ function setupLoginModal() {
       showError('このブラウザはパスキー認証に対応していません。');
       return;
     }
-    if (turnstileEnabled && !isTurnstileResolved()) {
-      showError('認証チャレンジを完了してください。');
-      return;
-    }
 
-    showLoading(true);
-    hideMessages();
-    try {
-      // Step 1: サーバーからチャレンジを取得
-      const initiateResponse = await fetch(`${AUTH_API}/passkey/initiate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-        }),
-      });
-      const initiateData = await initiateResponse.json().catch(() => ({}));
-      if (!initiateResponse.ok || initiateData.error) {
-        if (initiateResponse.status === 403 || initiateData.code === 'turnstile_required') resetTurnstile();
-        throw new Error(initiateData.error || 'パスキー認証の開始に失敗しました。');
-      }
-
-      // Step 2: WebAuthn API でパスキーウィンドウを表示して認証
-      const challengeBytes = base64urlToUint8Array(initiateData.challenge);
-      showLoading(false); // ブラウザのパスキーダイアログを表示する前にローディングを非表示に
-
-      const rpId = getEffectiveRpId(initiateData.rpId);
-
-      let credential;
+    const attemptPasskey = async () => {
+      showLoading(true);
+      hideMessages();
       try {
-        credential = await navigator.credentials.get({
-          publicKey: {
-            challenge: challengeBytes,
-            ...(rpId ? { rpId } : {}),
-            timeout: initiateData.timeout || 60000,
-            userVerification: initiateData.userVerification || 'preferred',
-          },
+        // Step 1: サーバーからチャレンジを取得
+        const initiateResponse = await fetch(`${AUTH_API}/passkey/initiate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            turnstile_token: turnstileEnabled ? turnstileToken : undefined,
+          }),
         });
-      } catch (webAuthnError) {
-        if (webAuthnError.name === 'NotAllowedError') {
+        const initiateData = await initiateResponse.json().catch(() => ({}));
+        if (!initiateResponse.ok || initiateData.error) {
+          if (initiateResponse.status === 403 || initiateData.code === 'turnstile_required') {
+            resetTurnstile();
+            showTurnstileInline(passkeySigninBtn, attemptPasskey);
+            return;
+          }
+          throw new Error(initiateData.error || 'パスキー認証の開始に失敗しました。');
+        }
+
+        // Step 2: WebAuthn API でパスキーウィンドウを表示して認証
+        const challengeBytes = base64urlToUint8Array(initiateData.challenge);
+        showLoading(false); // ブラウザのパスキーダイアログを表示する前にローディングを非表示に
+
+        const rpId = getEffectiveRpId(initiateData.rpId);
+
+        let credential;
+        try {
+          credential = await navigator.credentials.get({
+            publicKey: {
+              challenge: challengeBytes,
+              ...(rpId ? { rpId } : {}),
+              timeout: initiateData.timeout || 60000,
+              userVerification: initiateData.userVerification || 'preferred',
+            },
+          });
+        } catch (webAuthnError) {
+          if (webAuthnError.name === 'NotAllowedError') {
+            throw new Error('パスキー認証がキャンセルされました。');
+          }
+          throw new Error(`パスキー認証に失敗しました: ${webAuthnError.message}`);
+        }
+
+        if (!credential) {
           throw new Error('パスキー認証がキャンセルされました。');
         }
-        throw new Error(`パスキー認証に失敗しました: ${webAuthnError.message}`);
+
+        showLoading(true);
+
+        // Step 3: credential をサーバーに送信して検証
+        const verifyPayload = {
+          credentialId: credential.id,
+          rawId: bufferToBase64url(credential.rawId),
+          response: {
+            clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+            authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+            signature: bufferToBase64url(credential.response.signature),
+            userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null,
+          },
+          type: credential.type,
+        };
+
+        const verifyResponse = await fetch(`${AUTH_API}/passkey/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(verifyPayload),
+        });
+        let data = await verifyResponse.json().catch(() => ({}));
+        if (!verifyResponse.ok || data.error) {
+          if (verifyResponse.status === 403 || data.code === 'turnstile_required') {
+            resetTurnstile();
+            showTurnstileInline(passkeySigninBtn, attemptPasskey);
+            return;
+          }
+          throw new Error(data.error || 'パスキー認証に失敗しました。');
+        }
+        if (data.approval_required) data = await completeApprovedLogin(data);
+        if (!data.success) throw new Error('セッションの設定に失敗しました。');
+        finishLogin();
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        showLoading(false);
       }
-
-      if (!credential) {
-        throw new Error('パスキー認証がキャンセルされました。');
-      }
-
-      showLoading(true);
-
-      // Step 3: credential をサーバーに送信して検証
-      const verifyPayload = {
-        credentialId: credential.id,
-        rawId: bufferToBase64url(credential.rawId),
-        response: {
-          clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
-          authenticatorData: bufferToBase64url(credential.response.authenticatorData),
-          signature: bufferToBase64url(credential.response.signature),
-          userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null,
-        },
-        type: credential.type,
-      };
-
-      const verifyResponse = await fetch(`${AUTH_API}/passkey/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(verifyPayload),
-      });
-      let data = await verifyResponse.json().catch(() => ({}));
-      if (!verifyResponse.ok || data.error) throw new Error(data.error || 'パスキー認証に失敗しました。');
-      if (data.approval_required) data = await completeApprovedLogin(data);
-      if (!data.success) throw new Error('セッションの設定に失敗しました。');
-      finishLogin();
-    } catch (error) {
-      showError(error.message);
-    } finally {
-      showLoading(false);
-    }
+    };
+    await attemptPasskey();
   });
 
   // --- NyaitterAuth Flow Handlers ---
@@ -877,35 +937,38 @@ function setupLoginModal() {
       showError('NyaitterサーバーURLを入力してください。');
       return;
     }
-    if (turnstileEnabled && !isTurnstileResolved()) {
-      showError('認証チャレンジを完了してください。');
-      return;
-    }
 
-    showLoading(true);
-    hideMessages();
-    try {
-      const initiateRes = await fetch(`${AUTH_API}/nyaitter/initiate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          serverUrl,
-          turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-        }),
-      });
-      const initiateData = await initiateRes.json().catch(() => ({}));
-      if (!initiateRes.ok || initiateData.error || !initiateData.auth_url) {
-        if (initiateRes.status === 403 || initiateData.code === 'turnstile_required') resetTurnstile();
-        throw new Error(initiateData.error || 'NyaitterAuth認証の開始に失敗しました。');
+    const attemptNyaitter = async () => {
+      showLoading(true);
+      hideMessages();
+      try {
+        const initiateRes = await fetch(`${AUTH_API}/nyaitter/initiate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            serverUrl,
+            turnstile_token: turnstileEnabled ? turnstileToken : undefined,
+          }),
+        });
+        const initiateData = await initiateRes.json().catch(() => ({}));
+        if (!initiateRes.ok || initiateData.error || !initiateData.auth_url) {
+          if (initiateRes.status === 403 || initiateData.code === 'turnstile_required') {
+            resetTurnstile();
+            showTurnstileInline(nyaitterSigninBtn, attemptNyaitter);
+            return;
+          }
+          throw new Error(initiateData.error || 'NyaitterAuth認証の開始に失敗しました。');
+        }
+
+        // Redirect to authorization URL
+        window.location.href = initiateData.auth_url;
+      } catch (error) {
+        showError(error.message);
+        showLoading(false);
       }
-
-      // Redirect to authorization URL
-      window.location.href = initiateData.auth_url;
-    } catch (error) {
-      showError(error.message);
-      showLoading(false);
-    }
+    };
+    await attemptNyaitter();
   });
 
   // Handle #login-callback / ?token=... / ?code=...
