@@ -9,21 +9,23 @@ export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
     // 条件付きGETで古いcurrentUserを復元させない。
     const isAuthStateRequest = String(path).startsWith('/server/auth/me');
     try {
-        const response = await fetch(apiUrl(path), {
+        const response = await globalThis.NyaitterClientInstance.requestResponse(
             method,
-            headers,
-            credentials: 'include',
-            cache: isAuthStateRequest ? 'no-store' : 'default',
-            body: body === undefined ? undefined : JSON.stringify(body),
-            signal,
-        });
+            apiUrl(path),
+            {
+                headers,
+                cache: isAuthStateRequest ? 'no-store' : 'default',
+                body,
+                signal,
+            },
+        );
         const payload = await response.json().catch(() => ({}));
         if (!response.ok)
             return {
                 data: null,
                 error: new Error(
-                    payload.error ||
-                        payload.message ||
+                    payload?.error ||
+                        payload?.message ||
                         `HTTP ${response.status}`,
                 ),
             };

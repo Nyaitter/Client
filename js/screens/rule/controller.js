@@ -5,8 +5,6 @@ import { getActiveScreenContext } from '../../screenManager.js';
 import { showLoading } from '../../utils/helpers.js';
 import { renderError, renderHeader, renderLoading, renderRules } from './view.js';
 
-const { apiUrl } = globalThis.NyaitterClientConfig || {};
-
 export async function mountRuleScreen(showScreenFn) {
     renderHeader(DOM.pageHeader);
     if (typeof showScreenFn === 'function') {
@@ -22,12 +20,7 @@ export async function mountRuleScreen(showScreenFn) {
     showLoading(true);
 
     try {
-        const rulesUrl = apiUrl ? apiUrl('/server/rules') : '/server/rules';
-        const response = await fetch(rulesUrl, {
-            credentials: 'include',
-            headers: { Accept: 'application/json' },
-            signal,
-        });
+        const response = await globalThis.NyaitterClientInstance.system.getRulesResponse({ signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();

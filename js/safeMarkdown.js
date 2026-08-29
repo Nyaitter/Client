@@ -180,7 +180,7 @@ export function renderLimitedMarkdown(
             continue;
         }
 
-        // 3. テーブル (| ヘッダー | ... \n | --- | ...)
+        // 3. テーブル
         if (line.includes('|') && index + 1 < lines.length && isTableDelimiter(lines[index + 1])) {
             flushParagraph();
             const headerCells = splitTableCells(line);
@@ -226,7 +226,7 @@ export function renderLimitedMarkdown(
             continue;
         }
 
-        // 5. 引用 (> ...)
+        // 5. 引用
         const quoteMatch = /^> (.*)$/.exec(line);
         if (!allowBlockquotes && quoteMatch) {
             flushParagraph();

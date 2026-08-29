@@ -143,10 +143,7 @@ function setupLoginModal() {
           data = res?.data;
         }
         if (!data) {
-          const response = await fetch(apiUrl('/server/api/status'), {
-            credentials: 'include',
-            headers: { Accept: 'application/json' },
-          });
+          const response = await globalThis.NyaitterClientInstance.system.getStatusResponse();
           data = await response.json().catch(() => ({}));
           if (response.ok && data) {
             globalThis.NyaitterServerStatus = data;
@@ -300,7 +297,7 @@ function setupLoginModal() {
     activeApprovalWait = state;
     loginModal?.classList.add('hidden');
     showLoading(false);
-    if (loginApprovalWaitStatus) loginApprovalWaitStatus.textContent = '許可を待機しています…';
+    if (loginApprovalWaitStatus) loginApprovalWaitStatus.textContent = '許可を待機しています';
     loginApprovalWaitModal?.classList.remove('hidden');
     return state;
   }
@@ -331,15 +328,10 @@ function setupLoginModal() {
         if (waitState.cancelled) throw new Error('ログインをキャンセルしました。');
         await wait(2500);
         if (waitState.cancelled) throw new Error('ログインをキャンセルしました。');
-        const response = await fetch(`${AUTH_API}/login-approvals/${encodeURIComponent(approvalId)}/poll`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ approval_token: approvalToken }),
-        });
+        const response = await globalThis.NyaitterClientInstance.auth.pollLoginApprovalResponse(approvalId, approvalToken);
         const data = await response.json().catch(() => ({}));
         if (response.status === 202 && data.pending) {
-          if (loginApprovalWaitStatus) loginApprovalWaitStatus.textContent = 'ログイン済み端末での許可を待っています…';
+          if (loginApprovalWaitStatus) loginApprovalWaitStatus.textContent = 'ログイン済み端末での許可を待っています';
           continue;
         }
         if (!response.ok || data.error || !data.success) {
@@ -454,10 +446,7 @@ function setupLoginModal() {
   async function renderProviderButtons() {
     loginProviderButtons.replaceChildren();
     try {
-      const response = await fetch(`${AUTH_API}/providers`, {
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      });
+      const response = await globalThis.NyaitterClientInstance.auth.getProvidersResponse();
       const data = await response.json().catch(() => ({}));
       cachedProviders = Array.isArray(data?.providers) ? data.providers : [];
     } catch (_) {
@@ -561,15 +550,7 @@ function setupLoginModal() {
     hideMessages();
     try {
       scratchUsername = loginInput;
-      const response = await fetch(`${AUTH_API}/scratch/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          type: 'generateCode',
-          username: scratchUsername,
-        }),
-      });
+      const response = await globalThis.NyaitterClientInstance.auth.generateScratchResponse(scratchUsername);
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.error) {
         throw new Error(data.error || 'コードの生成に失敗しました。');
@@ -606,16 +587,11 @@ function setupLoginModal() {
       showLoading(true);
       hideMessages();
       try {
-        const response = await fetch(`${AUTH_API}/scratch/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
+        const response = await globalThis.NyaitterClientInstance.auth.verifyScratchResponse({
             type: 'verifyComment',
             username: scratchUsername,
             code: verificationCodeElem?.textContent,
             turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-          }),
         });
         let data = await response.json().catch(() => ({}));
         if (!response.ok || data.error) {
@@ -651,14 +627,7 @@ function setupLoginModal() {
     hideMessages();
     try {
       currentEmail = email;
-      const response = await fetch(`${AUTH_API}/email/initiate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: currentEmail,
-        }),
-      });
+      const response = await globalThis.NyaitterClientInstance.auth.initiateEmailResponse(currentEmail);
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.error) {
         throw new Error(data.error || '認証コードの送信に失敗しました。');
@@ -695,15 +664,10 @@ function setupLoginModal() {
       showLoading(true);
       hideMessages();
       try {
-        const response = await fetch(`${AUTH_API}/email/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
+        const response = await globalThis.NyaitterClientInstance.auth.verifyEmailResponse({
             email: currentEmail,
             code,
             turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-          }),
         });
         let data = await response.json().catch(() => ({}));
         if (!response.ok || data.error) {
@@ -749,16 +713,11 @@ function setupLoginModal() {
       showLoading(true);
       hideMessages();
       try {
-        const response = await fetch(`${AUTH_API}/email/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
+        const response = await globalThis.NyaitterClientInstance.auth.verifyEmailResponse({
             email: currentEmail,
             code,
             name,
             turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-          }),
         });
         let data = await response.json().catch(() => ({}));
         if (!response.ok || data.error) {
@@ -843,13 +802,8 @@ function setupLoginModal() {
       hideMessages();
       try {
         // Step 1: サーバーからチャレンジを取得
-        const initiateResponse = await fetch(`${AUTH_API}/passkey/initiate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
+        const initiateResponse = await globalThis.NyaitterClientInstance.auth.initiatePasskeyResponse({
             turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-          }),
         });
         const initiateData = await initiateResponse.json().catch(() => ({}));
         if (!initiateResponse.ok || initiateData.error) {
@@ -903,12 +857,7 @@ function setupLoginModal() {
           type: credential.type,
         };
 
-        const verifyResponse = await fetch(`${AUTH_API}/passkey/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(verifyPayload),
-        });
+        const verifyResponse = await globalThis.NyaitterClientInstance.auth.verifyPasskeyResponse(verifyPayload);
         let data = await verifyResponse.json().catch(() => ({}));
         if (!verifyResponse.ok || data.error) {
           if (verifyResponse.status === 403 || data.code === 'turnstile_required') {
@@ -942,14 +891,9 @@ function setupLoginModal() {
       showLoading(true);
       hideMessages();
       try {
-        const initiateRes = await fetch(`${AUTH_API}/nyaitter/initiate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
+        const initiateRes = await globalThis.NyaitterClientInstance.auth.initiateNyaitterResponse({
             serverUrl,
             turnstile_token: turnstileEnabled ? turnstileToken : undefined,
-          }),
         });
         const initiateData = await initiateRes.json().catch(() => ({}));
         if (!initiateRes.ok || initiateData.error || !initiateData.auth_url) {
@@ -971,7 +915,7 @@ function setupLoginModal() {
     await attemptNyaitter();
   });
 
-  // Handle #login-callback / ?token=... / ?code=...
+  // Handle login callback parameters.
   async function processLoginCallback() {
     const fullUrl = new URL(window.location.href);
     let token = fullUrl.searchParams.get('token') || fullUrl.searchParams.get('code');
@@ -993,14 +937,9 @@ function setupLoginModal() {
 
     showLoading(true);
     try {
-      const verifyRes = await fetch(`${AUTH_API}/${encodeURIComponent(provider)}/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
+      const verifyRes = await globalThis.NyaitterClientInstance.auth.verifyProviderResponse(provider, {
           code: token,
           serverUrl: serverUrl || undefined,
-        }),
       });
       let data = await verifyRes.json().catch(() => ({}));
       if (!verifyRes.ok || data.error) {
@@ -1035,4 +974,3 @@ if (document.readyState !== 'loading') {
 } else {
   document.addEventListener('DOMContentLoaded', setupLoginModal, { once: true });
 }
-

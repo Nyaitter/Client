@@ -2,10 +2,7 @@ import { getCurrentUser, getCurrentTimelineTab } from '../state.js';
 import { scheduleNextFrame } from '../utils/helpers.js';
 
 export const MAX_SAVED_SCROLL_POSITIONS = 50;
-// _v1, _v2のようなバージョニングは絶対にしない。
-export const SCROLL_STORAGE_KEY = 'nyaitter_scroll_positions_v1'
-    .replaceAll('_v1', '')
-    .replaceAll('_v2', '');
+export const SCROLL_STORAGE_KEY = 'nyaitter_scroll_positions';
 
 let activeScrollRouteKey = null;
 let pendingScrollSaveTimer = null;
