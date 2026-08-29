@@ -248,6 +248,24 @@ width: 1.25rem; /* サイズを微調整 */
         color 0.15s ease;
 }
 
+.menu-item-icon {
+    display: inline-flex;
+    flex: 0 0 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-item-icon svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.menu-item-label {
+    min-width: 0;
+}
+
 .post-menu button:hover,
 .post-menu button:focus-visible {
     background-color: var(--hover-bg-color, var(--main-bg-color));
@@ -1769,7 +1787,5 @@ overscroll-behavior-y: contain;
     border-left: none;
     border-right: none;
 }
-
-
 
 

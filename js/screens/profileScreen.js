@@ -1,5 +1,5 @@
 import { DOM } from '../dom.js';
-import { ICONS } from '../icons.js';
+import { ICONS, decorateMenuButtons } from '../icons.js';
 import { api, apiRequest } from '../api.js';
 import {
     getCurrentUser,
@@ -100,7 +100,11 @@ function openProfileTimelineModeMenu(button, user, tab) {
     const menu = document.createElement('div');
     menu.className = 'group-timeline-mode-menu profile-timeline-mode-menu';
     const mode = getProfileTimelineMode(user.id, tab);
-    menu.innerHTML = ['posts_only', 'replies_only'].map((value) => `<button type="button" class="${value === mode ? 'active' : ''}" data-profile-timeline-mode="${value}">${value === 'posts_only' ? 'ポスト' : '返信'}</button>`).join('');
+    const options = [
+        { value: 'posts_only', label: 'ポスト', icon: 'send' },
+        { value: 'replies_only', label: '返信', icon: 'reply' },
+    ];
+    menu.innerHTML = options.map((option) => `<button type="button" class="${option.value === mode ? 'active' : ''}" data-profile-timeline-mode="${option.value}"><span class="menu-item-icon" aria-hidden="true">${ICONS[option.icon]}</span><span class="menu-item-label">${option.label}</span></button>`).join('');
     document.body.appendChild(menu);
     positionElementRelativeToAnchor(menu, button, { placement: 'bottom-start', gap: 6 });
     menu.querySelectorAll('[data-profile-timeline-mode]').forEach((item) => item.addEventListener('click', () => {
@@ -126,7 +130,12 @@ function openProfileMediaModeMenu(button, user) {
     const menu = document.createElement('div');
     menu.className = 'group-timeline-mode-menu profile-media-mode-menu';
     const mode = getProfileMediaMode(user.id);
-    menu.innerHTML = ['all', 'image', 'video'].map((value) => `<button type="button" class="${value === mode ? 'active' : ''}" data-profile-media-mode="${value}">${value === 'all' ? 'すべて' : value === 'image' ? '画像' : '動画'}</button>`).join('');
+    const options = [
+        { value: 'all', label: 'すべて', icon: 'home' },
+        { value: 'image', label: '画像', icon: 'attachment' },
+        { value: 'video', label: '動画', icon: 'preview' },
+    ];
+    menu.innerHTML = options.map((option) => `<button type="button" class="${option.value === mode ? 'active' : ''}" data-profile-media-mode="${option.value}"><span class="menu-item-icon" aria-hidden="true">${ICONS[option.icon]}</span><span class="menu-item-label">${option.label}</span></button>`).join('');
     document.body.appendChild(menu);
     positionElementRelativeToAnchor(menu, button, { placement: 'bottom-start', gap: 6 });
     menu.querySelectorAll('[data-profile-media-mode]').forEach((item) => item.addEventListener('click', () => {
@@ -806,6 +815,7 @@ export function openProfileMenu(targetUser, triggerElement) {
             Array.isArray(getCurrentUser()?.block) &&
             userIdListIncludes(getCurrentUser().block, targetUser.id);
         const blockBtn = document.createElement('button');
+        blockBtn.className = 'block-menu-btn';
         blockBtn.textContent = isBlocked ? 'ブロック解除' : 'ブロック';
         blockBtn.onclick = async () => {
             const actionLabel = isBlocked ? 'ブロックを解除' : 'ブロック';
@@ -857,21 +867,23 @@ export function openProfileMenu(targetUser, triggerElement) {
 
     if (getCurrentUser()?.admin) {
         const verifyBtn = document.createElement('button');
+        verifyBtn.className = 'verify-btn';
         verifyBtn.textContent = targetUser.verify ? '認証を取り消す' : 'このユーザーを認証';
         verifyBtn.onclick = () => void adminToggleVerify(targetUser);
 
         const sendNoticeBtn = document.createElement('button');
+        sendNoticeBtn.className = 'notice-btn';
         sendNoticeBtn.textContent = '通知を送信';
         sendNoticeBtn.onclick = () => void adminSendNotice(targetUser.id);
 
         const shadowBtn = document.createElement('button');
-        shadowBtn.className = 'delete-btn';
+        shadowBtn.className = 'delete-btn shadow-btn';
         shadowBtn.textContent = targetUser.shadow ? '検索除外を解除' : '検索除外';
         shadowBtn.onclick = () => void adminToggleShadow(targetUser);
 
         const isFrozen = targetUser.account_state === 'frozen' || Boolean(targetUser.freeze);
         const freezeBtn = document.createElement('button');
-        freezeBtn.className = isFrozen ? '' : 'delete-btn';
+        freezeBtn.className = isFrozen ? 'freeze-btn' : 'delete-btn freeze-btn';
         freezeBtn.textContent = isFrozen ? '凍結を解除' : 'アカウントを凍結';
         freezeBtn.onclick = () => {
             if (isFrozen) {
@@ -886,6 +898,8 @@ export function openProfileMenu(targetUser, triggerElement) {
         menu.appendChild(shadowBtn);
         menu.appendChild(freezeBtn);
     }
+
+    decorateMenuButtons(menu);
 
     document.body.appendChild(menu);
     const trigger = triggerElement || document.querySelector('.profile-menu-button');
@@ -930,10 +944,10 @@ export function openNotificationMenu(targetUser, trigger) {
     menu.className = 'post-menu profile-notify-menu is-visible';
 
     const options = [
-        { mode: 'none', title: '通知しない', desc: '' },
-        { mode: 'important', title: '重要なポストを通知', desc: '見出しの含まれるポストを通知' },
-        { mode: 'media', title: 'メディアを通知', desc: '添付ファイルのあるポストを通知' },
-        { mode: 'all', title: '全てのポストを通知', desc: '返信は対象外' },
+        { mode: 'none', title: '通知しない', desc: '', icon: 'notifications' },
+        { mode: 'important', title: '重要なポストを通知', desc: '見出しの含まれるポストを通知', icon: 'megaphone' },
+        { mode: 'media', title: 'メディアを通知', desc: '添付ファイルのあるポストを通知', icon: 'attachment' },
+        { mode: 'all', title: '全てのポストを通知', desc: '返信は対象外', icon: 'reply' },
     ];
 
     options.forEach((opt) => {
@@ -943,6 +957,12 @@ export function openNotificationMenu(targetUser, trigger) {
 
         const contentDiv = document.createElement('div');
         contentDiv.className = 'profile-notify-item-content';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'menu-item-icon';
+        iconSpan.setAttribute('aria-hidden', 'true');
+        iconSpan.innerHTML = ICONS[opt.icon];
+        itemBtn.appendChild(iconSpan);
 
         const labelDiv = document.createElement('div');
         labelDiv.className = 'profile-notify-item-label';

@@ -158,7 +158,9 @@ export function handleRealtimeEvent(event) {
         );
         if (event.dm_id !== undefined && event.dm_id !== null) {
             const key = String(event.dm_id);
-            const newCount = Number(event.unread_count || 0);
+            const newCount = String(getActiveDmId() || '') === key
+                ? 0
+                : Number(event.unread_count || 0);
             const prevCount = getDmUnreadCounts().get(key) || 0;
             getDmUnreadCounts().set(key, newCount);
             const prevTotal = Number(user.unreadDmTotal || 0);

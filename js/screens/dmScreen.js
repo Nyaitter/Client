@@ -63,6 +63,34 @@ import { showScreenCompat } from '../screenManager.js';
 
 let activeDmListTab = 'inbox';
 
+function getAcceptedDmMemberIds(dm) {
+    let accepted = dm?.accepted ?? dm?.unread?._accepted;
+    if (typeof accepted === 'string') {
+        try {
+            accepted = JSON.parse(accepted);
+        } catch (_) {
+            accepted = null;
+        }
+    }
+    if (!Array.isArray(accepted)) return null;
+    return accepted
+        .map((member) => member && typeof member === 'object'
+            ? (member.id ?? member.user_id ?? member.userId)
+            : member)
+        .map(Number)
+        .filter((id) => Number.isInteger(id) && id >= 0);
+}
+
+function isDmPending(dm) {
+    const currentUserId = getCurrentUser()?.id;
+    if (typeof dm?.is_accepted === 'boolean') return !dm.is_accepted;
+    const accepted = getAcceptedDmMemberIds(dm);
+    if (accepted && currentUserId != null) {
+        return !accepted.includes(Number(currentUserId));
+    }
+    return Boolean(dm?.is_pending);
+}
+
 function renderDmListItem(dm, unreadCount, currentUserId) {
     const members = Array.isArray(dm.member) ? dm.member : [];
     const otherMemberIds = members.filter((id) => Number(id) !== Number(currentUserId));
@@ -94,7 +122,7 @@ function renderDmListItem(dm, unreadCount, currentUserId) {
         avatarHtml = `<img src="${getUserIconUrl(getCurrentUser())}" class="dm-list-item-avatar" alt="">`;
     }
 
-    if (dm.is_pending) {
+    if (isDmPending(dm)) {
         subtitle = subtitle ? `${subtitle} · リクエスト` : 'メッセージリクエスト';
     }
 
@@ -158,8 +186,8 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
             getCurrentUser().unreadDmTotal = Number(dmPayload?.unread_total || 0);
             void updateNavAndSidebars();
 
-            const inboxDms = dmList.filter((d) => !d.is_pending);
-            const requestDms = dmList.filter((d) => Boolean(d.is_pending));
+            const inboxDms = dmList.filter((d) => !isDmPending(d));
+            const requestDms = dmList.filter((d) => isDmPending(d));
 
             if (badgeEl) {
                 if (requestDms.length > 0) {
@@ -397,7 +425,7 @@ export async function showDmConversation(dmId) {
         );
         const messagesHTML = messagesHTMLArray.join('');
 
-        const isPending = Boolean(dm?.is_pending);
+        const isPending = isDmPending(dm);
 
         if (isPending) {
             container.innerHTML = `

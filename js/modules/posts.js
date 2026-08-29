@@ -1,5 +1,5 @@
 import { DOM, openImageModal } from '../dom.js';
-import { ICONS } from '../icons.js';
+import { ICONS, decorateMenuButtons } from '../icons.js';
 import { api, apiRequest } from '../api.js';
 import {
     getCurrentUser,
@@ -506,6 +506,7 @@ export async function renderPost(post, author, options = {}) {
 
         postHeader.appendChild(menuBtn);
         postHeader.appendChild(menu);
+        decorateMenuButtons(menu);
     }
     postMain.appendChild(postHeader);
 
@@ -2324,6 +2325,7 @@ export function openRepostModal(post, triggerButton) {
     menu.className = 'post-menu is-visible';
 
     const simpleRepostBtn = document.createElement('button');
+    simpleRepostBtn.className = 'repost-btn';
     simpleRepostBtn.textContent = 'リポスト';
     simpleRepostBtn.onclick = (e) => {
         e.stopPropagation();
@@ -2332,6 +2334,7 @@ export function openRepostModal(post, triggerButton) {
     };
 
     const quotePostBtn = document.createElement('button');
+    quotePostBtn.className = 'quote-btn';
     quotePostBtn.textContent = '引用ポスト';
     quotePostBtn.onclick = (e) => {
         e.stopPropagation();
@@ -2341,6 +2344,7 @@ export function openRepostModal(post, triggerButton) {
 
     menu.appendChild(simpleRepostBtn);
     menu.appendChild(quotePostBtn);
+    decorateMenuButtons(menu);
 
     if (triggerButton) {
         document.body.appendChild(menu);

@@ -202,7 +202,7 @@ export function positionDmMessageMenu(menu, menuButton) {
         .closest('.dm-message-container')
         ?.classList.contains('received');
 
-    menu.classList.add('dm-message-menu-popover');
+    menu.classList.add('dm-message-menu-popover', 'is-visible');
     menu.style.maxWidth = `${Math.max(0, window.innerWidth - edgeMargin * 2)}px`;
 
     const menuWidth = menu.offsetWidth;
@@ -857,4 +857,3 @@ export async function handleDeclineDmRequest(dmId, onComplete = null) {
         showLoading(false);
     }
 }
-

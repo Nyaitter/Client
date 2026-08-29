@@ -638,6 +638,9 @@ gap: 0.15rem;
 }
 
 .group-timeline-mode-menu button {
+display: flex;
+    align-items: center;
+    gap: 0.65rem;
 border: 0;
     border-radius: 8px;
     padding: 0.55rem 0.7rem;
@@ -1870,4 +1873,3 @@ min-width: 5.5rem;
     line-height: 1.5;
     color: var(--secondary-text-color);
 }
-

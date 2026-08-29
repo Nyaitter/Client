@@ -1,4 +1,5 @@
 import { DOM } from '../dom.js';
+import { ICONS } from '../icons.js';
 import {
     getCurrentUser,
     getCurrentTimelineTab,
@@ -65,7 +66,12 @@ function openGroupTimelineMenu(button, groupId) {
     const menu = document.createElement('div');
     menu.className = 'group-timeline-mode-menu';
     const mode = getGroupTimelineMode(groupId);
-    menu.innerHTML = ['all', 'recommended', 'announcements'].map((value) => `<button type="button" class="${value === mode ? 'active' : ''}" data-group-mode="${value}">${({ all: 'すべて', recommended: 'おすすめ', announcements: 'アナウンス' })[value]}</button>`).join('');
+    const options = [
+        { value: 'all', label: 'すべて', icon: 'home' },
+        { value: 'recommended', label: 'おすすめ', icon: 'explore' },
+        { value: 'announcements', label: 'アナウンス', icon: 'megaphone' },
+    ];
+    menu.innerHTML = options.map((option) => `<button type="button" class="${option.value === mode ? 'active' : ''}" data-group-mode="${option.value}"><span class="menu-item-icon" aria-hidden="true">${ICONS[option.icon]}</span><span class="menu-item-label">${option.label}</span></button>`).join('');
     document.body.appendChild(menu);
     positionElementRelativeToAnchor(menu, button, { placement: 'bottom-start', gap: 6 });
     menu.querySelectorAll('[data-group-mode]').forEach((item) => item.addEventListener('click', () => {

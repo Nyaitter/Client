@@ -422,6 +422,8 @@ export async function openAccountSwitcherModal() {
                     if (!switchedUser) {
                         switchError = new Error('切替後のアカウント情報を確認できませんでした。');
                     } else {
+                        invalidateTimelinePageCache();
+                        invalidateDmCaches();
                         await router();
                     }
                 }
