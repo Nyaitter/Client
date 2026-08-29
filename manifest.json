@@ -6,7 +6,5 @@
   "creator": "Nyaitter",
   "repository": "https://github.com/Nyaitter/Client",
   "api_url": "/server",
-  "client_config": {
-    "nyaitter_js": "0.1.3"
-  }
+  "nyaitter_js": "0.1.3"
 }

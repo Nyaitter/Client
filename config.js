@@ -12,13 +12,7 @@
             const response = await fetch('./manifest.json', { credentials: 'same-origin' });
             if (!response.ok) return;
             const manifest = await response.json();
-            const clientConfig = manifest?.client_config && typeof manifest.client_config === 'object'
-                ? manifest.client_config
-                : {};
-            const apiUrl = manifest?.api_url ?? clientConfig.api_endpoint;
-            manifestConfig = apiUrl === undefined
-                ? clientConfig
-                : { ...clientConfig, api_endpoint: apiUrl };
+            manifestConfig = manifest && typeof manifest === 'object' ? manifest : {};
         } catch (_) {
             // マニフェストがない環境でも config.js の設定で起動する。
         }
@@ -26,7 +20,8 @@
 
     const getConfig = (name, fallback) => {
         const status = globalThis.NyaitterServerStatus?.client_config;
-        return status?.[name] ?? manifestConfig?.[name] ?? CLIENT_CONFIG?.[name] ?? fallback;
+        const manifestName = name === 'api_endpoint' ? 'api_url' : name;
+        return status?.[name] ?? manifestConfig?.[manifestName] ?? CLIENT_CONFIG?.[name] ?? fallback;
     };
 
     function normalizeEndpoint(value) {
