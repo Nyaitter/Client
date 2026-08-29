@@ -13,19 +13,21 @@ function startApp() {
     // 認証状態の取得より前にローディング画面を確実に描画する。
     showInitialLoadingScreen();
 
-    // 2フレーム待つことで、初期ローディング画面が描画された後に
-    // initApp() 内の /server/auth/me リクエストを開始する。
-    const nextFrame =
-        window.requestAnimationFrame || ((callback) => window.setTimeout(callback, 0));
-    nextFrame(() => {
-        nextFrame(() => {
-            initApp();
-        });
-    });
+    // 初期ローディング画面を描画した後に初期化を開始する。
+    window.setTimeout(initApp, 0);
 }
 
-if (document.readyState === 'loading') {
-    window.addEventListener('DOMContentLoaded', startApp, { once: true });
-} else {
+let started = false;
+const startWhenReady = () => {
+    if (started) return;
+    started = true;
     startApp();
+};
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', startWhenReady, { once: true });
+    window.addEventListener('load', startWhenReady, { once: true });
+    window.setTimeout(startWhenReady, 0);
+} else {
+    startWhenReady();
 }
