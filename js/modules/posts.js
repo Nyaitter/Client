@@ -81,14 +81,9 @@ export async function uploadFileViaEdgeFunction(file, { asUserId = null, replace
         throw new Error('ファイルアップロード用IDを取得できませんでした。');
     }
 
-    const response = await fetch(globalThis.NyaitterClientConfig.apiUrl(`/server/api/uploads/${uploadId}`), {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-            'Content-Type': file.type || 'application/octet-stream',
-            ...(Number.isInteger(normalizedAsUserId) && normalizedAsUserId > 0 ? { 'X-As-User-Id': String(normalizedAsUserId) } : {}),
-        },
-        body: file,
+    const response = await globalThis.NyaitterClientInstance.uploads.uploadPartResponse(uploadId, file, {
+        contentType: file.type || 'application/octet-stream',
+        asUserId: normalizedAsUserId,
     });
     const responseData = await response.json().catch(() => ({}));
     if (!response.ok || responseData.error) {
@@ -438,7 +433,7 @@ export async function renderPost(post, author, options = {}) {
             menu.appendChild(dislikeBtn);
 
             const authorRawName = String(displayAuthor.name || 'ユーザー').trim();
-            const authorShortName = authorRawName.length > 12 ? `${authorRawName.slice(0, 12)}...` : authorRawName;
+            const authorShortName = authorRawName.length > 12 ? authorRawName.slice(0, 12) : authorRawName;
 
             const isFollowing = Array.isArray(currentUser.follow) && currentUser.follow.some((id) => Number(id) === Number(displayAuthor.id));
             const followBtn = document.createElement('button');
@@ -1449,7 +1444,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
                         <input type="${inputType}" name="${inputName}" value="-1" class="poll-option-input poll-other-radio">
                         <span>その他（自由記述）</span>
                     </label>
-                    <input type="text" class="post-poll-other-input hidden" placeholder="その他の回答を入力..." maxlength="200">
+                    <input type="text" class="post-poll-other-input hidden" placeholder="その他の回答を入力" maxlength="200">
                 </div>
             `;
         }
@@ -1582,7 +1577,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
             if (selectedOptionIds.length === 0) return;
 
             voteBtn.disabled = true;
-            voteBtn.textContent = '送信中...';
+            voteBtn.textContent = '送信中';
 
             try {
                 const { data, error } = await apiRequest(`/server/api/polls/${poll.id}/vote`, {
@@ -2122,7 +2117,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     const button = container.querySelector('#post-submit-button');
     if (button) {
         button.disabled = true;
-        button.textContent = '送信中...';
+        button.textContent = '送信中';
     }
     showLoading(true);
 
@@ -2616,7 +2611,7 @@ export async function handleUpdatePost(postId, originalAttachments, filesToAdd, 
     const button = DOM.editPostModal.querySelector('#update-post-button');
     if (button) {
         button.disabled = true;
-        button.textContent = '保存中...';
+        button.textContent = '保存中';
     }
     showLoading(true);
 
@@ -3115,7 +3110,7 @@ export async function openPostActivityModal(postId) {
         <div class="post-activity-body" id="post-activity-body">
             <div class="post-activity-loading">
                 <div class="loading-spinner"></div>
-                <p>アクティビティを読み込み中...</p>
+                <p>アクティビティを読み込み中</p>
             </div>
         </div>
     `;
@@ -3315,4 +3310,3 @@ window.handleFollowMenuToggle = handleFollowMenuToggle;
 window.handleBlockMenuToggle = handleBlockMenuToggle;
 window.openReplyControlModal = openReplyControlModal;
 window.openPostActivityModal = openPostActivityModal;
-

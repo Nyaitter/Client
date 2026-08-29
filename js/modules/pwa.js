@@ -64,8 +64,8 @@ export async function loadPushSettingsState() {
     }
 
     setPushSettingsUi({
-        status: '通知の状態を確認しています…',
-        actionLabel: '読み込み中…',
+        status: '通知の状態を確認しています',
+        actionLabel: '読み込み中',
     });
     try {
         const [registration, configResult] = await Promise.all([

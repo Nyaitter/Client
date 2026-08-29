@@ -1,0 +1,13 @@
+{
+  "name": "NyaitterClient",
+  "display_name": "Nyaitter",
+  "manufacturer": "Nyaitter",
+  "author": "Nyaitter",
+  "creator": "Nyaitter",
+  "repository": "https://github.com/Nyaitter/Client",
+  "api_url": "/server",
+  "client_config": {
+    "api_endpoint": "/server",
+    "nyaitter_js": "0.1.3"
+  }
+}

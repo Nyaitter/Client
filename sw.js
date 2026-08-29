@@ -1,7 +1,30 @@
 const STATIC_ASSET_PATTERN = /\.(?:html|css|js|mjs|json|webmanifest|png|jpe?g|gif|svg|ico|webp|avif|woff2?|ttf|otf)$/i;
 importScripts('./config.js');
 
-const { apiUrl, userFileEndpoint } = self.NyaitterClientConfig;
+const { apiUrl } = self.NyaitterClientConfig;
+let apiEndpointPath = getSameOriginEndpointPath(apiUrl('/'));
+let userFileEndpointPath = null;
+let nyaitterClient = null;
+
+function getNyaitterJsUrl(value) {
+  const source = String(value || '').trim();
+  if (/^(?:https?:)?\/\//i.test(source)) return source;
+  return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(source || '0.1.3')}/dist/nyaitter.js`;
+}
+
+const nyaitterClientReady = self.NyaitterClientConfig.ready.then(() => {
+  importScripts(getNyaitterJsUrl(self.NyaitterClientConfig.nyaitterJs));
+  const endpoint = new URL(self.NyaitterClientConfig.apiEndpoint, self.location.href);
+  nyaitterClient = new self.Nyaitter.NyaitterClient({
+    baseUrl: `${endpoint.origin}${endpoint.pathname.replace(/\/+$/, '')}`,
+  });
+  apiEndpointPath = getSameOriginEndpointPath(apiUrl('/'));
+  userFileEndpointPath = getSameOriginEndpointPath(self.NyaitterClientConfig.userFileEndpoint || '');
+});
+
+function sdkRequest(method, path, options = {}) {
+  return nyaitterClientReady.then(() => nyaitterClient.request(method, path, options));
+}
 
 function getSameOriginEndpointPath(value) {
   try {
@@ -19,14 +42,12 @@ function matchesEndpointPath(url, endpointPath) {
   return url.pathname === endpointPath || url.pathname.startsWith(`${endpointPath}/`);
 }
 
-const apiEndpointPath = getSameOriginEndpointPath(apiUrl('/'));
-const userFileEndpointPath = getSameOriginEndpointPath(userFileEndpoint || '');
-
 const APP_SHELL = [
   '/',
   '/index.html',
   '/style.css',
   '/config.js',
+  '/manifest.json',
   '/js/main.js',
   '/js/app.js',
   '/js/state.js',
@@ -96,7 +117,7 @@ function isCacheableStaticResponse(response) {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open('nyaitter-client-v4')
+    caches.open('nyaitter-client')
       .then((cache) => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting()),
   );
@@ -106,7 +127,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys
-        .filter((key) => key.startsWith('nyaitter-client') && key !== 'nyaitter-client-v4')
+        .filter((key) => key.startsWith('nyaitter-client-'))
         .map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
@@ -133,7 +154,7 @@ self.addEventListener('fetch', (event) => {
         const updateCache = fetch(request).then((response) => {
           if (isCacheableStaticResponse(response)) {
             const copy = response.clone();
-            return caches.open('nyaitter-client-v4')
+            return caches.open('nyaitter-client')
               .then((cache) => cache.put(cacheKey, copy))
               .then(() => response);
           }
@@ -195,11 +216,7 @@ self.addEventListener('notificationclick', (event) => {
     // 通知クリック時に自動でその通知を既読(clicked)にする
     if (notificationId) {
       try {
-        await fetch(apiUrl(`/server/api/notifications/${encodeURIComponent(String(notificationId))}/clicked`), {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        });
+        await sdkRequest('PUT', apiUrl(`/server/api/notifications/${encodeURIComponent(String(notificationId))}/clicked`));
       } catch (_) {
         // オフラインまたはエラー時はアプリ起動側の処理へフォールバック
       }
@@ -220,9 +237,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     try {
       let subscription = event.newSubscription;
       if (!subscription) {
-        const configResponse = await fetch(apiUrl('/server/api/push/config'), { credentials: 'include' });
-        if (!configResponse.ok) return;
-        const config = await configResponse.json();
+        const config = await sdkRequest('GET', apiUrl('/server/api/push/config'));
         if (!config.enabled || !config.vapid_public_key) return;
         subscription = await self.registration.pushManager.subscribe({
           userVisibleOnly: true,
@@ -230,11 +245,8 @@ self.addEventListener('pushsubscriptionchange', (event) => {
         });
       }
 
-      await fetch(apiUrl('/server/api/push/subscriptions'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ subscription: subscription.toJSON() }),
+      await sdkRequest('POST', apiUrl('/server/api/push/subscriptions'), {
+        body: { subscription: subscription.toJSON() },
       });
     } catch (_) {
       // A later settings-page visit will reconcile the subscription if this background update fails.

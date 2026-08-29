@@ -5,8 +5,6 @@ import { getActiveScreenContext } from '../../screenManager.js';
 import { showLoading } from '../../utils/helpers.js';
 import { renderDocument, renderError, renderHeader, renderLoading } from './detailView.js';
 
-const { apiUrl } = globalThis.NyaitterClientConfig || {};
-
 export async function mountDocDetailScreen(docId, showScreenFn) {
     renderHeader();
     if (typeof showScreenFn === 'function') showScreenFn('doc-detail-screen');
@@ -17,19 +15,7 @@ export async function mountDocDetailScreen(docId, showScreenFn) {
     showLoading(true);
 
     try {
-        const documentPath = `/server/docs/${encodeURIComponent(docId)}`;
-        let response = await fetch(apiUrl ? apiUrl(documentPath) : documentPath, {
-            credentials: 'include',
-            headers: { Accept: 'application/json' },
-            signal,
-        });
-        if (!response.ok && !signal?.aborted) {
-            response = await fetch(`/api/docs/${encodeURIComponent(docId)}`, {
-                credentials: 'include',
-                headers: { Accept: 'application/json' },
-                signal,
-            });
-        }
+        const response = await globalThis.NyaitterClientInstance.system.getDocResponse(docId, { signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         if (signal?.aborted) return;

@@ -800,7 +800,7 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                 ${canProfile ? `<section class="settings-group-panel" data-group-manage-panel="profile" ${selectedTab === 'profile' ? '' : 'hidden'}>${renderGroupSection('基本設定', renderGroupProfileForm(group), 'グループのアイコン、ヘッダー画像、名前、説明、公開レベルを編集します。')}</section>` : ''}
                 ${canMembers ? `<section class="settings-group-panel" data-group-manage-panel="members" ${selectedTab === 'members' ? '' : 'hidden'}>${renderGroupSection('メンバー管理', `
                     <div class="group-members-toolbar">
-                        <input type="search" class="group-members-search-input" id="group-member-search" placeholder="メンバーを検索 (名前・ID)..." aria-label="メンバー検索">
+                        <input type="search" class="group-members-search-input" id="group-member-search" placeholder="メンバーを検索 (名前・ID)" aria-label="メンバー検索">
                         <span class="settings-help-text" id="group-member-count-label">全 ${members.length} 名</span>
                     </div>
                     <div class="group-members-list" id="group-members-list">${members.map((entry) => {
@@ -1213,7 +1213,7 @@ function bindGroupManageEvents(group) {
 
             if (submitBtn) {
                 submitBtn.disabled = true;
-                submitBtn.textContent = '保存中...';
+        submitBtn.textContent = '保存中';
             }
             if (statusEl) {
                 statusEl.textContent = '';

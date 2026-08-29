@@ -4,15 +4,25 @@
 (() => {
     'use strict';
 
-    const CLIENT_CONFIG = {
-        // APIルート。既定ではこのページと同一オリジンのサーバーを使用します。
-        // 別インスタンスへ接続する場合だけ、デプロイ時に明示的なURLへ変更してください。
-        apiEndpoint: '/server',
-    };
+    const CLIENT_CONFIG = { apiEndpoint: '/server' };
+    let manifestConfig = {};
 
-    const getStatusConfig = (name, fallback) => {
+    const manifestReady = (async () => {
+        try {
+            const response = await fetch('./manifest.json', { credentials: 'same-origin' });
+            if (!response.ok) return;
+            const manifest = await response.json();
+            manifestConfig = manifest?.client_config && typeof manifest.client_config === 'object'
+                ? manifest.client_config
+                : {};
+        } catch (_) {
+            // マニフェストがない環境でも config.js の設定で起動する。
+        }
+    })();
+
+    const getConfig = (name, fallback) => {
         const status = globalThis.NyaitterServerStatus?.client_config;
-        return status?.[name] ?? fallback;
+        return status?.[name] ?? manifestConfig?.[name] ?? CLIENT_CONFIG?.[name] ?? fallback;
     };
 
     function normalizeEndpoint(value) {
@@ -35,15 +45,15 @@
     }
 
     function getUserFileEndpoint() {
-        const configuredEndpoint = getStatusConfig('user_file_endpoint', null);
+        const configuredEndpoint = getConfig('user_file_endpoint', null);
         if (configuredEndpoint) return String(configuredEndpoint).trim();
 
-        const apiEndpoint = normalizeEndpoint(CLIENT_CONFIG.apiEndpoint);
+        const apiEndpoint = normalizeEndpoint(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint));
         const basePath = apiEndpoint.pathname.replace(/\/+$/, '');
         apiEndpoint.pathname = `${basePath}/uploads`.replace(/\/{2,}/g, '/');
         apiEndpoint.search = '';
         apiEndpoint.hash = '';
-        const configuredApiEndpoint = String(CLIENT_CONFIG.apiEndpoint || '').trim();
+        const configuredApiEndpoint = String(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint) || '').trim();
         return /^https?:\/\//i.test(configuredApiEndpoint)
             ? apiEndpoint.href
             : apiEndpoint.pathname;
@@ -70,7 +80,7 @@
     }
 
     function apiUrl(path = '') {
-        const endpoint = normalizeEndpoint(CLIENT_CONFIG.apiEndpoint);
+        const endpoint = normalizeEndpoint(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint));
         const request = new URL(String(path || '/'), endpoint.origin);
         const normalizedPath = request.pathname.startsWith('/server')
             ? request.pathname.slice('/server'.length)
@@ -85,21 +95,21 @@
         endpoint.search = request.search;
         endpoint.hash = request.hash;
 
-        const configured = String(CLIENT_CONFIG.apiEndpoint || '').trim();
+        const configured = String(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint) || '').trim();
         if (/^https?:\/\//i.test(configured)) return endpoint.href;
         return `${endpoint.pathname}${endpoint.search}${endpoint.hash}`;
     }
 
     function apiServerUrl(path = '/') {
-        const endpoint = normalizeEndpoint(CLIENT_CONFIG.apiEndpoint);
+        const endpoint = normalizeEndpoint(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint));
         const url = new URL(String(path || '/'), endpoint.origin);
-        const configured = String(CLIENT_CONFIG.apiEndpoint || '').trim();
+        const configured = String(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint) || '').trim();
         if (/^https?:\/\//i.test(configured)) return url.href;
         return `${url.pathname}${url.search}${url.hash}`;
     }
 
     function apiWebSocketUrl(path = '/realtime') {
-        const endpoint = normalizeEndpoint(CLIENT_CONFIG.apiEndpoint);
+        const endpoint = normalizeEndpoint(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint));
         endpoint.protocol = endpoint.protocol === 'https:' ? 'wss:' : 'ws:';
         const basePath = endpoint.pathname.replace(/\/+$/, '');
         endpoint.pathname = `${basePath}/${String(path).replace(/^\/+/, '')}`.replace(
@@ -112,18 +122,20 @@
     }
 
     const clientConfig = {
-        apiEndpoint: CLIENT_CONFIG.apiEndpoint,
+        ready: manifestReady,
         apiUrl,
         apiServerUrl,
         userFileUrl,
         apiWebSocketUrl,
     };
     Object.defineProperties(clientConfig, {
-        userFileEndpoint: { get: () => getStatusConfig('user_file_endpoint', null) },
-        postShareUrl: { get: () => getStatusConfig('post_share_url', null) },
-        turnstileSiteKey: { get: () => String(getStatusConfig('turnstile_site_key', '') || '').trim() },
-        resourceLinks: { get: () => Object.freeze([...(getStatusConfig('resource_links', []) || [])]) },
-        widgetLinks: { get: () => Object.freeze([...(getStatusConfig('widget_links', []) || [])]) },
+        apiEndpoint: { get: () => getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint) },
+        nyaitterJs: { get: () => getConfig('nyaitter_js', '0.1.3') },
+        userFileEndpoint: { get: () => getConfig('user_file_endpoint', null) },
+        postShareUrl: { get: () => getConfig('post_share_url', null) },
+        turnstileSiteKey: { get: () => String(getConfig('turnstile_site_key', '') || '').trim() },
+        resourceLinks: { get: () => Object.freeze([...(getConfig('resource_links', []) || [])]) },
+        widgetLinks: { get: () => Object.freeze([...(getConfig('widget_links', []) || [])]) },
     });
     globalThis.NyaitterClientConfig = Object.freeze(clientConfig);
 

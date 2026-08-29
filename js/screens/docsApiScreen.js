@@ -3,8 +3,6 @@ import { ICONS } from '../icons.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
 import { showScreenCompat } from '../screenManager.js';
 
-const { apiUrl } = globalThis.NyaitterClientConfig || {};
-
 let cachedEndpoints = null;
 let cachedTagLabels = {};
 let activeTag = 'all';
@@ -150,11 +148,7 @@ export async function showDocsApiScreen(showScreenFn) {
 
     try {
         if (!cachedEndpoints) {
-            const specUrl = apiUrl ? apiUrl('/server/spec/endpoints') : '/server/spec/endpoints';
-            let res = await fetch(specUrl, { credentials: 'include', headers: { Accept: 'application/json' } });
-            if (!res.ok) {
-                res = await fetch('/api/spec/endpoints', { credentials: 'include', headers: { Accept: 'application/json' } });
-            }
+            const res = await globalThis.NyaitterClientInstance.system.getApiSpecResponse();
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}`);
             }

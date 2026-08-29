@@ -440,7 +440,7 @@ export async function showDmConversation(dmId) {
                     <div class="dm-form-content">
                         <div class="file-preview-container dm-file-preview"></div>
                         <div class="markdown-textarea-editor dm-content-editor">
-                            <textarea id="dm-message-input" class="markdown-content-editor" rows="1" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length" placeholder="メッセージを入力... (Ctrl+Enterで送信)"></textarea>
+                            <textarea id="dm-message-input" class="markdown-content-editor" rows="1" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length" placeholder="メッセージを入力 (Ctrl+Enterで送信)"></textarea>
                             <div class="markdown-editor-paint" aria-hidden="true">
                                 <div class="markdown-editor-placeholder"></div>
                                 <div class="markdown-editor-preview hidden"></div>
@@ -573,7 +573,7 @@ export async function showDmConversation(dmId) {
                 const loadMoreHistory = async () => {
                     if (isLoadingMoreHistory || loadedCount >= posts.length) return;
                     isLoadingMoreHistory = true;
-                    loadMoreBtn.textContent = '読み込み中...';
+            loadMoreBtn.textContent = '読み込み中';
 
                     try {
                         const nextSlice = posts.slice(
@@ -741,7 +741,7 @@ export function openCreateDmModal() {
                 <p class="settings-help-text">ユーザー名またはNyaitterIDで検索してDMを開始します。</p>
             </div>
             <div class="dm-modal-search-box">
-                <input type="text" id="dm-user-search" class="dm-modal-search-input dm-search-input" placeholder="ユーザー名またはNyaitterIDで検索..." autofocus>
+                <input type="text" id="dm-user-search" class="dm-modal-search-input dm-search-input" placeholder="ユーザー名またはNyaitterIDで検索" autofocus>
             </div>
             <div id="dm-user-search-results" class="dm-search-results"></div>
         </div>

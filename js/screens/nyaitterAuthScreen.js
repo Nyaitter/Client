@@ -6,8 +6,6 @@ import { apiRequest } from '../api.js';
 import { escapeHTML, showLoading, getSafeHttpUrl, getUserIconUrl, formatNyaitterId } from '../utils/helpers.js';
 import { showScreenCompat } from '../screenManager.js';
 
-const { apiUrl } = globalThis.NyaitterClientConfig || {};
-
 function getRequestIdFromLocation() {
     // Check search params in window.location.href or hash
     const fullUrl = new URL(window.location.href);
@@ -59,11 +57,7 @@ export async function showNyaitterAuthScreen(showScreenFn) {
     }
 
     try {
-        const reqUrl = apiUrl ? apiUrl(`/server/auth/nyaitter-auth/requests/${encodeURIComponent(requestId)}`) : `/server/auth/nyaitter-auth/requests/${encodeURIComponent(requestId)}`;
-        const response = await fetch(reqUrl, {
-            credentials: 'include',
-            headers: { Accept: 'application/json' },
-        });
+        const response = await globalThis.NyaitterClientInstance.nyaitterAuth.getRequestResponse(requestId);
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok || !data.success || !data.request) {
@@ -276,15 +270,9 @@ export async function showNyaitterAuthScreen(showScreenFn) {
             });
 
             try {
-                const approveUrl = apiUrl ? apiUrl('/server/auth/nyaitter-auth/approve') : '/server/auth/nyaitter-auth/approve';
-                const appRes = await fetch(approveUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
+                const appRes = await globalThis.NyaitterClientInstance.nyaitterAuth.approveResponse({
                         request_id: requestId,
                         granted_scopes: selectedScopes,
-                    }),
                 });
                 const appData = await appRes.json().catch(() => ({}));
                 if (!appRes.ok || !appData.success || !appData.redirect_uri) {
@@ -297,7 +285,7 @@ export async function showNyaitterAuthScreen(showScreenFn) {
                         <div class="nyauth-card" style="text-align: center; padding: 3rem 1.5rem;">
                             <div class="spinner" style="margin: 0 auto 1.5rem;"></div>
                             <h3>連携が完了しました</h3>
-                            <p class="settings-help-text">アプリケーションへ移動しています…</p>
+                            <p class="settings-help-text">アプリケーションへ移動しています</p>
                         </div>
                     </div>
                 `;
@@ -320,13 +308,7 @@ export async function showNyaitterAuthScreen(showScreenFn) {
             showLoading(true);
 
             try {
-                const denyUrl = apiUrl ? apiUrl('/server/auth/nyaitter-auth/deny') : '/server/auth/nyaitter-auth/deny';
-                const denRes = await fetch(denyUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ request_id: requestId }),
-                });
+                const denRes = await globalThis.NyaitterClientInstance.nyaitterAuth.denyResponse({ request_id: requestId });
                 const denData = await denRes.json().catch(() => ({}));
                 if (denData.redirect_uri) {
                     window.location.href = denData.redirect_uri;

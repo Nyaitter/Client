@@ -752,7 +752,7 @@ font-weight: 700;
         display: block; /* ellipsisを効かせるためにblock要素にする */
     white-space: nowrap; /* テキストを折り返さない */
     overflow: hidden; /* はみ出たテキストを隠す */
-    text-overflow: ellipsis; /* はみ出た部分を...で表示 */
+    text-overflow: ellipsis; /* はみ出た部分を省略表示 */
 }
 
 .app-dialog-overlay {

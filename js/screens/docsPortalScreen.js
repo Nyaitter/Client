@@ -3,8 +3,6 @@ import { ICONS } from '../icons.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
 import { showScreenCompat } from '../screenManager.js';
 
-const { apiUrl } = globalThis.NyaitterClientConfig || {};
-
 let cachedDocuments = null;
 let activeCategory = 'all';
 let currentSearchQuery = '';
@@ -74,11 +72,7 @@ export async function showDocsPortalScreen(showScreenFn) {
 
     try {
         if (!cachedDocuments) {
-            const docsUrl = apiUrl ? apiUrl('/server/docs') : '/server/docs';
-            let res = await fetch(docsUrl, { credentials: 'include', headers: { Accept: 'application/json' } });
-            if (!res.ok) {
-                res = await fetch('/api/docs', { credentials: 'include', headers: { Accept: 'application/json' } });
-            }
+            const res = await globalThis.NyaitterClientInstance.system.getDocsResponse();
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}`);
             }

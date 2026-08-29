@@ -203,7 +203,7 @@ export function renderAppShellHTML() {
                 </div>
                 <p class="settings-help-text">ログイン済みの端末に許可リクエストを送信しました。そちらで許可されると、自動的にログインします。</p>
                 <div class="login-approval-wait-progress" aria-hidden="true"><div class="spinner"></div><span>確認中</span></div>
-                <p id="login-approval-wait-status" class="login-approval-detail login-approval-wait-status" role="status">許可を待機しています…</p>
+                <p id="login-approval-wait-status" class="login-approval-detail login-approval-wait-status" role="status">許可を待機しています</p>
                 <div class="login-approval-actions login-approval-wait-actions">
                     <button type="button" id="login-approval-wait-cancel-btn" class="login-secondary-button">ログインをキャンセル</button>
                 </div>

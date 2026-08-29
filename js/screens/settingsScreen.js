@@ -511,8 +511,8 @@ export async function showSettingsScreen(
                 <section class="settings-group-panel" data-settings-panel="notifications" hidden>
                     <section class="settings-push-notifications" aria-labelledby="push-notification-title">
                         <h4 id="push-notification-title">プッシュ通知</h4>
-                        <p id="push-notification-status" role="status">通知の状態を確認しています…</p>
-                        <button type="button" id="push-notification-action" class="settings-primary-button" disabled>読み込み中…</button>
+                        <p id="push-notification-status" role="status">通知の状態を確認しています</p>
+                        <button type="button" id="push-notification-action" class="settings-primary-button" disabled>読み込み中</button>
                         <p class="settings-help-text">通知はこの端末・ブラウザごとに設定されます。HTTPS対応のブラウザで利用できます。</p>
                     </section>
                 </section>
@@ -526,7 +526,7 @@ export async function showSettingsScreen(
                                 <input type="search" id="settings-imposter-name" placeholder="表示名" maxlength="50" autocomplete="off">
                                 <button type="button" id="settings-imposter-create-btn" class="settings-primary-button">作成</button>
                             </div>
-                            <p id="settings-imposter-limit" class="settings-help-text" role="status">インポスターを読み込んでいます…</p>
+                            <p id="settings-imposter-limit" class="settings-help-text" role="status">インポスターを読み込んでいます</p>
                         </div>
                         <div id="settings-imposter-list" class="settings-sessions-list" aria-live="polite"></div>
                     </section>
@@ -536,7 +536,7 @@ export async function showSettingsScreen(
                         <div class="settings-storage-heading">
                             <div>
                                 <h4 id="settings-storage-title">保存済みファイル</h4>
-                                <p id="settings-storage-summary" class="settings-help-text" role="status">ストレージ使用量を読み込んでいます…</p>
+                                <p id="settings-storage-summary" class="settings-help-text" role="status">ストレージ使用量を読み込んでいます</p>
                             </div>
                             <button type="button" id="settings-storage-refresh-btn" class="settings-bot-secondary-button">更新</button>
                         </div>
@@ -1240,7 +1240,7 @@ export async function showSettingsScreen(
         createBotTokenBtn.addEventListener('click', async () => {
             const name = (botTokenNameInput?.value || '').trim();
             createBotTokenBtn.disabled = true;
-            createBotTokenBtn.textContent = '生成中…';
+            createBotTokenBtn.textContent = '生成中';
             try {
                 const { data, error } = await apiRequest('/server/auth/bot-tokens', {
                     method: 'POST',
@@ -1337,7 +1337,7 @@ export async function showSettingsScreen(
 
         const handleSave = async () => {
             saveBtn.disabled = true;
-            saveBtn.textContent = '保存中…';
+            saveBtn.textContent = '保存中';
             const selectedScopes = [];
             modal.querySelectorAll('input[name="edit_nyauth_scope"]').forEach((cb) => {
                 if (cb.checked || cb.dataset.required === 'true') {
@@ -1504,7 +1504,7 @@ export async function showSettingsScreen(
     const loadImposters = async () => {
         if (!imposterList || !imposterLimit) return;
         imposterList.replaceChildren();
-        imposterLimit.textContent = 'インポスターを読み込んでいます…';
+        imposterLimit.textContent = 'インポスターを読み込んでいます';
         const { data, error } = await apiRequest('/server/api/imposters');
         if (error) {
             imposterLimit.textContent = 'インポスター情報の取得に失敗しました。';
@@ -1699,7 +1699,7 @@ export async function showSettingsScreen(
         const fileList = document.getElementById('settings-storage-files');
         if (!summary || !progress || !fileList) return;
 
-        summary.textContent = 'ストレージ使用量を読み込んでいます…';
+        summary.textContent = 'ストレージ使用量を読み込んでいます';
         fileList.replaceChildren();
         const { data, error } = await apiRequest('/server/api/uploads/storage');
         if (error) {
