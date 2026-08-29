@@ -7,7 +7,7 @@
     function getNyaitterJsUrl(value) {
         const source = String(value || '').trim();
         if (/^(?:https?:)?\/\//i.test(source)) return source;
-        const version = source || '0.1.3';
+        const version = source || 'latest';
         return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(version)}/dist/nyaitter.js`;
     }
 

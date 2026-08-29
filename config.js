@@ -132,7 +132,7 @@
     };
     Object.defineProperties(clientConfig, {
         apiEndpoint: { get: () => getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint) },
-        nyaitterJs: { get: () => getConfig('nyaitter_js', '0.1.3') },
+        nyaitterJs: { get: () => getConfig('nyaitter_js', 'latest') },
         userFileEndpoint: { get: () => getConfig('user_file_endpoint', null) },
         postShareUrl: { get: () => getConfig('post_share_url', null) },
         turnstileSiteKey: { get: () => String(getConfig('turnstile_site_key', '') || '').trim() },

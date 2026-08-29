@@ -9,7 +9,7 @@ let nyaitterClient = null;
 function getNyaitterJsUrl(value) {
   const source = String(value || '').trim();
   if (/^(?:https?:)?\/\//i.test(source)) return source;
-  return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(source || '0.1.3')}/dist/nyaitter.js`;
+  return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(source || 'latest')}/dist/nyaitter.js`;
 }
 
 const nyaitterClientReady = self.NyaitterClientConfig.ready.then(() => {
