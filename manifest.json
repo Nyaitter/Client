@@ -2,9 +2,9 @@
   "name": "NyaitterClient",
   "display_name": "Nyaitter",
   "manufacturer": "Nyaitter",
-  "author": "nyantorusabu",
-  "creator": "nyantorusabu",
-  "repository": "https://github.com/nyantorusabu/Client",
-  "api_url": "https://api.nyaitter.jp",
+  "author": "NyaitterTeam",
+  "creator": "NyaitterTeam",
+  "repository": "https://github.com/Nyaitter/Client",
+  "api_url": "/server",
   "nyaitter_js": "latest"
 }
