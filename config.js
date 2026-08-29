@@ -81,10 +81,13 @@
     function apiUrl(path = '') {
         const endpoint = normalizeEndpoint(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint));
         const request = new URL(String(path || '/'), endpoint.origin);
-        const normalizedPath = request.pathname.startsWith('/server')
-            ? request.pathname.slice('/server'.length)
-            : request.pathname;
         const basePath = endpoint.pathname.replace(/\/+$/, '');
+        let normalizedPath = request.pathname;
+        for (const prefix of ['/server', basePath]) {
+            if (prefix && (normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`))) {
+                normalizedPath = normalizedPath.slice(prefix.length) || '/';
+            }
+        }
         const targetPath = `${basePath}/${normalizedPath.replace(/^\/+/, '')}`.replace(
             /\/{2,}/g,
             '/',
