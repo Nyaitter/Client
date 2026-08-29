@@ -383,6 +383,11 @@ export async function renderPost(post, author, options = {}) {
             ? 'グループアナウンス'
             : 'グループ投稿';
         postHeader.appendChild(groupIndicator);
+    } else if (post.announcement) {
+        const announcementIndicator = document.createElement('span');
+        announcementIndicator.className = 'group-post-indicator';
+        announcementIndicator.textContent = 'アナウンス';
+        postHeader.appendChild(announcementIndicator);
     }
 
     if (post.private || post.lock) {
