@@ -12,9 +12,13 @@
             const response = await fetch('./manifest.json', { credentials: 'same-origin' });
             if (!response.ok) return;
             const manifest = await response.json();
-            manifestConfig = manifest?.client_config && typeof manifest.client_config === 'object'
+            const clientConfig = manifest?.client_config && typeof manifest.client_config === 'object'
                 ? manifest.client_config
                 : {};
+            const apiUrl = manifest?.api_url ?? clientConfig.api_endpoint;
+            manifestConfig = apiUrl === undefined
+                ? clientConfig
+                : { ...clientConfig, api_endpoint: apiUrl };
         } catch (_) {
             // マニフェストがない環境でも config.js の設定で起動する。
         }
