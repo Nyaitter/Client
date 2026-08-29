@@ -542,7 +542,7 @@ function handleGlobalClick(e) {
             return;
         }
 
-        // インタラクティブな要素（リンク、ボタン、添付ファイル、メニュー等）以外をクリックした場合は
+        // インタラクティブな要素以外をクリックした場合は
         // 詳細画面へ遷移
         const isInteractive = Boolean(
             target.closest('a') ||

@@ -1447,7 +1447,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
                 <div class="post-poll-other-wrapper">
                     <label class="post-poll-option-label">
                         <input type="${inputType}" name="${inputName}" value="-1" class="poll-option-input poll-other-radio">
-                        <span>その他（自由記述）</span>
+                        <span>その他</span>
                     </label>
                     <input type="text" class="post-poll-other-input hidden" placeholder="その他の回答を入力" maxlength="200">
                 </div>
@@ -1520,7 +1520,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
     const totalVoters = poll.total_voters || 0;
     let expiryText = '';
     if (isExpired) {
-        expiryText = '・最終結果（投票終了）';
+        expiryText = '・最終結果';
     } else if (poll.expires_at) {
         expiryText = `・残り時間: ${formatPollRemainingTime(poll.expires_at)}`;
     } else {
@@ -1653,7 +1653,7 @@ export function renderPollAttachmentPreview(container) {
         </div>
         <div class="poll-attachment-preview-options">
             ${poll.options.map((opt, i) => `<div class="poll-attachment-preview-opt">${i + 1}. ${escapeHTML(opt.text)}</div>`).join('')}
-            ${poll.allow_other ? '<div class="poll-attachment-preview-opt">その他（自由記述）</div>' : ''}
+            ${poll.allow_other ? '<div class="poll-attachment-preview-opt">その他</div>' : ''}
         </div>
         <div class="poll-attachment-preview-meta">
             ${metaTags}
@@ -1739,7 +1739,7 @@ export function openCreatePollModal(container) {
                 </label>
                 <label class="poll-checkbox-label">
                     <input type="checkbox" id="poll-allow-other" ${initialAllowOther ? 'checked' : ''}>
-                    <span>「その他」の回答（自由記述）を許可する</span>
+                    <span>「その他」の回答を許可する</span>
                 </label>
                 <label class="poll-checkbox-label">
                     <input type="checkbox" id="poll-show-results" ${initialShowResults ? 'checked' : ''}>
@@ -1816,7 +1816,7 @@ export function openCreatePollModal(container) {
         });
     });
 
-    // 初期の日時指定値（現在から1日後）を設定
+    // 初期の日時指定値を設定
     const dtInput = modal.querySelector('#poll-datetime-input');
     const defaultDate = new Date(Date.now() + 24 * 3600 * 1000);
     const tzOffset = defaultDate.getTimezoneOffset() * 60000;

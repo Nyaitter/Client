@@ -68,7 +68,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         const metricsPromise = Promise.resolve();
         contentDiv.innerHTML = '';
 
-        // ── 祖先（親チェーン）の解決とツリー描画 (無条件で表示) ──────────
+        // ── 祖先の解決とツリー描画 (無条件で表示) ──────────
         let ancestorsList = Array.isArray(threadPayload?.ancestors) ? [...threadPayload.ancestors] : [];
         if (ancestorsList.length === 0 && mainPost.reply_to_post) {
             let current = mainPost.reply_to_post;
@@ -97,7 +97,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                     itemContainer.appendChild(ancestorEl);
                     ancestorsContainer.appendChild(itemContainer);
 
-                    // 対象ポストの直前の親（直近の親）を記録
+                    // 対象ポストの直前の親を記録
                     if (i === ancestorsList.length - 1) {
                         immediateParentEl = itemContainer;
                     }
@@ -106,7 +106,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
             contentDiv.appendChild(ancestorsContainer);
         }
 
-        // ── メインポスト（現在の対象ポスト）の描画 ───────────────────────
+        // ── メインポストの描画 ───────────────────────
         const mainPostEl = await renderPost(mainPost, mainPost.author, {
             userCache: getAllUsersCache(),
             metricsPromise,
@@ -165,7 +165,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         );
         const mainPostAuthorId = Number(mainPost?.userId ?? mainPost?.user_id ?? mainPost?.author?.id);
 
-        // ── 返信ブランチ（子ポスト＋孫ポスト群）の構築 ─────────────────
+        // ── 返信ブランチの構築 ─────────────────
         const visitedReplyIds = new Set();
         const collectDescendants = (parentId, depth, chainAuthorIds, resultList) => {
             const children = repliesByParentId.get(Number(parentId)) || [];
@@ -174,7 +174,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
 
                 const childAuthorId = Number(child.author?.id ?? child.author_id ?? child.userId ?? child.user_id);
 
-                // 返信への返信（depth >= 1）は、返信者がポスト主または会話チェーン参加者（子ポスト主等）の場合にのみ表示
+                // 返信への返信は、返信者がポスト主または会話チェーン参加者の場合にのみ表示
                 if (depth >= 1) {
                     const isMainAuthor = Number.isInteger(mainPostAuthorId) && childAuthorId === mainPostAuthorId;
                     const isChainParticipant = Number.isInteger(childAuthorId) && chainAuthorIds.has(childAuthorId);
@@ -298,7 +298,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                     branchContainer.appendChild(directNode);
                 }
 
-                // 2. 孫ポスト群（descendants）のレンダリング
+                // 2. 孫ポスト群のレンダリング
                 const descendants = branch.descendants || [];
                 if (descendants.length === 1) {
                     // 孫ポストが1件のみの場合はそのまま表示

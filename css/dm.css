@@ -1104,7 +1104,7 @@ text-decoration: underline;
 }
 
 .dm-system-message a {
-color: inherit; /* 親要素の色を継承（色を変えない） */
+color: inherit; /* 親要素の色を継承 */
     font-weight: 500;
     text-decoration: none;
 }

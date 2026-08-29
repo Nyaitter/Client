@@ -1037,7 +1037,7 @@ overflow: hidden;
 }
 
 .home-tabs-list:empty::after {
-    content: '（タブがありません）';
+    content: '';
     display: flex;
     align-items: center;
     justify-content: center;

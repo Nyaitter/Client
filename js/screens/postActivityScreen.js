@@ -57,7 +57,7 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
     };
 
     try {
-        // メタデータ（ポスト主かどうか）および初期状態の取得
+        // メタデータおよび初期状態の取得
         const summaryData = await fetchTabItems(
             `/server/api/posts/${normalizedPostId}/activity`,
             `${baseCacheKey}_summary`,

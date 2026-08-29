@@ -714,7 +714,7 @@ async function sendDirectMessage(dmId, files = []) {
 
         if (error) throw error;
 
-        // リストキャッシュを破棄（次回一覧表示時に最新メッセージを反映）
+        // リストキャッシュを破棄
         deleteScreenDataCache(getDmCacheKey('list'));
     } catch (e) {
         console.error('DM送信エラー:', e);

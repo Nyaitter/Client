@@ -46,7 +46,7 @@
     --d-light-primary-color: #8f5600;
     --d-danger-color: #610525;
 
-    /* デフォルトのアクティブ色（ライトモード基準） */
+    /* デフォルトのアクティブ色 */
     --border-color: var(--l-border-color);
     --bg-color: var(--l-bg-color);
     --main-bg-color: var(--l-main-bg-color);

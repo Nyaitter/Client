@@ -1,5 +1,5 @@
 /**
- * appShell.js — アプリケーションのUIシェル（DOM構造）を動的に構築・マウントします。
+ * appShell.js — アプリケーションのUIシェルを動的に構築・マウントします。
  */
 
 export function renderAppShellHTML() {
@@ -258,7 +258,7 @@ export function renderAppShellHTML() {
                     <p id="report-modal-target" class="settings-help-text"></p>
                 </div>
                 <form id="report-form">
-                    <label for="report-description">説明（任意）</label>
+                    <label for="report-description">説明</label>
                     <textarea id="report-description" maxlength="2000" rows="5" placeholder="状況や確認してほしい点を入力してください"></textarea>
                     <p class="report-modal-note">報告者の情報は、対応する管理者には表示されません。</p>
                     <div class="report-modal-actions">

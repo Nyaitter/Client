@@ -202,7 +202,7 @@ export function updateFreezeAppealStatus(appeal) {
         return;
     }
     if (appeal.status === 'rejected') {
-        const note = appeal.resolution_note ? `（回答: ${appeal.resolution_note}）` : '';
+        const note = appeal.resolution_note ? `` : '';
         appealStatus.textContent = `異議申し立ては却下されました${note}`;
         openAppealBtn.textContent = '再審査を申し立てる';
         openAppealBtn.classList.remove('hidden');
@@ -370,7 +370,7 @@ export async function openAccountSwitcherModal() {
                 removeAccountFromList(userId);
                 if (removeResult?.active_removed) {
                     // 現在使用中のアカウントが解除された。
-                    // 残っているアカウントがある場合は一覧の先頭（1番上）のアカウントへ
+                    // 残っているアカウントがある場合は一覧の先頭のアカウントへ
                     // 自動で切り替え、モーダルを再読み込みして最新の一覧を表示する。
                     setCurrentUser(null);
                     unsubscribeFromChanges();

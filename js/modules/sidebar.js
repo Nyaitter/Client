@@ -250,7 +250,7 @@ export function openMobileSidebar() {
         const elapsed = Date.now() - startTime;
         startX = null;
         startY = null;
-        // 左スワイプ（指を左に40px以上動かした）時にサイドバーを閉じる
+        // 左スワイプ時にサイドバーを閉じる
         if (horizontalDistance <= -40 && (Math.abs(horizontalDistance) > Math.abs(verticalDistance) * 1.1 || elapsed < 500)) {
             closeMobileSidebar();
         }

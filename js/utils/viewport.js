@@ -49,8 +49,8 @@ export function createViewportObserver(callback, options = {}) {
 }
 
 /**
- * 任意の要素（ポップアップ、メニュー、ダイアログ等）がビューポート（画面）外にはみ出ないように
- * 位置（left / top または transform / margin）および最大サイズを自動調整・クランプする。
+ * 任意の要素がビューポート外にはみ出ないように
+ * 位置および最大サイズを自動調整・クランプする。
  */
 export function clampElementToViewport(element, { margin = 8, useFixed = false } = {}) {
     if (!element || !element.isConnected) return;
@@ -97,7 +97,7 @@ export function clampElementToViewport(element, { margin = 8, useFixed = false }
 }
 
 /**
- * トリガー要素（ボタン等）に相対してメニューを画面内に配置する。
+ * トリガー要素に相対してメニューを画面内に配置する。
  * 上下左右の反転と画面外へのクランプを自動で行う。
  */
 export function positionElementRelativeToAnchor(
@@ -129,7 +129,7 @@ export function positionElementRelativeToAnchor(
     const menuWidth = menuRect.width || element.offsetWidth || 180;
     const menuHeight = menuRect.height || element.offsetHeight || 120;
 
-    // 垂直方向の計算（下に収まらなければ上に反転、上に収まらなければ下に反転）
+    // 垂直方向の計算
     let top;
     const preferTop = placement.startsWith('top');
     const spaceBelow = viewportHeight - anchorRect.bottom - gap - margin;
@@ -149,7 +149,7 @@ export function positionElementRelativeToAnchor(
         }
     }
 
-    // 水平方向の計算（右揃え・左揃えと反転）
+    // 水平方向の計算
     let left;
     const preferEnd = placement.endsWith('end');
     if (preferEnd) {

@@ -413,7 +413,7 @@ export async function showSettingsScreen(
                     </fieldset>
                     <fieldset class="settings-ng-words"><legend>ミュート・フィルター</legend>
                         <label for="setting-ng-words">NGワード</label>
-                        <textarea id="setting-ng-words" placeholder="改行またはカンマ（,）区切りで入力">${escapeHTML(Array.isArray(getCurrentUser().settings?.ng_words) ? getCurrentUser().settings.ng_words.join('\n') : (getCurrentUser().settings?.ng_words || ''))}</textarea>
+                        <textarea id="setting-ng-words" placeholder="改行またはカンマ区切りで入力">${escapeHTML(Array.isArray(getCurrentUser().settings?.ng_words) ? getCurrentUser().settings.ng_words.join('\n') : (getCurrentUser().settings?.ng_words || ''))}</textarea>
                         <p class="settings-help-text">設定したワードが含まれるポストを検索から除外します。</p>
                     </fieldset>
                     <fieldset class="settings-dm-privacy"><legend>ダイレクトメッセージ</legend>
@@ -455,16 +455,16 @@ export async function showSettingsScreen(
                     <label for="setting-post-timestamp-format">ポスト日時の表示</label>
                     <select id="setting-post-timestamp-format" class="settings-select">
                         <option value="relative">相対</option>
-                        <option value="relative_detailed">相対（詳細）</option>
-                        <option value="absolute_24">絶対（24時間）</option>
-                        <option value="absolute_12">絶対（12時間）</option>
+                        <option value="relative_detailed">相対</option>
+                        <option value="absolute_24">絶対</option>
+                        <option value="absolute_12">絶対</option>
                     </select>
                     <p class="settings-help-text">プロフィールの参加日時には適用されません。</p>
                     <label for="setting-emoji-kind">絵文字のフォント</label>
                     <select id="setting-emoji-kind" class="settings-select">
                         <option value="twemoji">Twemoji</option>
                         <option value="emojione">Emoji One</option>
-                        <option value="default">デフォルト（端末絵文字）</option>
+                        <option value="default">デフォルト</option>
                     </select>
                     <label for="setting-content-editor">コンテンツエディタ</label>
                     <select id="setting-content-editor" class="settings-select">
@@ -491,7 +491,7 @@ export async function showSettingsScreen(
                     <p class="settings-help-text">アクセントカラーと選択状態の配色を変更します。</p>
                     <section id="settings-custom-colors" class="settings-custom-colors" hidden aria-labelledby="settings-custom-colors-title">
                         <h4 id="settings-custom-colors-title">カスタムカラー</h4>
-                        <p class="settings-help-text">各色はカラーピッカーまたは16進数カラーコード（例: <code>#ff9900</code>）で指定できます。</p>
+                        <p class="settings-help-text">各色はカラーピッカーまたは16進数カラーコードで指定できます。</p>
                         <div class="settings-color-grid">
                             <label class="settings-color-field">メインカラー
                                 <span class="settings-color-control"><input type="color" id="setting-color-primary-picker" data-color-key="primary_color"><input type="text" id="setting-color-primary" data-color-key="primary_color" class="settings-color-code" maxlength="7"></span>
@@ -886,9 +886,9 @@ export async function showSettingsScreen(
             if (isLinked && linkedInfo?.providerUserId) {
                 desc.textContent = `連携アカウント: ${linkedInfo.providerUserId}`;
             } else if (provider.name === 'scratch') {
-                desc.textContent = 'Scratchアカウント（コメント認証）でログインします。';
+                desc.textContent = 'Scratchアカウントでログインします。';
             } else if (provider.name === 'email') {
-                desc.textContent = 'ワンタイム認証コード（メール）でログインします。';
+                desc.textContent = 'ワンタイム認証コードでログインします。';
             } else if (provider.name === 'passkey') {
                 desc.textContent = '端末の指紋認証・顔認証・セキュリティキーでログインします。';
             } else {
@@ -989,7 +989,7 @@ export async function showSettingsScreen(
                         }
 
                         const projId = initData?.verificationProjectId || provider.verificationProjectId || '1239738451';
-                        await showAppAlert(`Scratchの認証プロジェクト（https://scratch.mit.edu/projects/${projId}/）のコメント欄に、以下の認証コードを投稿してください:\n\n${initData.code}\n\nコメントを投稿したら「OK」を押して次へ進んでください。`);
+                        await showAppAlert(`Scratchの認証プロジェクトのコメント欄に、以下の認証コードを投稿してください:\n\n${initData.code}\n\nコメントを投稿したら「OK」を押して次へ進んでください。`);
 
                         let turnstileToken = null;
                         if (provider.turnstileRequired || globalThis.NyaitterServerStatus?.turnstile?.enabled) {
@@ -1472,7 +1472,7 @@ export async function showSettingsScreen(
             revokeBtn.className = 'settings-session-revoke-button';
             revokeBtn.textContent = '連携を解除';
             revokeBtn.addEventListener('click', async () => {
-                if (!(await showAppConfirm(`アプリケーション「${app.app_name}」の連携を解除しますか？\n解除するとこのアプリからのアクセス（継続アクセストークンを含む）は直ちに停止されます。`))) return;
+                if (!(await showAppConfirm(`アプリケーション「${app.app_name}」の連携を解除しますか？\n解除するとこのアプリからのアクセスは直ちに停止されます。`))) return;
                 revokeBtn.disabled = true;
                 const { error: revokeError } = await apiRequest(`/server/auth/nyaitter-auth/authorized-apps/${encodeURIComponent(app.id)}`, { method: 'DELETE' });
                 if (revokeError) {
@@ -1712,7 +1712,7 @@ export async function showSettingsScreen(
         const usedBytes = Math.max(0, Number(payload.used_bytes) || 0);
         const limitBytes = Math.max(1, Number(payload.limit_bytes) || 1);
         const percent = Math.min(100, Math.max(0, Number(payload.used_percent) || (usedBytes / limitBytes) * 100));
-        summary.textContent = `${formatStorageSize(usedBytes)} / ${formatStorageSize(limitBytes)}（${percent.toFixed(1)}% 使用）`;
+        summary.textContent = `${formatStorageSize(usedBytes)} / ${formatStorageSize(limitBytes)}`;
         progress.style.width = `${percent}%`;
 
         const files = Array.isArray(payload.files) ? payload.files : [];
@@ -1826,7 +1826,7 @@ export async function showSettingsScreen(
                 ` : `
                     <button type="button" class="home-tab-action-btn" data-action="move-up" title="上へ移動">↑</button>
                     <button type="button" class="home-tab-action-btn" data-action="move-down" title="下へ移動">↓</button>
-                    <button type="button" class="home-tab-action-btn home-tab-remove-btn" data-action="remove-tab" title="無効化（削除）" ${isOnlyActive ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>✕</button>
+                    <button type="button" class="home-tab-action-btn home-tab-remove-btn" data-action="remove-tab" title="無効化" ${isOnlyActive ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>✕</button>
                 `}
             </div>
         `;

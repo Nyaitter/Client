@@ -234,7 +234,7 @@ width: 100%;
     white-space: nowrap;
 }
 
-/* 幅を超過した場合は上下段に分割（上段: ポストボタン、下段: ツールボタン群） */
+/* 幅を超過した場合は上下段に分割 */
 .post-form-actions.post-form-stacked {
     flex-direction: column;
     align-items: stretch;

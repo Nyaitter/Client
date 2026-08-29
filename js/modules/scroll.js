@@ -218,7 +218,7 @@ export function restoreScrollPosition(targetRouteKey = null) {
         return;
     }
 
-    // 複数フレームにわたってスクロール位置の適用を試行（非同期レイアウトや画像読込に対応）
+    // 複数フレームにわたってスクロール位置の適用を試行
     const tryScroll = (attemptsLeft = 5) => {
         scheduleNextFrame(() => {
             if (version !== scrollRestoreVersion || activeScrollRouteKey !== routeKey) return;

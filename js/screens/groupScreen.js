@@ -34,7 +34,7 @@ const PERMISSION_CONFIG = [
     {
         id: 'ban',
         label: 'メンバー追放・禁止',
-        description: '迷惑行為を行うメンバーの追放および参加禁止（BAN）を行えます。',
+        description: '迷惑行為を行うメンバーの追放および参加禁止を行えます。',
     },
     {
         id: 'post',
@@ -44,7 +44,7 @@ const PERMISSION_CONFIG = [
     {
         id: 'announce',
         label: 'アナウンス投稿',
-        description: 'グループメンバー全員への重要なお知らせ（アナウンス）を投稿できます。',
+        description: 'グループメンバー全員への重要なお知らせを投稿できます。',
     },
     {
         id: 'delete',
@@ -624,11 +624,11 @@ function renderRolePermissionCards(role = null) {
 
 function renderRoleChips(role, isOwner) {
     if (isOwner) {
-        return '<span class="group-role-chip is-admin">すべての権限（オーナー固定）</span>';
+        return '<span class="group-role-chip is-admin">すべての権限</span>';
     }
     const permissions = Array.isArray(role?.permissions) ? role.permissions : [];
     if (permissions.includes('admin')) {
-        return '<span class="group-role-chip is-admin">すべての権限（管理者）</span>';
+        return '<span class="group-role-chip is-admin">すべての権限</span>';
     }
     if (permissions.length === 0) {
         return '<span class="group-role-chip is-empty">権限なし</span>';
