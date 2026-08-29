@@ -284,17 +284,31 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                     }
                 }
 
-                for (const post of posts) {
-                    if (showPinPost && isPinnedPost(post.id, options.pinId)) continue;
-                    const postEl = await renderPost(post, post.author, {
-                        userCache: getAllUsersCache(),
-                        metricsPromise,
-                        clampHeight: true,
-                    });
+                const regularPosts = posts.filter(
+                    (post) => !(showPinPost && isPinnedPost(post.id, options.pinId)),
+                );
+                // 低性能端末で30件分のDOM生成を一度に行うと初回描画が固まるため、
+                // 少数件ずつ描画してブラウザへ制御を返す。
+                const RENDER_CHUNK_SIZE = 6;
+                for (let start = 0; start < regularPosts.length; start += RENDER_CHUNK_SIZE) {
                     if (!isActivePaginationLoader(container, currentTrigger, options)) {
                         return false;
                     }
-                    if (postEl) currentTrigger.before(postEl);
+                    const renderedPosts = await Promise.all(regularPosts
+                        .slice(start, start + RENDER_CHUNK_SIZE)
+                        .map((post) => renderPost(post, post.author, {
+                            userCache: getAllUsersCache(),
+                            metricsPromise,
+                            clampHeight: true,
+                        })));
+                    const fragment = document.createDocumentFragment();
+                    for (const postEl of renderedPosts) {
+                        if (postEl) fragment.appendChild(postEl);
+                    }
+                    if (fragment.childNodes.length > 0) currentTrigger.before(fragment);
+                    if (start + RENDER_CHUNK_SIZE < regularPosts.length) {
+                        await new Promise((resolve) => requestAnimationFrame(resolve));
+                    }
                 }
             }
 

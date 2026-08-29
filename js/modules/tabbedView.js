@@ -52,11 +52,11 @@ export async function renderPostList(container, posts = [], options = {}) {
     const listWrapper = document.createElement('div');
     listWrapper.className = listClassName;
 
-    for (const post of list) {
-        const postElement = await renderPost(post, post.author || post.user);
-        if (postElement) {
-            listWrapper.appendChild(postElement);
-        }
+    const postElements = await Promise.all(list.map((post) => (
+        renderPost(post, post.author || post.user)
+    )));
+    for (const postElement of postElements) {
+        if (postElement) listWrapper.appendChild(postElement);
     }
 
     container.appendChild(listWrapper);
