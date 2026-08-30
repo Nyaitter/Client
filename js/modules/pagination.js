@@ -448,8 +448,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                 document.body.scrollHeight || 0,
                 container.scrollHeight || 0,
             );
-            const viewportHeight = window.innerHeight || 0;
-            if (currentDocHeight >= targetScrollY + viewportHeight * 0.5) {
+            if (currentDocHeight >= targetScrollY + window.innerHeight) {
                 break;
             }
             const loaded = await loadMore({ cachedOnly: true });
@@ -457,10 +456,11 @@ export async function loadPostsWithPagination(container, type, options = {}) {
             iteration += 1;
         }
 
-        // スクロール位置までページを読みだした後、追加で1ページを読み込む
+        // スクロール位置までページを読みだした後、追加でキャッシュがあれば1ページ読み込む
         if (
             getCurrentPagination().hasMore &&
-            isActivePaginationLoader(container, trigger, options)
+            isActivePaginationLoader(container, trigger, options) &&
+            postPageCache.pages.has(getCurrentPagination().page)
         ) {
             await loadMore({ cachedOnly: true });
         }

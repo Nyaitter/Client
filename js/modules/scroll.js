@@ -225,11 +225,12 @@ export function restoreScrollPosition(targetRouteKey = null) {
         behavior: 'instant',
     });
 
-    // 描画遅延や高さ変動に備えて複数フレームで追従
-    const tryScroll = (attemptsLeft = 4) => {
+    // 描画遅延や画像の読み込み・高さ変動に備えて追従
+    const tryScroll = (attemptsLeft = 8) => {
         scheduleNextFrame(() => {
             if (version !== scrollRestoreVersion || activeScrollRouteKey !== routeKey) return;
-            if (Math.abs((window.scrollY || 0) - targetY) > 2) {
+            const currentY = window.scrollY || 0;
+            if (Math.abs(currentY - targetY) > 2) {
                 window.scrollTo({
                     top: targetY,
                     left: 0,
