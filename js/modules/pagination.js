@@ -250,9 +250,11 @@ export async function loadPostsWithPagination(container, type, options = {}) {
 
         try {
             const pageNumber = getCurrentPagination().page;
+            let isLoadedFromCache = Boolean(postPageCache?.pages?.has(pageNumber));
             let optimizedPage = postPageCache?.pages.get(pageNumber);
             if (!optimizedPage && preloadPromises.has(pageNumber)) {
                 optimizedPage = await preloadPromises.get(pageNumber);
+                isLoadedFromCache = Boolean(optimizedPage);
             }
             if (!optimizedPage && cachedOnly) return false;
             if (!optimizedPage) {
@@ -308,27 +310,44 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                 const regularPosts = posts.filter(
                     (post) => !(showPinPost && isPinnedPost(post.id, options.pinId)),
                 );
-                // 低性能端末で30件分のDOM生成を一度に行うと初回描画が固まるため、
-                // 少数件ずつ描画してブラウザへ制御を返す。
-                const RENDER_CHUNK_SIZE = 6;
-                for (let start = 0; start < regularPosts.length; start += RENDER_CHUNK_SIZE) {
+
+                if (isLoadedFromCache) {
+                    // キャッシュからの復元時は遅延なしで即時一括描画する
+                    const renderedPosts = await Promise.all(regularPosts.map((post) => renderPost(post, post.author, {
+                        userCache: getAllUsersCache(),
+                        metricsPromise,
+                        clampHeight: true,
+                    })));
                     if (!isActivePaginationLoader(container, currentTrigger, options)) {
                         return false;
                     }
-                    const renderedPosts = await Promise.all(regularPosts
-                        .slice(start, start + RENDER_CHUNK_SIZE)
-                        .map((post) => renderPost(post, post.author, {
-                            userCache: getAllUsersCache(),
-                            metricsPromise,
-                            clampHeight: true,
-                        })));
                     const fragment = document.createDocumentFragment();
                     for (const postEl of renderedPosts) {
                         if (postEl) fragment.appendChild(postEl);
                     }
                     if (fragment.childNodes.length > 0) currentTrigger.before(fragment);
-                    if (start + RENDER_CHUNK_SIZE < regularPosts.length) {
-                        await new Promise((resolve) => requestAnimationFrame(resolve));
+                } else {
+                    // ネットワーク経由の初回フェッチ時は段階的に描画して制御を返す
+                    const RENDER_CHUNK_SIZE = 6;
+                    for (let start = 0; start < regularPosts.length; start += RENDER_CHUNK_SIZE) {
+                        if (!isActivePaginationLoader(container, currentTrigger, options)) {
+                            return false;
+                        }
+                        const renderedPosts = await Promise.all(regularPosts
+                            .slice(start, start + RENDER_CHUNK_SIZE)
+                            .map((post) => renderPost(post, post.author, {
+                                userCache: getAllUsersCache(),
+                                metricsPromise,
+                                clampHeight: true,
+                            })));
+                        const fragment = document.createDocumentFragment();
+                        for (const postEl of renderedPosts) {
+                            if (postEl) fragment.appendChild(postEl);
+                        }
+                        if (fragment.childNodes.length > 0) currentTrigger.before(fragment);
+                        if (start + RENDER_CHUNK_SIZE < regularPosts.length) {
+                            await new Promise((resolve) => requestAnimationFrame(resolve));
+                        }
                     }
                 }
             }
@@ -445,6 +464,9 @@ export async function loadPostsWithPagination(container, type, options = {}) {
         ) {
             await loadMore({ cachedOnly: true });
         }
+
+        // キャッシュ復元完了直後に即座にスクロール位置を適用
+        window.scrollTo({ top: targetScrollY, left: 0, behavior: 'instant' });
     }
 
     return {

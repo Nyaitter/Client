@@ -218,17 +218,26 @@ export function restoreScrollPosition(targetRouteKey = null) {
         return;
     }
 
-    // 複数フレームにわたってスクロール位置の適用を試行
-    const tryScroll = (attemptsLeft = 5) => {
+    // まず同期で即時適用を試行
+    window.scrollTo({
+        top: targetY,
+        left: 0,
+        behavior: 'instant',
+    });
+
+    // 描画遅延や高さ変動に備えて複数フレームで追従
+    const tryScroll = (attemptsLeft = 4) => {
         scheduleNextFrame(() => {
             if (version !== scrollRestoreVersion || activeScrollRouteKey !== routeKey) return;
-            window.scrollTo({
-                top: targetY,
-                left: 0,
-                behavior: 'instant',
-            });
+            if (Math.abs((window.scrollY || 0) - targetY) > 2) {
+                window.scrollTo({
+                    top: targetY,
+                    left: 0,
+                    behavior: 'instant',
+                });
+            }
             if (attemptsLeft > 1 && Math.abs((window.scrollY || 0) - targetY) > 2) {
-                setTimeout(() => tryScroll(attemptsLeft - 1), 40);
+                setTimeout(() => tryScroll(attemptsLeft - 1), 30);
             }
         });
     };
