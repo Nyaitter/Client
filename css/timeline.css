@@ -350,10 +350,12 @@ position: absolute;
 }
 
 .post {
-padding: 1rem;
+    padding: 1rem;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     gap: 0.5rem;
+    content-visibility: auto;
+    contain-intrinsic-size: 80px 200px;
 }
 
 .thread-nested-reply {
