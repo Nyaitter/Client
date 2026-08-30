@@ -301,7 +301,8 @@ export function savePostPageCache(pageCache, pageNumber, payload) {
 
 export function getProfilePostPageCache(userId, subType, pinId = '') {
     const userScope = getCurrentUser()?.id ?? 'guest';
-    const pageKey = `${userScope}:${window.location.hash || '#'}:${userId}:${subType}:${pinId || ''}`;
+    const normalizedUserId = Number(userId?.id ?? userId);
+    const pageKey = `${userScope}:profile:${normalizedUserId}:${subType}:${pinId || ''}`;
     if (!profilePostPageCaches.has(pageKey)) {
         profilePostPageCaches.set(pageKey, { pages: new Map() });
         trimPageCacheMap(

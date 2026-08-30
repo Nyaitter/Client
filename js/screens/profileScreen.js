@@ -43,6 +43,7 @@ import {
     loadUsersWithPagination,
     bindPaginationOptionsToRoute,
     isActivePaginationLoader,
+    incrementRouterGeneration,
 } from '../modules/pagination.js';
 import {
     getScrollRouteKey,
@@ -255,6 +256,7 @@ export async function refreshActiveProfileTab({ userId, subpage } = {}) {
 }
 
 export async function showProfileScreen(userId, subpage = 'posts', showScreenFn = null) {
+    incrementRouterGeneration();
     subpage = subpage === 'replies' ? 'posts' : subpage;
     renderHeader();
 

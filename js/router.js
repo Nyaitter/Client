@@ -41,6 +41,7 @@ import { showLoading } from './utils/helpers.js';
 import { resolveRoute } from './routeTable.js';
 import { activateScreen } from './screenManager.js';
 import { renderRoute } from './screenRegistry.js';
+import { incrementRouterGeneration } from './modules/pagination.js';
 
 let routerGeneration = 0;
 let scrollRestoreVersion = 0;
@@ -128,6 +129,7 @@ export function showScreen(screenId, { restart = false } = {}) {
 export async function router() {
     await handlePendingPushNotificationOpen();
     const generation = ++routerGeneration;
+    incrementRouterGeneration();
     beginScrollRouteTransition();
     // 進行中の古い復元処理を無効化する。
     scrollRestoreVersion += 1;
