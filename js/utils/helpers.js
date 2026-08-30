@@ -770,28 +770,28 @@ export function getGroupIconUrl(value) {
     return image;
 }
 
-export function getGroupBadgesHtml(user) {
+export function getGroupBadgesHtml(user, { maxCount = 5 } = {}) {
     if (!user) return '';
     const badges = Array.isArray(user.group_badges)
         ? user.group_badges
         : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
     const validBadges = badges
         .filter((b) => b && getGroupIconUrl(b))
-        .slice(0, 3);
+        .slice(0, maxCount);
     if (validBadges.length === 0) return '';
     return `<span class="user-group-badges">${validBadges
         .map((b) => `<a href="#group/${encodeURIComponent(b.id)}" class="user-group-badge-link" title="${escapeHTML(b.name || '参加グループ')}" onclick="event.stopPropagation();"><img src="${escapeHTML(getGroupIconUrl(b))}" class="user-group-badge" alt="${escapeHTML(b.name || 'グループ')}"></a>`)
         .join('')}</span>`;
 }
 
-export function renderGroupBadgesElement(user) {
+export function renderGroupBadgesElement(user, { maxCount = 5 } = {}) {
     if (!user) return null;
     const badges = Array.isArray(user.group_badges)
         ? user.group_badges
         : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
     const validBadges = badges
         .filter((b) => b && getGroupIconUrl(b))
-        .slice(0, 3);
+        .slice(0, maxCount);
     if (validBadges.length === 0) return null;
 
     const span = document.createElement('span');

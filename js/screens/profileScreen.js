@@ -358,7 +358,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                 <h2>
                     ${getEmoji(escapeHTML(user.name))}
                     ${user.admin ? `<img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">` : user.verify ? `<img src="icons/verify.png" class="verify-badge" title="認証済み">` : ''}
-                    ${getGroupBadgesHtml(user)}
+                    ${getGroupBadgesHtml(user, { maxCount: Infinity })}
                     ${user.is_imposter ? '<span class="imposter-badge" title="偽のNyaitterID">インポスター</span>' : ''}
                 </h2>
                 <div class="user-id" title="Nyaitter ID">${getNyaitterId(user)} ${user.visibility?.scid === 'public' && user.scid ? `(<a href="https://scratch.mit.edu/users/${user.scid}" class="scidlink" target="_blank" rel="noopener noreferrer">@${user.scid}</a>)` : ''}</div>
