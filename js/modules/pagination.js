@@ -448,13 +448,18 @@ async function fetchUserPageData(type, options, pageNumber, pageSize) {
 
     if (type === 'follows') {
         if (options.userId) {
+            const params = new URLSearchParams({ limit: String(pageSize) });
+            if (options.nextCursor) params.set('cursor', options.nextCursor);
+            else params.set('offset', String(from));
             const result = await apiRequest(
-                `/server/api/users/${encodeURIComponent(options.userId)}/following?limit=${pageSize}&offset=${from}`,
+                `/server/api/users/${encodeURIComponent(options.userId)}/following?${params.toString()}`,
                 { signal: options.signal },
             );
             users = Array.isArray(result.data?.following)
                 ? result.data.following
                 : [];
+            options.nextCursor = result.data?.next_cursor || null;
+            hasMoreForPage = result.data?.has_more ?? users.length >= pageSize;
             error = result.error;
         } else {
             const idsToFetch = (options.ids || []).slice(from, to + 1);
@@ -469,13 +474,18 @@ async function fetchUserPageData(type, options, pageNumber, pageSize) {
             }
         }
     } else if (type === 'followers') {
+        const params = new URLSearchParams({ limit: String(pageSize) });
+        if (options.nextCursor) params.set('cursor', options.nextCursor);
+        else params.set('offset', String(from));
         const result = await apiRequest(
-            `/server/api/users/${encodeURIComponent(options.userId)}/followers?limit=${pageSize}&offset=${from}`,
+            `/server/api/users/${encodeURIComponent(options.userId)}/followers?${params.toString()}`,
             { signal: options.signal },
         );
         users = Array.isArray(result.data?.followers)
             ? result.data.followers
             : [];
+        options.nextCursor = result.data?.next_cursor || null;
+        hasMoreForPage = result.data?.has_more ?? users.length >= pageSize;
         error = result.error;
     } else if (type === 'search') {
         const result = await api
