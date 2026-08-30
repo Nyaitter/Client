@@ -45,6 +45,7 @@ export function activateScreen(screenId, { restart = false } = {}) {
     document.querySelectorAll('.screen').forEach((screen) => {
         screen.classList.toggle('hidden', screen.id !== screenId);
     });
+    document.body.dataset.activeScreen = screenId;
 
     return activeContext;
 }

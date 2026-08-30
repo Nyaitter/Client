@@ -2,6 +2,59 @@
    Nyaitter - dm.css
    ========================================================================== */
 
+body[data-active-screen='dm-screen'],
+body:has(#dm-screen:not(.hidden)) {
+    height: 100dvh;
+    overflow: hidden;
+}
+
+body[data-active-screen='dm-screen'] .app-container,
+body:has(#dm-screen:not(.hidden)) .app-container {
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+}
+
+body[data-active-screen='dm-screen'] #main-content,
+body:has(#dm-screen:not(.hidden)) #main-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+body[data-active-screen='dm-screen'] #page-header,
+body:has(#dm-screen:not(.hidden)) #page-header {
+    flex-shrink: 0;
+}
+
+body[data-active-screen='dm-screen'] #content-area,
+body:has(#dm-screen:not(.hidden)) #content-area {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#dm-screen {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#dm-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .dm-form-content .markdown-textarea-editor,
 .markdown-textarea-editor.dm-content-editor {
 flex-grow: 1;
@@ -250,12 +303,13 @@ width: 100%;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
 }
 
 .dm-list-items-wrapper {
 display: flex;
     flex-direction: column;
-    overflow-y: auto;
 }
 
 .dm-list-item {
@@ -774,7 +828,9 @@ display: flex;
 #dm-conversation-container {
 display: flex;
     flex-direction: column;
-    height: calc(100vh - 57px); /* ヘッダー分を引く */
+    flex: 1 1 0;
+    min-height: 0;
+    height: 0;
 }
 
 .dm-conversation-view {
@@ -996,7 +1052,8 @@ background-color: var(--bg-color);
 }
 
 .dm-message-form {
-position: sticky;
+    flex-shrink: 0;
+    position: sticky;
     border-top: 1px solid var(--border-color);
     padding: 0.5rem 1rem;
     display: flex;
@@ -1417,6 +1474,7 @@ max-height: 200px; /* 例えば、最大高さを200pxに設定 */
 }
 
 .dm-request-approval-banner {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     gap: 0.9rem;

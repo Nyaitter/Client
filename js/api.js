@@ -477,6 +477,28 @@ export const api = (() => {
                     ),
                 );
             }
+            if (name === 'toggle_block') {
+                const targetUserId =
+                    params.p_target_user_id ??
+                    params.p_target_id ??
+                    params.target_user_id;
+                const numericTargetUserId = Number(targetUserId);
+                if (
+                    !Number.isSafeInteger(numericTargetUserId) ||
+                    numericTargetUserId <= 0
+                ) {
+                    return Promise.resolve({
+                        data: null,
+                        error: new Error('Invalid block target user ID'),
+                    });
+                }
+                return withSingle(
+                    request(
+                        `/server/api/users/${encodeURIComponent(numericTargetUserId)}/block`,
+                        { method: 'POST' },
+                    ),
+                );
+            }
             if (name === 'append_to_dm_post')
                 return withSingle(
                     request(

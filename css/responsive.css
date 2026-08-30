@@ -148,7 +148,7 @@
         display: block;
     }
     .dm-message-form {
-        bottom: 4em;
+        bottom: 0;
     }
     #main-content {
         border: none;

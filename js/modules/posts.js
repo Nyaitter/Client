@@ -2996,21 +2996,18 @@ export async function handleBlockMenuToggle(author, menu = null) {
         }
     }
 
-    const originalBlock = Array.isArray(currentUser.block) ? [...currentUser.block] : [];
-    const updatedBlock = isBlocked
-        ? originalBlock.filter((id) => Number(id) !== targetUserId)
-        : [...originalBlock, targetUserId];
-
     try {
-        const { error } = await apiRequest('/server/api/users/me', {
-            method: 'PATCH',
-            body: { block: updatedBlock },
-        });
-        if (error) throw error;
-        currentUser.block = updatedBlock;
+        const client = globalThis.NyaitterClientInstance;
+        const res = await client.users.toggleBlock(targetUserId);
+        const nowBlocked = Boolean(res?.blocked);
+        currentUser.block = Array.isArray(res?.block)
+            ? res.block
+            : (nowBlocked
+                ? [...(currentUser.block || []).filter((id) => Number(id) !== targetUserId), targetUserId]
+                : (currentUser.block || []).filter((id) => Number(id) !== targetUserId));
         invalidateTimelinePageCache();
-        showAppAlert(isBlocked ? `@${author.name || 'ユーザー'} のブロックを解除しました。` : `@${author.name || 'ユーザー'} をブロックしました。`);
-        if (!isBlocked) {
+        showAppAlert(nowBlocked ? `@${author.name || 'ユーザー'} をブロックしました。` : `@${author.name || 'ユーザー'} のブロックを解除しました。`);
+        if (nowBlocked) {
             document.querySelectorAll('.post[data-action-target-id]').forEach((el) => {
                 if (Number(el._nyaitterPost?.userid || el._nyaitterPost?.userId) === targetUserId) {
                     el.style.opacity = '0.3';
