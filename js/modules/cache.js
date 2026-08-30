@@ -431,13 +431,22 @@ export function invalidateTimelinePageCache() {
     const pageKey = getTimelinePageCacheKey();
     const existing = timelinePageCaches.get(pageKey);
     if (existing) {
-        existing.timelines.set('foryou', { pages: new Map() });
-        existing.timelines.set('following', { pages: new Map() });
+        for (const tab of existing.timelines.keys()) {
+            existing.timelines.set(tab, { pages: new Map() });
+        }
+        if (!existing.timelines.has('all')) {
+            existing.timelines.set('all', { pages: new Map() });
+        }
+        if (!existing.timelines.has('announce')) {
+            existing.timelines.set('announce', { pages: new Map() });
+        }
     } else {
         timelinePageCaches.set(pageKey, {
             timelines: new Map([
+                ['all', { pages: new Map() }],
                 ['foryou', { pages: new Map() }],
                 ['following', { pages: new Map() }],
+                ['announce', { pages: new Map() }],
             ]),
         });
     }
@@ -571,4 +580,3 @@ export function clearRealtimeTimelineUpdate(tab = null) {
 
 // モジュールロード時に即座にストレージからキャッシュを復元
 restorePageCaches();
-

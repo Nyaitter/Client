@@ -3,6 +3,7 @@ import { api, apiRequest } from '../api.js';
 import {
     getCurrentUser,
     setCurrentUser,
+    setRecommendedUsersCache,
 } from '../state.js';
 import { cacheUser, invalidateTimelinePageCache, invalidateDmCaches } from './cache.js';
 import { applyInterfaceTheme } from './theme.js';
@@ -20,6 +21,9 @@ import {
 import { getEmoji } from './format.js';
 
 export const ACCOUNT_LIST_STORAGE_KEY = 'nyaitter_accounts';
+
+let sessionCheckGeneration = 0;
+let accountSwitchInFlight = null;
 
 export function goToLoginPage() {
     if (typeof window.openNyaitterLoginModal === 'function') {
@@ -400,10 +404,14 @@ export async function openAccountSwitcherModal() {
                 return;
             }
 
+            if (accountSwitchInFlight) return;
+            accountSwitchInFlight = true;
             closeModal();
             const releaseLoadingScreen = holdLoadingScreen();
             let switchError = null;
             try {
+                // 切り替え開始前の遅いセッション確認が結果を上書きしないようにする。
+                sessionCheckGeneration += 1;
                 const result = await apiRequest(
                     automaticImposter
                         ? `/server/auth/imposters/${encodeURIComponent(userId)}/switch`
@@ -422,6 +430,7 @@ export async function openAccountSwitcherModal() {
                     if (!switchedUser) {
                         switchError = new Error('切替後のアカウント情報を確認できませんでした。');
                     } else {
+                        setRecommendedUsersCache(null);
                         invalidateTimelinePageCache();
                         invalidateDmCaches();
                         await router();
@@ -432,6 +441,7 @@ export async function openAccountSwitcherModal() {
                     ? error
                     : new Error('アカウントの切替中に通信エラーが発生しました。');
             } finally {
+                accountSwitchInFlight = null;
                 releaseLoadingScreen();
             }
 
@@ -522,9 +532,11 @@ export async function checkSession({
     onSessionReady = null,
     refreshAccounts = true,
 } = {}) {
+    const generation = ++sessionCheckGeneration;
     showLoading(true);
     try {
         const { data: sessionData, error: sessionError } = await api.auth.getSession();
+        if (generation !== sessionCheckGeneration) return getCurrentUser();
         const session = sessionData?.session;
 
         if (sessionError || !session || !session.user) {

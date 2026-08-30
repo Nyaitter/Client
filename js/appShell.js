@@ -24,7 +24,8 @@ export function renderAppShellHTML() {
                     <div id="main-screen" class="screen hidden">
                         <div class="timeline-tabs-sticky-container">
                             <div class="timeline-tabs">
-                                <button class="timeline-tab-button active" data-tab="foryou">すべて</button>
+                                <button class="timeline-tab-button active" data-tab="foryou">おすすめ</button>
+                                <button class="timeline-tab-button" data-tab="all">すべて</button>
                                 <button class="timeline-tab-button" data-tab="following">フォロー中</button>
                             </div>
                         </div>

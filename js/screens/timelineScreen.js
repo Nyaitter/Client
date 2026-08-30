@@ -87,10 +87,10 @@ export function getLastTimelineTab() {
     try {
         return (
             localStorage.getItem(`${LAST_TIMELINE_TAB_KEY}_${userId}`) ||
-            'all'
+            'foryou'
         );
     } catch (_) {
-        return 'all';
+        return 'foryou';
     }
 }
 
@@ -207,13 +207,13 @@ export async function showMainScreen(showScreenFn) {
 
             const restoredTab = getLastTimelineTab();
             const renderedTabs = Array.from(tabsContainer.querySelectorAll('.timeline-tab-button')).map((b) => b.dataset.tab);
-            const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'all');
+            const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'foryou');
             setCurrentTimelineTab(initialTab);
         } else {
             renderTabs(tabsContainer, savedTabs, { guest: true });
             const renderedTabs = Array.from(tabsContainer.querySelectorAll('.timeline-tab-button')).map((b) => b.dataset.tab);
             const restoredTab = getLastTimelineTab();
-            const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'all');
+            const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'foryou');
             setCurrentTimelineTab(initialTab);
         }
     }

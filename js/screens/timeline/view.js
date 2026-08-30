@@ -12,7 +12,7 @@ export function renderTabs(container, savedTabs, { joinedGroups = [], homeTabLim
     for (const tabKey of savedTabs) {
         if (tabKey === 'all') {
             tabs.push('<button class="timeline-tab-button" data-tab="all">すべて</button>');
-        } else if (tabKey === 'foryou' && !guest) {
+        } else if (tabKey === 'foryou') {
             tabs.push('<button class="timeline-tab-button" data-tab="foryou">おすすめ</button>');
         } else if (tabKey === 'following' && !guest) {
             tabs.push('<button class="timeline-tab-button" data-tab="following">フォロー中</button>');
@@ -28,5 +28,5 @@ export function renderTabs(container, savedTabs, { joinedGroups = [], homeTabLim
     }
     container.innerHTML = tabs.length > 0
         ? tabs.join('')
-        : '<button class="timeline-tab-button" data-tab="all">すべて</button>';
+        : '<button class="timeline-tab-button" data-tab="foryou">おすすめ</button>';
 }

@@ -8,7 +8,7 @@ export const ALL_HOME_TABS = Object.freeze([
     Object.freeze({ key: 'groups', name: 'グループ', description: '参加中のグループタブを表示' }),
 ]);
 
-export const DEFAULT_HOME_TABS = Object.freeze(['all', 'foryou', 'following', 'announce', 'groups']);
+export const DEFAULT_HOME_TABS = Object.freeze(['foryou', 'all', 'following', 'announce', 'groups']);
 
 export function getSavedHomeTabs() {
     const user = getCurrentUser();

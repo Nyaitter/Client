@@ -12,7 +12,7 @@ export function getScrollRouteKey(hash = window.location.hash || '#', tab = null
     const userScope = getCurrentUser()?.id ?? 'guest';
     const normalizedHash = (!hash || hash === '#') ? '#' : hash;
     if (normalizedHash === '#') {
-        const timelineTab = tab || getCurrentTimelineTab() || 'all';
+        const timelineTab = tab || getCurrentTimelineTab() || 'foryou';
         return `${userScope}:#:${timelineTab}`;
     }
     if (normalizedHash === '#dm' && tab) {

@@ -2176,6 +2176,13 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
         if (rpcError) throw rpcError;
 
         const replyTargetId = getReplyingTo()?.id || null;
+        if (replyTargetId) {
+            updateCachedPost(replyTargetId, (p) => {
+                const currentCount = Number(p.reply_count ?? p.replyCount) || 0;
+                p.reply_count = currentCount + 1;
+                p.replyCount = currentCount + 1;
+            });
+        }
         invalidateTimelinePageCache();
         setSelectedFiles([]);
         container._attachedPoll = null;

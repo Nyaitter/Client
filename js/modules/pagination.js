@@ -52,7 +52,12 @@ export async function fetchOptimizedPostPage(
         offset: String(page * pageSize),
     });
     if (beforeCursor != null) {
-        params.set('before_id', String(beforeCursor));
+        const cursorValue = String(beforeCursor);
+        if (/^\d+$/.test(cursorValue)) {
+            params.set('before_id', cursorValue);
+        } else {
+            params.set('cursor', cursorValue);
+        }
         params.delete('offset');
     }
     let showPinPost = false;
