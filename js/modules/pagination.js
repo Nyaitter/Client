@@ -52,13 +52,14 @@ export async function fetchOptimizedPostPage(
         offset: String(page * pageSize),
     });
     if (beforeCursor != null) {
-        const cursorValue = String(beforeCursor);
-        if (/^\d+$/.test(cursorValue)) {
-            params.set('before_id', cursorValue);
-        } else {
+        const cursorValue = String(beforeCursor).trim();
+        if (cursorValue) {
             params.set('cursor', cursorValue);
+            if (/^\d+$/.test(cursorValue)) {
+                params.set('before_id', cursorValue);
+            }
+            params.delete('offset');
         }
-        params.delete('offset');
     }
     let showPinPost = false;
 
@@ -95,10 +96,15 @@ export async function fetchOptimizedPostPage(
             { signal: options.signal },
         );
         if (error) throw error;
+        const posts = data.posts || [];
+        const hasMore = !!(data.has_next ?? data.has_more);
+        const nextCursor = data.next_cursor ?? (
+            hasMore && posts.length > 0 ? String(posts[posts.length - 1].id) : null
+        );
         return {
-            posts: data.posts || [],
-            hasMore: !!data.has_next,
-            nextCursor: data.next_cursor ?? null,
+            posts,
+            hasMore,
+            nextCursor,
             showPinPost: false,
             context: null,
         };
@@ -110,10 +116,15 @@ export async function fetchOptimizedPostPage(
                 { signal: options.signal },
             );
             if (error) throw error;
+            const posts = data.posts || [];
+            const hasMore = !!(data.has_more ?? data.has_next);
+            const nextCursor = data.next_cursor ?? (
+                hasMore && posts.length > 0 ? String(posts[posts.length - 1].id) : null
+            );
             return {
-                posts: data.posts || [],
-                hasMore: !!data.has_more,
-                nextCursor: data.next_cursor ?? null,
+                posts,
+                hasMore,
+                nextCursor,
                 showPinPost: false,
                 context: null,
             };
@@ -144,10 +155,15 @@ export async function fetchOptimizedPostPage(
         { signal: options.signal },
     );
     if (error) throw error;
+    const posts = data.posts || [];
+    const hasMore = !!(data.has_more ?? data.has_next);
+    const nextCursor = data.next_cursor ?? (
+        hasMore && posts.length > 0 ? String(posts[posts.length - 1].id) : null
+    );
     return {
-        posts: data.posts || [],
-        hasMore: !!data.has_more,
-        nextCursor: data.next_cursor ?? null,
+        posts,
+        hasMore,
+        nextCursor,
         showPinPost,
         context: data.context || null,
     };
