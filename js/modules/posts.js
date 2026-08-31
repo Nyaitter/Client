@@ -204,7 +204,7 @@ export async function renderPost(post, author, options = {}) {
         onReportClick,
     } = options;
 
-    const baseAuthor = author || post.author;
+    const baseAuthor = author || post.author || post.user;
     if (!baseAuthor) return null;
     const displayAuthor = cacheUser(baseAuthor) || baseAuthor;
 
