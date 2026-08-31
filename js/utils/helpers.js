@@ -762,12 +762,20 @@ export function getGroupIconUrl(value) {
         ? (value.icon_data || value.iconData || '')
         : value;
     const image = typeof icon === 'string' ? icon.trim() : '';
-    if (!image) return '';
-    if (/^data:image\//i.test(image)) return image;
-    if (/^https?:\/\//i.test(image)) return getSafeHttpUrl(image) || image;
-    const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(image);
-    if (typeof configuredUrl === 'string' && configuredUrl) return configuredUrl;
-    return image;
+    if (image) {
+        if (/^data:image\//i.test(image)) return image;
+        if (/^https?:\/\//i.test(image)) return getSafeHttpUrl(image) || image;
+        const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(image);
+        if (typeof configuredUrl === 'string' && configuredUrl) return configuredUrl;
+    }
+    const groupId = typeof value === 'object' && value !== null ? value.id : null;
+    if (groupId) {
+        const fallbackUrl = globalThis.NyaitterClientConfig?.apiUrl?.(
+            `/server/api/groups/${encodeURIComponent(String(groupId))}/icon`,
+        );
+        return fallbackUrl || `/server/api/groups/${encodeURIComponent(String(groupId))}/icon`;
+    }
+    return image || '';
 }
 
 export function getGroupBadgesHtml(user, { maxCount = 5 } = {}) {
