@@ -204,9 +204,9 @@ export async function renderPost(post, author, options = {}) {
         onReportClick,
     } = options;
 
-    const displayAuthor = author || post.author;
-    if (!displayAuthor) return null;
-    cacheUser(displayAuthor);
+    const baseAuthor = author || post.author;
+    if (!baseAuthor) return null;
+    const displayAuthor = cacheUser(baseAuthor) || baseAuthor;
 
     const isSimpleRepost = post.repost_to && !post.content;
 
