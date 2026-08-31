@@ -241,7 +241,16 @@ export function cacheUser(user) {
     if (!Number.isInteger(userId) || userId < 0) return null;
     const cache = getAllUsersCache();
     const existing = cache.get(userId) || cache.get(String(userId)) || {};
-    const cachedUser = { ...existing, ...user, id: userId };
+    const cachedUser = {
+        ...existing,
+        ...user,
+        id: userId,
+        admin: user.admin !== undefined ? Boolean(user.admin) : Boolean(existing.admin),
+        verify: user.verify !== undefined ? Boolean(user.verify) : Boolean(existing.verify),
+        group_badges: Array.isArray(user.group_badges) && user.group_badges.length > 0
+            ? user.group_badges
+            : (existing.group_badges || []),
+    };
     cache.set(userId, cachedUser);
     cache.delete(String(userId));
 
