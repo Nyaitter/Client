@@ -20,6 +20,7 @@ import {
     invalidateProfileTabPageCache,
     normalizePostId,
     updateCachedPost,
+    deleteCachedPost,
 } from './cache.js';
 import { getEmoji, emoji_picker_create } from './format.js';
 import { renderNyarkDown } from './nyarkdown.js';
@@ -2770,6 +2771,7 @@ export async function deletePost(postId) {
         }
 
         invalidateTimelinePageCache();
+        deleteCachedPost(postId);
         removePostFromTimeline(postId);
     } catch (e) {
         console.error(e);

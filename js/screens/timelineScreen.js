@@ -207,13 +207,15 @@ export async function showMainScreen(showScreenFn) {
 
             const restoredTab = getLastTimelineTab();
             const renderedTabs = Array.from(tabsContainer.querySelectorAll('.timeline-tab-button')).map((b) => b.dataset.tab);
-            const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'foryou');
+            const isTabValid = (tab) => renderedTabs.includes(tab) && (tab !== 'following' || Boolean(getCurrentUser()));
+            const initialTab = isTabValid(restoredTab) ? restoredTab : (renderedTabs.find(isTabValid) || 'foryou');
             setCurrentTimelineTab(initialTab);
         } else {
             renderTabs(tabsContainer, savedTabs, { guest: true });
             const renderedTabs = Array.from(tabsContainer.querySelectorAll('.timeline-tab-button')).map((b) => b.dataset.tab);
             const restoredTab = getLastTimelineTab();
-            const initialTab = renderedTabs.includes(restoredTab) ? restoredTab : (renderedTabs[0] || 'foryou');
+            const isTabValid = (tab) => renderedTabs.includes(tab) && tab !== 'following';
+            const initialTab = isTabValid(restoredTab) ? restoredTab : (renderedTabs.find(isTabValid) || 'foryou');
             setCurrentTimelineTab(initialTab);
         }
     }

@@ -544,6 +544,140 @@ export function updateCachedPost(postId, updater) {
     }
 }
 
+export function deleteCachedPost(postId) {
+    const targetId = Number(postId);
+    if (!Number.isInteger(targetId) || targetId <= 0) return;
+
+    let changed = false;
+
+    const filterPostList = (posts) => {
+        if (!Array.isArray(posts)) return posts;
+        const initialLen = posts.length;
+        const filtered = posts.filter((post) => Number(post?.id) !== targetId);
+        if (filtered.length !== initialLen) changed = true;
+        return filtered;
+    };
+
+    for (const pageCache of timelinePageCaches.values()) {
+        if (pageCache?.timelines) {
+            for (const tabCache of pageCache.timelines.values()) {
+                if (tabCache?.pages) {
+                    for (const payload of tabCache.pages.values()) {
+                        if (payload?.posts) {
+                            payload.posts = filterPostList(payload.posts);
+                        } else if (payload?.items) {
+                            payload.items = filterPostList(payload.items);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (const pageCache of profilePostPageCaches.values()) {
+        if (pageCache?.pages) {
+            for (const payload of pageCache.pages.values()) {
+                if (payload?.posts) {
+                    payload.posts = filterPostList(payload.posts);
+                } else if (payload?.items) {
+                    payload.items = filterPostList(payload.items);
+                }
+            }
+        }
+    }
+
+    for (const pageCache of auxiliaryPostPageCaches.values()) {
+        if (pageCache?.pages) {
+            for (const payload of pageCache.pages.values()) {
+                if (payload?.posts) {
+                    payload.posts = filterPostList(payload.posts);
+                } else if (payload?.items) {
+                    payload.items = filterPostList(payload.items);
+                }
+            }
+        }
+    }
+
+    for (const key of screenDataCaches.keys()) {
+        if (key.includes(`:post_detail:${targetId}`) || key.includes(`:post_activity:${targetId}`)) {
+            screenDataCaches.delete(key);
+            changed = true;
+        }
+    }
+
+    if (changed) {
+        persistPageCaches();
+    }
+}
+
+export function updateCachedUser(userId, updater) {
+    const targetUserId = Number(userId);
+    if (!Number.isInteger(targetUserId) || targetUserId <= 0) return;
+
+    let changed = false;
+
+    const cache = getAllUsersCache();
+    const existing = cache.get(targetUserId);
+    if (existing) {
+        if (typeof updater === 'function') {
+            updater(existing);
+        } else if (updater && typeof updater === 'object') {
+            Object.assign(existing, updater);
+        }
+        changed = true;
+    }
+
+    const applyUserUpdate = (post) => {
+        if (!post) return;
+        const authorId = Number(post.userId ?? post.user_id ?? post.author?.id ?? post.user?.id);
+        if (authorId === targetUserId) {
+            if (post.author) {
+                if (typeof updater === 'function') updater(post.author);
+                else Object.assign(post.author, updater);
+                changed = true;
+            }
+            if (post.user) {
+                if (typeof updater === 'function') updater(post.user);
+                else Object.assign(post.user, updater);
+                changed = true;
+            }
+        }
+    };
+
+    const scanPosts = (posts) => {
+        if (!Array.isArray(posts)) return;
+        for (const post of posts) {
+            applyUserUpdate(post);
+            if (post?.quoted_post) applyUserUpdate(post.quoted_post);
+            if (post?.reposted_post) applyUserUpdate(post.reposted_post);
+        }
+    };
+
+    for (const pageCache of timelinePageCaches.values()) {
+        if (pageCache?.timelines) {
+            for (const tabCache of pageCache.timelines.values()) {
+                if (tabCache?.pages) {
+                    for (const payload of tabCache.pages.values()) {
+                        scanPosts(payload?.posts || payload?.items);
+                    }
+                }
+            }
+        }
+    }
+
+    for (const pageCache of profilePostPageCaches.values()) {
+        if (pageCache?.pages) {
+            for (const payload of pageCache.pages.values()) {
+                scanPosts(payload?.posts || payload?.items);
+            }
+        }
+    }
+
+    if (changed) {
+        persistPageCaches();
+    }
+}
+
 export function hasPendingRealtimeTimelineUpdate(tab = getCurrentTimelineTab()) {
     const normalizedTab = tab === 'following' ? 'following' : 'foryou';
     return pendingRealtimeTimelineUpdates[normalizedTab].length > 0;

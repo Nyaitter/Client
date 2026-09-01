@@ -16,6 +16,7 @@ import {
     getRealtimeSummaryFreshTimer,
     setRealtimeSummaryFreshTimer,
     getDmUnreadCounts,
+    getActiveDmId,
 } from '../state.js';
 import { normalizeStructuredNotification } from './notifications.js';
 import { isDataSaverEnabled } from './theme.js';
