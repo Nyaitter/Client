@@ -571,7 +571,7 @@ export async function checkSession({
 
         DOM.loginBanner?.classList.add('hidden');
         addAccountToList(userData);
-        if (refreshAccounts) await refreshAccountList();
+        if (refreshAccounts) void refreshAccountList();
         applyInterfaceTheme();
         subscribeToChanges();
 
