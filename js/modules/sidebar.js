@@ -23,8 +23,6 @@ import {
     scheduleNextFrame,
 } from '../utils/helpers.js';
 
-const { widgetLinks: WIDGET_LINKS } = globalThis.NyaitterClientConfig || {};
-
 function getSafeWidgetUrl(value) {
     const raw = String(value || '').trim();
     if (!raw || /[\u0000-\u001F\u007F"'<>]/.test(raw)) return '#';
@@ -343,7 +341,8 @@ export async function loadRightSidebar() {
     }
 
     const data = getRecommendedUsersCache() || [];
-    const linkItems = Array.isArray(WIDGET_LINKS) ? WIDGET_LINKS : [];
+    const widgetLinks = globalThis.NyaitterClientConfig?.widgetLinks;
+    const linkItems = Array.isArray(widgetLinks) ? widgetLinks : [];
     if (DOM.rightSidebar.links) {
         DOM.rightSidebar.links.innerHTML = linkItems
             .map((item) => {

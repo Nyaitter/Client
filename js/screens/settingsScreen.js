@@ -68,7 +68,7 @@ import {
     showAppConfirm,
 } from '../utils/helpers.js';
 
-const { resourceLinks: RESOURCE_LINKS, apiUrl, turnstileSiteKey } = globalThis.NyaitterClientConfig || {};
+const { apiUrl, turnstileSiteKey } = globalThis.NyaitterClientConfig || {};
 
 function loadTurnstileScript() {
     return new Promise((resolve, reject) => {
@@ -1773,7 +1773,8 @@ export async function showSettingsScreen(
         if (!resourceLinksList) return;
 
         resourceLinksList.replaceChildren();
-        const resources = Array.isArray(RESOURCE_LINKS) ? RESOURCE_LINKS : [];
+        const resourceLinks = globalThis.NyaitterClientConfig?.resourceLinks;
+        const resources = Array.isArray(resourceLinks) ? resourceLinks : [];
         if (resources.length === 0) {
             const empty = document.createElement('p');
             empty.className = 'settings-help-text';
