@@ -373,7 +373,7 @@ export async function loadRightSidebar() {
             const btnText = isFollowing ? 'フォロー中' : 'フォロー';
             return `<div class="widget-item recommend-user">
                 <a href="#profile/${user.id}" class="profile-link" style="text-decoration:none; color:inherit; display:flex; align-items:center; gap:0.5rem;">
-                    <img src="${getUserIconUrl(user)}" style="width:40px;height:40px;border-radius:50%;" alt="${escapeHTML(user.name)}'s icon">
+                    <img src="${getUserIconUrl(user)}" class="user-icon" style="width:40px;height:40px;" alt="${escapeHTML(user.name)}'s icon">
                     <div>
                         <span>${getEmoji(escapeHTML(user.name))}</span>
                         <small style="color:var(--secondary-text-color); display:block;">${getNyaitterId(user)}</small>

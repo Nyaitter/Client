@@ -132,3 +132,8 @@ position: fixed;
 em-emoji-picker {
 --rgb-background: var(--emoji-mart);
 }
+
+.user-icon {
+    border-radius: 50%;
+    object-fit: cover; /* アイコンが潰れるのを防ぐ */
+}
