@@ -96,21 +96,7 @@ function getSafePushIconUrl(value) {
 }
 
 async function resolvePushIconUrl(value) {
-  const fallbackUrl = getPushFallbackIconUrl();
-  const iconUrl = getSafePushIconUrl(value);
-  if (iconUrl === fallbackUrl) return fallbackUrl;
-
-  try {
-    const response = await fetch(iconUrl, {
-      cache: 'no-store',
-      credentials: 'same-origin',
-    });
-    const contentType = response.headers.get('Content-Type') || '';
-    if (response.ok && /^image\//i.test(contentType)) return iconUrl;
-  } catch (_) {
-    // 通知表示を止めず、取得確認済みの静的アイコンへ戻す。
-  }
-  return fallbackUrl;
+  return getSafePushIconUrl(value);
 }
 
 function parsePushIdentifier(value, minimum) {

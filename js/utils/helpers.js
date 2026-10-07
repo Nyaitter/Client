@@ -1,4 +1,5 @@
 import { DOM } from '../dom.js';
+import { ICONS } from '../icons.js';
 import { getCurrentUser, getServerClientLimits, setServerClientLimits } from '../state.js';
 import { apiRequest } from '../api.js';
 
@@ -446,7 +447,8 @@ export function escapeHTML(str) {
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;');
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 }
 
 export function decodeHtmlEntities(value) {
@@ -795,11 +797,11 @@ export function getGroupBadgesHtml(user, { maxCount = 5 } = {}) {
         ? user.group_badges
         : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
     const validBadges = badges
-        .filter((b) => b && getGroupIconUrl(b))
+        .filter((b) => b && (maxCount === Infinity || getGroupIconUrl(b)))
         .slice(0, maxCount);
     if (validBadges.length === 0) return '';
     return `<span class="user-group-badges">${validBadges
-        .map((b) => `<a href="#group/${encodeURIComponent(b.id)}" class="user-group-badge-link" title="${escapeHTML(b.name || '参加グループ')}" onclick="event.stopPropagation();"><img src="${escapeHTML(getGroupIconUrl(b))}" class="user-group-badge" alt="${escapeHTML(b.name || 'グループ')}"></a>`)
+        .map((b) => `<a href="#group/${encodeURIComponent(b.id)}" class="user-group-badge-link" title="${escapeHTML(b.name || '参加グループ')}" onclick="event.stopPropagation();">${getGroupIconUrl(b) ? `<img src="${escapeHTML(getGroupIconUrl(b))}" class="user-group-badge" alt="${escapeHTML(b.name || 'グループ')}">` : `<span class="user-group-badge user-group-badge-default" aria-label="${escapeHTML(b.name || 'グループ')}">${ICONS.group}</span>`}</a>`)
         .join('')}</span>`;
 }
 
