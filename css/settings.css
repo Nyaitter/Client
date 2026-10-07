@@ -764,10 +764,9 @@ transform: scale(0.97);
    -------------------------------------------------------------------------- */
 
 #settings-screen {
-    --settings-content-width: 58rem;
     width: 100%;
-    max-width: var(--settings-content-width);
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
 }
 
 #settings-screen,

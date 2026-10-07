@@ -1296,6 +1296,12 @@ export function attachMarkdownContentEditor(editor) {
             });
             editor.addEventListener('compositionstart', () => {
                 commitNyaitterImeComposition(editor);
+                const selection = getContentEditableSelection(editor);
+                editor._directEditorSystemComposition = {
+                    start: selection.start,
+                    end: selection.end,
+                    sourceLength: getMarkdownEditorValue(editor).length,
+                };
                 editor._markdownEditorCompositionActive = true;
                 editor.classList.add('is-system-ime-composing');
                 editor.classList.remove('is-logically-empty');
@@ -1303,15 +1309,49 @@ export function attachMarkdownContentEditor(editor) {
             editor.addEventListener('compositionend', () => {
                 editor._markdownEditorCompositionActive = false;
                 editor.classList.remove('is-system-ime-composing');
-                renderDirectContentEditor(editor);
+
+                const composition = editor._directEditorSystemComposition;
+                const currentLength = getMarkdownEditorValue(editor).length;
+                const replacedLength = composition
+                    ? Math.max(0, composition.end - composition.start)
+                    : 0;
+                const insertedLength = composition
+                    ? Math.max(
+                          0,
+                          currentLength - (composition.sourceLength - replacedLength),
+                      )
+                    : 0;
+                const caret = composition
+                    ? Math.min(currentLength, composition.start + insertedLength)
+                    : currentLength;
+                const selection = {
+                    start: caret,
+                    end: caret,
+                    direction: 'none',
+                };
+
+                delete editor._directEditorSystemComposition;
+                delete editor._directEditorBeforeInput;
+                editor._directEditorPendingCompositionSelection = selection;
+                renderDirectContentEditor(editor, selection);
+                scheduleNextFrame(() => {
+                    if (document.activeElement === editor) {
+                        setContentEditableSelection(
+                            editor,
+                            selection.start,
+                            selection.end,
+                        );
+                    }
+                });
                 autoResizeMarkdownEditor(editor);
             });
             editor.addEventListener('input', () => {
                 enforceDirectEditorMaxLength(editor);
                 if (!editor._markdownEditorCompositionActive) {
                     const pending = editor._directEditorBeforeInput;
-                    let selection = null;
-                    if (pending?.inputType?.startsWith('delete')) {
+                    let selection =
+                        editor._directEditorPendingCompositionSelection || null;
+                    if (!selection && pending?.inputType?.startsWith('delete')) {
                         const previous = pending.selection;
                         const caret =
                             Number.isInteger(pending.deleteCaret)
@@ -1319,6 +1359,7 @@ export function attachMarkdownContentEditor(editor) {
                                 : previous.start;
                         selection = { start: caret, end: caret, direction: 'none' };
                     }
+                    delete editor._directEditorPendingCompositionSelection;
                     delete editor._directEditorBeforeInput;
                     renderDirectContentEditor(editor, selection);
                 }
