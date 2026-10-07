@@ -16,6 +16,7 @@ import {
     getSettingsSaveQueued,
     setSettingsSaveQueued,
     getPublicProfileCache,
+    getAllUsersCache,
 } from '../state.js';
 import {
     cacheUser,
@@ -2218,11 +2219,11 @@ export async function showSettingsScreen(
             setCurrentUser(newUser);
             updateAccountData(newUser, previousId);
             if (previousId != null) {
-                state.publicProfileCache.delete(previousId);
-                state.allUsersCache.delete(previousId);
+                getPublicProfileCache().delete(previousId);
+                getAllUsersCache().delete(previousId);
             }
-            state.publicProfileCache.set(newUserId, newUser);
-            state.allUsersCache.set(newUserId, newUser);
+            getPublicProfileCache().set(newUserId, newUser);
+            cacheUser(newUser);
             await updateNavAndSidebars();
         }
         showAppAlert('NyaitterIDを再割り当てしました。');
