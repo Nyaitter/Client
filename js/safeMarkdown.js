@@ -78,7 +78,7 @@ function renderInlineMarkdown(
         } else if (match[15] !== undefined && match[16] !== undefined) {
             const rubyText = escapeHtml(match[15]);
             const baseText = renderText(match[16]);
-            output += `${renderSyntax(`[ruby=${match[15]}]`)}<ruby class="markdown-ruby">${baseText}<rp>(</rp><rt class="markdown-rt">${rubyText}</rt><rp>)</rp></ruby>${renderSyntax('[/ruby]')}`;
+            output += `${renderSyntax(`[ruby=${match[15]}]`)}<ruby class="markdown-ruby">${baseText}<rp contenteditable="false">(</rp><rt class="markdown-rt" contenteditable="false">${rubyText}</rt><rp contenteditable="false">)</rp></ruby>${renderSyntax('[/ruby]')}`;
         }
         previousIndex = markdownPattern.lastIndex;
     }
@@ -175,7 +175,8 @@ export function renderLimitedMarkdown(
         // 2. 水平線 (---, ***, ___)
         if (/^(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
             flushParagraph();
-            output.push('<hr class="markdown-hr">');
+            const syntax = renderSyntax(line);
+            output.push(syntax ? `<p class="markdown-editor-rule">${syntax}</p>` : '<hr class="markdown-hr">');
             index += 1;
             continue;
         }
@@ -221,7 +222,10 @@ export function renderLimitedMarkdown(
         if (allowHeadings && headingMatch) {
             flushParagraph();
             const level = headingMatch[1].length;
-            output.push(`<h${level}>${renderInline(headingMatch[2])}</h${level}>`);
+            const marker = renderSyntax(headingMatch[1]);
+            output.push(
+                `<h${level}>${marker ? `${marker} ` : ''}${renderInline(headingMatch[2])}</h${level}>`,
+            );
             index += 1;
             continue;
         }
@@ -243,7 +247,12 @@ export function renderLimitedMarkdown(
                 quoteLines.push(lines[index].replace(/^> /, ''));
                 index += 1;
             }
-            output.push(`<blockquote>${renderInline(quoteLines.join('\n'))}</blockquote>`);
+            const marker = renderSyntax('>');
+            output.push(
+                `<blockquote>${marker
+                    ? quoteLines.map((quoteLine) => `${marker} ${renderInline(quoteLine)}`).join('<br>')
+                    : renderInline(quoteLines.join('\n'))}</blockquote>`,
+            );
             continue;
         }
 

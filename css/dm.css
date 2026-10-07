@@ -1110,18 +1110,35 @@ background: var(--primary-color);
 }
 
 .dm-message-form .markdown-preview-button,
+.dm-message-form .nyaitter-ime-button,
 #dm-attachment-btn {
 background: none;
     color: var(--text-color);
 }
 
 .dm-message-form .markdown-preview-button:hover,
+.dm-message-form .nyaitter-ime-button:hover,
 #dm-attachment-btn:hover {
 background-color: var(--bg-color);
 }
 
 .dm-message-form button:hover {
 background-color: var(--primary-hover-color);
+}
+
+.dm-message-form .markdown-preview-button,
+.dm-message-form .nyaitter-ime-button {
+    border: 1px solid transparent;
+}
+
+.dm-message-form .markdown-preview-button.active,
+.dm-message-form .nyaitter-ime-button.active {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.dm-message-form .nyaitter-ime-button:hover {
+    background: none;
 }
 
 .dm-message-form button svg {

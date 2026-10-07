@@ -67,8 +67,8 @@ function openGroupTimelineMenu(button, groupId) {
     menu.className = 'group-timeline-mode-menu';
     const mode = getGroupTimelineMode(groupId);
     const options = [
-        { value: 'all', label: 'すべて', icon: 'home' },
-        { value: 'recommended', label: 'おすすめ', icon: 'explore' },
+        { value: 'all', label: 'すべて', icon: 'home_outline' },
+        { value: 'recommended', label: 'おすすめ', icon: 'stars' },
         { value: 'announcements', label: 'アナウンス', icon: 'megaphone' },
     ];
     menu.innerHTML = options.map((option) => `<button type="button" class="${option.value === mode ? 'active' : ''}" data-group-mode="${option.value}"><span class="menu-item-icon" aria-hidden="true">${ICONS[option.icon]}</span><span class="menu-item-label">${option.label}</span></button>`).join('');

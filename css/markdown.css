@@ -5,8 +5,47 @@
 .post-mask-button.active svg,
 .post-lock-button.active svg,
     .markdown-preview-button.active svg,
+    .nyaitter-ime-button.active svg,
     .post-announcement-button.active svg {
 stroke: var(--primary-color);
+}
+
+.nyaitter-ime-spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: nyaitter-ime-loading 0.7s linear infinite;
+}
+
+.markdown-preview-button,
+.nyaitter-ime-button {
+    box-sizing: border-box;
+    border: 1px solid transparent;
+}
+
+.markdown-preview-button.active,
+.nyaitter-ime-button.active {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+@keyframes nyaitter-ime-loading {
+    to { transform: rotate(360deg); }
+}
+
+.nyaitter-ime-button[aria-busy="true"] {
+    opacity: 0.6;
+}
+
+ruby.nyaitter-ime-ruby rt {
+    color: var(--secondary-text-color);
+    font-size: 0.55em;
+    line-height: 1;
+    user-select: none;
 }
 
 .markdown-content-editor {
@@ -32,7 +71,7 @@ stroke: var(--primary-color);
     overflow: visible;
 }
 
-.markdown-textarea-editor .markdown-content-editor {
+.markdown-textarea-editor textarea.markdown-content-editor {
     position: relative;
     z-index: 2;
     display: block;
@@ -50,12 +89,12 @@ stroke: var(--primary-color);
     pointer-events: auto;
 }
 
-.markdown-textarea-editor .markdown-content-editor::selection {
+.markdown-textarea-editor textarea.markdown-content-editor::selection {
     color: transparent;
     background: transparent;
 }
 
-.markdown-textarea-editor .markdown-content-editor::placeholder {
+.markdown-textarea-editor textarea.markdown-content-editor::placeholder {
     color: transparent !important;
     -webkit-text-fill-color: transparent;
     opacity: 0;
@@ -96,6 +135,41 @@ z-index: auto;
     color: var(--text-color) !important;
     caret-color: auto;
     -webkit-text-fill-color: currentColor;
+}
+
+.markdown-textarea-editor [contenteditable="true"].markdown-content-editor,
+.markdown-textarea-editor [contenteditable="false"].markdown-content-editor {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    min-height: 60px;
+    height: auto;
+    box-sizing: border-box;
+    color: var(--text-color);
+    caret-color: auto;
+    -webkit-text-fill-color: currentColor;
+    background: transparent;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    outline: none;
+}
+
+.markdown-textarea-editor [contenteditable="true"].markdown-content-editor {
+    position: relative;
+}
+
+.markdown-textarea-editor [contenteditable="true"].markdown-content-editor:not(.is-system-ime-composing):empty::before,
+.markdown-textarea-editor [contenteditable="true"].markdown-content-editor:not(.is-system-ime-composing).is-logically-empty::before {
+    content: attr(data-placeholder);
+    position: absolute;
+    color: var(--secondary-text-color);
+    pointer-events: none;
+}
+
+.markdown-textarea-editor.is-markdown-previewing [contenteditable="false"].markdown-content-editor {
+    cursor: default;
 }
 
 .markdown-textarea-editor.is-plain-textarea
@@ -274,10 +348,15 @@ color: var(--text-color) !important;
 opacity: 1;
 }
 
-.markdown-content-editor::selection,
-.markdown-content-editor *::selection {
+textarea.markdown-content-editor::selection {
 color: transparent;
     background: transparent;
+}
+
+.markdown-textarea-editor [contenteditable="true"].markdown-content-editor::selection,
+.markdown-textarea-editor [contenteditable="true"].markdown-content-editor *::selection {
+    color: var(--text-color);
+    background: color-mix(in srgb, var(--primary-color) 35%, transparent);
 }
 
 .markdown-spoiler {

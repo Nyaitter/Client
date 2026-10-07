@@ -48,9 +48,10 @@ width: 1.1rem;
 
 img.emoji {
 display: inline-block;
-    width: 1.1rem;
-    height: auto;
+    width: 1em;
+    height: 1em;
     padding-right: 1px;
+    vertical-align: -0.1em;
 }
 
 .notocoloremoji {
@@ -74,11 +75,13 @@ background-color: var(--emoji-bg-color);
 .post-poll-button,
 .emoji-pic-button,
 .markdown-preview-button,
+.nyaitter-ime-button,
 .post-mask-button,
 .post-lock-button,
 .post-announcement-button,
 .post-group-button,
 .post-reply-control-button,
+.post-schedule-button,
 .post-tools-overflow-button,
 .post-tools-group .post-tool-btn {
     background: none;
@@ -95,14 +98,50 @@ background-color: var(--emoji-bg-color);
 .post-poll-button:hover,
 .emoji-pic-button:hover,
 .markdown-preview-button:hover,
+.nyaitter-ime-button:hover,
 .post-mask-button:hover,
 .post-lock-button:hover,
 .post-announcement-button:hover,
 .post-group-button:hover,
 .post-reply-control-button:hover,
+.post-schedule-button:hover,
 .post-tools-overflow-button:hover,
 .post-tools-group .post-tool-btn:hover {
     background-color: var(--bg-color);
+}
+
+.post-schedule-button {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    border: 1px solid transparent;
+    box-sizing: border-box;
+}
+
+.post-schedule-button svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.post-schedule-button.active,
+.post-schedule-button[aria-expanded="true"] {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    background: transparent;
+}
+
+.post-schedule-button.active:hover,
+.post-schedule-button[aria-expanded="true"]:hover {
+    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
 }
 
 .emoji-pic-button svg {

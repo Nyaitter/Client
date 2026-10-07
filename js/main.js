@@ -1,4 +1,7 @@
 import { initApp } from './app.js';
+import { startNetworkUsageMeter } from './modules/networkUsage.js';
+
+startNetworkUsageMeter();
 
 function showInitialLoadingScreen() {
     const loadingOverlay = document.getElementById('loading-overlay');

@@ -496,9 +496,6 @@ export async function handleLeaveDm(dmId, onComplete = null) {
         const { error } = await api.rpc('leave_dm', { dm_id_in: dmId });
         if (error) throw error;
 
-        const myId = getCurrentUser()?.id;
-        const name = getCurrentUser()?.name || `user${myId}`;
-        await sendSystemDmMessage(dmId, `${escapeHTML(name)} さんがグループから退出しました`);
         invalidateDmCaches(dmId);
         invalidateDmCaches();
         DOM.dmManageModal?.classList.add('hidden');
@@ -739,8 +736,8 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
                 }
             });
         }
-        const editDmEditor = content.querySelector('#edit-dm-textarea');
-        attachMarkdownContentEditor(editDmEditor);
+        let editDmEditor = content.querySelector('#edit-dm-textarea');
+        editDmEditor = attachMarkdownContentEditor(editDmEditor) || editDmEditor;
         setupMarkdownEditorPreviewButton(content, editDmEditor);
 
         content.querySelector('#update-dm-btn')?.addEventListener('click', async () => {

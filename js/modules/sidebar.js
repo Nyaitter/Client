@@ -583,7 +583,7 @@ export async function updateNavAndSidebars() {
             },
             {
                 name: '設定',
-                hash: '#settings/profile',
+                hash: '#settings',
                 icon: ICONS.settings,
             },
             {
@@ -608,7 +608,7 @@ export async function updateNavAndSidebars() {
             let isActive = false;
             if (item.hash === '#') {
                 isActive = hash === '#' || hash === '';
-            } else if (item.hash === '#settings/profile') {
+            } else if (item.hash === '#settings') {
                 isActive = hash === '#settings' || hash.startsWith('#settings/');
             } else {
                 isActive = hash.startsWith(item.hash);

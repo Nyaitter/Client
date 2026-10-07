@@ -786,13 +786,6 @@ export function getGroupIconUrl(value) {
         const safeConfiguredUrl = getSafeConfiguredFileUrl(configuredUrl);
         if (safeConfiguredUrl) return safeConfiguredUrl;
     }
-    const groupId = typeof value === 'object' && value !== null ? value.id : null;
-    if (groupId) {
-        const fallbackUrl = globalThis.NyaitterClientConfig?.apiUrl?.(
-            `/server/api/groups/${encodeURIComponent(String(groupId))}/icon`,
-        );
-        return fallbackUrl || `/server/api/groups/${encodeURIComponent(String(groupId))}/icon`;
-    }
     return image || '';
 }
 

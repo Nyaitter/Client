@@ -118,6 +118,8 @@ export function getNotificationMessageSuffix(notification) {
             return ' さんの投票が終了しました。結果を確認しましょう！';
         case 'admin_notice':
             return ' さんからお知らせがあります。';
+        case 'scheduled_post':
+            return '予約投稿を公開しました。';
         default:
             return '';
     }

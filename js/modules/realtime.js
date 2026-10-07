@@ -1,4 +1,5 @@
 import { apiRequest } from '../api.js';
+import { trackRealtimeUsage } from './networkUsage.js';
 import {
     getCurrentUser,
     getRealtimeChannel,
@@ -111,24 +112,34 @@ export function handleRealtimeEvent(event) {
 
     if (event.type === 'notification_new') {
         const normalized = normalizeStructuredNotification(event.notification);
+        let changed = false;
         if (normalized && Array.isArray(user.notice)) {
             const exists = user.notice.some(
                 (entry) => Number(entry.id) === Number(normalized.id),
             );
-            if (!exists) user.notice.unshift(normalized);
+            if (!exists) {
+                user.notice.unshift(normalized);
+                changed = true;
+            }
         }
-        user.notification_unread_count = Number(
+        const nextUnreadCount = Number(
             event.unread_count || user.notification_unread_count || 0,
         );
+        if (Number(user.notification_unread_count || 0) !== nextUnreadCount) {
+            user.notification_unread_count = nextUnreadCount;
+            changed = true;
+        }
         markRealtimeSummaryFresh();
-        void updateNavAndSidebars();
+        if (changed) void updateNavAndSidebars();
         return;
     }
 
     if (event.type === 'notification_unread_count') {
-        user.notification_unread_count = Number(event.unread_count || 0);
+        const nextUnreadCount = Number(event.unread_count || 0);
+        const changed = Number(user.notification_unread_count || 0) !== nextUnreadCount;
+        user.notification_unread_count = nextUnreadCount;
         markRealtimeSummaryFresh();
-        void updateNavAndSidebars();
+        if (changed) void updateNavAndSidebars();
         return;
     }
 
@@ -157,12 +168,14 @@ export function handleRealtimeEvent(event) {
         invalidateDmCaches(
             event.dm_id !== undefined && event.dm_id !== null ? event.dm_id : null,
         );
+        let changed = false;
         if (event.dm_id !== undefined && event.dm_id !== null) {
             const key = String(event.dm_id);
             const newCount = String(getActiveDmId() || '') === key
                 ? 0
                 : Number(event.unread_count || 0);
             const prevCount = getDmUnreadCounts().get(key) || 0;
+            changed = prevCount !== newCount;
             getDmUnreadCounts().set(key, newCount);
             const prevTotal = Number(user.unreadDmTotal || 0);
             user.unreadDmTotal = Math.max(0, prevTotal - prevCount + newCount);
@@ -192,10 +205,12 @@ export function handleRealtimeEvent(event) {
                 }
             }
         } else {
-            user.unreadDmTotal = Number(event.unread_count || 0);
+            const nextTotal = Number(event.unread_count || 0);
+            changed = Number(user.unreadDmTotal || 0) !== nextTotal;
+            user.unreadDmTotal = nextTotal;
         }
         markRealtimeSummaryFresh();
-        void updateNavAndSidebars();
+        if (changed) void updateNavAndSidebars();
     }
 
     if (event.type === 'dm_read') {
@@ -244,6 +259,7 @@ export function connectRealtimeSocket() {
 
     if (!apiWebSocketUrl) return;
     const socket = new WebSocket(apiWebSocketUrl('/realtime'));
+    trackRealtimeUsage(socket);
     setRealtimeChannel(socket);
     setRealtimeAuthKey(authKey);
 

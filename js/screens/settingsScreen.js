@@ -21,6 +21,7 @@ import {
     cacheUser,
     invalidateTimelinePageCache,
     invalidateDmCaches,
+    invalidateCachesAfterUserIdReassignment,
 } from '../modules/cache.js';
 import {
     applyInterfaceTheme,
@@ -50,6 +51,7 @@ import {
     SETTINGS_GROUP_DETAILS,
 } from './settings/config.js';
 import { readSettingsForm } from './settings/formModel.js';
+import { rebuildSettings, bindSettingsDiscovery, showSettingsSaveStatus, bindSettingsNetworkUsage } from './settings/redesign.js';
 import { ALL_HOME_TABS, DEFAULT_HOME_TABS, getSavedHomeTabs } from './settings/homeTabs.js';
 import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
 import { uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
@@ -219,6 +221,7 @@ export async function saveSettings(form, context = getActiveScreenContext()) {
     if (!form.reportValidity()) return;
 
     setSettingsSaveInFlight(true);
+    showSettingsSaveStatus(form, 'saving');
 
     try {
         const updatedData = readSettingsForm(form, getCurrentUser().settings || {});
@@ -307,9 +310,11 @@ export async function saveSettings(form, context = getActiveScreenContext()) {
         setResetIconToDefault(false);
         setNewHeaderDataUrl(null);
         setResetHeaderToDefault(false);
+        showSettingsSaveStatus(form, 'saved');
     } catch (error) {
         if (context?.signal?.aborted) return;
         console.error('設定の自動保存に失敗:', error);
+        showSettingsSaveStatus(form, 'error');
     } finally {
         setSettingsSaveInFlight(false);
         if (getSettingsSaveQueued() && !context?.signal?.aborted) {
@@ -623,7 +628,7 @@ export async function showSettingsScreen(
     document.getElementById('setting-emoji-kind').value =
         getCurrentUser().settings?.emoji || 'twemoji';
     document.getElementById('setting-content-editor').value =
-        getCurrentUser().settings?.content_editor === 'nyaitter' ? 'nyaitter' : 'textarea';
+        getCurrentUser().settings?.content_editor === 'textarea' ? 'textarea' : 'nyaitter';
     document.getElementById('setting-theme').value =
         getCurrentUser().settings?.theme || 'light';
 
@@ -658,6 +663,7 @@ export async function showSettingsScreen(
         colorPicker?.addEventListener('input', () => {
             codeInput.value = colorPicker.value.toLowerCase();
             if (colorThemeSelect.value === 'custom') updateColorThemeSettingsUi();
+            requestSettingsSave(document.getElementById('settings-form'));
         });
         codeInput.addEventListener('input', () => {
             const color = codeInput.value.trim();
@@ -1990,16 +1996,20 @@ export async function showSettingsScreen(
     }
 
     const selectSettingsGroup = (group) => {
-        const activeGroup = SETTINGS_GROUP_DETAILS[group] ? group : 'profile';
+        const activeGroup = SETTINGS_GROUP_DETAILS[group] ? group : 'overview';
         const details = SETTINGS_GROUP_DETAILS[activeGroup];
         const title = document.getElementById('settings-group-title');
         const description = document.getElementById('settings-group-description');
         if (title) title.textContent = details.title;
         if (description) description.textContent = details.description;
+        const mobileCategory = document.getElementById('settings-mobile-category');
+        if (mobileCategory) mobileCategory.value = activeGroup;
 
         document.querySelectorAll('.settings-group-button').forEach((button) => {
             const active = button.dataset.settingsGroup === activeGroup;
             button.classList.toggle('active', active);
+            if (active) button.setAttribute('aria-current', 'page');
+            else button.removeAttribute('aria-current');
         });
         document.querySelectorAll('.settings-group-panel').forEach((panel) => {
             panel.hidden = panel.dataset.settingsPanel !== activeGroup;
@@ -2007,7 +2017,7 @@ export async function showSettingsScreen(
         if (activeGroup === 'home') {
             setupHomeTabsCustomizer();
         }
-        if (activeGroup === 'privacy') {
+        if (activeGroup === 'account') {
             void loadLoginSecuritySessions();
             void loadAuthProvidersSettings();
         }
@@ -2044,6 +2054,11 @@ export async function showSettingsScreen(
         dangerZone.innerHTML = dangerZoneHTML;
     }
 
+    const settingsRoot = document.getElementById('settings-screen');
+    rebuildSettings(settingsRoot);
+    const stopUsageUpdates = bindSettingsNetworkUsage(settingsRoot);
+    settingsScreenContext?.addCleanup(stopUsageUpdates);
+    bindSettingsDiscovery(settingsRoot, selectSettingsGroup, () => requestSettingsSave(document.getElementById('settings-form')));
     selectSettingsGroup(initialGroup);
 
     // Profile icons & header
@@ -2161,7 +2176,14 @@ export async function showSettingsScreen(
         });
     });
     settingsForm?.querySelectorAll('input[type="text"], textarea').forEach((control) => {
-        control.addEventListener('blur', () => requestSettingsSave(settingsForm));
+        control.addEventListener('input', () => {
+            clearTimeout(settingsChangeDebouncetimer);
+            settingsChangeDebouncetimer = setTimeout(() => requestSettingsSave(settingsForm), 400);
+        });
+        control.addEventListener('blur', () => {
+            clearTimeout(settingsChangeDebouncetimer);
+            requestSettingsSave(settingsForm);
+        });
     });
     settingsForm?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && event.target.matches('input[type="text"]')) {
@@ -2192,6 +2214,7 @@ export async function showSettingsScreen(
         if (data?.user) {
             const newUser = data.user;
             const newUserId = Number(newUser.id);
+            invalidateCachesAfterUserIdReassignment(previousId, newUserId);
             setCurrentUser(newUser);
             updateAccountData(newUser, previousId);
             if (previousId != null) {

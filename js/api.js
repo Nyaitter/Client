@@ -431,6 +431,7 @@ export const api = (() => {
                                 lock: params.p_lock,
                                 announcement: params.p_announcement,
                                 group_id: params.p_group_id,
+                                scheduled_at: params.p_scheduled_at,
                                 group_announcement: params.p_group_announcement,
                                 reply_control: params.p_reply_control,
                                 post_as_user_id: params.p_as_user_id,

@@ -95,6 +95,17 @@ export async function showNyaitterAuthScreen(showScreenFn) {
             return;
         }
 
+        if (accounts.length === 1 && authReq.can_pass_through) {
+            const autoPassRes = await apiRequest('/server/auth/nyaitter-auth/auto-pass', {
+                method: 'POST',
+                body: { request_id: requestId },
+            });
+            if (!autoPassRes.error && autoPassRes.data?.success && autoPassRes.data?.redirect_uri) {
+                window.location.href = autoPassRes.data.redirect_uri;
+                return;
+            }
+        }
+
         // User is logged in: Render permission selection form & Account Selector
         const scopes = Array.isArray(authReq.scopes) ? authReq.scopes : [];
         const existingScopesSet = new Set(Array.isArray(authReq.existing_scopes) ? authReq.existing_scopes : []);

@@ -490,8 +490,8 @@ export async function showDmConversation(dmId) {
             await flushRealtimeDmMessages(dm.id);
             initializeDmMessageClamps(container);
 
-            const messageInput = document.getElementById('dm-message-input');
-            attachMarkdownContentEditor(messageInput);
+            let messageInput = document.getElementById('dm-message-input');
+            messageInput = attachMarkdownContentEditor(messageInput) || messageInput;
             setupMarkdownEditorPreviewButton(container, messageInput);
             const fileInput = document.getElementById('dm-file-input');
             const previewContainer = container.querySelector('.file-preview-container');

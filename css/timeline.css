@@ -215,6 +215,34 @@ width: 100%;
     flex-wrap: nowrap;
 }
 
+.post-form-tools-row .post-tools-right-start {
+    margin-left: auto;
+}
+.post-form-tools-row:not(:has(.post-tools-right-start)) .post-lock-button { margin-left: auto; }
+
+.post-header .group-post-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 0;
+    min-width: 0;
+    max-width: 40%;
+    text-decoration: none;
+    flex-shrink: 1;
+}
+.post-header .group-post-indicator > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post-header .group-post-indicator .post-group-menu-icon {
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    flex: 0 0 16px;
+    border-radius: 50%;
+    object-fit: cover;
+    overflow: hidden;
+    padding: 0;
+}
+
 .post-form-tools-row button {
     flex-shrink: 0;
 }
@@ -460,6 +488,43 @@ display: inline-flex;
 .post-lock-indicator svg {
 width: 0.95rem;
     height: 0.95rem;
+}
+
+.post-scheduled-indicator {
+    display: inline-flex;
+    flex: 0 1 auto;
+    min-width: 0;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.18rem 0.42rem 0.18rem 0.28rem;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+    color: var(--primary-color);
+    font-size: 0.74rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+.post-scheduled-indicator-icon {
+    display: inline-flex;
+    flex: 0 0 1.05rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.post-scheduled-indicator-icon svg {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+
+.post-scheduled-indicator-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
 }
 
 .post-content {
@@ -1091,4 +1156,217 @@ padding: 0.6rem 1.2rem;
 .post-mask-alert:hover {
 background-color: var(--light-primary-color);
     border-color: var(--primary-color);
+}
+
+.post-schedule-menu {
+    position: fixed;
+    z-index: 10020;
+    width: min(360px, calc(100vw - 24px));
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.post-schedule-header {
+    display: grid;
+    gap: 0.65rem;
+    padding: 1rem 1rem 0.85rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.post-schedule-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+}
+
+.post-schedule-heading-icon {
+    display: inline-flex;
+    width: 2.15rem;
+    height: 2.15rem;
+    flex: 0 0 2.15rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+    color: var(--primary-color);
+}
+
+.post-schedule-heading-icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+.post-schedule-heading > span:last-child {
+    display: grid;
+    gap: 0.12rem;
+    min-width: 0;
+}
+
+.post-schedule-heading strong {
+    font-size: 0.98rem;
+    line-height: 1.25;
+}
+
+.post-schedule-heading small {
+    color: var(--sub-text-color, var(--text-color));
+    font-size: 0.78rem;
+    font-weight: 400;
+    opacity: 0.72;
+}
+
+.post-schedule-current {
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+    color: var(--sub-text-color, var(--text-color));
+    font-size: 0.78rem;
+}
+
+.post-schedule-current strong {
+    margin-left: 0.25rem;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.post-schedule-tabs,
+.post-schedule-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.post-schedule-tabs {
+    margin: 0.85rem 1rem 0;
+    padding: 0.2rem;
+    border-radius: 9px;
+    background: var(--bg-color);
+}
+
+.post-schedule-tabs button {
+    flex: 1;
+    min-height: 2.25rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.post-schedule-tabs button.active {
+    color: var(--primary-color);
+    background: var(--main-bg-color);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.post-schedule-panel {
+    padding: 0.9rem 1rem 0;
+}
+
+.post-schedule-field {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.post-schedule-field-label {
+    color: var(--sub-text-color, var(--text-color));
+    font-size: 0.78rem;
+    font-weight: 600;
+    opacity: 0.78;
+}
+
+.post-schedule-panel input,
+.post-schedule-panel select {
+    min-width: 0;
+    min-height: 2.6rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+    box-sizing: border-box;
+}
+
+.post-schedule-relative-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(6.5rem, auto);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--main-bg-color);
+    overflow: hidden;
+}
+
+.post-schedule-relative-control input,
+.post-schedule-relative-control select {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.post-schedule-relative-control select {
+    border-left: 1px solid var(--border-color);
+}
+
+.post-schedule-panel input:focus,
+.post-schedule-panel select:focus {
+    outline: 2px solid color-mix(in srgb, var(--primary-color) 26%, transparent);
+    outline-offset: -2px;
+    border-color: var(--primary-color);
+}
+
+.post-schedule-relative-control:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color) 18%, transparent);
+}
+
+.post-schedule-actions {
+    justify-content: space-between;
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    border-top: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-color) 45%, transparent);
+}
+
+.post-schedule-actions button {
+    min-height: 2.35rem;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font: inherit;
+}
+
+.post-schedule-actions .post-schedule-apply {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: var(--primary-contrast-color, #fff);
+    font-weight: 700;
+}
+
+.post-schedule-actions .post-schedule-clear {
+    border-color: transparent;
+    background: transparent;
+    color: var(--sub-text-color, var(--text-color));
+}
+
+.post-schedule-actions button:hover {
+    filter: brightness(0.97);
+}
+
+@media (max-width: 480px) {
+    .post-schedule-menu {
+        width: min(360px, calc(100vw - 16px));
+    }
 }

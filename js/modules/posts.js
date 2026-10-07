@@ -203,6 +203,7 @@ export async function renderPost(post, author, options = {}) {
         clampHeight = false,
         quoteDepth = 0,
         onReportClick,
+        hideGroupIndicator = false,
     } = options;
 
     const baseAuthor = author || post.author || post.user;
@@ -377,12 +378,16 @@ export async function renderPost(post, author, options = {}) {
     postTime.textContent = `${getNyaitterId(displayAuthor)} · ${formatPostTimestamp(post)}`;
     postHeader.appendChild(postTime);
 
-    if (post.groupId || post.group_id) {
-        const groupIndicator = document.createElement('span');
+    if (!hideGroupIndicator && (post.groupId || post.group_id)) {
+        const groupIndicator = document.createElement('a');
         groupIndicator.className = 'group-post-indicator';
-        groupIndicator.textContent = post.group_announcement || post.groupAnnouncement
-            ? 'グループアナウンス'
-            : 'グループ投稿';
+        const group = post.group || { id: post.groupId || post.group_id, name: post.group_name || 'グループ', icon_data: post.group_icon_data || null };
+        groupIndicator.href = `#group/${encodeURIComponent(group.id)}`;
+        groupIndicator.innerHTML = renderPostGroupMenuIcon(group);
+        const groupLabel = document.createElement('span');
+        groupLabel.textContent = group.name;
+        groupIndicator.append(groupLabel);
+        groupIndicator.title = `${group.name}${post.group_announcement || post.groupAnnouncement ? ' · アナウンス' : ''}`;
         postHeader.appendChild(groupIndicator);
     } else if (post.announcement) {
         const announcementIndicator = document.createElement('span');
@@ -398,6 +403,30 @@ export async function renderPost(post, author, options = {}) {
         lockIndicator.setAttribute('aria-label', 'プライベート');
         lockIndicator.innerHTML = ICONS.lock;
         postHeader.appendChild(lockIndicator);
+    }
+
+    const scheduledAt = post.scheduled_at || post.scheduledAt || null;
+    if (scheduledAt) {
+        const indicator = document.createElement('span');
+        indicator.className = 'post-scheduled-indicator';
+        const scheduledDate = new Date(scheduledAt);
+        const scheduledLabel = Number.isNaN(scheduledDate.getTime())
+            ? ''
+            : scheduledDate.toLocaleString();
+        indicator.title = scheduledLabel ? `公開予定: ${scheduledLabel}` : '予約投稿';
+        indicator.setAttribute('aria-label', scheduledLabel
+            ? `非公開の予約投稿。公開予定: ${scheduledLabel}`
+            : '非公開の予約投稿');
+        indicator.innerHTML = `
+            <span class="post-scheduled-indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                    <path d="M7 2v6m10-6v6M3 10h18"></path>
+                    <path d="M12 13v4l3 1"></path>
+                </svg>
+            </span>
+            <span class="post-scheduled-indicator-label">予約投稿</span>`;
+        postHeader.appendChild(indicator);
     }
 
     if (getCurrentUser()) {
@@ -965,6 +994,7 @@ export function createPostFormHTML(isModal = false) {
                             ${ICONS.mask}
                         </button>
                         <button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
+                        <button type="button" class="post-tool-btn post-schedule-button" title="予約投稿" aria-label="予約投稿" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 10h18"/><path d="M12 13v4l3 1"/></svg></button>
                         <button type="button" class="post-tool-btn post-group-button" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
                     </div>
                     <div class="post-form-submit-row">
@@ -974,9 +1004,158 @@ export function createPostFormHTML(isModal = false) {
                     <div id="emoji-picker" class="hidden"></div>
                     <div class="post-group-menu hidden" role="menu"></div>
                     <div class="post-reply-control-menu hidden" role="menu"></div>
+                    <div class="post-schedule-menu hidden" role="dialog" aria-label="予約投稿日時"></div>
                 </div>
             </div>
         </div>`;
+}
+
+function closePostScheduleMenu(container) {
+    const menu = container?.querySelector('.post-schedule-menu');
+    const button = container?.querySelector('.post-schedule-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+    if (container?._postScheduleOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postScheduleOutsideHandler, true);
+        container._postScheduleOutsideHandler = null;
+    }
+}
+
+function updatePostScheduleButton(container) {
+    const button = container?.querySelector('.post-schedule-button');
+    if (!button) return;
+    const active = Boolean(container?._scheduledAt);
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+    button.title = active
+        ? `予約投稿: ${new Date(container._scheduledAt).toLocaleString()}`
+        : '予約投稿';
+    const submitButton = container?.querySelector('#post-submit-button');
+    if (submitButton && !submitButton.disabled) {
+        submitButton.textContent = active ? '予約投稿' : 'ポスト';
+    }
+}
+
+function renderPostScheduleMenu(container) {
+    const menu = container?.querySelector('.post-schedule-menu');
+    if (!menu) return;
+    const now = new Date();
+    const defaultAbsolute = new Date(Math.ceil((now.getTime() + 10 * 60 * 1000) / 60000) * 60000);
+    const localAbsolute = new Date(defaultAbsolute.getTime() - defaultAbsolute.getTimezoneOffset() * 60000)
+        .toISOString().slice(0, 16);
+    const currentSchedule = container?._scheduledAt
+        ? new Date(container._scheduledAt).toLocaleString()
+        : null;
+    menu.innerHTML = `
+        <div class="post-schedule-header">
+            <div class="post-schedule-heading">
+                <span class="post-schedule-heading-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                        <path d="M7 2v6m10-6v6M3 10h18"></path>
+                        <path d="M12 13v4l3 1"></path>
+                    </svg>
+                </span>
+                <span>
+                    <strong>予約投稿</strong>
+                    <small>公開するタイミングを指定</small>
+                </span>
+            </div>
+            ${currentSchedule ? `<div class="post-schedule-current">設定中 <strong>${escapeHTML(currentSchedule)}</strong></div>` : ''}
+        </div>
+
+        <div class="post-schedule-tabs" role="tablist" aria-label="予約日時の指定方法">
+            <button type="button" class="active" data-schedule-mode="relative" role="tab" aria-selected="true">あとで</button>
+            <button type="button" data-schedule-mode="absolute" role="tab" aria-selected="false">日時指定</button>
+        </div>
+
+        <div class="post-schedule-panel" data-schedule-panel="relative">
+            <label class="post-schedule-field">
+                <span class="post-schedule-field-label">公開まで</span>
+                <span class="post-schedule-relative-control">
+                    <input type="number" min="1" step="1" value="10" data-schedule-relative-value>
+                    <select data-schedule-relative-unit>
+                        <option value="minute">分後</option>
+                        <option value="hour">時間後</option>
+                        <option value="day">日後</option>
+                    </select>
+                </span>
+            </label>
+        </div>
+        <div class="post-schedule-panel hidden" data-schedule-panel="absolute">
+            <label class="post-schedule-field">
+                <span class="post-schedule-field-label">公開日時</span>
+                <input type="datetime-local" value="${localAbsolute}" data-schedule-absolute>
+            </label>
+        </div>
+        <div class="post-schedule-actions">
+            <button type="button" class="post-schedule-clear">解除</button>
+            <button type="button" class="post-schedule-apply">この日時で予約</button>
+        </div>`;
+
+    let mode = 'relative';
+    const setMode = (nextMode) => {
+        mode = nextMode === 'absolute' ? 'absolute' : 'relative';
+        menu.querySelectorAll('[data-schedule-mode]').forEach((button) => {
+            const selected = button.dataset.scheduleMode === mode;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-selected', String(selected));
+        });
+        menu.querySelectorAll('[data-schedule-panel]').forEach((panel) => {
+            panel.classList.toggle('hidden', panel.dataset.schedulePanel !== mode);
+        });
+    };
+    menu.querySelectorAll('[data-schedule-mode]').forEach((button) => {
+        button.addEventListener('click', () => setMode(button.dataset.scheduleMode));
+    });
+    menu.querySelector('.post-schedule-clear')?.addEventListener('click', () => {
+        container._scheduledAt = null;
+        updatePostScheduleButton(container);
+        closePostScheduleMenu(container);
+    });
+    menu.querySelector('.post-schedule-apply')?.addEventListener('click', () => {
+        let targetTime = null;
+        if (mode === 'absolute') {
+            const value = menu.querySelector('[data-schedule-absolute]')?.value;
+            targetTime = value ? new Date(value).getTime() : NaN;
+        } else {
+            const amount = Number(menu.querySelector('[data-schedule-relative-value]')?.value);
+            const unit = menu.querySelector('[data-schedule-relative-unit]')?.value || 'minute';
+            const unitMs = unit === 'day' ? 86400000 : unit === 'hour' ? 3600000 : 60000;
+            targetTime = Date.now() + amount * unitMs;
+        }
+        if (!Number.isFinite(targetTime) || targetTime <= Date.now()) {
+            showAppAlert('現在より後の日時を指定してください。');
+            return;
+        }
+        container._scheduledAt = new Date(targetTime).toISOString();
+        updatePostScheduleButton(container);
+        closePostScheduleMenu(container);
+    });
+}
+
+function togglePostScheduleMenu(container) {
+    const menu = container?.querySelector('.post-schedule-menu');
+    const button = container?.querySelector('.post-schedule-button');
+    if (!menu || !button) return;
+    closePostGroupMenu(container);
+    closePostReplyControlMenu(container);
+    closePostAccountMenu(container);
+    const willOpen = menu.classList.contains('hidden');
+    if (!willOpen) {
+        closePostScheduleMenu(container);
+        return;
+    }
+    renderPostScheduleMenu(container);
+    menu.classList.remove('hidden');
+    button.setAttribute('aria-expanded', 'true');
+    positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+    const handler = (event) => {
+        if (menu.contains(event.target) || button.contains(event.target)) return;
+        closePostScheduleMenu(container);
+    };
+    container._postScheduleOutsideHandler = handler;
+    document.addEventListener('pointerdown', handler, true);
 }
 
 export function closePostToolsOverflowMenu(container) {
@@ -1204,6 +1383,13 @@ function setPostingGroup(container, group = null, { locked = false } = {}) {
         announcementButton.setAttribute('aria-label', announcementButton.title);
         announcementButton.classList.remove('active');
         announcementButton.setAttribute('aria-pressed', 'false');
+    }
+    const tools = container.querySelector('.post-form-tools-row');
+    if (tools) {
+        tools.querySelectorAll('.post-tools-right-start').forEach(button => button.classList.remove('post-tools-right-start'));
+        const firstRight = [announcementButton, lockButton, container.querySelector('.post-mask-button')]
+            .find(button => button && !button.hidden && !button.classList.contains('hidden'));
+        firstRight?.classList.add('post-tools-right-start');
     }
     updatePostToolsOverflow(container);
 }
@@ -1924,6 +2110,9 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
     container.querySelector('.post-reply-control-button')?.addEventListener('click', () => {
         togglePostReplyControlMenu(container);
     });
+    container.querySelector('.post-schedule-button')?.addEventListener('click', () => {
+        togglePostScheduleMenu(container);
+    });
     container.querySelector('.post-tools-overflow-button')?.addEventListener('click', () => {
         togglePostToolsOverflowMenu(container);
     });
@@ -1932,8 +2121,9 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
         handlePostSubmit(container, onPostSuccess);
     });
 
-    const editor = container.querySelector('#post-content');
+    let editor = container.querySelector('#post-content');
     if (editor) {
+        editor = attachMarkdownContentEditor(editor) || editor;
         editor.addEventListener('keydown', handleCtrlEnter);
         editor.addEventListener('paste', (event) => {
             const imageFiles = Array.from(event.clipboardData?.items || [])
@@ -1959,7 +2149,6 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
                 );
             }
         });
-        attachMarkdownContentEditor(editor);
         setupMarkdownEditorPreviewButton(container, editor);
     }
 
@@ -2116,6 +2305,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     const lockActive = container.querySelector('.post-lock-button')?.classList.contains('active') || false;
     const announcementActive = container.querySelector('.post-announcement-button')?.classList.contains('active') || false;
     const postingGroup = getPostingGroup(container);
+    const scheduledGroupId = postingGroup?.id || null;
     const groupAnnouncementActive = Boolean(postingGroup && announcementActive);
     if (postingGroup && getQuotingPost()) {
         return showAppAlert('引用・リポストはグループ投稿として送信できません。');
@@ -2168,6 +2358,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 p_lock: lockActive,
                 p_announcement: Boolean(!postingGroup && announcementActive),
                 p_group_id: postingGroup?.id || null,
+                p_scheduled_at: container._scheduledAt || null,
                 p_group_announcement: groupAnnouncementActive,
                 p_reply_control: getPostingReplyControl(container),
                 p_as_user_id: postingAccountId,
@@ -2177,7 +2368,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
         if (rpcError) throw rpcError;
 
         const replyTargetId = getReplyingTo()?.id || null;
-        if (replyTargetId) {
+        if (replyTargetId && !container._scheduledAt) {
             updateCachedPost(replyTargetId, (p) => {
                 const currentCount = Number(p.reply_count ?? p.replyCount) || 0;
                 p.reply_count = currentCount + 1;
@@ -2185,8 +2376,14 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
             });
         }
         invalidateTimelinePageCache();
+        invalidateProfileTabPageCache(postingAccountId, 'posts');
+        if (scheduledGroupId) {
+            invalidateProfileTabPageCache(postingAccountId, `group:${scheduledGroupId}`);
+        }
         setSelectedFiles([]);
         container._attachedPoll = null;
+        container._scheduledAt = null;
+        updatePostScheduleButton(container);
         setMarkdownEditorValue(contentEl, '');
         setPostingGroup(container, null);
         setPostingReplyControl(container, 'everyone');
@@ -2557,8 +2754,8 @@ export async function openEditPostModal(postId, onSaved = null) {
                 }
             });
         }
-        const editPostEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
-        attachMarkdownContentEditor(editPostEditor);
+        let editPostEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
+        editPostEditor = attachMarkdownContentEditor(editPostEditor) || editPostEditor;
         setupMarkdownEditorPreviewButton(DOM.editPostModalContent, editPostEditor);
         DOM.editPostModalContent.querySelector('.post-reply-control-button')?.addEventListener('click', () => {
             togglePostReplyControlMenu(DOM.editPostModalContent);

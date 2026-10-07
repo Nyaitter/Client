@@ -51,7 +51,9 @@ export async function fetchOptimizedPostPage(
         limit: String(pageSize),
         offset: String(page * pageSize),
     });
-    if (beforeCursor != null) {
+    const usesOffsetOrder = (type === 'profile_posts' || type === 'group_posts')
+        && options.order && options.order !== 'latest';
+    if (beforeCursor != null && !usesOffsetOrder) {
         const cursorValue = String(beforeCursor).trim();
         if (cursorValue) {
             params.set('cursor', cursorValue);
@@ -77,6 +79,7 @@ export async function fetchOptimizedPostPage(
         params.set('mode', 'profile');
         params.set('user_id', String(options.userId || ''));
         params.set('sub_type', options.subType || 'all');
+        params.set('order', options.order || 'latest');
         if (
             options.pinId &&
             page === 0 &&
@@ -90,6 +93,7 @@ export async function fetchOptimizedPostPage(
         if (!groupId) throw new Error('グループIDが必要です。');
         if (options.mode) params.set('mode', options.mode);
         if (options.subType) params.set('sub_type', options.subType);
+        if (options.order) params.set('order', options.order);
         if (options.authorId != null) params.set('author_id', String(options.authorId));
         const { data, error } = await apiRequest(
             `/server/api/groups/${encodeURIComponent(groupId)}/posts?${params.toString()}`,
@@ -98,9 +102,11 @@ export async function fetchOptimizedPostPage(
         if (error) throw error;
         const posts = data.posts || [];
         const hasMore = !!(data.has_next ?? data.has_more);
-        const nextCursor = data.next_cursor ?? (
-            hasMore && posts.length > 0 ? String(posts[posts.length - 1].id) : null
-        );
+        const nextCursor = options.order && options.order !== 'latest'
+            ? null
+            : (data.next_cursor ?? (
+                hasMore && posts.length > 0 ? String(posts[posts.length - 1].id) : null
+            ));
         return {
             posts,
             hasMore,
@@ -157,9 +163,9 @@ export async function fetchOptimizedPostPage(
     if (error) throw error;
     const posts = data.posts || [];
     const hasMore = !!(data.has_more ?? data.has_next);
-    const nextCursor = data.next_cursor ?? (
+    const nextCursor = usesOffsetOrder ? null : (data.next_cursor ?? (
         hasMore && posts.length > 0 ? String(posts[posts.length - 1].id) : null
-    );
+    ));
     return {
         posts,
         hasMore,
@@ -299,6 +305,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                             metricsPromise,
                             isPinned: true,
                             clampHeight: true,
+                            hideGroupIndicator: Boolean(options.hideGroupIndicator),
                         });
                         if (!isActivePaginationLoader(container, currentTrigger, options)) {
                             return false;
@@ -317,6 +324,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                         userCache: getAllUsersCache(),
                         metricsPromise,
                         clampHeight: true,
+                        hideGroupIndicator: Boolean(options.hideGroupIndicator),
                     })));
                     if (!isActivePaginationLoader(container, currentTrigger, options)) {
                         return false;
@@ -339,6 +347,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                                 userCache: getAllUsersCache(),
                                 metricsPromise,
                                 clampHeight: true,
+                                hideGroupIndicator: Boolean(options.hideGroupIndicator),
                             })));
                         const fragment = document.createDocumentFragment();
                         for (const postEl of renderedPosts) {

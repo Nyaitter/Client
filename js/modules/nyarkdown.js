@@ -141,8 +141,6 @@ const URL_REGEX =
     /(https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=;]*))/g;
 const HASHTAG_REGEX = /#([^<>\/@#\s]+)/g;
 const MENTION_REGEX = /@(\d+)/g;
-const CUSTOM_EMOJI_PATTERN = /_([A-Za-z0-9_-]{1,80})_/g;
-
 /**
  * NyarkDown本文を安全なHTMLへ変換します。
  *
@@ -168,17 +166,49 @@ export function renderNyarkDown(
     const createCustomEmojiMarkup = (emojiId) => {
         const image = `<img src="/emoji/${encodeURIComponent(emojiId)}.svg" alt="_${emojiId}_" data-emoji-id="${emojiId}" style="height: 1.2em; vertical-align: -0.2em; margin: 0 0.05em;" class="nyaitter-emoji">`;
         if (!editorSyntax) return image;
-        return `<span class="markdown-editor-emoji" data-emoji-id="${emojiId}">${renderSyntax('_')}${image}<span class="markdown-editor-emoji-id" hidden>${escapeHTML(emojiId)}</span>${renderSyntax('_')}</span>`;
+        return `<span class="markdown-editor-emoji" data-emoji-id="${emojiId}" contenteditable="false">${image}</span>`;
     };
 
     const replaceCustomEmoji = (value) => {
         if (!value.includes('_')) return value;
-        return value.replace(CUSTOM_EMOJI_PATTERN, (match, emojiId) => {
-            if (customEmojiSet.has(emojiId)) {
-                return createCustomEmojiMarkup(emojiId);
+        let output = '';
+        let cursor = 0;
+
+        while (cursor < value.length) {
+            const open = value.indexOf('_', cursor);
+            if (open === -1) {
+                output += value.slice(cursor);
+                break;
             }
-            return match;
-        });
+
+            output += value.slice(cursor, open);
+            let matchedId = null;
+            let matchedEnd = -1;
+            const maximumEnd = Math.min(value.length - 1, open + 81);
+
+            // Prefer the longest valid registered ID, but never let an unrelated
+            // trailing underscore invalidate an already-complete `_emoji_` token.
+            for (let end = maximumEnd; end > open + 1; end -= 1) {
+                if (value[end] !== '_') continue;
+                const emojiId = value.slice(open + 1, end);
+                if (!/^[A-Za-z0-9_-]{1,80}$/.test(emojiId)) continue;
+                if (!customEmojiSet.has(emojiId)) continue;
+                matchedId = emojiId;
+                matchedEnd = end;
+                break;
+            }
+
+            if (matchedId !== null) {
+                output += createCustomEmojiMarkup(matchedId);
+                cursor = matchedEnd + 1;
+                continue;
+            }
+
+            output += '_';
+            cursor = open + 1;
+        }
+
+        return output;
     };
 
     const decorationDefaults = {
@@ -219,7 +249,7 @@ export function renderNyarkDown(
 
         processed = processed.replace(
             /\[(?:ruby|rb)=([^\]\r\n]{1,100})\]([^\[\r\n]{1,200})\[\/(?:ruby|rb)?\]/gi,
-            (_, rt, base) => `<ruby class="nyarkdown-ruby">${base}<rp>(</rp><rt class="nyarkdown-rt">${rt}</rt><rp>)</rp></ruby>`,
+            (_, rt, base) => `<ruby class="nyarkdown-ruby">${base}<rp contenteditable="false">(</rp><rt class="nyarkdown-rt" contenteditable="false">${rt}</rt><rp contenteditable="false">)</rp></ruby>`,
         );
 
         urls.forEach((url, index) => {

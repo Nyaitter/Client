@@ -72,6 +72,8 @@ import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
 
 let activeProfilePullRefreshUser = null;
 const profileTimelineModes = new Map();
+const profilePostOrders = new Map();
+const profileGroupOrders = new Map();
 const profileMediaModes = new Map();
 
 function getProfileTimelineMode(userId, tab) {
@@ -81,6 +83,15 @@ function getProfileTimelineMode(userId, tab) {
 function setProfileTimelineMode(userId, tab, mode) {
     if (!['posts_only', 'replies_only'].includes(mode)) return;
     profileTimelineModes.set(`${Number(userId)}:${String(tab)}`, mode);
+}
+
+function getProfileGroupOrder(userId, groupId) {
+    return profileGroupOrders.get(`${Number(userId)}:${String(groupId)}`) || 'latest';
+}
+
+function setProfileGroupOrder(userId, groupId, order) {
+    if (!['latest', 'oldest', 'recommended'].includes(order)) return;
+    profileGroupOrders.set(`${Number(userId)}:${String(groupId)}`, order);
 }
 
 function getProfileMediaMode(userId) {
@@ -100,16 +111,28 @@ function openProfileTimelineModeMenu(button, user, tab) {
     closeProfileTimelineModeMenu();
     const menu = document.createElement('div');
     menu.className = 'group-timeline-mode-menu profile-timeline-mode-menu';
-    const mode = getProfileTimelineMode(user.id, tab);
-    const options = [
-        { value: 'posts_only', label: 'ポスト', icon: 'send' },
+    const isGroupTab = String(tab).startsWith('group:');
+    const groupId = isGroupTab ? String(tab).slice('group:'.length) : null;
+    const mode = tab === 'posts'
+        ? (profilePostOrders.get(Number(user.id)) || 'latest')
+        : isGroupTab
+          ? getProfileGroupOrder(user.id, groupId)
+          : getProfileTimelineMode(user.id, tab);
+    const options = (tab === 'posts' || isGroupTab) ? [
+        { value: 'latest', label: '最新', icon: 'post' },
+        { value: 'oldest', label: '最古', icon: 'post' },
+        { value: 'recommended', label: 'おすすめ', icon: 'stars' },
+    ] : [
+        { value: 'posts_only', label: 'ポスト', icon: 'post' },
         { value: 'replies_only', label: '返信', icon: 'reply' },
     ];
     menu.innerHTML = options.map((option) => `<button type="button" class="${option.value === mode ? 'active' : ''}" data-profile-timeline-mode="${option.value}"><span class="menu-item-icon" aria-hidden="true">${ICONS[option.icon]}</span><span class="menu-item-label">${option.label}</span></button>`).join('');
     document.body.appendChild(menu);
     positionElementRelativeToAnchor(menu, button, { placement: 'bottom-start', gap: 6 });
     menu.querySelectorAll('[data-profile-timeline-mode]').forEach((item) => item.addEventListener('click', () => {
-        setProfileTimelineMode(user.id, tab, item.dataset.profileTimelineMode);
+        if (tab === 'posts') profilePostOrders.set(Number(user.id), item.dataset.profileTimelineMode);
+        else if (isGroupTab) setProfileGroupOrder(user.id, groupId, item.dataset.profileTimelineMode);
+        else setProfileTimelineMode(user.id, tab, item.dataset.profileTimelineMode);
         closeProfileTimelineModeMenu();
         void loadProfileTabContent(user, tab);
     }));
@@ -192,7 +215,7 @@ export async function switchProfileTab(
 ) {
     if (!user?.id) return;
     const normalizedUserId = Number(user.id);
-    const normalizedTab = String(subpage || 'posts') === 'replies' ? 'posts' : String(subpage || 'posts');
+    const normalizedTab = String(subpage || 'posts');
     const previousTab = currentProfileTab;
     const previousHash =
         previousTab === 'posts'
@@ -239,7 +262,7 @@ export function resetProfileTabNavigation(userId, subpage) {
     if (activeProfile && Number(activeProfile.id) === Number(userId)) {
         void switchProfileTab(activeProfile, subpage, { forceRefresh: true, resetScroll: true });
     } else {
-        const normalizedTab = String(subpage || 'posts') === 'replies' ? 'posts' : String(subpage || 'posts');
+        const normalizedTab = String(subpage || 'posts');
         const hash =
             normalizedTab === 'posts'
                 ? `#profile/${Number(userId)}`
@@ -257,7 +280,6 @@ export async function refreshActiveProfileTab({ userId, subpage } = {}) {
 
 export async function showProfileScreen(userId, subpage = 'posts', showScreenFn = null) {
     incrementRouterGeneration();
-    subpage = subpage === 'replies' ? 'posts' : subpage;
     renderHeader();
 
     showScreenCompat('profile-screen', showScreenFn);
@@ -503,7 +525,6 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
 
 export async function loadProfileTabContent(user, subpage, options = {}) {
     const signal = getActiveScreenContext()?.signal;
-    subpage = subpage === 'replies' ? 'posts' : subpage;
     const mediaSubType = getProfileMediaMode(user.id);
     const profileHeader = document.getElementById('profile-header');
     const profileTabs = document.getElementById('profile-tabs');
@@ -571,16 +592,19 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
 
     try {
         switch (subpage) {
-            case 'posts': {
-                const subType = getProfileTimelineMode(user.id, 'posts');
+            case 'posts':
+            case 'replies': {
+                const subType = subpage === 'replies' ? 'replies_only' : 'posts_only';
+                const order = subpage === 'replies' ? 'latest' : (profilePostOrders.get(Number(user.id)) || 'latest');
                 const pinnedPostId = subType === 'posts_only'
                     ? normalizePostId(user.pinned_post_id)
                     : '';
                 await loadPostsWithPagination(contentDiv, 'profile_posts', {
                     userId: user.id,
                     subType,
+                    order,
                     pinId: pinnedPostId,
-                    pageCache: getProfilePostPageCache(user.id, subType, pinnedPostId),
+                    pageCache: getProfilePostPageCache(user.id, `${subType}:${order}`, pinnedPostId),
                     signal,
                 });
                 break;
@@ -646,12 +670,14 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                 if (String(subpage).startsWith('group:')) {
                     const groupId = String(subpage).slice('group:'.length);
                     if (!groupId) throw new Error('グループIDが正しくありません。');
-                    const subType = getProfileTimelineMode(user.id, `group:${groupId}`);
+                    const order = getProfileGroupOrder(user.id, groupId);
                     await loadPostsWithPagination(contentDiv, 'group_posts', {
                         groupId,
                         authorId: user.id,
-                        subType,
-                        pageCache: getProfilePostPageCache(user.id, `group:${groupId}:${subType}`),
+                        subType: 'posts_only',
+                        order,
+                        hideGroupIndicator: true,
+                        pageCache: getProfilePostPageCache(user.id, `group:${groupId}:posts_only:${order}`),
                         signal,
                     });
                 }
