@@ -190,6 +190,7 @@ export async function showNyaitterAuthScreen(showScreenFn) {
                         ${authReq.icon_url ? `<img src="${escapeHTML(getSafeHttpUrl(authReq.icon_url))}" class="nyauth-app-icon" alt="${escapeHTML(authReq.name)}">` : `<div class="nyauth-app-icon-placeholder">${ICONS.apps || '📱'}</div>`}
                         <div style="flex: 1;">
                             <h3 class="nyauth-app-title">${escapeHTML(authReq.name)}</h3>
+                            ${authReq.application_id ? `<small>ID: ${escapeHTML(authReq.application_id)}</small>` : ''}
                         </div>
                     </div>
 

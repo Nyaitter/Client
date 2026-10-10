@@ -1422,7 +1422,7 @@ export async function showSettingsScreen(
 
             const idBadge = document.createElement('span');
             idBadge.className = 'settings-bot-token-id';
-            idBadge.textContent = `ID: ${app.app_id}`;
+            idBadge.textContent = `ID: ${app.application_id || `grant:${app.id}`}`;
             title.appendChild(idBadge);
 
             if (app.has_continuous_access) {
