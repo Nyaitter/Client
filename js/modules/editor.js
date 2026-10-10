@@ -164,7 +164,7 @@ function getDirectEditorSourceOffset(editor, container, offset) {
     const { segments } = getMarkdownEditorSourceSegments(editor);
     const element = container instanceof Element ? container : container?.parentElement;
     const emptyLine = element?.closest('.markdown-empty-line');
-    if (emptyLine && editor.contains(emptyLine)) {
+    if (emptyLine && editor.contains(emptyLine) && isRenderedEmptyLinePlaceholder(emptyLine)) {
         const precedingNewline = segments.find(segment => segment.boundaryAfter?.container === emptyLine);
         if (precedingNewline) return precedingNewline.end;
         return 0;
@@ -1252,6 +1252,10 @@ export function attachMarkdownContentEditor(editor) {
         if (editor.dataset.directEditorBound !== 'true') {
             editor.dataset.directEditorBound = 'true';
             editor.addEventListener('beforeinput', (event) => {
+                editor._directEditorInputRevision = (editor._directEditorInputRevision || 0) + 1;
+                if (!/Composition/.test(event.inputType || '')) {
+                    delete editor._directEditorPendingCompositionSelection;
+                }
                 const selection = getContentEditableSelection(editor);
                 editor._directEditorBeforeInput = {
                     inputType: event.inputType || '',
@@ -1295,6 +1299,8 @@ export function attachMarkdownContentEditor(editor) {
                 }
             });
             editor.addEventListener('compositionstart', () => {
+                delete editor._directEditorPendingCompositionSelection;
+                editor._directEditorInputRevision = (editor._directEditorInputRevision || 0) + 1;
                 commitNyaitterImeComposition(editor);
                 const selection = getContentEditableSelection(editor);
                 editor._directEditorSystemComposition = {
@@ -1334,13 +1340,21 @@ export function attachMarkdownContentEditor(editor) {
                 delete editor._directEditorBeforeInput;
                 editor._directEditorPendingCompositionSelection = selection;
                 renderDirectContentEditor(editor, selection);
+                const revision = editor._directEditorInputRevision;
                 scheduleNextFrame(() => {
-                    if (document.activeElement === editor) {
+                    if (
+                        document.activeElement === editor &&
+                        !editor._markdownEditorCompositionActive &&
+                        editor._directEditorInputRevision === revision
+                    ) {
                         setContentEditableSelection(
                             editor,
                             selection.start,
                             selection.end,
                         );
+                    }
+                    if (editor._directEditorPendingCompositionSelection === selection) {
+                        delete editor._directEditorPendingCompositionSelection;
                     }
                 });
                 autoResizeMarkdownEditor(editor);

@@ -1321,6 +1321,7 @@ export async function showSettingsScreen(
             { id: 'dm:read', label: 'ダイレクトメッセージの閲覧', desc: 'DMの閲覧' },
             { id: 'dm:write', label: 'ダイレクトメッセージの送信', desc: 'DMの送信' },
             { id: 'notifications:read', label: '通知の閲覧', desc: '通知の確認' },
+            { id: 'storage:access', label: 'ストレージへのアクセス', desc: 'ファイル・プロジェクトの保存、閲覧、更新、削除' },
             { id: 'continuous_access', label: '継続アクセス', desc: 'バックグラウンドでの継続的なアクセス' },
         ];
 
@@ -1442,6 +1443,7 @@ export async function showSettingsScreen(
                 'dm:read': 'DM閲覧',
                 'dm:write': 'DM送信',
                 'notifications:read': '通知閲覧',
+                'storage:access': 'ストレージ',
                 'continuous_access': '継続アクセス',
             };
             const scopesList = Array.isArray(app.scopes) ? app.scopes : [];
