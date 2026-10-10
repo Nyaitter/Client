@@ -4,26 +4,56 @@ importScripts('./config.js');
 const { apiUrl } = self.NyaitterClientConfig;
 let apiEndpointPath = getSameOriginEndpointPath(apiUrl('/'));
 let userFileEndpointPath = null;
-let nyaitterClient = null;
-
-function getNyaitterJsUrl(value) {
-  const source = String(value || '').trim();
-  if (/^(?:https?:)?\/\//i.test(source)) return source;
-  return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(source || 'latest')}/dist/nyaitter.js`;
-}
-
-const nyaitterClientReady = self.NyaitterClientConfig.ready.then(() => {
-  importScripts(getNyaitterJsUrl(self.NyaitterClientConfig.nyaitterJs));
-  const endpoint = new URL(self.NyaitterClientConfig.apiEndpoint, self.location.href);
-  nyaitterClient = new self.Nyaitter.NyaitterClient({
-    baseUrl: `${endpoint.origin}${endpoint.pathname.replace(/\/+$/, '')}`,
-  });
+const configReady = self.NyaitterClientConfig.ready.then(() => {
   apiEndpointPath = getSameOriginEndpointPath(apiUrl('/'));
   userFileEndpointPath = getSameOriginEndpointPath(self.NyaitterClientConfig.userFileEndpoint || '');
 });
 
-function sdkRequest(method, path, options = {}) {
-  return nyaitterClientReady.then(() => nyaitterClient.request(method, path, options));
+async function sdkRequest(method, path, options = {}) {
+  await configReady;
+  const response = await fetch(apiUrl(path), {
+    method,
+    credentials: 'include',
+    headers: { Accept: 'application/json', ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+const CACHE_NAME = 'nyaitter-client-v2';
+const REVALIDATE_INTERVAL = 30_000;
+let cachePromise;
+const pendingFetches = new Map();
+const revalidatedAt = new Map();
+
+function openAssetCache() {
+  if (!cachePromise) {
+    cachePromise = caches.open(CACHE_NAME).catch(() => {
+      cachePromise = null;
+      return null;
+    });
+  }
+  return cachePromise;
+}
+
+function fetchAsset(request, cacheKey, event) {
+  const key = request.url;
+  let pending = pendingFetches.get(key);
+  if (!pending) {
+    pending = fetch(request).then((response) => {
+      if (isCacheableStaticResponse(response)) {
+        const copy = response.clone();
+        // Cache storage errors must not discard a successful network response.
+        event.waitUntil(openAssetCache().then((cache) => cache?.put(cacheKey, copy)).catch(() => {}));
+        if (revalidatedAt.size >= 256) revalidatedAt.delete(revalidatedAt.keys().next().value);
+        revalidatedAt.set(key, Date.now());
+      }
+      return response;
+    }).finally(() => pendingFetches.delete(key));
+    pendingFetches.set(key, pending);
+  }
+  return pending.then((response) => response.clone());
 }
 
 function getSameOriginEndpointPath(value) {
@@ -129,8 +159,11 @@ function isCacheableStaticResponse(response) {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open('nyaitter-client')
-      .then((cache) => cache.addAll(APP_SHELL))
+    openAssetCache()
+      .then((cache) => cache && Promise.allSettled(APP_SHELL.map(async (path) => {
+        const response = await fetch(path);
+        if (isCacheableStaticResponse(response)) await cache.put(path, response);
+      })))
       .then(() => self.skipWaiting()),
   );
 });
@@ -139,8 +172,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys
-        .filter((key) => key.startsWith('nyaitter-client-'))
+        .filter((key) => (key === 'nyaitter-client' || key.startsWith('nyaitter-client-')) && key !== CACHE_NAME)
         .map((key) => caches.delete(key))))
+      .catch(() => {})
       .then(() => self.clients.claim()),
   );
 });
@@ -162,23 +196,15 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate' || isStaticAsset) {
     const cacheKey = request.mode === 'navigate' ? '/index.html' : request;
     event.respondWith(
-      caches.match(cacheKey).then((cachedResponse) => {
-        const updateCache = fetch(request).then((response) => {
-          if (isCacheableStaticResponse(response)) {
-            const copy = response.clone();
-            return caches.open('nyaitter-client')
-              .then((cache) => cache.put(cacheKey, copy))
-              .then(() => response);
-          }
-          return response;
-        });
-
+      openAssetCache().then((cache) => cache?.match(cacheKey)).catch(() => null).then((cachedResponse) => {
         if (cachedResponse) {
-          event.waitUntil(updateCache.catch(() => {}));
+          if (Date.now() - (revalidatedAt.get(request.url) || 0) >= REVALIDATE_INTERVAL) {
+            event.waitUntil(fetchAsset(request, cacheKey, event).catch(() => {}));
+          }
           return cachedResponse;
         }
-
-        return updateCache.catch(() => caches.match(cacheKey));
+        return fetchAsset(request, cacheKey, event).catch(() =>
+          new Response('Network unavailable', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
       }),
     );
     return;
