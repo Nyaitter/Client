@@ -132,7 +132,7 @@ export async function showDocsApiScreen(showScreenFn) {
                 </button>
                 <h2 style="margin: 0; font-size: 1.25rem;">API ドキュメント</h2>
             </div>
-            <a href="/api/spec" target="_blank" download="nyaitter-openapi.json" class="docs-btn-outline" title="OpenAPI 3.0 仕様 JSON をダウンロード">
+            <a href="${escapeHTML(globalThis.NyaitterClientConfig.apiUrl('/api/spec'))}" target="_blank" rel="noopener noreferrer" download="nyaitter-openapi.json" class="docs-btn-outline" title="OpenAPI 3.0 仕様 JSON をダウンロード">
                 ${ICONS.download}
             </a>
         </div>

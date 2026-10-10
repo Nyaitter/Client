@@ -36,7 +36,9 @@ function renderPortalList(documents) {
 
     listContainer.innerHTML = filtered.map((doc) => {
         const rawUrl = typeof doc.url === 'string' ? doc.url.trim() : '';
-        const safeUrl = getSafeConfiguredFileUrl(rawUrl) || '#';
+        const safeUrl = /^#[^\u0000-\u001F\u007F"'<>]+$/.test(rawUrl)
+            ? rawUrl
+            : (getSafeConfiguredFileUrl(rawUrl) || '#');
         const isExternal = /^https?:\/\//i.test(safeUrl);
         return `
         <a href="${escapeHTML(safeUrl)}" class="docs-portal-item" ${isExternal ? 'target="_blank" rel="noopener noreferrer"' : ''}>
