@@ -1,3 +1,4 @@
+import { handleCallEvent, callConnectionClosed } from './calls.js';
 import { apiRequest } from '../api.js';
 import { trackRealtimeUsage } from './networkUsage.js';
 import {
@@ -29,6 +30,7 @@ import { appendRealtimeDmMessage } from './dm.js';
 import { updateNavAndSidebars } from './sidebar.js';
 
 const { apiWebSocketUrl } = globalThis.NyaitterClientConfig || {};
+let guestRealtime = false;
 
 export function markRealtimeSummaryFresh() {
     const user = getCurrentUser();
@@ -71,6 +73,8 @@ export function clearRealtimeTimers() {
 }
 
 export function stopRealtimeConnection() {
+    guestRealtime = false;
+    callConnectionClosed();
     setRealtimeShouldReconnect(false);
     clearRealtimeTimers();
     const socket = getRealtimeChannel();
@@ -89,7 +93,7 @@ export function scheduleRealtimeReconnect() {
     if (isDataSaverEnabled()) return;
     if (
         !getRealtimeShouldReconnect() ||
-        !getCurrentUser() ||
+        (!getCurrentUser() && !guestRealtime) ||
         getRealtimeReconnectTimer()
     ) {
         return;
@@ -101,14 +105,16 @@ export function scheduleRealtimeReconnect() {
     setRealtimeReconnectTimer(
         setTimeout(() => {
             setRealtimeReconnectTimer(null);
-            connectRealtimeSocket();
+            connectRealtimeSocket(guestRealtime);
         }, delay),
     );
 }
 
 export function handleRealtimeEvent(event) {
     const user = getCurrentUser();
-    if (!user || !event || typeof event.type !== 'string') return;
+    if (!event || typeof event.type !== 'string') return;
+    if (handleCallEvent(event)) return;
+    if (!user) return;
 
     if (event.type === 'notification_new') {
         const normalized = normalizeStructuredNotification(event.notification);
@@ -211,6 +217,7 @@ export function handleRealtimeEvent(event) {
         }
         markRealtimeSummaryFresh();
         if (changed) void updateNavAndSidebars();
+        return;
     }
 
     if (event.type === 'dm_read') {
@@ -236,16 +243,17 @@ export function handleRealtimeEvent(event) {
                 }
             });
         }
+        return;
     }
 }
 
-export function connectRealtimeSocket() {
+export function connectRealtimeSocket(guestMode = guestRealtime) {
     if (isDataSaverEnabled()) {
         stopRealtimeConnection();
         return;
     }
-    if (!getRealtimeShouldReconnect() || !getCurrentUser()) return;
-    const authKey = 'cookie';
+    if (!getRealtimeShouldReconnect() || (!getCurrentUser() && !guestMode)) return;
+    const authKey = guestMode ? 'guest' : 'cookie';
     if (
         getRealtimeChannel() &&
         getRealtimeAuthKey() === authKey &&
@@ -266,7 +274,7 @@ export function connectRealtimeSocket() {
     socket.onopen = () => {
         if (getRealtimeChannel() !== socket) return;
         setRealtimeReconnectAttempts(0);
-        void refreshNavSummaryFallback();
+        if (!guestMode) void refreshNavSummaryFallback();
         if (getRealtimePingTimer()) clearInterval(getRealtimePingTimer());
         setRealtimePingTimer(
             setInterval(() => {
@@ -287,15 +295,39 @@ export function connectRealtimeSocket() {
 
     socket.onclose = () => {
         if (getRealtimeChannel() !== socket) return;
+        callConnectionClosed();
         setRealtimeChannel(null);
         setRealtimeAuthKey(null);
         if (getRealtimePingTimer()) clearInterval(getRealtimePingTimer());
         setRealtimePingTimer(null);
         if (!isDataSaverEnabled()) {
-            refreshNavSummaryFallback();
+            if (!guestMode) refreshNavSummaryFallback();
             scheduleRealtimeReconnect();
         }
     };
+}
+
+export function connectGuestRealtime() {
+    guestRealtime = true;
+    setRealtimeShouldReconnect(true);
+    const current = getRealtimeChannel();
+    if (current?.readyState === WebSocket.OPEN) return Promise.resolve();
+    connectRealtimeSocket(true);
+    return new Promise((resolve, reject) => {
+        const startedAt = Date.now();
+        const poll = () => {
+            const socket = getRealtimeChannel();
+            if (!guestRealtime) return reject(new Error('ゲスト通話の接続を中止しました。'));
+            if (socket?.readyState === WebSocket.OPEN) return resolve();
+            if (Date.now() - startedAt > 10000) return reject(new Error('ゲスト通話に接続できませんでした。'));
+            setTimeout(poll, 100);
+        };
+        poll();
+    });
+}
+
+export function stopGuestRealtime() {
+    if (guestRealtime) stopRealtimeConnection();
 }
 
 export function subscribeToChanges() {

@@ -2,12 +2,18 @@ import { getAllUsersCache } from './state.js';
 
 const { apiUrl, userFileUrl } = globalThis.NyaitterClientConfig;
 
+// 認証系はユーザーや設定の変化で内容が変わるため、ブラウザの条件付きGETで
+// 古い値を再利用させない。
+const NO_STORE_AUTH_PATHS = [
+    '/server/auth/me',
+    '/server/auth/providers',
+    '/server/auth/linked-providers',
+];
+
 export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
     const headers = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    // 本人専用の認証状態は設定・リアクション更新後に変化するため、ブラウザの
-    // 条件付きGETで古いcurrentUserを復元させない。
-    const isAuthStateRequest = String(path).startsWith('/server/auth/me');
+    const isAuthStateRequest = NO_STORE_AUTH_PATHS.some((prefix) => String(path).startsWith(prefix));
     try {
         const response = await globalThis.NyaitterClientInstance.requestResponse(
             method,

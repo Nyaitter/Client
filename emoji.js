@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const container = document.getElementById('emoji-container');
 	if (!container) return;
 
+	// ルート直下絶対パス (/emoji/...) ではなく、この配信ページのベース基準で解決する。
+	const emojiBaseUrl = new URL('emoji/', document.baseURI);
 	const isSafeEmojiId = (value) => /^[A-Za-z0-9_-]{1,80}$/.test(String(value || ''));
 	const nextFrame =
 		window.requestAnimationFrame || ((callback) => window.setTimeout(callback, 0));
@@ -67,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 	try {
-		const response = await fetch('/emoji/list.json', { credentials: 'same-origin' });
+		const response = await fetch(new URL('list.json', emojiBaseUrl), { credentials: 'same-origin' });
 		if (!response.ok) throw new Error(`HTTP ${response.status}`);
 		const emojiList = await response.json();
 		if (!Array.isArray(emojiList) || emojiList.length === 0) {
@@ -84,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 			const card = document.createElement('div');
 			card.className = 'emoji-card';
 			const image = document.createElement('img');
-			image.src = `/emoji/${encodeURIComponent(emojiId)}.svg`;
+			image.src = `${emojiBaseUrl.href}${encodeURIComponent(emojiId)}.svg`;
 			image.alt = displayName;
 			image.className = 'emoji-image';
 			image.loading = 'lazy';

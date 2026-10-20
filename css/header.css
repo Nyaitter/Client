@@ -1,0 +1,129 @@
+/* NyaitterUI の画面共通ヘッダー */
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header {
+    box-sizing: border-box;
+    min-height: 72px;
+    padding: 14px 22px;
+    background: color-mix(in srgb, var(--nui-bg) 92%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--nui-border) 75%, transparent);
+    backdrop-filter: blur(20px) saturate(135%);
+    -webkit-backdrop-filter: blur(20px) saturate(135%);
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header :is(.header-with-back-button, .header-with-action-button) {
+    min-width: 0;
+    min-height: 44px;
+    gap: 14px;
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header h2 {
+    min-width: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: -0.025em;
+    overflow-wrap: anywhere;
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header .header-with-back-button > h2 {
+    flex: 1;
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header .header-back-btn {
+    box-sizing: border-box;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    padding: 10px;
+    color: var(--nui-text);
+    background: var(--nui-surface);
+    border: 1px solid color-mix(in srgb, var(--nui-border) 65%, transparent);
+    border-radius: 14px;
+    text-decoration: none;
+    transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header .header-back-btn:hover {
+    background: color-mix(in srgb, var(--nui-accent) 10%, var(--nui-bg));
+    border-color: color-mix(in srgb, var(--nui-accent) 35%, var(--nui-border));
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header .header-action-btn {
+    min-height: 40px;
+    max-width: 55%;
+    padding: 8px 16px;
+    border: 1px solid color-mix(in srgb, var(--nui-accent) 22%, var(--nui-border));
+    border-radius: var(--nui-radius-pill);
+    background: color-mix(in srgb, var(--nui-accent) 8%, var(--nui-bg));
+    color: var(--nui-text);
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header .header-action-btn:hover {
+    background: color-mix(in srgb, var(--nui-accent) 16%, var(--nui-bg));
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header :is(button, a):focus-visible {
+    outline: 2px solid var(--nui-accent);
+    outline-offset: 3px;
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header .header-search-bar {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    gap: 10px;
+    padding: 8px 14px;
+    border: 1px solid var(--nui-border);
+    border-radius: 16px;
+    background: var(--nui-surface);
+    transition: border-color 160ms ease;
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header .header-search-bar:focus-within {
+    border-color: var(--nui-border);
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header .header-search-bar input {
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    font-size: 0.95rem;
+}
+
+[data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header .header-search-bar + h2 {
+    margin-top: 16px;
+    font-size: 0.95rem;
+    color: var(--nui-muted);
+}
+
+@media (max-width: 544px) {
+    [data-nyaitter-ui='nui'] body:not([data-active-screen='profile-screen']) #page-header {
+        min-height: 72px;
+        padding: 14px 18px 14px 76px;
+    }
+
+    [data-nyaitter-ui='nui'] body:is([data-active-screen='main-screen'], [data-active-screen='post-detail-screen'], [data-active-screen='dm-screen']) #page-header {
+        padding-left: 18px;
+    }
+
+    [data-nyaitter-ui='nui'] body[data-active-screen='main-screen'] #page-header {
+        padding-right: 76px;
+        padding-left: 76px;
+    }
+
+    [data-nyaitter-ui='nui'] body[data-active-screen='main-screen'] .home-header-logo {
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    [data-nyaitter-ui='nui'] body[data-active-screen='main-screen'] .home-header-logo .nyaitter-logo-image {
+        max-height: 30px;
+        max-width: 100%;
+        object-fit: contain;
+    }
+}

@@ -3,20 +3,20 @@
    ========================================================================== */
 
 .account-button {
-width: 100%;
+    width: 100%;
     font-size: 1rem;
     justify-content: flex-start;
     gap: 0.8rem;
 }
 
 .account-button img {
-width: 40px;
+    width: 40px;
     height: 40px;
     border-radius: 50%;
 }
 
 .timeline-tab-button {
-flex: 1 0 8rem;
+    flex: 1 0 8rem;
     min-width: 8rem;
     white-space: nowrap;
     padding: 1rem;
@@ -39,11 +39,11 @@ flex: 1 0 8rem;
 }
 
 .timeline-tab-button:hover {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
 }
 
 .timeline-tab-button.active::after {
-content: '';
+    content: '';
     position: absolute;
     bottom: 0;
     left: 50%;
@@ -55,12 +55,12 @@ content: '';
 }
 
 .timeline-tab-button.active {
-color: var(--text-color);
+    color: var(--text-color);
     font-weight: 700;
 }
 
 .new-posts-indicator button {
-background-color: var(--primary-color);
+    background-color: var(--primary-color);
     color: white;
     border: none;
     padding: 0.5rem 1rem;
@@ -72,12 +72,12 @@ background-color: var(--primary-color);
 }
 
 .new-posts-indicator button:hover {
-background-color: var(--primary-hover-color);
+    background-color: var(--primary-hover-color);
 }
 
 .post-account-menu-loading,
 .post-account-menu-empty {
-display: grid;
+    display: grid;
     min-height: 4rem;
     margin: 0;
     place-items: center;
@@ -86,7 +86,7 @@ display: grid;
 }
 
 .post-account-menu-loading .spinner {
-width: 1.4rem;
+    width: 1.4rem;
     height: 1.4rem;
     margin: 0;
 }
@@ -124,16 +124,16 @@ width: 1.4rem;
 
 .attachment-button svg,
 .post-poll-button svg {
-stroke: var(--text-color);
+    stroke: var(--text-color);
     fill: none;
 }
 
 .post-mask-button svg {
-stroke: var(--text-color);
+    stroke: var(--text-color);
 }
 
 .post-actions button {
-background: none;
+    background: none;
     border: none;
     color: var(--secondary-text-color);
     padding: 0;
@@ -144,8 +144,16 @@ background: none;
     cursor: pointer;
 }
 
+/* 端末の表示倍率 0.8 を考慮し、指で押す要素は画面上24px以上を確保する。 */
+@media (max-width: 544px) {
+    .post-actions button {
+        min-width: 30px;
+        min-height: 30px;
+    }
+}
+
 .post-actions button svg {
-width: 1.25rem;
+    width: 1.25rem;
     height: 1.25rem;
     vertical-align: middle;
     fill: none;
@@ -174,33 +182,33 @@ width: 1.25rem;
 }
 
 .like-button:hover {
-color: var(--like-color);
+    color: var(--like-color);
 }
 
 .like-button.liked {
-color: var(--like-color);
+    color: var(--like-color);
     font-weight: bold; /* いいね済みの数字を太字に */
 }
 
 .like-button.liked svg {
-fill: currentColor; /* いいね済みのアイコンを塗りつぶす */
+    fill: currentColor; /* いいね済みのアイコンを塗りつぶす */
 }
 
 .star-button:hover {
-color: var(--star-color);
+    color: var(--star-color);
 }
 
 .star-button.starred {
-color: var(--star-color);
+    color: var(--star-color);
     font-weight: bold; /* お気に入り済みの数字を太字に */
 }
 
 .star-button.starred svg {
-fill: currentColor; /* お気に入り済みのアイコンを塗りつぶす */
+    fill: currentColor; /* お気に入り済みのアイコンを塗りつぶす */
 }
 
 .post-actions button svg {
-width: 1.25rem; /* サイズを微調整 */
+    width: 1.25rem; /* サイズを微調整 */
     height: 1.25rem;
     vertical-align: middle;
     fill: none; /* デフォルトは塗りつぶしなし */
@@ -315,33 +323,33 @@ width: 1.25rem; /* サイズを微調整 */
 }
 
 .recommend-user > button {
-flex-shrink: 0;
+    flex-shrink: 0;
 }
 
 .follow-button-not-following {
-background-color: var(--primary-color);
+    background-color: var(--primary-color);
     color: white;
     border: none;
 }
 
 .follow-button-not-following:hover {
-background-color: var(--primary-hover-color);
+    background-color: var(--primary-hover-color);
 }
 
 .follow-button-following {
-background-color: var(--main-bg-color);
+    background-color: var(--main-bg-color);
     color: var(--primary-color);
     border: 1px solid var(--primary-color);
 }
 
 .follow-button-following:hover {
-background-color: #fce8ec;
+    background-color: #fce8ec;
     color: var(--like-color);
     border-color: var(--like-color) !important;
 }
 
 #banner-signup-button {
-background: white; /* 通常の青に変更 */
+    background: white; /* 通常の青に変更 */
     color: black;
     border: none; /* 枠線を非表示に変更 */
     margin-left: 1rem;
@@ -354,11 +362,11 @@ background: white; /* 通常の青に変更 */
 }
 
 #banner-signup-button:hover {
-background-color: #f0f0f0; /* ホバー色も対応 */
+    background-color: #f0f0f0; /* ホバー色も対応 */
 }
 
 .modal-overlay {
-position: fixed;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -371,7 +379,7 @@ position: fixed;
 }
 
 .modal-content {
-background: var(--main-bg-color);
+    background: var(--main-bg-color);
     border-radius: 16px;
     width: 100%;
     max-width: 600px;
@@ -379,7 +387,7 @@ background: var(--main-bg-color);
 }
 
 .modal-close-btn {
-position: absolute;
+    position: absolute;
     top: 0.1rem;
     right: 0.2rem;
     background: #888;
@@ -425,7 +433,7 @@ position: absolute;
 }
 
 #image-preview-modal .modal-close-btn {
-top: max(1rem, env(safe-area-inset-top));
+    top: max(1rem, env(safe-area-inset-top));
     right: max(1rem, env(safe-area-inset-right));
     z-index: 12;
     background: rgba(0, 0, 0, 0.6);
@@ -443,12 +451,12 @@ top: max(1rem, env(safe-area-inset-top));
 }
 
 #image-preview-modal .modal-close-btn:hover {
-background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.85);
     transform: scale(1.08);
 }
 
 .image-modal-nav-btn {
-position: absolute;
+    position: absolute;
     top: 50%;
     transform: translateY(-50%);
     z-index: 11;
@@ -467,12 +475,12 @@ position: absolute;
 }
 
 .image-modal-nav-btn:hover {
-background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.85);
     transform: translateY(-50%) scale(1.08);
 }
 
 .image-modal-nav-btn svg {
-width: 22px;
+    width: 22px;
     height: 22px;
     stroke: currentColor;
     stroke-width: 2.5;
@@ -481,15 +489,15 @@ width: 22px;
 }
 
 .image-modal-prev-btn {
-left: max(1rem, env(safe-area-inset-left));
+    left: max(1rem, env(safe-area-inset-left));
 }
 
 .image-modal-next-btn {
-right: max(1rem, env(safe-area-inset-right));
+    right: max(1rem, env(safe-area-inset-right));
 }
 
 .image-modal-counter {
-position: absolute;
+    position: absolute;
     bottom: max(1.5rem, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
@@ -506,7 +514,7 @@ position: absolute;
 }
 
 .tab-button {
-flex: 1 0 8rem;
+    flex: 1 0 8rem;
     min-width: 8rem;
     white-space: nowrap;
     padding: 1rem;
@@ -524,11 +532,11 @@ flex: 1 0 8rem;
 }
 
 .tab-button:hover {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
 }
 
 .tab-button.active::after {
-content: '';
+    content: '';
     position: absolute;
     bottom: 0;
     left: 50%;
@@ -540,12 +548,12 @@ content: '';
 }
 
 .tab-button.active {
-color: var(--text-color);
+    color: var(--text-color);
     font-weight: 700;
 }
 
 #reset-icon-btn {
-padding: 0.5rem 1rem;
+    padding: 0.5rem 1rem;
     border-radius: 9999px;
     border: 1px solid var(--border-color);
     background: none;
@@ -558,12 +566,12 @@ padding: 0.5rem 1rem;
 }
 
 #reset-icon-btn:hover {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
     border-color: var(--secondary-text-color);
 }
 
 #reset-header-btn {
-padding: 0.5rem 1rem;
+    padding: 0.5rem 1rem;
     border-radius: 9999px;
     border: 1px solid var(--border-color);
     background: none;
@@ -576,12 +584,12 @@ padding: 0.5rem 1rem;
 }
 
 #reset-header-btn:hover {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
     border-color: var(--secondary-text-color);
 }
 
 #loading-overlay {
-position: fixed;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -594,7 +602,9 @@ position: fixed;
 }
 
 .spinner {
-border: 4px solid var(--spin);
+    display: block;
+    margin: 2rem auto;
+    border: 4px solid var(--spin);
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -602,8 +612,18 @@ border: 4px solid var(--spin);
     animation: spin 1s ease infinite;
 }
 
+/* ボタン内・メニュー内・中央寄せ済み領域のスピナーは余白を打ち消す */
+button .spinner,
+.nav-item .spinner,
+.post-account-menu-loading .spinner,
+.post-group-menu-loading .spinner,
+.post-reply-control-menu-loading .spinner,
+.login-approval-wait-progress .spinner {
+    margin: 0;
+}
+
 .copy-btn {
-display: flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     background-color: rgba(255, 255, 255, 0.1);
@@ -616,11 +636,11 @@ display: flex;
 }
 
 .copy-btn:hover {
-background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 .copy-btn svg {
-width: 1em;
+    width: 1em;
     height: 1em;
 }
 
@@ -635,15 +655,15 @@ width: 1em;
 }
 
 .repost-button:hover {
-color: #00ba7c; /* 緑色 */
+    color: #00ba7c; /* 緑色 */
 }
 
 #account-switcher-modal .modal-content {
-padding: 2rem 1rem 1.5rem;
+    padding: 2rem 1rem 1.5rem;
 }
 
 .account-switcher-item .switcher-delete-btn {
-background: var(--main-bg-color);
+    background: var(--main-bg-color);
     border: none;
     color: var(--like-color);
     font-size: 1.2rem;
@@ -655,11 +675,11 @@ background: var(--main-bg-color);
 }
 
 .account-switcher-item .switcher-delete-btn:hover {
-background: var(--danger-color);
+    background: var(--danger-color);
 }
 
 .account-switcher-add-btn {
-width: 100%;
+    width: 100%;
     background-color: var(--primary-color);
     color: white;
     border: none;
@@ -672,11 +692,11 @@ width: 100%;
 }
 
 .account-switcher-add-btn:hover {
-background-color: var(--primary-hover-color);
+    background-color: var(--primary-hover-color);
 }
 
 .tag-post-button {
--webkit-appearance: none;
+    -webkit-appearance: none;
     appearance: none;
     width: 100%;
     padding: 1rem;
@@ -691,11 +711,11 @@ background-color: var(--primary-hover-color);
 }
 
 .tag-post-button:hover {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
 }
 
 .pull-to-refresh-indicator {
---pull-distance: 0px;
+    --pull-distance: 0px;
     --pull-opacity: 0;
     position: fixed;
     top: max(0.5rem, env(safe-area-inset-top));
@@ -722,23 +742,23 @@ background-color: var(--bg-color);
 }
 
 .pull-to-refresh-indicator.is-pulling {
-transition: none;
+    transition: none;
 }
 
 .pull-to-refresh-indicator.is-ready {
-color: var(--primary-color);
+    color: var(--primary-color);
     font-weight: 700;
 }
 
 .pull-to-refresh-indicator.is-refreshing {
---pull-opacity: 1;
+    --pull-opacity: 1;
     transform: translate(-50%, 0.5rem);
     color: var(--primary-color);
     font-weight: 700;
 }
 
 .pull-to-refresh-icon {
-width: 1.25rem;
+    width: 1.25rem;
     height: 1.25rem;
     fill: none;
     stroke: currentColor;
@@ -749,11 +769,11 @@ width: 1.25rem;
 }
 
 .pull-to-refresh-indicator.is-ready .pull-to-refresh-icon {
-transform: rotate(180deg);
+    transform: rotate(180deg);
 }
 
 .pull-to-refresh-indicator.is-refreshing .pull-to-refresh-icon {
-animation: pull-to-refresh-spin 800ms linear infinite;
+    animation: pull-to-refresh-spin 800ms linear infinite;
 }
 
 @keyframes pull-to-refresh-spin {
@@ -764,7 +784,7 @@ to {
 
 html.pull-to-refresh-enabled,
 body.pull-to-refresh-enabled {
-overscroll-behavior-y: contain;
+    overscroll-behavior-y: contain;
 }
 
 /* Tab Swipe Transitions */
@@ -1786,6 +1806,40 @@ overscroll-behavior-y: contain;
     border-radius: 0;
     border-left: none;
     border-right: none;
+}
+
+/* ==========================================================================
+   トースト通知（操作結果をモーダルを開かずに伝える）
+   ========================================================================== */
+.nyaitter-toast-container {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 2200;
+    pointer-events: none;
+}
+
+.nyaitter-toast {
+    max-width: min(90vw, 420px);
+    background: var(--text-color);
+    color: var(--main-bg-color);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.nyaitter-toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 

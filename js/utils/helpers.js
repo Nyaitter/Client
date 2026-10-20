@@ -2,6 +2,11 @@ import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { getCurrentUser, getServerClientLimits, setServerClientLimits } from '../state.js';
 import { apiRequest } from '../api.js';
+import { applyServerUiMode, applyUserUiMode } from '../modules/uiMode.js';
+
+// ルート直下絶対パス (/emoji/neko.svg) ではなく、このモジュール (js/utils/) からの
+// 相対で解決する。プロキシ配下のパス接頭辞を保つ。
+const NEKO_EMOJI_URL = new URL('../../emoji/neko.svg', import.meta.url).href;
 
 export { getServerClientLimits, setServerClientLimits };
 
@@ -184,6 +189,13 @@ export async function loadServerClientLimits() {
             return false;
         }
         globalThis.NyaitterServerStatus = data;
+        // 公開UI設定 (client_config.ui) を NyaitterUI に取り込む。読み込み時点で未取得でも、
+        // ここで再読込することでテーマ/アクセント/機能フラグ/翻訳が反映される。
+        globalThis.NyaitterUI?.resetConfig?.();
+        // サーバー既定の表示UIを反映する（ユーザー設定があればそちらが優先される）。
+        applyServerUiMode(data?.client_config?.ui?.uiMode);
+        // ログイン済みならアカウント設定 (user.settings.ui_mode) を優先適用する。
+        applyUserUiMode(getCurrentUser()?.settings?.ui_mode);
         setServerClientLimits(data.client_limits);
         applyServerInputLimits(document);
         initServerInputLimitsObserver();
@@ -346,6 +358,31 @@ export function showAppConfirm(message) {
     return openAppDialog('confirm', message);
 }
 
+let toastContainer = null;
+
+/**
+ * 画面下に短時間だけ表示する軽量なトースト通知。
+ * モーダルを開かずに操作結果を伝えたい場面で使う。
+ */
+export function showToast(message, { duration = 2600 } = {}) {
+    if (typeof document === 'undefined') return;
+    if (!toastContainer || !toastContainer.isConnected) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'nyaitter-toast-container';
+        document.body.appendChild(toastContainer);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'nyaitter-toast';
+    toast.setAttribute('role', 'status');
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('is-visible'));
+    setTimeout(() => {
+        toast.classList.remove('is-visible');
+        setTimeout(() => toast.remove(), 220);
+    }, duration);
+}
+
 export function formatNyaitterId(user) {
     const sourceId = String(user?.nyaitter_id ?? user?.id ?? '')
         .trim()
@@ -478,6 +515,15 @@ export function getSafeHttpUrl(value) {
     } catch (_) {
         return '';
     }
+}
+
+const IMAGE_DATA_URL_PATTERN = /^data:image\/(?:png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=\s]+$/i;
+
+export function getSafeImageDataUrl(value) {
+    if (typeof value !== 'string') return '';
+    const normalized = value.trim();
+    if (normalized.length > 2_500_000) return '';
+    return IMAGE_DATA_URL_PATTERN.test(normalized) ? normalized : '';
 }
 
 export function getSafeConfiguredFileUrl(value) {
@@ -650,16 +696,20 @@ export function appendUrlCard(container, content, contextOptions = {}) {
 
 export function getUserIconUrl(user) {
     if (user?.icon_available === false) {
-        return '/emoji/neko.svg';
+        return NEKO_EMOJI_URL;
     }
 
     const iconData =
         typeof user?.icon_data === 'string' ? user.icon_data.trim() : '';
     if (iconData) {
+        const imageDataUrl = getSafeImageDataUrl(iconData);
+        if (imageDataUrl) return imageDataUrl;
         if (/^https?:\/\//i.test(iconData)) {
-            return getSafeHttpUrl(iconData) || '/emoji/neko.svg';
+            return getSafeHttpUrl(iconData) || NEKO_EMOJI_URL;
         }
-        const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(iconData);
+        const configuredUrl = /^data:/i.test(iconData)
+            ? null
+            : globalThis.NyaitterClientConfig?.userFileUrl?.(iconData);
         const safeConfiguredUrl = getSafeConfiguredFileUrl(configuredUrl);
         if (safeConfiguredUrl) return safeConfiguredUrl;
     }
@@ -669,24 +719,25 @@ export function getUserIconUrl(user) {
         const fallbackUrl = globalThis.NyaitterClientConfig?.apiUrl?.(
             `/server/api/users/${encodeURIComponent(String(userId))}/icon`,
         );
-        return fallbackUrl || `/server/api/users/${encodeURIComponent(String(userId))}/icon`;
+        // apiUrlが解決できない場合は同一オリジンのAPIへ直書きせず、同梱のプレースホルダーを使う。
+        return fallbackUrl || NEKO_EMOJI_URL;
     }
 
-    return '/emoji/neko.svg';
+    return NEKO_EMOJI_URL;
 }
 
 export function getUserHeaderImageUrl(user) {
     const headerData =
-        typeof user?.header_image === 'string'
-            ? user.header_image.trim()
-            : typeof user?.header_data === 'string'
-              ? user.header_data.trim()
-              : '';
+        typeof user?.header_image === 'string' ? user.header_image.trim() : '';
     if (headerData) {
+        const imageDataUrl = getSafeImageDataUrl(headerData);
+        if (imageDataUrl) return imageDataUrl;
         if (/^https?:\/\//i.test(headerData)) {
             return getSafeHttpUrl(headerData) || '';
         }
-        const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(headerData);
+        const configuredUrl = /^data:/i.test(headerData)
+            ? null
+            : globalThis.NyaitterClientConfig?.userFileUrl?.(headerData);
         const safeConfiguredUrl = getSafeConfiguredFileUrl(configuredUrl);
         if (safeConfiguredUrl) return safeConfiguredUrl;
     }

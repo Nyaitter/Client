@@ -121,6 +121,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
 
         // ── 返信セクション ─────────────────────────────────────────────
         const repliesHeader = document.createElement('h3');
+        repliesHeader.className = 'nui-section-title';
         repliesHeader.textContent = '返信';
         repliesHeader.style.cssText =
             'padding: 1rem; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-top: 1rem; margin-bottom: 0; font-size: 1.2rem;';
@@ -218,9 +219,10 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         }
 
         const repliesContainer = document.createElement('div');
+        repliesContainer.className = 'nui-list';
         contentDiv.appendChild(repliesContainer);
         const trigger = document.createElement('div');
-        trigger.className = 'load-more-trigger';
+        trigger.className = 'load-more-trigger nui-help-text';
         contentDiv.appendChild(trigger);
 
         let pagination = { page: 0, hasMore: replyBranches.length > 0 };
@@ -320,7 +322,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
 
                     const showMoreBtn = document.createElement('button');
                     showMoreBtn.type = 'button';
-                    showMoreBtn.className = 'thread-show-more-btn';
+                    showMoreBtn.className = 'thread-show-more-btn nui-button-secondary';
                     showMoreBtn.textContent = `続きを表示 (他 ${remainingDescendants.length} 件の返信)`;
 
                     showMoreBtn.addEventListener('click', () => {
@@ -403,7 +405,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         }
     } catch (e) {
         console.error('ポスト詳細表示エラー:', e);
-        contentDiv.innerHTML = `<p class="error-message">ポストの読み込みに失敗しました。</p>`;
+        contentDiv.innerHTML = `<p class="error-message nui-empty-text">ポストの読み込みに失敗しました。</p>`;
     } finally {
         showLoading(false);
     }

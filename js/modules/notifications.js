@@ -108,6 +108,10 @@ export function getNotificationMessageSuffix(notification) {
             return ' さんによってDMから削除されました。';
         case 'dm_host_transfer':
             return ' さんからDMの管理者権限を受け取りました。';
+        case 'dm_call':
+            return ' さんからコールされました。';
+        case 'group_call':
+            return ' さんがグループコールを開始しました。';
         case 'group_invite':
             return ' さんからグループ招待が届いています。';
         case 'group_join_request':
@@ -133,6 +137,9 @@ export function getNotificationDisplayText(notification) {
     if (structured.type === 'login_approval') {
         return '不明な場所からのログイン承認が必要です。';
     }
+    if (structured.type === 'account_recovery') {
+        return '不明な場所からアカウントアクセスの復旧依頼が届いています。心当たりがある場合は承認し、心当たりがない場合はブロックしてください。';
+    }
     if (structured.type === 'moderation_assignment') {
         return '新しいリクエストが割り当てられました。';
     }
@@ -141,6 +148,9 @@ export function getNotificationDisplayText(notification) {
     }
     if (structured.type === 'moderation_no_action') {
         return 'あなたが報告したコンテンツは、審査の結果、適切だと判定されたため対応されません。';
+    }
+    if (structured.type === 'moderation_action') {
+        return '運営による審査の結果、あなたのポストの公開範囲が変更されました。';
     }
     if (structured.type === 'appeal_approved') {
         return '異議申し立てが承認され、アカウントの凍結が解除されました。';
@@ -172,7 +182,7 @@ export function appendNotificationDisplay(container, notification) {
     }
 
     const timestamp = document.createElement('div');
-    timestamp.className = 'notification-timestamp';
+    timestamp.className = 'notification-timestamp nui-list-meta';
     timestamp.textContent = formatPostTimestamp({
         created_at: structured.created_at,
     });
@@ -204,7 +214,7 @@ export function appendNotificationDisplay(container, notification) {
             .trim();
         if (postPreview) {
             const preview = document.createElement('div');
-            preview.className = 'notification-target-post';
+            preview.className = 'notification-target-post nui-list-meta';
             preview.textContent = postPreview;
             preview.title = postPreview;
             container.appendChild(preview);

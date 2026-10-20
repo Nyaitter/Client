@@ -1,6 +1,7 @@
 import { DOM } from '../../dom.js';
 import { ICONS } from '../../icons.js';
 import { escapeHTML } from '../../utils/helpers.js';
+import { isCurrentUserProfile } from '../../modules/cache.js';
 
 export function renderHeader() {
     DOM.pageHeader.innerHTML = `
@@ -22,6 +23,9 @@ export function renderTabs(container, user, activeTab) {
         { key: 'media', name: 'メディア' },
         { key: 'likes', name: 'いいね' },
         { key: 'stars', name: 'お気に入り' },
+        ...(isCurrentUserProfile(user)
+            ? [{ key: 'scheduled', name: '予約済み' }]
+            : []),
         ...sharedGroups.map((group) => ({
             key: `group:${group.id}`,
             name: group.name || 'グループ',
@@ -29,8 +33,10 @@ export function renderTabs(container, user, activeTab) {
             title: group.name || 'グループ',
         })),
     ];
+    container.classList.add('nui-tabs');
+    container.setAttribute('data-nui', 'tabs');
     container.innerHTML = tabs.map((tab) => (
-        `<button class="tab-button ${tab.className || ''} ${tab.key === activeTab ? 'active' : ''}" data-tab="${escapeHTML(tab.key)}" title="${escapeHTML(tab.title || tab.name)}">${escapeHTML(tab.name)}</button>`
+        `<button class="tab-button nui-tab ${tab.className || ''} ${tab.key === activeTab ? 'active is-active' : ''}" data-tab="${escapeHTML(tab.key)}" title="${escapeHTML(tab.title || tab.name)}">${escapeHTML(tab.name)}</button>`
     )).join('');
     return tabs;
 }

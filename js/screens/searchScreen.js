@@ -1,3 +1,4 @@
+import { bindAdvancedSearch } from './search/advancedSearch.js';
 import { apiRequest } from '../api.js';
 import { DOM } from '../dom.js';
 import {
@@ -22,6 +23,7 @@ import {
     loadUsersWithPagination,
 } from '../modules/pagination.js';
 import { getEmoji } from '../modules/format.js';
+import { bindTabBar, setActiveTab } from '../modules/tabs.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
 import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
 import {
@@ -31,8 +33,10 @@ import {
 } from './search/view.js';
 
 let activeSearchRequestVersion = 0;
+let activeSearchQuery = '';
 
 export async function showSearchResults(query, tab = 'posts', showScreenFn = null) {
+    activeSearchQuery = query;
     renderSearchHeader(query, tab, getEmoji(escapeHTML(query)));
 
     const searchInput = document.getElementById('search-input');
@@ -57,18 +61,17 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
         };
     }
 
-    document
-        .getElementById('search-tabs-container')
-        ?.querySelectorAll('.tab-button')
-        .forEach((button) => {
-            button.onclick = (e) => {
-                e.stopPropagation();
-                void loadSearchTabContent(query, button.dataset.searchTab);
-            };
-        });
+    bindTabBar(DOM.pageHeader, {
+        containerSelector: '#search-tabs-container',
+        getKey: (button) => button.dataset.searchTab || '',
+        onChange: (tabKey) => {
+            void loadSearchTabContent(activeSearchQuery, tabKey);
+        },
+    });
 
     showScreenCompat('search-results-screen', showScreenFn);
 
+    bindAdvancedSearch(DOM.pageHeader, getActiveScreenContext());
     await loadSearchTabContent(query, tab);
 }
 
@@ -76,9 +79,9 @@ export async function loadSearchTabContent(query, tab) {
     const searchRequestVersion = ++activeSearchRequestVersion;
     const signal = getActiveScreenContext()?.signal;
     setCurrentSearchTab(tab);
-    document
-        .querySelectorAll('#search-tabs-container .tab-button')
-        .forEach((btn) => btn.classList.toggle('active', btn.dataset.searchTab === tab));
+    setActiveTab(document.getElementById('search-tabs-container'), tab, {
+        getKey: (button) => button.dataset.searchTab || '',
+    });
 
     setIsLoadingMore(false);
     if (getPostLoadObserver()) getPostLoadObserver().disconnect();
@@ -150,9 +153,10 @@ export async function loadSearchTabContent(query, tab) {
             showLoading(false);
         }
     } else {
-        if (getCurrentUser()) {
+        if (getCurrentUser() && !/(?:^|\s)-?(?:from|at|since|until|has|is):/i.test(query)) {
             const tagPostButton = document.createElement('button');
-            tagPostButton.className = 'tag-post-button';
+            tagPostButton.className = 'tag-post-button nui-button-secondary';
+            tagPostButton.setAttribute('data-nui', 'button-secondary');
             tagPostButton.innerHTML = 'このタグでポストする';
             tagPostButton.addEventListener('click', async () => {
                 if (!getCurrentUser()) return goToLoginPage();

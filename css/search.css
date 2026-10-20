@@ -3,11 +3,11 @@
    ========================================================================== */
 
 #sidebar-search-input {
-width: 100%;
+    width: 100%;
 }
 
 .sidebar-search-widget {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
     border-radius: 9999px;
     padding: 0.5rem 1rem;
     margin-bottom: 1rem;
@@ -16,7 +16,7 @@ background-color: var(--bg-color);
 }
 
 .sidebar-search-widget input {
-border: none;
+    border: none;
     background: transparent;
     outline: none;
     font-size: 1rem;
@@ -24,7 +24,7 @@ border: none;
 }
 
 .sidebar-search-widget svg {
-width: 20px;
+    width: 20px;
     height: 20px;
     fill: none;
     stroke: var(--secondary-text-color);
@@ -33,7 +33,7 @@ width: 20px;
 
 .explore-tabs,
 .search-tabs {
-display: flex;
+    display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
@@ -44,7 +44,7 @@ display: flex;
 }
 
 .trends-widget-container {
-border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
 }
 
 .explore-empty-message {
@@ -55,13 +55,13 @@ border-top: 1px solid var(--border-color);
 }
 
 .trends-widget-title {
-font-size: 1.25rem;
+    font-size: 1.25rem;
     font-weight: 800;
     padding: 0.75rem 1rem;
 }
 
 .trend-item {
-display: block;
+    display: block;
     padding: 0.75rem 1rem;
     text-decoration: none;
     color: inherit;
@@ -69,22 +69,22 @@ display: block;
 }
 
 .trend-item:hover {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
 }
 
 .trend-item-meta {
-font-size: 0.8rem;
+    font-size: 0.8rem;
     color: var(--secondary-text-color);
 }
 
 .trend-item-name {
-font-weight: 700;
+    font-weight: 700;
     font-size: 1.1rem;
     margin: 0.1rem 0;
 }
 
 .trend-item-count {
-font-size: 0.8rem;
+    font-size: 0.8rem;
     color: var(--secondary-text-color);
 }
 
@@ -92,7 +92,7 @@ font-size: 0.8rem;
 .settings-imposter .settings-bot-create-form input[type='number'],
 .settings-imposter .settings-bot-create-form select,
 .settings-imposter .settings-session-actions select {
-min-width: 0;
+    min-width: 0;
     margin: 0;
     padding: 0.65rem 0.9rem;
     border: 1px solid var(--border-color);
@@ -109,14 +109,178 @@ min-width: 0;
 
 .settings-imposter .settings-bot-create-form input[type='search'],
 .settings-imposter .settings-bot-create-form input[type='number'] {
-flex: 1 1 12rem;
+    flex: 1 1 12rem;
 }
 
 .settings-imposter .settings-bot-create-form input[type='search']:focus,
 .settings-imposter .settings-bot-create-form input[type='number']:focus,
 .settings-imposter .settings-bot-create-form select:focus,
 .settings-imposter .settings-session-actions select:focus {
-outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-color);
     outline-offset: 1px;
     border-color: transparent;
+}
+
+/* ==========================================================================
+   NyaitterUI 統一: 検索
+   ========================================================================== */
+
+/* ヘッダーの検索ボックスは nui-input の見た目を保ちつつ透明なバーにする。 */
+[data-nyaitter-ui='nui'] .header-search-bar .nui-input {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+[data-nyaitter-ui='nui'] .search-tabs.nui-tabs,
+[data-nyaitter-ui='nui'] .explore-tabs.nui-tabs {
+    flex-wrap: nowrap;
+    gap: 0;
+}
+
+[data-nyaitter-ui='nui'] #search-tabs-container .tab-button.nui-tab.active::after {
+    display: none;
+}
+
+[data-nyaitter-ui='nui'] #search-tabs-container .tab-button.nui-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+}
+
+/* 「このタグでポストする」は全幅のフラットなボタンに揃える。 */
+[data-nyaitter-ui='nui'] .tag-post-button.nui-button-secondary {
+    width: 100%;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    border-bottom: 1px solid var(--nui-border, var(--border-color));
+    background-color: var(--nui-bg, var(--main-bg-color));
+}
+
+
+.header-search-bar input:focus,
+.header-search-bar input:focus-visible,
+#sidebar-search-input:focus,
+#sidebar-search-input:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.advanced-search-button {
+    display: inline-flex;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border: 0;
+    border-radius: 10px;
+    color: var(--secondary-text-color);
+    background: transparent;
+    cursor: pointer;
+}
+.advanced-search-button:hover { color: var(--primary-color); background: var(--main-bg-color); }
+.advanced-search-button svg { width: 20px; height: 20px; stroke: currentColor; }
+
+.advanced-search-overlay {
+    box-sizing: border-box;
+    width: var(--app-vw, 100vw);
+    height: var(--app-dvh, 100dvh);
+    padding: 16px;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+.advanced-search-overlay .advanced-search-modal {
+    box-sizing: border-box;
+    max-width: 620px;
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 620px);
+    max-height: calc(var(--app-dvh, 100dvh) - 32px);
+    padding: 0;
+    overflow: hidden;
+}
+.advanced-search-heading {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+.advanced-search-heading h2 { margin: 0; font-size: 1.25rem; }
+.advanced-search-close {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border: 0;
+    border-radius: 12px;
+    color: var(--text-color);
+    background: var(--bg-color);
+    cursor: pointer;
+    font-size: 1.5rem;
+}
+.advanced-search-form { display: flex; flex-direction: column; gap: 0; min-height: 0; overflow: hidden; }
+.advanced-search-fields { padding: 20px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.advanced-search-fields > label,
+.advanced-search-fields fieldset { margin: 0 0 18px; }
+.advanced-search-fields label { display: flex; flex-direction: column; gap: 8px; font-weight: 500; font-size: 0.9rem; }
+.advanced-search-fields :is(input:not([type='checkbox']), select) {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    font: inherit;
+}
+.advanced-search-fields fieldset { min-width: 0; padding: 16px; border: 1px solid var(--border-color); border-radius: 14px; }
+.advanced-search-fields legend { padding: 0 6px; font-size: 0.95rem; font-weight: 700; }
+.advanced-search-fields legend small { margin-left: 6px; color: var(--secondary-text-color); font-size: 0.75rem; font-weight: 400; }
+.advanced-search-form .advanced-search-fields .advanced-search-checkbox { display: flex; flex-direction: row; align-items: center; margin-top: 12px; font-weight: 400; }
+.advanced-search-fields .advanced-search-checkbox input[type='checkbox'] {
+    flex: 0 0 18px;
+    width: 18px;
+    min-width: 18px;
+    max-width: 18px;
+    height: 18px;
+    min-height: 18px;
+    padding: 0;
+    margin: 0;
+    appearance: auto;
+    accent-color: var(--primary-color);
+}
+.advanced-search-checkbox span { flex: 1; min-width: 0; line-height: 1.5; }
+.advanced-search-date-range,
+.advanced-search-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.advanced-search-fields [data-search-date] { margin-top: 14px; }
+.advanced-search-fields [hidden] { display: none !important; }
+.advanced-search-kind { grid-column: 1 / -1; }
+.advanced-search-error { margin: 0; color: var(--like-color); font-size: 0.9rem; }
+.advanced-search-actions { display: flex; flex: none; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--border-color); background: var(--main-bg-color); }
+.advanced-search-actions button { min-height: 44px; padding: 10px 20px; border-radius: 999px; cursor: pointer; }
+@media (max-width: 384px) {
+    .advanced-search-heading { padding: 16px; }
+    .advanced-search-fields { padding: 16px; }
+    .advanced-search-actions { padding: 12px 16px; }
+    .advanced-search-date-range { grid-template-columns: 1fr; }
+}
+
+.header-search-bar input,
+.header-search-bar input:focus,
+.header-search-bar input:focus-visible {
+    border-color: transparent !important;
+}
+#sidebar-search-input,
+#sidebar-search-input:focus,
+#sidebar-search-input:focus-visible {
+    border-color: var(--border-color) !important;
 }

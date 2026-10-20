@@ -13,6 +13,11 @@ export {
     getEmoji,
 };
 
+// ルート直下絶対パスではなく、このモジュール (js/modules/) からの相対で解決する。
+// 配信ベース配下 (任意のリバースプロキシ接頭辞) でも壊れない。
+const EMOJI_BASE_URL = new URL('../../emoji/', import.meta.url);
+const LOGO_URL = new URL('../../logo.png', import.meta.url).href;
+
 export async function emoji_picker_create({
     onEmojiSelect = () => {},
     onClickOutside = () => {},
@@ -23,7 +28,7 @@ export async function emoji_picker_create({
         id: item,
         name: item,
         keywords: [item, 'NyaitterEmoji'],
-        skins: [{ src: `/emoji/${encodeURIComponent(item)}.svg` }],
+        skins: [{ src: `${EMOJI_BASE_URL.href}${encodeURIComponent(item)}.svg` }],
     }));
 
     const response = await fetch('https://cdn.jsdelivr.net/npm/@emoji-mart/data@1.2.1/sets/15/native.json');
@@ -46,7 +51,7 @@ export async function emoji_picker_create({
         ],
         categoryIcons: {
             nyaitter: {
-                svg: `<svg viewBox="0 0 1 1" aria-label="Nyaitter"><image href="/logo.png" width="1" height="1" preserveAspectRatio="xMidYMid meet"></image></svg>`,
+                svg: `<svg viewBox="0 0 1 1" aria-label="Nyaitter"><image href="${LOGO_URL}" width="1" height="1" preserveAspectRatio="xMidYMid meet"></image></svg>`,
             },
         },
         categories: [

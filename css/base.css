@@ -5,11 +5,11 @@
 *,
 *::before,
 *::after {
-box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 body {
-font-family:
+    font-family:
         'Noto Sans JP',
         -apple-system,
         BlinkMacSystemFont,
@@ -26,7 +26,7 @@ font-family:
 
 input,
 textarea {
-font-family:
+    font-family:
         'Noto Sans JP',
         -apple-system,
         BlinkMacSystemFont,
@@ -38,16 +38,38 @@ font-family:
 }
 
 .hidden {
-display: none !important;
+    display: none !important;
+}
+
+/* キーボード操作のときだけ現在位置を示す枠を出す。
+   各要素が自前のスタイルを持つ場合はそれを邪魔しないよう、詳細度を 0 にする。 */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--nui-accent, var(--primary-color));
+    outline-offset: 2px;
+}
+
+::selection {
+    background: color-mix(in srgb, var(--primary-color) 26%, transparent);
+}
+
+/* 動きを減らす設定の端末では、演出をほぼ即時に終える。 */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 img.emojione {
-width: 1.1rem;
+    width: 1.1rem;
     height: auto;
 }
 
 img.emoji {
-display: inline-block;
+    display: inline-block;
     width: 1em;
     height: 1em;
     padding-right: 1px;
@@ -55,7 +77,7 @@ display: inline-block;
 }
 
 .notocoloremoji {
-font-family:
+    font-family:
         'Noto Sans JP',
         'Noto Color Emoji',
         -apple-system,
@@ -68,7 +90,7 @@ font-family:
 }
 
 .nyaitter-emoji {
-background-color: var(--emoji-bg-color);
+    background-color: var(--emoji-bg-color);
 }
 
 .attachment-button,
@@ -145,31 +167,31 @@ background-color: var(--emoji-bg-color);
 }
 
 .emoji-pic-button svg {
-stroke: none;
+    stroke: none;
     fill: var(--text-color);
 }
 
 textarea.markdown-content-editor {
-font: inherit;
+    font: inherit;
     line-height: inherit;
     resize: none;
 }
 
 textarea.markdown-content-editor::placeholder {
-color: transparent;
+    color: transparent;
     -webkit-text-fill-color: transparent;
     opacity: 0;
 }
 
 #emoji-picker {
-position: fixed;
+    position: fixed;
     z-index: 100;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     border-radius: 8px;
 }
 
 em-emoji-picker {
---rgb-background: var(--emoji-mart);
+    --rgb-background: var(--emoji-mart);
 }
 
 .user-icon {

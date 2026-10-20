@@ -54,12 +54,20 @@ import {
 import { readSettingsForm } from './settings/formModel.js';
 import { rebuildSettings, bindSettingsDiscovery, showSettingsSaveStatus, bindSettingsNetworkUsage } from './settings/redesign.js';
 import { ALL_HOME_TABS, DEFAULT_HOME_TABS, getSavedHomeTabs } from './settings/homeTabs.js';
+import {
+    ALL_SIDEBAR_ITEMS,
+    SIDEBAR_ITEM_KEYS,
+    DEFAULT_SIDEBAR,
+    getSavedSideMenu,
+    writeSideMenuMirror,
+} from '../modules/sidebarItems.js';
 import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
 import { uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
 import {
     escapeHTML,
     getUserIconUrl,
     getUserHeaderImageUrl,
+    getSafeHttpUrl,
     copyTextToClipboard,
     formatSecurityTimestamp,
     formatNyaitterId,
@@ -67,9 +75,16 @@ import {
     applyServerInputLimits,
     showLoading,
     showAppAlert,
-    showAppPrompt,
     showAppConfirm,
 } from '../utils/helpers.js';
+import { getUiMode, setUiMode, applyUserUiMode } from '../modules/uiMode.js';
+
+// login.js（クラシックスクリプト）からもアプリ共通ダイアログを利用できるように橋渡しする。
+if (typeof globalThis.showAppAlert !== 'function') {
+    globalThis.showAppAlert = showAppAlert;
+}
+
+let linkSuccessListenerBound = false;
 
 const { apiUrl, turnstileSiteKey } = globalThis.NyaitterClientConfig || {};
 
@@ -121,10 +136,10 @@ async function requestTurnstileTokenModal() {
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.innerHTML = `
-            <div class="modal-content" style="max-width: 360px; padding: 1.5rem; text-align: center;">
+            <div class="modal-content nui-modal" style="max-width: 360px; padding: 1.5rem; text-align: center;">
                 <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
                 <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem;">セキュリティ確認</h3>
-                <p class="settings-help-text" style="margin-bottom: 1.25rem;">続行するには認証を完了してください。</p>
+                <p class="settings-help-text nui-help-text" style="margin-bottom: 1.25rem;">続行するには認証を完了してください。</p>
                 <div id="settings-turnstile-container" style="display: flex; justify-content: center; min-height: 65px;"></div>
             </div>
         `;
@@ -177,6 +192,39 @@ export function saveHomeTabs(tabs) {
     if (user) {
         if (!user.settings) user.settings = {};
         user.settings.home_tabs = finalTabs;
+        requestSettingsSave();
+    }
+}
+
+export function saveSideMenu(outlet, zones) {
+    if (outlet !== 'pc' && outlet !== 'mobile') return;
+
+    // 不明キーと重複を落とし、同じキーが両ゾーンにあればbar側を優先する
+    const seen = new Set();
+    const pickKeys = (keys) => (Array.isArray(keys) ? keys : []).filter((key) => {
+        if (!SIDEBAR_ITEM_KEYS.includes(key) || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    const bar = pickKeys(zones?.bar);
+    const more = pickKeys(zones?.more);
+
+    // どちらのゾーンにも無い項目はバー末尾に補完し、項目を落とさない
+    SIDEBAR_ITEM_KEYS.forEach((key) => {
+        if (seen.has(key)) return;
+        seen.add(key);
+        bar.push(key);
+    });
+
+    const next = { ...getSavedSideMenu(), [outlet]: { bar, more } };
+
+    const user = getCurrentUser();
+    const userId = user?.id ?? 'guest';
+    writeSideMenuMirror(userId, next);
+
+    if (user) {
+        if (!user.settings) user.settings = {};
+        user.settings.side_menu = next;
         requestSettingsSave();
     }
 }
@@ -304,6 +352,7 @@ export async function saveSettings(form, context = getActiveScreenContext()) {
         updateAccountData(updatedUser);
         applyInterfaceTheme(updatedUser.settings?.theme || 'light');
         applyColorTheme(updatedUser.settings || {});
+        applyUserUiMode(updatedUser.settings?.ui_mode);
         applyDataSaverRealtimePreference();
         refreshMarkdownContentEditors();
         await updateNavAndSidebars();
@@ -332,7 +381,7 @@ export async function showSettingsScreen(
     showScreenFn = null,
     context = {},
 ) {
-    // Controller移行中も既存の呼び出し形式を維持する。
+    // 呼び出し元によっては { group } 形式で渡される。
     if (initialGroup && typeof initialGroup === 'object') {
         initialGroup = initialGroup.group || getSettingsGroupFromHash();
     }
@@ -344,72 +393,118 @@ export async function showSettingsScreen(
     showScreenCompat('settings-screen', showScreenFn);
     const settingsScreenContext = getActiveScreenContext();
 
+    const bottomNav = document.getElementById('left-nav');
+    const updateSettingsInset = () => {
+        const inset = bottomNav && getComputedStyle(bottomNav).position === 'fixed'
+            ? bottomNav.offsetHeight : 0;
+        DOM.mainContent.style.setProperty('--settings-bottom-inset', `${inset}px`);
+    };
+    const bottomNavObserver = bottomNav && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(updateSettingsInset) : null;
+    bottomNavObserver?.observe(bottomNav);
+    window.addEventListener('resize', updateSettingsInset, { passive: true });
+    updateSettingsInset();
+    settingsScreenContext?.addCleanup(() => {
+        bottomNavObserver?.disconnect();
+        window.removeEventListener('resize', updateSettingsInset);
+        DOM.mainContent.style.removeProperty('--settings-bottom-inset');
+    });
+
     setNewIconDataUrl(null);
     setResetIconToDefault(false);
     setNewHeaderDataUrl(null);
     setResetHeaderToDefault(false);
 
     document.getElementById('settings-screen').innerHTML = `
-        <div class="settings-layout">
-            <nav class="settings-group-list" aria-label="設定グループ">
-                <a href="#settings/profile" class="settings-group-button" data-settings-group="profile">プロフィール</a>
-                <a href="#settings/home" class="settings-group-button" data-settings-group="home">ホーム</a>
-                <a href="#settings/privacy" class="settings-group-button" data-settings-group="privacy">プライバシーとセキュリティ</a>
-                <a href="#settings/ui" class="settings-group-button" data-settings-group="ui">UI / フォント</a>
-                <a href="#settings/notifications" class="settings-group-button" data-settings-group="notifications">通知</a>
-                <a href="#settings/storage" class="settings-group-button" data-settings-group="storage">ストレージ</a>
-                <a href="#settings/apps" class="settings-group-button" data-settings-group="apps">連携アプリ</a>
-                <a href="#settings/api" class="settings-group-button" data-settings-group="api">API / Bot</a>
-                <a href="#settings/imposter" class="settings-group-button" data-settings-group="imposter">インポスター</a>
-                <a href="#settings/resources" class="settings-group-button" data-settings-group="resources">リソース</a>
+        <div class="settings-layout nui-split" data-nui="split">
+            <nav class="settings-group-list nui-nav" aria-label="設定グループ" data-nui="nav">
+                <a href="#settings/profile" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="profile">プロフィール</a>
+                <a href="#settings/home" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="home">ホーム</a>
+                <a href="#settings/privacy" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="privacy">プライバシーとセキュリティ</a>
+                <a href="#settings/ui" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="ui">UI / フォント</a>
+                <a href="#settings/notifications" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="notifications">通知</a>
+                <a href="#settings/storage" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="storage">ストレージ</a>
+                <a href="#settings/apps" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="apps">連携アプリ</a>
+                <a href="#settings/api" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="api">API / Bot</a>
+                <a href="#settings/imposter" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="imposter">インポスター</a>
+                <a href="#settings/resources" class="settings-group-button nui-nav-item" data-nui="nav-item" data-settings-group="resources">リソース</a>
             </nav>
-            <form id="settings-form" class="settings-detail">
-                <div class="settings-detail-heading">
-                    <h3 id="settings-group-title">プロフィール</h3>
-                    <p id="settings-group-description" class="settings-group-description">プロフィールに表示される情報と画像を設定します。</p>
+            <form id="settings-form" class="settings-detail nui-form" data-nui="form">
+                <div class="settings-detail-heading nui-section-heading">
+                    <h3 id="settings-group-title" class="nui-section-title">プロフィール</h3>
+                    <p id="settings-group-description" class="settings-group-description nui-help-text">プロフィールに表示される情報と画像を設定します。</p>
                 </div>
-                <section class="settings-group-panel" data-settings-panel="home" hidden>
+                <section class="nui-section settings-group-panel" data-settings-panel="home" hidden>
                     <div class="home-tabs-customizer">
-                        <div class="home-tabs-section">
-                            <h4 class="home-tabs-section-title">利用可能なタブ</h4>
-                            <p class="settings-help-text">下側の有効なタブにドラッグするか、「＋」ボタンを押して追加できます。</p>
-                            <div id="home-tabs-available-list" class="home-tabs-list home-tabs-available-list" data-zone="available"></div>
+                        <div class="home-tabs-section nui-card" data-nui="card">
+                            <h4 class="home-tabs-section-title nui-section-title">利用可能なタブ</h4>
+                            <p class="settings-help-text nui-help-text">下側の有効なタブにドラッグするか、「＋」ボタンを押して追加できます。</p>
+                            <div id="home-tabs-available-list" class="home-tabs-list home-tabs-available-list nui-list" data-nui="list" data-zone="available"></div>
                         </div>
 
                         <div class="home-tabs-divider">
                             <span class="home-tabs-divider-icon">⇅</span>
                         </div>
 
-                        <div class="home-tabs-section">
-                            <h4 class="home-tabs-section-title">有効なタブ</h4>
-                            <p class="settings-help-text">ドラッグして並び替えたり、「×」ボタンで削除できます。</p>
-                            <div id="home-tabs-active-list" class="home-tabs-list home-tabs-active-list" data-zone="active"></div>
+                        <div class="home-tabs-section nui-card" data-nui="card">
+                            <h4 class="home-tabs-section-title nui-section-title">有効なタブ</h4>
+                            <p class="settings-help-text nui-help-text">ドラッグして並び替えたり、「×」ボタンで削除できます。</p>
+                            <div id="home-tabs-active-list" class="home-tabs-list home-tabs-active-list nui-list" data-nui="list" data-zone="active"></div>
                         </div>
-                        <button type="button" id="reset-home-tabs-btn" class="settings-secondary-button" style="align-self: flex-start;">デフォルトの並び順に戻す</button>
+                        <button type="button" id="reset-home-tabs-btn" class="settings-secondary-button nui-button-secondary" style="align-self: flex-start;">デフォルトの並び順に戻す</button>
                     </div>
                 </section>
-                <section class="settings-group-panel" data-settings-panel="profile">
+                <section class="nui-section settings-group-panel" data-settings-panel="menu" hidden>
+                    <div class="side-menu-outlet-tabs nui-tabs" role="tablist" aria-label="メニューの種類の選択" data-nui="tabs">
+                        <button type="button" role="tab" id="side-menu-tab-pc" class="side-menu-outlet-tab nui-tab" data-outlet="pc" aria-selected="true" aria-controls="side-menu-pc-bar side-menu-pc-more">PC / タブレット</button>
+                        <button type="button" role="tab" id="side-menu-tab-mobile" class="side-menu-outlet-tab nui-tab" data-outlet="mobile" aria-selected="false" tabindex="-1" aria-controls="side-menu-mobile-bar side-menu-mobile-more">モバイル（画面下部のバー）</button>
+                    </div>
+                    <div class="side-menu-customizer">
+                        <div class="side-menu-zone nui-section" id="side-menu-pc-bar" data-outlet="pc" data-zone="bar">
+                            <h4 class="side-menu-zone-title nui-section-title">バーに表示</h4>
+                            <p class="settings-help-text nui-help-text">ドラッグするか↑↓ボタンで、メニューに並ぶ順番を変えられます。</p>
+                            <div class="side-menu-list nui-list" data-nui="list" data-zone="bar"></div>
+                        </div>
+                        <div class="side-menu-zone nui-section" id="side-menu-pc-more" data-outlet="pc" data-zone="more">
+                            <h4 class="side-menu-zone-title nui-section-title">その他に移動</h4>
+                            <p class="settings-help-text nui-help-text">ここへ移した項目はメニューから消えず、「その他」ボタンから開けます。</p>
+                            <div class="side-menu-list nui-list" data-nui="list" data-zone="more"></div>
+                        </div>
+                        <div class="side-menu-zone nui-section" id="side-menu-mobile-bar" data-outlet="mobile" data-zone="bar" hidden>
+                            <h4 class="side-menu-zone-title nui-section-title">バーに表示</h4>
+                            <p class="settings-help-text nui-help-text">ドラッグするか↑↓ボタンで、画面下部のバーに並ぶ順番を変えられます。</p>
+                            <div class="side-menu-list nui-list" data-nui="list" data-zone="bar"></div>
+                        </div>
+                        <div class="side-menu-zone nui-section" id="side-menu-mobile-more" data-outlet="mobile" data-zone="more" hidden>
+                            <h4 class="side-menu-zone-title nui-section-title">その他に移動</h4>
+                            <p class="settings-help-text nui-help-text">ここへ移した項目はドロワーを開くと「その他」から使えます。</p>
+                            <div class="side-menu-list nui-list" data-nui="list" data-zone="more"></div>
+                        </div>
+                        <button type="button" id="side-menu-reset-btn" class="settings-secondary-button nui-button-secondary" style="align-self: flex-start;">デフォルトの並び順に戻す</button>
+                    </div>
+                </section>
+                <section class="nui-section settings-group-panel" data-settings-panel="profile">
                     <label for="setting-username">ユーザー名</label>
-                    <input type="text" id="setting-username" required data-server-input-limit="user_name_length" value="${escapeHTML(getCurrentUser().name)}">
+                    <input type="text" id="setting-username" class="nui-input" required data-server-input-limit="user_name_length" value="${escapeHTML(getCurrentUser().name)}">
                     <label for="setting-icon-input">アイコン</label>
-                    <div class="setting-icon-container">
+                    <div class="setting-icon-container nui-row">
                         <img id="setting-icon-preview" src="${getUserIconUrl(getCurrentUser())}" alt="アイコンのプレビュー" title="クリックしてファイルを選択">
-                        <button type="button" id="reset-icon-btn">デフォルトに戻す</button>
+                        <button type="button" id="reset-icon-btn" class="nui-button-secondary">デフォルトに戻す</button>
                     </div>
                     <input type="file" id="setting-icon-input" accept="image/*" class="hidden">
                     <label for="setting-header-input">ヘッダー画像</label>
-                    <div class="setting-header-container">
+                    <div class="setting-header-container nui-row">
                         <div id="setting-header-preview" class="setting-header-preview ${getUserHeaderImageUrl(getCurrentUser()) ? '' : 'is-empty'}" title="クリックしてファイルを選択">
                             ${getUserHeaderImageUrl(getCurrentUser()) ? `<img src="${escapeHTML(getUserHeaderImageUrl(getCurrentUser()))}" alt="ヘッダー画像のプレビュー">` : '<span>ヘッダー画像を選択</span>'}
                         </div>
-                        <button type="button" id="reset-header-btn">ヘッダー画像を削除</button>
+                        <button type="button" id="reset-header-btn" class="nui-button-secondary">ヘッダー画像を削除</button>
                     </div>
                     <input type="file" id="setting-header-input" accept="image/*" class="hidden">
                     <label for="setting-me">自己紹介</label>
-                    <textarea id="setting-me" data-server-input-limit="profile_bio_length">${escapeHTML(getCurrentUser().me || '')}</textarea>
+                    <textarea id="setting-me" class="nui-input" data-server-input-limit="profile_bio_length">${escapeHTML(getCurrentUser().me || '')}</textarea>
                 </section>
-                <section class="settings-group-panel" data-settings-panel="privacy" hidden>
-                    <fieldset><legend>公開設定</legend>
+                <section class="nui-section settings-group-panel" data-settings-panel="privacy" hidden>
+                    <fieldset class="nui-card"><legend>公開設定</legend>
                         <label><input type="checkbox" id="setting-show-like" ${getCurrentUser().settings?.show_like ? 'checked' : ''}> いいねしたポストを公開する</label>
                         <label><input type="checkbox" id="setting-show-follow" ${getCurrentUser().settings?.show_follow ? 'checked' : ''}> フォローしている人を公開する</label>
                         <label><input type="checkbox" id="setting-show-follower" ${(getCurrentUser().settings?.show_follower ?? true) ? 'checked' : ''}> フォロワーリストを公開する</label>
@@ -417,87 +512,98 @@ export async function showSettingsScreen(
                         <label><input type="checkbox" id="setting-show-scid" ${getCurrentUser().settings?.show_scid ? 'checked' : ''}> Scratchアカウント名を公開する</label>
                         <label><input type="checkbox" id="setting-lock" ${getCurrentUser().settings?.lock ? 'checked' : ''}> ポストを非公開にする</label>
                     </fieldset>
-                    <fieldset class="settings-ng-words"><legend>ミュート・フィルター</legend>
+                    <fieldset class="nui-card settings-ng-words"><legend>ミュート・フィルター</legend>
                         <label for="setting-ng-words">NGワード</label>
                         <textarea id="setting-ng-words" placeholder="改行またはカンマ区切りで入力">${escapeHTML(Array.isArray(getCurrentUser().settings?.ng_words) ? getCurrentUser().settings.ng_words.join('\n') : (getCurrentUser().settings?.ng_words || ''))}</textarea>
-                        <p class="settings-help-text">設定したワードが含まれるポストを検索から除外します。</p>
+                        <p class="settings-help-text nui-help-text">設定したワードが含まれるポストを検索から除外します。</p>
                     </fieldset>
-                    <fieldset class="settings-dm-privacy"><legend>ダイレクトメッセージ</legend>
+                    <fieldset class="nui-card settings-dm-privacy"><legend>ダイレクトメッセージ</legend>
                         <label for="setting-dm-invitation">DMの招待</label>
-                        <select id="setting-dm-invitation" class="settings-select">
+                        <select id="setting-dm-invitation" class="settings-select nui-input">
                             <option value="always" ${(getCurrentUser().settings?.dm_invitation === 'always' || getCurrentUser().settings?.dm_invitation === 'allow') ? 'selected' : ''}>常に許可</option>
                             <option value="require_approval" ${(getCurrentUser().settings?.dm_invitation === 'require_approval' || !getCurrentUser().settings?.dm_invitation || getCurrentUser().settings?.dm_invitation === 'approval') ? 'selected' : ''}>承認が必要</option>
                             <option value="deny" ${(getCurrentUser().settings?.dm_invitation === 'deny' || getCurrentUser().settings?.dm_invitation === 'reject') ? 'selected' : ''}>常に拒否</option>
                         </select>
-                        <p class="settings-help-text">他のユーザーからDMに招待されたときの動作を設定します。</p>
+                        <p class="settings-help-text nui-help-text">他のユーザーからDMに招待されたときの動作を設定します。</p>
                     </fieldset>
                     ${Boolean(getCurrentUser()?.is_imposter || getCurrentUser()?.auth_provider === 'imposter' || getCurrentUser()?.settings?.imposter?.parent_id) ? '' : `
-                    <fieldset class="settings-login-security"><legend>ログインのセーフティ</legend>
-                        <label><input type="checkbox" id="setting-reject-unknown-login" ${(getCurrentUser().settings?.reject_unknown_login ?? true) ? 'checked' : ''}> 不明な場所からのログインを拒否</label>
-                        <p class="settings-help-text">有効にすると、初めて利用するIPアドレスからのログインには、ログイン済み端末での許可が必要です。</p>
+                    <fieldset class="nui-card settings-login-security"><legend>ログインのセーフティ</legend>
+                        <label><input type="checkbox" id="setting-reject-unknown-login" ${(getCurrentUser().settings?.reject_unknown_login ?? false) ? 'checked' : ''}> 不明な場所からのログインを拒否</label>
+                        <p class="settings-help-text nui-help-text">有効にすると、初めて利用するIPアドレスからのログインには、ログイン済み端末での許可が必要です。</p>
                     </fieldset>
-                    <section class="settings-auth-providers" aria-labelledby="settings-auth-providers-title">
-                        <h4 id="settings-auth-providers-title">認証プロバイダー連携</h4>
-                        <p class="settings-help-text">アカウントに紐づけるログイン方法を管理します。連携したすべての方法で同一アカウントにログインできます。</p>
-                        <div id="settings-auth-providers-list" class="settings-auth-providers-list" aria-live="polite"></div>
+                    <section class="nui-section settings-auth-providers" aria-labelledby="settings-auth-providers-title">
+                        <h4 class="nui-section-title" id="settings-auth-providers-title">認証プロバイダー連携</h4>
+                        <p class="settings-help-text nui-help-text">アカウントに紐づけるログイン方法を管理します。連携したすべての方法で同一アカウントにログインできます。</p>
+                        <div id="settings-auth-providers-list" class="settings-auth-providers-list nui-list" aria-live="polite"></div>
                     </section>
                     `}
-                    <section class="settings-verification-application" aria-labelledby="settings-verification-title">
-                        <h4 id="settings-verification-title">認証</h4>
-                        <p class="settings-help-text">認証済みアカウントにはプロフィール上で認証バッジが表示されます。申請は担当管理者が審査します。</p>
-                        <button type="button" id="open-verification-application-btn" class="settings-bot-secondary-button" ${getCurrentUser().verify ? 'disabled' : ''}>${getCurrentUser().verify ? '認証済み' : '認証を申請する'}</button>
+                    <section class="nui-section settings-verification-application" aria-labelledby="settings-verification-title">
+                        <h4 class="nui-section-title" id="settings-verification-title">認証</h4>
+                        <p class="settings-help-text nui-help-text">認証済みアカウントにはプロフィール上で認証バッジが表示されます。申請は担当管理者が審査します。</p>
+                        <button type="button" id="open-verification-application-btn" class="settings-bot-secondary-button nui-button-secondary" ${getCurrentUser().verify ? 'disabled' : ''}>${getCurrentUser().verify ? '認証済み' : '認証を申請する'}</button>
                         <p id="verification-application-status" class="settings-help-text hidden" role="status"></p>
                     </section>
                     ${Boolean(getCurrentUser()?.is_imposter || getCurrentUser()?.auth_provider === 'imposter' || getCurrentUser()?.settings?.imposter?.parent_id) ? '' : `
-                    <section class="settings-sessions" aria-labelledby="settings-sessions-title">
-                        <h4 id="settings-sessions-title">セッション</h4>
-                        <p class="settings-help-text">有効なログイン端末を管理できます。IPアドレスは安全のため一部のみ表示されます。</p>
-                        <div id="settings-sessions-list" class="settings-sessions-list" aria-live="polite"></div>
+                    <section class="nui-section settings-sessions" aria-labelledby="settings-sessions-title">
+                        <h4 class="nui-section-title" id="settings-sessions-title">セッション</h4>
+                        <p class="settings-help-text nui-help-text">有効なログイン端末を管理できます。IPアドレスは安全のため一部のみ表示されます。</p>
+                        <div id="settings-sessions-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
+                    </section>
+                    <section class="nui-section settings-blocked-ips" aria-labelledby="settings-blocked-ips-title">
+                        <h4 class="nui-section-title" id="settings-blocked-ips-title">ブロックしたIPアドレス</h4>
+                        <p class="settings-help-text nui-help-text">アカウントアクセスの復旧でブロックしたIPです。ブロックしたIPからのログインは恒久的に拒否されます。</p>
+                        <div id="settings-blocked-ips-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
                     </section>
                     `}
-                    <div class="settings-danger-zone"></div>
+                    <div class="settings-danger-zone nui-card nui-danger-card" data-nui="card"></div>
                 </section>
-                <section class="settings-group-panel" data-settings-panel="ui" hidden>
+                <section class="nui-section settings-group-panel" data-settings-panel="ui" hidden>
                     <label for="setting-post-timestamp-format">ポスト日時の表示</label>
-                    <select id="setting-post-timestamp-format" class="settings-select">
+                    <select id="setting-post-timestamp-format" class="settings-select nui-input">
                         <option value="relative">相対</option>
                         <option value="relative_detailed">相対</option>
                         <option value="absolute_24">絶対</option>
                         <option value="absolute_12">絶対</option>
                     </select>
-                    <p class="settings-help-text">プロフィールの参加日時には適用されません。</p>
+                    <p class="settings-help-text nui-help-text">プロフィールの参加日時には適用されません。</p>
                     <label for="setting-emoji-kind">絵文字のフォント</label>
-                    <select id="setting-emoji-kind" class="settings-select">
+                    <select id="setting-emoji-kind" class="settings-select nui-input">
                         <option value="twemoji">Twemoji</option>
                         <option value="emojione">Emoji One</option>
                         <option value="default">デフォルト</option>
                     </select>
                     <label for="setting-content-editor">コンテンツエディタ</label>
-                    <select id="setting-content-editor" class="settings-select">
+                    <select id="setting-content-editor" class="settings-select nui-input">
                         <option value="textarea">Textarea</option>
                         <option value="nyaitter">Nyaitterエディタ</option>
                     </select>
-                    <p class="settings-help-text">Textareaはブラウザ標準の入力欄です。NyaitterエディタはMarkdownとカスタム絵文字を入力中に表示します。</p>
-                    <fieldset class="settings-data-saver"><legend>通信量</legend>
+                    <p class="settings-help-text nui-help-text">Textareaはブラウザ標準の入力欄です。NyaitterエディタはMarkdownとカスタム絵文字を入力中に表示します。</p>
+                    <fieldset class="nui-card settings-data-saver"><legend>通信量</legend>
                         <label><input type="checkbox" id="setting-data-saver" ${getCurrentUser().settings?.data_saver ? 'checked' : ''}> データセーバーを有効にする</label>
-                        <p class="settings-help-text">画像は低画質プレビューで表示し、開いた時だけ元の画質を取得します。リアルタイム接続を停止し、一覧の一度の取得件数も減らします。</p>
+                        <p class="settings-help-text nui-help-text">画像は低画質プレビューで表示し、開いた時だけ元の画質を取得します。リアルタイム接続を停止し、一覧の一度の取得件数も減らします。</p>
                     </fieldset>
                     <label for="setting-theme">テーマ</label>
-                    <select id="setting-theme" class="settings-select">
+                    <select id="setting-theme" class="settings-select nui-input">
                         <option value="auto">端末設定</option>
                         <option value="light">ライト</option>
                         <option value="dark">ダーク</option>
                     </select>
+                    <label for="setting-ui-mode">表示UI</label>
+                    <select id="setting-ui-mode" class="settings-select nui-input">
+                        <option value="nui">NyaitterUI</option>
+                        <option value="legacy">LegacyUI</option>
+                    </select>
+                    <p class="settings-help-text nui-help-text">画面のデザインを選びます。変更するとすぐに反映されます。</p>
                     <label for="setting-color-theme">カラーテーマ</label>
-                    <select id="setting-color-theme" class="settings-select">
+                    <select id="setting-color-theme" class="settings-select nui-input">
                         <option value="nyaitter">Nyaitter</option>
                         <option value="nyax">NyaX</option>
                         <option value="custom">カスタム</option>
                     </select>
-                    <p class="settings-help-text">アクセントカラーと選択状態の配色を変更します。</p>
+                    <p class="settings-help-text nui-help-text">アクセントカラーと選択状態の配色を変更します。</p>
                     <section id="settings-custom-colors" class="settings-custom-colors" hidden aria-labelledby="settings-custom-colors-title">
-                        <h4 id="settings-custom-colors-title">カスタムカラー</h4>
-                        <p class="settings-help-text">各色はカラーピッカーまたは16進数カラーコードで指定できます。</p>
+                        <h4 class="nui-section-title" id="settings-custom-colors-title">カスタムカラー</h4>
+                        <p class="settings-help-text nui-help-text">各色はカラーピッカーまたは16進数カラーコードで指定できます。</p>
                         <div class="settings-color-grid">
                             <label class="settings-color-field">メインカラー
                                 <span class="settings-color-control"><input type="color" id="setting-color-primary-picker" data-color-key="primary_color"><input type="text" id="setting-color-primary" data-color-key="primary_color" class="settings-color-code" maxlength="7"></span>
@@ -514,51 +620,51 @@ export async function showSettingsScreen(
                         </div>
                     </section>
                 </section>
-                <section class="settings-group-panel" data-settings-panel="notifications" hidden>
-                    <section class="settings-push-notifications" aria-labelledby="push-notification-title">
-                        <h4 id="push-notification-title">プッシュ通知</h4>
+                <section class="nui-section settings-group-panel" data-settings-panel="notifications" hidden>
+                    <section class="nui-section settings-push-notifications" aria-labelledby="push-notification-title">
+                        <h4 class="nui-section-title" id="push-notification-title">プッシュ通知</h4>
                         <p id="push-notification-status" role="status">通知の状態を確認しています</p>
-                        <button type="button" id="push-notification-action" class="settings-primary-button" disabled>読み込み中</button>
-                        <p class="settings-help-text">通知はこの端末・ブラウザごとに設定されます。HTTPS対応のブラウザで利用できます。</p>
+                        <button type="button" id="push-notification-action" class="settings-primary-button nui-button" disabled>読み込み中</button>
+                        <p class="settings-help-text nui-help-text">通知はこの端末・ブラウザごとに設定されます。HTTPS対応のブラウザで利用できます。</p>
                     </section>
                 </section>
-                <section class="settings-group-panel" data-settings-panel="imposter" hidden>
-                    <section class="settings-imposter" aria-labelledby="settings-imposter-title">
-                        <h4 id="settings-imposter-title">インポスター</h4>
-                        <p class="settings-help-text">1つのNyaitterIDから複数作成可能な偽のNyaitterIdです。</p>
+                <section class="nui-section settings-group-panel" data-settings-panel="imposter" hidden>
+                    <section class="nui-section settings-imposter" aria-labelledby="settings-imposter-title">
+                        <h4 class="nui-section-title" id="settings-imposter-title">インポスター</h4>
+                        <p class="settings-help-text nui-help-text">1つのNyaitterIDから複数作成可能な偽のNyaitterIdです。</p>
                         <div id="settings-imposter-create" class="settings-bot-create-container">
                             <label for="settings-imposter-name" style="font-weight: 600; font-size: 0.9rem;">新しいインポスターの表示名</label>
                             <div class="settings-bot-create-form">
                                 <input type="search" id="settings-imposter-name" placeholder="表示名" maxlength="50" autocomplete="off">
-                                <button type="button" id="settings-imposter-create-btn" class="settings-primary-button">作成</button>
+                                <button type="button" id="settings-imposter-create-btn" class="settings-primary-button nui-button">作成</button>
                             </div>
-                            <p id="settings-imposter-limit" class="settings-help-text" role="status">インポスターを読み込んでいます</p>
+                            <p id="settings-imposter-limit" class="settings-help-text nui-help-text" role="status">インポスターを読み込んでいます</p>
                         </div>
-                        <div id="settings-imposter-list" class="settings-sessions-list" aria-live="polite"></div>
+                        <div id="settings-imposter-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
                     </section>
                 </section>
-                <section class="settings-group-panel" data-settings-panel="storage" hidden>
-                    <section class="settings-storage" aria-labelledby="settings-storage-title">
+                <section class="nui-section settings-group-panel" data-settings-panel="storage" hidden>
+                    <section class="nui-section settings-storage" aria-labelledby="settings-storage-title">
                         <div class="settings-storage-heading">
                             <div>
-                                <h4 id="settings-storage-title">保存済みファイル</h4>
-                                <p id="settings-storage-summary" class="settings-help-text" role="status">ストレージ使用量を読み込んでいます</p>
+                                <h4 class="nui-section-title" id="settings-storage-title">保存済みファイル</h4>
+                                <p id="settings-storage-summary" class="settings-help-text nui-help-text" role="status">ストレージ使用量を読み込んでいます</p>
                             </div>
-                            <button type="button" id="settings-storage-refresh-btn" class="settings-bot-secondary-button">更新</button>
+                            <button type="button" id="settings-storage-refresh-btn" class="settings-bot-secondary-button nui-button-secondary">更新</button>
                         </div>
                         <div class="settings-storage-progress" aria-hidden="true"><div id="settings-storage-progress-value" class="settings-storage-progress-value"></div></div>
-                        <div id="settings-storage-files" class="settings-sessions-list" aria-live="polite"></div>
+                        <div id="settings-storage-files" class="settings-sessions-list nui-list" aria-live="polite"></div>
                     </section>
                 </section>
-                <section class="settings-group-panel" data-settings-panel="api" hidden>
+                <section class="nui-section settings-group-panel" data-settings-panel="api" hidden>
                     <div class="settings-bot-section">
-                        <h4 id="settings-bot-title">APIキー</h4>
-                        <p class="settings-help-text">プログラムやスクリプトからNyaitter APIを操作するためのAPIキーを生成・管理できます。</p>
+                        <h4 class="nui-section-title" id="settings-bot-title">APIキー</h4>
+                        <p class="settings-help-text nui-help-text">プログラムやスクリプトからNyaitter APIを操作するためのAPIキーを生成・管理できます。</p>
                         <div class="settings-bot-create-container">
                             <label for="setting-bot-token-name" style="font-weight: 600; font-size: 0.9rem;">新しいAPIキーの名前</label>
                             <div class="settings-bot-create-form">
                                 <input type="text" id="setting-bot-token-name" placeholder="例: 投稿Bot, 自動通知スクリプト" maxlength="50" autocomplete="off">
-                                <button type="button" id="setting-bot-token-create-btn">APIキーを生成</button>
+                                <button type="button" id="setting-bot-token-create-btn" class="nui-button">APIキーを生成</button>
                             </div>
                         </div>
                         <div id="settings-bot-token-newly-created" class="settings-bot-new-key-box" hidden>
@@ -571,49 +677,49 @@ export async function showSettingsScreen(
                                 <button type="button" id="settings-bot-copy-key-btn" class="settings-bot-copy-button">コピー</button>
                             </div>
                             <div style="margin-top: 0.5rem; text-align: right;">
-                                <button type="button" id="settings-bot-close-new-key-btn" class="settings-bot-secondary-button">完了</button>
+                                <button type="button" id="settings-bot-close-new-key-btn" class="settings-bot-secondary-button nui-button-secondary">完了</button>
                             </div>
                         </div>
                         <div class="settings-bot-list-section">
                             <h4 style="margin-top: 1.5rem; font-size: 1rem;">生成済みのAPIキー</h4>
-                            <div id="settings-bot-tokens-list" class="settings-sessions-list" aria-live="polite"></div>
+                            <div id="settings-bot-tokens-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
                         </div>
                     </div>
                 </section>
-                <section class="settings-group-panel" data-settings-panel="apps" hidden>
-                    <section class="settings-authorized-apps" aria-labelledby="settings-authorized-apps-title">
-                        <h4 id="settings-authorized-apps-title">連携中のアプリケーション</h4>
-                        <p class="settings-help-text">NyaitterAuthでアクセスを許可したアプリケーションの一覧です。権限の変更や連携の解除が行えます。</p>
-                        <div id="settings-authorized-apps-list" class="settings-sessions-list" aria-live="polite"></div>
+                <section class="nui-section settings-group-panel" data-settings-panel="apps" hidden>
+                    <section class="nui-section settings-authorized-apps" aria-labelledby="settings-authorized-apps-title">
+                        <h4 class="nui-section-title" id="settings-authorized-apps-title">連携中のアプリケーション</h4>
+                        <p class="settings-help-text nui-help-text">NyaitterAuthでアクセスを許可したアプリケーションの一覧です。権限の変更や連携の解除が行えます。</p>
+                        <div id="settings-authorized-apps-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
                     </section>
                 </section>
-                <section class="settings-group-panel" data-settings-panel="resources" hidden>
-                    <section class="settings-resource-links" aria-labelledby="settings-resource-links-title">
-                        <h4 id="settings-resource-links-title">リンク</h4>
-                        <div id="settings-resource-links" class="settings-sessions-list"></div>
+                <section class="nui-section settings-group-panel" data-settings-panel="resources" hidden>
+                    <section class="nui-section settings-resource-links" aria-labelledby="settings-resource-links-title">
+                        <h4 class="nui-section-title" id="settings-resource-links-title">リンク</h4>
+                        <div id="settings-resource-links" class="settings-sessions-list nui-list"></div>
                     </section>
                 </section>
             </form>
             <div id="verification-application-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-                <section class="modal-content verification-application-modal-content">
+                <section class="modal-content verification-application-modal-content nui-modal" data-nui="modal">
                     <button type="button" class="modal-close-btn" data-action="close-verification-application">×</button>
-                    <h3>認証を申請する</h3>
-                    <p class="settings-help-text">申請内容は担当管理者が確認します。審査が完了すると通知でお知らせします。</p>
-                    <div class="verification-application-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                        <button type="button" class="login-secondary-button" data-action="close-verification-application">キャンセル</button>
-                        <button type="button" id="submit-verification-application-btn" class="settings-primary-button">申請する</button>
+                    <h3 class="nui-modal-title">認証を申請する</h3>
+                    <p class="settings-help-text nui-help-text">申請内容は担当管理者が確認します。審査が完了すると通知でお知らせします。</p>
+                    <div class="verification-application-actions nui-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button type="button" class="login-secondary-button nui-button-secondary" data-action="close-verification-application">キャンセル</button>
+                        <button type="button" id="submit-verification-application-btn" class="settings-primary-button nui-button">申請する</button>
                     </div>
                 </section>
             </div>
             <div id="edit-app-scopes-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-                <section class="modal-content" style="max-width: 520px;">
+                <section class="modal-content nui-modal" data-nui="modal" style="max-width: 520px;">
                     <button type="button" class="modal-close-btn">×</button>
-                    <h3 id="edit-app-scopes-title">権限を変更</h3>
-                    <p class="settings-help-text">このアプリケーションに許可する権限を選択してください。</p>
+                    <h3 id="edit-app-scopes-title" class="nui-modal-title">権限を変更</h3>
+                    <p class="settings-help-text nui-help-text">このアプリケーションに許可する権限を選択してください。</p>
                     <div id="edit-app-scopes-container" style="margin: 1.25rem 0; max-height: 340px; overflow-y: auto;"></div>
-                    <div style="margin-top: 1.25rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                        <button type="button" id="edit-app-scopes-cancel-btn" class="login-secondary-button">キャンセル</button>
-                        <button type="button" id="edit-app-scopes-save-btn" class="settings-primary-button">保存する</button>
+                    <div class="nui-actions" style="margin-top: 1.25rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button type="button" id="edit-app-scopes-cancel-btn" class="login-secondary-button nui-button-secondary">キャンセル</button>
+                        <button type="button" id="edit-app-scopes-save-btn" class="settings-primary-button nui-button">保存する</button>
                     </div>
                 </section>
             </div>
@@ -632,6 +738,8 @@ export async function showSettingsScreen(
         getCurrentUser().settings?.content_editor === 'textarea' ? 'textarea' : 'nyaitter';
     document.getElementById('setting-theme').value =
         getCurrentUser().settings?.theme || 'light';
+    const uiModeSelect = document.getElementById('setting-ui-mode');
+    if (uiModeSelect) uiModeSelect.value = getUiMode();
 
     const colorThemeSelect = document.getElementById('setting-color-theme');
     const customColorsSection = document.getElementById('settings-custom-colors');
@@ -659,12 +767,15 @@ export async function showSettingsScreen(
         });
     };
 
+    // カラーピッカーはドラッグ中に input が連続発火するため、保存は束ねる。
+    let colorPickerSaveTimer;
     document.querySelectorAll('.settings-color-code[data-color-key]').forEach((codeInput) => {
         const colorPicker = document.getElementById(`${codeInput.id}-picker`);
         colorPicker?.addEventListener('input', () => {
             codeInput.value = colorPicker.value.toLowerCase();
             if (colorThemeSelect.value === 'custom') updateColorThemeSettingsUi();
-            requestSettingsSave(document.getElementById('settings-form'));
+            clearTimeout(colorPickerSaveTimer);
+            colorPickerSaveTimer = setTimeout(() => requestSettingsSave(document.getElementById('settings-form')), 500);
         });
         codeInput.addEventListener('input', () => {
             const color = codeInput.value.trim();
@@ -754,22 +865,22 @@ export async function showSettingsScreen(
         const sessions = Array.isArray(data?.sessions) ? data.sessions : [];
         if (sessions.length === 0) {
             const empty = document.createElement('p');
-            empty.className = 'settings-help-text';
+            empty.className = 'settings-help-text nui-help-text';
             empty.textContent = '有効なセッションはありません。';
             sessionsList.appendChild(empty);
             return;
         }
         sessions.forEach((session) => {
             const item = document.createElement('article');
-            item.className = 'settings-session-item';
+            item.className = 'settings-session-item nui-list-item';
             const details = document.createElement('div');
-            details.className = 'settings-session-details';
+            details.className = 'settings-session-details nui-list-copy';
             const title = document.createElement('div');
-            title.className = 'settings-session-title';
+            title.className = 'settings-session-title nui-list-title';
             title.textContent = session.ip_masked || '旧セッション';
             if (session.current) {
                 const currentBadge = document.createElement('span');
-                currentBadge.className = 'settings-session-current';
+                currentBadge.className = 'settings-session-current nui-badge';
                 currentBadge.textContent = 'この端末';
                 title.appendChild(currentBadge);
             }
@@ -777,12 +888,12 @@ export async function showSettingsScreen(
             device.className = 'settings-session-device';
             device.textContent = session.user_agent || '不明な端末';
             const dates = document.createElement('p');
-            dates.className = 'settings-session-dates';
+            dates.className = 'settings-session-dates nui-list-meta';
             dates.textContent = `開始: ${formatSecurityTimestamp(session.created_at)} / 有効期限: ${formatSecurityTimestamp(session.expires_at)}`;
             details.append(title, device, dates);
 
             const actions = document.createElement('div');
-            actions.className = 'settings-session-actions';
+            actions.className = 'settings-session-actions nui-actions';
             const invalidateButton = document.createElement('button');
             invalidateButton.type = 'button';
             invalidateButton.className = 'settings-session-invalidate-button';
@@ -828,6 +939,73 @@ export async function showSettingsScreen(
         });
     };
 
+    const blockedIpsList = document.getElementById('settings-blocked-ips-list');
+    const loadBlockedLoginIps = async () => {
+        if (!blockedIpsList) return;
+        const { data, error } = await apiRequest('/server/auth/blocked-ips');
+        blockedIpsList.replaceChildren();
+        if (error) return;
+        const blockedIps = Array.isArray(data?.blocked_ips) ? data.blocked_ips : [];
+        if (blockedIps.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'settings-help-text nui-help-text';
+            empty.textContent = 'ブロックしたIPアドレスはありません。';
+            blockedIpsList.appendChild(empty);
+            return;
+        }
+        blockedIps.forEach((blocked) => {
+            const isCurrentIp = Boolean(blocked.is_current_ip);
+            const item = document.createElement('article');
+            item.className = 'settings-session-item nui-list-item';
+            const details = document.createElement('div');
+            details.className = 'settings-session-details nui-list-copy';
+            const title = document.createElement('div');
+            title.className = 'settings-session-title nui-list-title';
+            title.textContent = blocked.ip_masked || '不明なIPアドレス';
+            if (isCurrentIp) {
+                const currentBadge = document.createElement('span');
+                currentBadge.className = 'settings-session-current nui-badge';
+                currentBadge.textContent = 'この端末と同じIP';
+                title.appendChild(currentBadge);
+            }
+            const dates = document.createElement('p');
+            dates.className = 'settings-session-dates nui-list-meta';
+            dates.textContent = `ブロック日時: ${formatSecurityTimestamp(blocked.created_at)}`;
+            details.append(title, dates);
+
+            const actions = document.createElement('div');
+            actions.className = 'settings-session-actions nui-actions';
+            if (blocked.ip_hash) {
+                const unblockButton = document.createElement('button');
+                unblockButton.type = 'button';
+                unblockButton.className = 'settings-blocked-ip-unblock-button';
+                unblockButton.textContent = '解除';
+                unblockButton.addEventListener('click', async () => {
+                    const message = isCurrentIp
+                        ? 'このIPアドレスは現在この端末で利用中のIPです。ブロックを解除しますか？'
+                        : 'このIPアドレスのブロックを解除しますか？';
+                    if (!(await showAppConfirm(message))) return;
+                    const { error: unblockError } = await apiRequest(`/server/auth/blocked-ips/${encodeURIComponent(blocked.ip_hash)}`, { method: 'DELETE' });
+                    if (unblockError) {
+                        // apiRequestはHTTPステータスを返さないので、404はサーバー文言で判別する。
+                        if (String(unblockError.message || '').includes('見つかりません')) {
+                            await showAppAlert('このブロックは他の端末ですでに解除されていた可能性があります。一覧を更新します。');
+                            await loadBlockedLoginIps();
+                        } else {
+                            showAppAlert(`ブロックの解除に失敗しました: ${unblockError.message}`);
+                        }
+                        return;
+                    }
+                    await loadBlockedLoginIps();
+                });
+                actions.appendChild(unblockButton);
+            }
+
+            item.append(details, actions);
+            blockedIpsList.appendChild(item);
+        });
+    };
+
     const authProvidersList = document.getElementById('settings-auth-providers-list');
     const loadAuthProvidersSettings = async () => {
         if (!authProvidersList) return;
@@ -840,7 +1018,7 @@ export async function showSettingsScreen(
 
         if (serverResult.error && linkedResult.error) {
             const errorP = document.createElement('p');
-            errorP.className = 'settings-help-text';
+            errorP.className = 'settings-help-text nui-help-text';
             errorP.textContent = '認証プロバイダー情報の取得に失敗しました。';
             authProvidersList.appendChild(errorP);
             return;
@@ -860,7 +1038,7 @@ export async function showSettingsScreen(
 
         if (serverProviders.length === 0) {
             const empty = document.createElement('p');
-            empty.className = 'settings-help-text';
+            empty.className = 'settings-help-text nui-help-text';
             empty.textContent = '利用可能な認証プロバイダーはありません。';
             authProvidersList.appendChild(empty);
             return;
@@ -875,13 +1053,13 @@ export async function showSettingsScreen(
             );
 
             const item = document.createElement('article');
-            item.className = 'settings-session-item settings-auth-provider-item';
+            item.className = 'settings-session-item settings-auth-provider-item nui-list-item';
 
             const details = document.createElement('div');
-            details.className = 'settings-session-details';
+            details.className = 'settings-session-details nui-list-copy';
 
             const title = document.createElement('div');
-            title.className = 'settings-session-title';
+            title.className = 'settings-session-title nui-list-title';
             title.textContent = provider.displayName || provider.name;
 
             const badge = document.createElement('span');
@@ -898,6 +1076,10 @@ export async function showSettingsScreen(
                 desc.textContent = 'ワンタイム認証コードでログインします。';
             } else if (provider.name === 'passkey') {
                 desc.textContent = '端末の指紋認証・顔認証・セキュリティキーでログインします。';
+            } else if (provider.name === 'google') {
+                desc.textContent = 'Googleアカウントでログインします。';
+            } else if (provider.name === 'microsoft') {
+                desc.textContent = 'Microsoftアカウントでログインします。';
             } else {
                 desc.textContent = `${provider.displayName || provider.name}でログインします。`;
             }
@@ -905,7 +1087,7 @@ export async function showSettingsScreen(
             details.append(title, desc);
 
             const actions = document.createElement('div');
-            actions.className = 'settings-session-actions';
+            actions.className = 'settings-session-actions nui-actions';
 
             if (isLinked) {
                 const unlinkBtn = document.createElement('button');
@@ -937,234 +1119,16 @@ export async function showSettingsScreen(
                 linkBtn.type = 'button';
                 linkBtn.className = 'settings-session-link-button';
                 linkBtn.textContent = '連携する';
-                linkBtn.addEventListener('click', async () => {
-                    if (provider.name === 'email') {
-                        const email = await showAppPrompt('連携するメールアドレスを入力してください:');
-                        if (!email || !email.trim()) return;
-
-                        showLoading(true);
-                        const { error: initError } = await apiRequest('/server/auth/link/email/initiate', {
-                            method: 'POST',
-                            body: { email: email.trim() },
-                        });
-                        showLoading(false);
-
-                        if (initError) {
-                            return showAppAlert(`認証コードの送信に失敗しました: ${initError.message}`);
-                        }
-
-                        const code = await showAppPrompt(`「${email.trim()}」に認証コードを送信しました。\nメールに記載されている6桁の認証コードを入力してください:`);
-                        if (!code || !code.trim()) return;
-
-                        let turnstileToken = null;
-                        if (provider.turnstileRequired || globalThis.NyaitterServerStatus?.turnstile?.enabled) {
-                            turnstileToken = await requestTurnstileTokenModal();
-                            if (!turnstileToken) {
-                                return showAppAlert('Turnstile認証がキャンセルされたか失敗しました。');
-                            }
-                        }
-
-                        showLoading(true);
-                        const { error: verifyError } = await apiRequest('/server/auth/link/email/verify', {
-                            method: 'POST',
-                            body: {
-                                email: email.trim(),
-                                code: code.trim(),
-                                ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-                            },
-                        });
-                        showLoading(false);
-
-                        if (verifyError) {
-                            return showAppAlert(`認証に失敗しました: ${verifyError.message}`);
-                        }
-                        await showAppAlert('メールアドレスの連携が完了しました！');
-                        await loadAuthProvidersSettings();
-                    } else if (provider.name === 'scratch') {
-                        const username = await showAppPrompt('連携するScratchユーザー名を入力してください:');
-                        if (!username || !username.trim()) return;
-
-                        showLoading(true);
-                        const { data: initData, error: initError } = await apiRequest('/server/auth/link/scratch/initiate', {
-                            method: 'POST',
-                            body: { username: username.trim() },
-                        });
-                        showLoading(false);
-
-                        if (initError) {
-                            return showAppAlert(`認証の開始に失敗しました: ${initError.message}`);
-                        }
-
-                        const projId = initData?.verificationProjectId || provider.verificationProjectId || '1239738451';
-                        await showAppAlert(`Scratchの認証プロジェクトのコメント欄に、以下の認証コードを投稿してください:\n\n${initData.code}\n\nコメントを投稿したら「OK」を押して次へ進んでください。`);
-
-                        let turnstileToken = null;
-                        if (provider.turnstileRequired || globalThis.NyaitterServerStatus?.turnstile?.enabled) {
-                            turnstileToken = await requestTurnstileTokenModal();
-                            if (!turnstileToken) {
-                                return showAppAlert('Turnstile認証がキャンセルされたか失敗しました。');
-                            }
-                        }
-
-                        showLoading(true);
-                        const { error: verifyError } = await apiRequest('/server/auth/link/scratch/verify', {
-                            method: 'POST',
-                            body: {
-                                username: username.trim(),
-                                code: initData.code,
-                                ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-                            },
-                        });
-                        showLoading(false);
-
-                        if (verifyError) {
-                            return showAppAlert(`Scratch認証に失敗しました: ${verifyError.message}`);
-                        }
-                        await showAppAlert('Scratchアカウントの連携が完了しました！');
-                        await loadAuthProvidersSettings();
-                    } else if (provider.name === 'passkey') {
-                        if (!window.PublicKeyCredential) {
-                            return showAppAlert('このブラウザはパスキー認証に対応していません。');
-                        }
-
-                        let turnstileToken = null;
-                        if (provider.turnstileRequired || globalThis.NyaitterServerStatus?.turnstile?.enabled) {
-                            turnstileToken = await requestTurnstileTokenModal();
-                            if (!turnstileToken) {
-                                return showAppAlert('Turnstile認証がキャンセルされたか失敗しました。');
-                            }
-                        }
-
-                        showLoading(true);
-                        const { data: initiateData, error: initError } = await apiRequest('/server/auth/link/passkey/initiate', {
-                            method: 'POST',
-                            body: {
-                                ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-                            },
-                        });
-                        showLoading(false);
-
-                        if (initError) {
-                            return showAppAlert(`パスキーの開始に失敗しました: ${initError.message}`);
-                        }
-
-                        // WebAuthn API で新しいパスキーを作成
-                        function base64urlToUint8Array(base64url) {
-                            let base64 = String(base64url || '').replace(/-/g, '+').replace(/_/g, '/');
-                            while (base64.length % 4 !== 0) {
-                                base64 += '=';
-                            }
-                            const binary = atob(base64);
-                            const bytes = new Uint8Array(binary.length);
-                            for (let i = 0; i < binary.length; i++) {
-                                bytes[i] = binary.charCodeAt(i);
-                            }
-                            return bytes;
-                        }
-
-                        function bufferToBase64url(buffer) {
-                            if (!buffer) return null;
-                            const bytes = new Uint8Array(buffer);
-                            let binary = '';
-                            for (const b of bytes) binary += String.fromCharCode(b);
-                            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-                        }
-
-                        function getEffectiveRpId(serverRpId) {
-                            const host = window.location.hostname;
-                            if (!host) return undefined;
-                            if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.includes(':')) {
-                                return undefined;
-                            }
-                            if (serverRpId && serverRpId !== 'localhost' && (host === serverRpId || host.endsWith('.' + serverRpId))) {
-                                return serverRpId;
-                            }
-                            return host;
-                        }
-
-                        const challengeBytes = base64urlToUint8Array(initiateData.challenge);
-                        const userIdBytes = new TextEncoder().encode(String(getCurrentUser()?.id || 'user'));
-                        const rpId = getEffectiveRpId(initiateData.rpId);
-
-                        let credential;
-                        try {
-                            credential = await navigator.credentials.create({
-                                publicKey: {
-                                    challenge: challengeBytes,
-                                    rp: {
-                                        name: initiateData.rpName || 'Nyaitter',
-                                        ...(rpId ? { id: rpId } : {}),
-                                    },
-                                    user: {
-                                        id: userIdBytes,
-                                        name: getCurrentUser()?.name || 'user',
-                                        displayName: getCurrentUser()?.name || 'user',
-                                    },
-                                    pubKeyCredParams: [
-                                        { type: 'public-key', alg: -7 },
-                                        { type: 'public-key', alg: -257 },
-                                    ],
-                                    timeout: 60000,
-                                    authenticatorSelection: {
-                                        userVerification: 'preferred',
-                                        residentKey: 'preferred',
-                                    },
-                                    attestation: 'none',
-                                    extensions: {
-                                        credProps: true,
-                                    },
-                                },
-                            });
-                        } catch (webAuthnError) {
-                            if (webAuthnError.name === 'NotAllowedError') {
-                                return showAppAlert('パスキーの作成がキャンセルされました。');
-                            }
-                            return showAppAlert(`パスキーの作成に失敗しました: ${webAuthnError.message}`);
-                        }
-
-                        if (!credential) {
-                            return showAppAlert('パスキーの作成がキャンセルされました。');
-                        }
-
-                        showLoading(true);
-                        const verifyPayload = {
-                            credentialId: credential.id,
-                            rawId: bufferToBase64url(credential.rawId),
-                            response: {
-                                clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
-                                attestationObject: bufferToBase64url(credential.response.attestationObject),
-                            },
-                            type: credential.type,
-                            name: getCurrentUser()?.name,
-                            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-                        };
-                        const { error: verifyError } = await apiRequest('/server/auth/link/passkey/verify', {
-                            method: 'POST',
-                            body: verifyPayload,
-                        });
-                        showLoading(false);
-
-                        if (verifyError) {
-                            return showAppAlert(`パスキーの連携に失敗しました: ${verifyError.message}`);
-                        }
-                        await showAppAlert('パスキーの連携が完了しました！');
-                        await loadAuthProvidersSettings();
-                    } else if (provider.name === 'nyaitter') {
-                        const targetUrl = await showAppPrompt('NyaitterサーバーのURLを入力してください:');
-                        if (targetUrl === null) return;
-                        showLoading(true);
-                        const { data: initiateData, error: initError } = await apiRequest('/server/auth/link/nyaitter/initiate', {
-                            method: 'POST',
-                            body: { serverUrl: (targetUrl || '').trim() || undefined },
-                        });
-                        showLoading(false);
-                        if (initError || !initiateData?.auth_url) {
-                            return showAppAlert(`連携の開始に失敗しました: ${initError?.message || '不明なエラー'}`);
-                        }
-                        window.location.href = initiateData.auth_url;
-                    } else {
-                        showAppAlert(`未対応のプロバイダーです: ${provider.name}`);
+                linkBtn.addEventListener('click', () => {
+                    if (typeof window.openNyaitterLoginModal !== 'function') {
+                        showAppAlert('ログインモーダルを利用できません。ページを再読み込みしてください。');
+                        return;
                     }
+                    window.openNyaitterLoginModal({
+                        mode: 'link',
+                        provider: provider.name,
+                        onSuccess: loadAuthProvidersSettings,
+                    });
                 });
                 actions.appendChild(linkBtn);
             }
@@ -1173,6 +1137,14 @@ export async function showSettingsScreen(
             authProvidersList.appendChild(item);
         });
     };
+
+    // リダイレクトを跨ぐ NyaitterAuth 連携の完了後、一覧を再読込する。
+    if (!linkSuccessListenerBound) {
+        linkSuccessListenerBound = true;
+        window.addEventListener('nyaitter:link-success', () => {
+            void loadAuthProvidersSettings();
+        });
+    }
 
     const botTokensList = document.getElementById('settings-bot-tokens-list');
     const createBotTokenBtn = document.getElementById('setting-bot-token-create-btn');
@@ -1188,7 +1160,7 @@ export async function showSettingsScreen(
         botTokensList.replaceChildren();
         if (error) {
             const errP = document.createElement('p');
-            errP.className = 'settings-help-text';
+            errP.className = 'settings-help-text nui-help-text';
             errP.textContent = 'APIキー一覧の取得に失敗しました。';
             botTokensList.appendChild(errP);
             return;
@@ -1196,32 +1168,32 @@ export async function showSettingsScreen(
         const tokens = Array.isArray(data?.tokens) ? data.tokens : [];
         if (tokens.length === 0) {
             const empty = document.createElement('p');
-            empty.className = 'settings-help-text';
+            empty.className = 'settings-help-text nui-help-text';
             empty.textContent = '生成済みのAPIキーはありません。';
             botTokensList.appendChild(empty);
             return;
         }
         tokens.forEach((token) => {
             const item = document.createElement('article');
-            item.className = 'settings-session-item';
+            item.className = 'settings-session-item nui-list-item';
             const details = document.createElement('div');
-            details.className = 'settings-session-details';
+            details.className = 'settings-session-details nui-list-copy';
             const title = document.createElement('div');
-            title.className = 'settings-session-title';
+            title.className = 'settings-session-title nui-list-title';
             title.textContent = token.name || '名称未設定';
             const idBadge = document.createElement('span');
             idBadge.className = 'settings-bot-token-id';
             idBadge.textContent = `ID: ${token.tokenId}`;
             title.appendChild(idBadge);
             const dates = document.createElement('p');
-            dates.className = 'settings-session-dates';
+            dates.className = 'settings-session-dates nui-list-meta';
             const createdStr = token.createdAt ? formatSecurityTimestamp(token.createdAt) : '日時不明';
             const lastUsedStr = token.lastUsedAt ? formatSecurityTimestamp(token.lastUsedAt) : '未使用';
             dates.textContent = `作成: ${createdStr} / 最終使用: ${lastUsedStr}`;
             details.append(title, dates);
 
             const actions = document.createElement('div');
-            actions.className = 'settings-session-actions';
+            actions.className = 'settings-session-actions nui-actions';
             const revokeBtn = document.createElement('button');
             revokeBtn.type = 'button';
             revokeBtn.className = 'settings-session-revoke-button';
@@ -1329,11 +1301,11 @@ export async function showSettingsScreen(
 
         if (scopesContainer) {
             scopesContainer.innerHTML = availableScopes.map((s) => `
-                <label class="nyauth-scope-item" style="display: flex; gap: 0.75rem; margin: 0.75rem 0; cursor: pointer;">
+                <label class="nyauth-scope-item nui-field" style="display: flex; gap: 0.75rem; margin: 0.75rem 0; cursor: pointer;">
                     <input type="checkbox" name="edit_nyauth_scope" value="${s.id}" ${currentScopesSet.has(s.id) || s.required ? 'checked' : ''} ${s.required ? 'disabled data-required="true"' : ''}>
                     <div>
-                        <strong style="font-size: 0.95rem;">${escapeHTML(s.label)}</strong> ${s.required ? '<span class="nyauth-badge-required">必須</span>' : ''}
-                        <p style="margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--secondary-text-color);">${escapeHTML(s.desc)}</p>
+                        <strong style="font-size: 0.95rem;">${escapeHTML(s.label)}</strong> ${s.required ? '<span class="nyauth-badge-required nui-badge nui-badge-danger">必須</span>' : ''}
+                        <p class="nui-help-text" style="margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--secondary-text-color);">${escapeHTML(s.desc)}</p>
                     </div>
                 </label>
             `).join('');
@@ -1382,7 +1354,7 @@ export async function showSettingsScreen(
         authorizedAppsList.replaceChildren();
         if (error) {
             const errP = document.createElement('p');
-            errP.className = 'settings-help-text';
+            errP.className = 'settings-help-text nui-help-text';
             errP.textContent = `連携アプリの取得に失敗しました: ${error.message}`;
             authorizedAppsList.appendChild(errP);
             return;
@@ -1390,14 +1362,14 @@ export async function showSettingsScreen(
         const apps = Array.isArray(data?.apps) ? data.apps : [];
         if (apps.length === 0) {
             const empty = document.createElement('p');
-            empty.className = 'settings-help-text';
+            empty.className = 'settings-help-text nui-help-text';
             empty.textContent = '連携中のアプリケーションはありません。';
             authorizedAppsList.appendChild(empty);
             return;
         }
         apps.forEach((app) => {
             const item = document.createElement('article');
-            item.className = 'settings-session-item nyauth-app-item';
+            item.className = 'settings-session-item nyauth-app-item nui-list-item';
             item.style.cssText = 'display: flex; gap: 1rem; align-items: center; padding: 0.85rem;';
 
             const iconDiv = document.createElement('div');
@@ -1413,16 +1385,16 @@ export async function showSettingsScreen(
             }
 
             const details = document.createElement('div');
-            details.className = 'settings-session-details';
+            details.className = 'settings-session-details nui-list-copy';
             details.style.flex = '1';
 
             const title = document.createElement('div');
-            title.className = 'settings-session-title';
+            title.className = 'settings-session-title nui-list-title';
             title.textContent = app.app_name || '名称未設定';
 
             const idBadge = document.createElement('span');
             idBadge.className = 'settings-bot-token-id';
-            idBadge.textContent = `ID: ${app.app_id}`;
+            idBadge.textContent = `ID: ${app.application_id || `grant:${app.id}`}`;
             title.appendChild(idBadge);
 
             if (app.has_continuous_access) {
@@ -1455,7 +1427,7 @@ export async function showSettingsScreen(
             });
 
             const dates = document.createElement('p');
-            dates.className = 'settings-session-dates';
+            dates.className = 'settings-session-dates nui-list-meta';
             const createdStr = app.created_at ? formatSecurityTimestamp(app.created_at) : '日時不明';
             const lastUsedStr = app.last_used_at ? formatSecurityTimestamp(app.last_used_at) : '未使用';
             dates.textContent = `連携日: ${createdStr} / 最終使用: ${lastUsedStr}`;
@@ -1463,7 +1435,7 @@ export async function showSettingsScreen(
             details.append(title, scopesDiv, dates);
 
             const actions = document.createElement('div');
-            actions.className = 'settings-session-actions';
+            actions.className = 'settings-session-actions nui-actions';
             actions.style.cssText = 'display: flex; gap: 0.5rem; align-items: center;';
 
             // Edit scopes button
@@ -1518,7 +1490,7 @@ export async function showSettingsScreen(
         if (error) {
             imposterLimit.textContent = 'インポスター情報の取得に失敗しました。';
             const message = document.createElement('p');
-            message.className = 'settings-help-text';
+            message.className = 'settings-help-text nui-help-text';
             message.textContent = error.message || 'インポスター情報を取得できませんでした。';
             imposterList.appendChild(message);
             return;
@@ -1535,7 +1507,7 @@ export async function showSettingsScreen(
 
         if (imposters.length === 0) {
             const empty = document.createElement('p');
-            empty.className = 'settings-help-text';
+            empty.className = 'settings-help-text nui-help-text';
             empty.textContent = '利用できるインポスターはありません。';
             imposterList.appendChild(empty);
             return;
@@ -1545,17 +1517,17 @@ export async function showSettingsScreen(
             const metadata = imposter?.imposter || {};
             const canManage = metadata.role === 'owner' || metadata.role === 'manager';
             const item = document.createElement('article');
-            item.className = 'settings-session-item';
+            item.className = 'settings-session-item nui-list-item';
             const details = document.createElement('div');
-            details.className = 'settings-session-details';
+            details.className = 'settings-session-details nui-list-copy';
             const title = document.createElement('div');
-            title.className = 'settings-session-title';
+            title.className = 'settings-session-title nui-list-title';
             title.textContent = imposter.name || `NyaitterID ${formatImposterId(imposter.id)}`;
             const idBadge = document.createElement('span');
             idBadge.className = 'settings-bot-token-id';
             idBadge.textContent = `NyaitterID: ${formatImposterId(imposter.nyaitter_id || imposter.id)}`;
             const roleBadge = document.createElement('span');
-            roleBadge.className = 'settings-session-current';
+            roleBadge.className = 'settings-session-current nui-badge';
             roleBadge.textContent = imposterRoleLabel(metadata.role);
             title.append(' ', idBadge, ' ', roleBadge);
             details.appendChild(title);
@@ -1564,20 +1536,20 @@ export async function showSettingsScreen(
             memberSection.className = 'settings-sessions-list';
             const members = Array.isArray(metadata.members) ? metadata.members : [];
             const memberHeading = document.createElement('p');
-            memberHeading.className = 'settings-help-text';
+            memberHeading.className = 'settings-help-text nui-help-text';
             memberHeading.textContent = members.length > 0 ? '共同運用者' : '共同運用者はいません。';
             memberSection.appendChild(memberHeading);
 
             members.forEach((member) => {
                 const memberRow = document.createElement('div');
-                memberRow.className = 'settings-session-item';
+                memberRow.className = 'settings-session-item nui-list-item';
                 const memberDetails = document.createElement('div');
-                memberDetails.className = 'settings-session-details';
+                memberDetails.className = 'settings-session-details nui-list-copy';
                 memberDetails.textContent = `NyaitterID: ${formatImposterId(member.user_id)}`;
                 memberRow.appendChild(memberDetails);
                 if (canManage) {
                     const actions = document.createElement('div');
-                    actions.className = 'settings-session-actions';
+                    actions.className = 'settings-session-actions nui-actions';
                     const roleSelect = document.createElement('select');
                     roleSelect.dataset.imposterControl = 'true';
                     ['manager', 'editor'].forEach((role) => {
@@ -1611,7 +1583,7 @@ export async function showSettingsScreen(
                     memberRow.appendChild(actions);
                 } else {
                     const roleText = document.createElement('span');
-                    roleText.className = 'settings-help-text';
+                    roleText.className = 'settings-help-text nui-help-text';
                     roleText.textContent = imposterRoleLabel(member.role);
                     memberRow.appendChild(roleText);
                 }
@@ -1657,7 +1629,7 @@ export async function showSettingsScreen(
             details.appendChild(memberSection);
 
             const actions = document.createElement('div');
-            actions.className = 'settings-session-actions';
+            actions.className = 'settings-session-actions nui-actions';
             if (metadata.role === 'owner') {
                 const deleteButton = document.createElement('button');
                 deleteButton.type = 'button';
@@ -1727,7 +1699,7 @@ export async function showSettingsScreen(
         const files = Array.isArray(payload.files) ? payload.files : [];
         if (files.length === 0) {
             const empty = document.createElement('p');
-            empty.className = 'settings-help-text';
+            empty.className = 'settings-help-text nui-help-text';
             empty.textContent = '保存済みファイルはありません。';
             fileList.appendChild(empty);
             return;
@@ -1735,20 +1707,20 @@ export async function showSettingsScreen(
 
         files.forEach((file) => {
             const item = document.createElement('article');
-            item.className = 'settings-session-item settings-storage-file';
+            item.className = 'settings-session-item settings-storage-file nui-list-item';
             const details = document.createElement('div');
-            details.className = 'settings-session-details';
+            details.className = 'settings-session-details nui-list-copy';
             const title = document.createElement('div');
-            title.className = 'settings-session-title';
+            title.className = 'settings-session-title nui-list-title';
             title.textContent = file.name || file.id || '名称不明のファイル';
             const meta = document.createElement('p');
-            meta.className = 'settings-session-dates';
+            meta.className = 'settings-session-dates nui-list-meta';
             const updatedAt = file.updatedAt ? formatSecurityTimestamp(file.updatedAt) : '日時不明';
             meta.textContent = `サイズ: ${formatStorageSize(file.size)} / 更新: ${updatedAt}`;
             details.append(title, meta);
 
             const actions = document.createElement('div');
-            actions.className = 'settings-session-actions';
+            actions.className = 'settings-session-actions nui-actions';
             const deleteButton = document.createElement('button');
             deleteButton.type = 'button';
             deleteButton.className = 'settings-session-revoke-button';
@@ -1786,7 +1758,7 @@ export async function showSettingsScreen(
         const resources = Array.isArray(resourceLinks) ? resourceLinks : [];
         if (resources.length === 0) {
             const empty = document.createElement('p');
-            empty.className = 'settings-help-text';
+            empty.className = 'settings-help-text nui-help-text';
             empty.textContent = '表示するリソースリンクはありません。';
             resourceLinksList.appendChild(empty);
             return;
@@ -1801,9 +1773,9 @@ export async function showSettingsScreen(
                 return;
             }
             const item = document.createElement('article');
-            item.className = 'settings-session-item';
+            item.className = 'settings-session-item nui-list-item';
             const link = document.createElement('a');
-            link.className = 'settings-session-title';
+            link.className = 'settings-session-title nui-list-title';
             link.textContent = resource.name;
             link.href = resource.url;
             if (/^https:\/\//i.test(resource.url)) {
@@ -1817,26 +1789,26 @@ export async function showSettingsScreen(
 
     function createHomeTabItemElement(tabDef, zone = 'active', isOnlyActive = false) {
         const item = document.createElement('div');
-        item.className = 'home-tab-item';
+        item.className = 'home-tab-item nui-list-item';
         item.draggable = true;
         item.dataset.tabKey = tabDef.key;
         item.dataset.zone = zone;
 
         item.innerHTML = `
-            <div class="home-tab-item-main">
+            <div class="home-tab-item-main nui-row">
                 <span class="home-tab-handle" title="ドラッグして並び替え">⠿</span>
                 <div class="home-tab-info">
-                    <span class="home-tab-name">${escapeHTML(tabDef.name)}</span>
-                    <span class="home-tab-description">${escapeHTML(tabDef.description)}</span>
+                    <span class="home-tab-name nui-list-title">${escapeHTML(tabDef.name)}</span>
+                    <span class="home-tab-description nui-list-meta">${escapeHTML(tabDef.description)}</span>
                 </div>
             </div>
-            <div class="home-tab-actions">
+            <div class="home-tab-actions nui-actions">
                 ${zone === 'available' ? `
-                    <button type="button" class="home-tab-action-btn home-tab-add-btn" data-action="add-tab" title="有効なタブに追加">＋ 追加</button>
+                    <button type="button" class="home-tab-action-btn home-tab-add-btn nui-button-secondary" data-action="add-tab" title="有効なタブに追加">＋ 追加</button>
                 ` : `
-                    <button type="button" class="home-tab-action-btn" data-action="move-up" title="上へ移動">↑</button>
-                    <button type="button" class="home-tab-action-btn" data-action="move-down" title="下へ移動">↓</button>
-                    <button type="button" class="home-tab-action-btn home-tab-remove-btn" data-action="remove-tab" title="無効化" ${isOnlyActive ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>✕</button>
+                    <button type="button" class="home-tab-action-btn nui-button-secondary" data-action="move-up" title="上へ移動">↑</button>
+                    <button type="button" class="home-tab-action-btn nui-button-secondary" data-action="move-down" title="下へ移動">↓</button>
+                    <button type="button" class="home-tab-action-btn home-tab-remove-btn nui-button-secondary" data-action="remove-tab" title="無効化" ${isOnlyActive ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>✕</button>
                 `}
             </div>
         `;
@@ -1866,8 +1838,8 @@ export async function showSettingsScreen(
         });
     }
 
-    function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('.home-tab-item:not(.dragging)')];
+    function getDragAfterElement(container, y, selector = '.home-tab-item') {
+        const draggableElements = [...container.querySelectorAll(`${selector}:not(.dragging)`)];
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
@@ -1998,6 +1970,201 @@ export async function showSettingsScreen(
         }
     }
 
+    const SIDE_MENU_ZONES = ['bar', 'more'];
+    let sideMenuOutlet = 'pc';
+
+    function getSideMenuItemDef(key) {
+        return ALL_SIDEBAR_ITEMS.find((item) => item.key === key);
+    }
+
+    function getSideMenuList(container, outlet, zone) {
+        return container.querySelector(
+            `.side-menu-zone[data-outlet="${outlet}"] .side-menu-list[data-zone="${zone}"]`,
+        );
+    }
+
+    function readSideMenuZones(container, outlet) {
+        const readZone = (zone) => {
+            const list = getSideMenuList(container, outlet, zone);
+            if (!list) return [];
+            return [...list.querySelectorAll(':scope > .side-menu-item')]
+                .map((item) => item.dataset.itemKey)
+                .filter(Boolean);
+        };
+        return { bar: readZone('bar'), more: readZone('more') };
+    }
+
+    function createSideMenuItemElement(itemDef, zone = 'bar') {
+        const item = document.createElement('div');
+        item.className = 'side-menu-item nui-list-item';
+        item.draggable = true;
+        item.dataset.itemKey = itemDef.key;
+        item.dataset.zone = zone;
+
+        const rawHash = String(itemDef.hash || '');
+        const hashHint = rawHash ? (rawHash.startsWith('#') ? rawHash : `#${rawHash}`) : '';
+        const zoneAction = zone === 'more'
+            ? '<button type="button" class="side-menu-action-btn side-menu-to-bar-btn nui-button-secondary" data-action="to-bar" title="バーに表示し直す">バーへ</button>'
+            : '<button type="button" class="side-menu-action-btn side-menu-to-more-btn nui-button-secondary" data-action="to-more" title="その他にまとめる">その他へ</button>';
+
+        // バー側の下限は設けないので、全項目を「その他」に移せる
+        item.innerHTML = `
+            <div class="side-menu-item-main nui-row">
+                <span class="side-menu-handle" title="ドラッグして並び替え">⠿</span>
+                <span class="side-menu-name nui-list-title">${escapeHTML(itemDef.name)}</span>
+                ${hashHint ? `<span class="side-menu-hash nui-list-meta">${escapeHTML(hashHint)}</span>` : ''}
+            </div>
+            <div class="side-menu-actions nui-actions">
+                <button type="button" class="side-menu-action-btn nui-button-secondary" data-action="move-up" title="上へ移動">↑</button>
+                <button type="button" class="side-menu-action-btn nui-button-secondary" data-action="move-down" title="下へ移動">↓</button>
+                ${zoneAction}
+            </div>
+        `;
+
+        return item;
+    }
+
+    function renderSideMenuCustomizer() {
+        const container = document.querySelector('.side-menu-customizer');
+        if (!container) return;
+
+        const zones = getSavedSideMenu()[sideMenuOutlet];
+
+        SIDE_MENU_ZONES.forEach((zone) => {
+            const list = getSideMenuList(container, sideMenuOutlet, zone);
+            if (!list) return;
+            list.innerHTML = '';
+            zones[zone].forEach((key) => {
+                list.appendChild(createSideMenuItemElement(getSideMenuItemDef(key), zone));
+            });
+        });
+    }
+
+    function setupSideMenuCustomizer() {
+        const container = document.querySelector('.side-menu-customizer');
+        if (!container) return;
+        renderSideMenuCustomizer();
+
+        if (container.dataset.dndInitialized) return;
+        container.dataset.dndInitialized = 'true';
+
+        let draggedItem = null;
+
+        const clearDragOver = () => {
+            container.querySelectorAll('.side-menu-list').forEach((list) => list.classList.remove('drag-over'));
+        };
+        const commit = (zones) => {
+            saveSideMenu(sideMenuOutlet, zones);
+            renderSideMenuCustomizer();
+        };
+
+        container.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('.side-menu-item');
+            if (!item) return;
+            draggedItem = item;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', item.dataset.itemKey);
+        });
+
+        container.addEventListener('dragend', () => {
+            if (draggedItem) {
+                draggedItem.classList.remove('dragging');
+                draggedItem = null;
+            }
+            clearDragOver();
+            // ドロップを放棄するとDOMだけ並びが変わる。保存済みモデルから描き直す
+            renderSideMenuCustomizer();
+        });
+
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const list = e.target.closest('.side-menu-list');
+            if (!list) return;
+            e.dataTransfer.dropEffect = 'move';
+            clearDragOver();
+            list.classList.add('drag-over');
+
+            const afterElement = getDragAfterElement(list, e.clientY, '.side-menu-item');
+            if (draggedItem) {
+                if (afterElement == null) {
+                    list.appendChild(draggedItem);
+                } else {
+                    list.insertBefore(draggedItem, afterElement);
+                }
+            }
+        });
+
+        container.addEventListener('dragleave', (e) => {
+            const list = e.target.closest('.side-menu-list');
+            if (list && !list.contains(e.relatedTarget)) {
+                list.classList.remove('drag-over');
+            }
+        });
+
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            clearDragOver();
+            // ドラッグ中にDOMが移動済みなので、現在の並びを読み取って保存する。
+            commit(readSideMenuZones(container, sideMenuOutlet));
+        });
+
+        container.addEventListener('click', (e) => {
+            const actionBtn = e.target.closest('[data-action]');
+            if (!actionBtn || actionBtn.disabled) return;
+            const item = actionBtn.closest('.side-menu-item');
+            if (!item) return;
+            const itemKey = item.dataset.itemKey;
+            if (!itemKey) return;
+            const action = actionBtn.dataset.action;
+
+            const zones = readSideMenuZones(container, sideMenuOutlet);
+            const fromZone = item.closest('.side-menu-list')?.dataset.zone === 'more' ? 'more' : 'bar';
+            const keys = zones[fromZone];
+            const index = keys.indexOf(itemKey);
+            if (index < 0) return;
+
+            if (action === 'move-up' || action === 'move-down') {
+                const target = action === 'move-up' ? index - 1 : index + 1;
+                if (target < 0 || target >= keys.length) return;
+                keys[target] = keys.splice(index, 1, keys[target])[0];
+            } else if (action === 'to-more' || action === 'to-bar') {
+                const toZone = action === 'to-bar' ? 'bar' : 'more';
+                keys.splice(index, 1);
+                zones[toZone].push(itemKey);
+            } else {
+                return;
+            }
+
+            commit(zones);
+        });
+
+        const tabButtons = [...document.querySelectorAll('.side-menu-outlet-tab')];
+        const zoneElements = [...document.querySelectorAll('.side-menu-zone')];
+        const activateOutlet = (outlet) => {
+            sideMenuOutlet = outlet === 'mobile' ? 'mobile' : 'pc';
+            tabButtons.forEach((tab) => {
+                const active = tab.dataset.outlet === sideMenuOutlet;
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+                tab.tabIndex = active ? 0 : -1;
+            });
+            zoneElements.forEach((zone) => {
+                zone.hidden = zone.dataset.outlet !== sideMenuOutlet;
+            });
+            renderSideMenuCustomizer();
+        };
+        tabButtons.forEach((tab) => {
+            tab.addEventListener('click', () => activateOutlet(tab.dataset.outlet));
+        });
+
+        const resetBtn = document.getElementById('side-menu-reset-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                commit(DEFAULT_SIDEBAR[sideMenuOutlet]);
+            });
+        }
+    }
+
     const selectSettingsGroup = (group) => {
         const activeGroup = SETTINGS_GROUP_DETAILS[group] ? group : 'overview';
         const details = SETTINGS_GROUP_DETAILS[activeGroup];
@@ -2020,8 +2187,12 @@ export async function showSettingsScreen(
         if (activeGroup === 'home') {
             setupHomeTabsCustomizer();
         }
+        if (activeGroup === 'menu') {
+            setupSideMenuCustomizer();
+        }
         if (activeGroup === 'account') {
             void loadLoginSecuritySessions();
+            void loadBlockedLoginIps();
             void loadAuthProvidersSettings();
         }
         if (activeGroup === 'notifications') void loadPushSettingsState();
@@ -2036,23 +2207,23 @@ export async function showSettingsScreen(
     if (dangerZone) {
         const isImposter = Boolean(getCurrentUser()?.is_imposter);
         let dangerZoneHTML = `
-            <section class="settings-account-identity" aria-labelledby="settings-nyaitter-id-title">
-                <h4 id="settings-nyaitter-id-title">NyaitterID</h4>
-                <p class="settings-help-text">再割り当てをした場合元のIDに戻すことはできません。</p>
-                <button type="button" id="settings-reassign-nyaitter-id-btn">NyaitterIDを再割り当て</button>
+            <section class="nui-section settings-account-identity" aria-labelledby="settings-nyaitter-id-title">
+                <h4 class="nui-section-title" id="settings-nyaitter-id-title">NyaitterID</h4>
+                <p class="settings-help-text nui-help-text">再割り当てをした場合元のIDに戻すことはできません。</p>
+                <button type="button" id="settings-reassign-nyaitter-id-btn" class="nui-button-secondary">NyaitterIDを再割り当て</button>
             </section>
             ${isImposter ? '' : `
-                <section class="settings-account-delete" aria-labelledby="settings-account-delete-title">
-                    <h4 id="settings-account-delete-title">NyaitterIDの破棄</h4>
-                    <p class="settings-help-text">あなたのNyaitterIDを破棄し、全てのデータを削除します。この操作は取り消せません。</p>
-                    <button type="button" id="settings-delete-account-btn" class="settings-danger-button">NyaitterIDを破棄</button>
+                <section class="nui-section settings-account-delete" aria-labelledby="settings-account-delete-title">
+                    <h4 class="nui-section-title" id="settings-account-delete-title">NyaitterIDの破棄</h4>
+                    <p class="settings-help-text nui-help-text">あなたのNyaitterIDを破棄し、全てのデータを削除します。この操作は取り消せません。</p>
+                    <button type="button" id="settings-delete-account-btn" class="settings-danger-button nui-button-danger">NyaitterIDを破棄</button>
                 </section>
             `}
-            <button type="button" id="settings-account-switcher-btn">アカウント切替</button>
-            ${isImposter ? '' : '<button type="button" id="settings-logout-btn">ログアウト</button>'}
+            <button type="button" id="settings-account-switcher-btn" class="nui-button-secondary">アカウント切替</button>
+            ${isImposter ? '' : '<button type="button" id="settings-logout-btn" class="nui-button-secondary">ログアウト</button>'}
         `;
         if (getCurrentUser().admin) {
-            dangerZoneHTML += `<a href="#admin/logs" id="settings-showlog-btn" style="display:block;margin-top:0.5rem;">アクセスログ</a>`;
+            dangerZoneHTML += `<a href="#admin/logs" id="settings-showlog-btn" class="nui-link" style="display:block;margin-top:0.5rem;">アクセスログ</a>`;
         }
         dangerZone.innerHTML = dangerZoneHTML;
     }
@@ -2167,6 +2338,7 @@ export async function showSettingsScreen(
         control.addEventListener('change', async () => {
             if (control.dataset.imposterControl === 'true') return;
             if (control.id === 'setting-theme') applyInterfaceTheme(control.value);
+            if (control.id === 'setting-ui-mode') setUiMode(control.value);
             if (control.id === 'setting-ip-trust-enabled' && control.checked) {
                 const { error } = await apiRequest('/server/auth/trust-current-ip', { method: 'POST' });
                 if (error) {
@@ -2179,10 +2351,9 @@ export async function showSettingsScreen(
         });
     });
     settingsForm?.querySelectorAll('input[type="text"], textarea').forEach((control) => {
-        control.addEventListener('input', () => {
-            clearTimeout(settingsChangeDebouncetimer);
-            settingsChangeDebouncetimer = setTimeout(() => requestSettingsSave(settingsForm), 400);
-        });
+        // 1文字入力するごとに保存すると自動保存が連打され、保存 API の
+        // レート制限に達してしまう。入力の確定時（blur / Enter による blur）
+        // にのみ保存する。
         control.addEventListener('blur', () => {
             clearTimeout(settingsChangeDebouncetimer);
             requestSettingsSave(settingsForm);

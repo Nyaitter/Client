@@ -1,7 +1,9 @@
 import { initApp } from './app.js';
 import { startNetworkUsageMeter } from './modules/networkUsage.js';
+import { initUiMode } from './modules/uiMode.js';
 
 startNetworkUsageMeter();
+initUiMode();
 
 function showInitialLoadingScreen() {
     const loadingOverlay = document.getElementById('loading-overlay');

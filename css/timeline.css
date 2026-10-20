@@ -3,39 +3,39 @@
    ========================================================================== */
 
 #nav-menu-top {
-display: flex;
+    display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
 }
 
 #nav-logo {
-padding: 1rem;
+    padding: 1rem;
     display: flex;
     margin-bottom: 0px;
 }
 
 #nav-menu-bottom {
-padding-bottom: 1rem;
+    padding-bottom: 1rem;
     margin-top: auto;
 }
 
 .account-info {
-display: flex;
+    display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
 
 .account-info .name {
-font-weight: 700;
+    font-weight: 700;
 }
 
 .account-info .id {
-color: var(--secondary-text-color);
+    color: var(--secondary-text-color);
 }
 
 .timeline-tabs-sticky-container {
-position: sticky;
+    position: sticky;
     top: var(--page-header-height, 62px);
     background-color: var(--pg-bg-color);
     backdrop-filter: blur(12px);
@@ -49,13 +49,21 @@ position: sticky;
 }
 
 .timeline-tabs {
-display: flex;
+    display: flex;
     flex-wrap: nowrap;
     min-width: max-content;
 }
 
+/* nui 付属CSSの .nui-tabs (flex-wrap:wrap / min-width:0 / gap) を打ち消し、
+   タブを1行に保ったまま親の横スクロールで送れるようにする。 */
+[data-nyaitter-ui='nui'] .timeline-tabs.nui-tabs {
+    flex-wrap: nowrap;
+    min-width: max-content;
+    gap: 0;
+}
+
 .post-form-sticky-container {
-background-color: var(
+    background-color: var(
         --main-bg-color
     ); /* スクロール時に背景が透けないように */
     z-index: 8;
@@ -63,7 +71,7 @@ background-color: var(
 }
 
 .new-posts-indicator {
-position: sticky;
+    position: sticky;
     top: calc(var(--page-header-height, 62px) + 50px); /* ヘッダー + タブの高さ */
     z-index: 9; /* ポストフォームより手前に表示 */
     text-align: center;
@@ -72,19 +80,19 @@ position: sticky;
 }
 
 .post-form {
-padding: 1rem;
+    padding: 1rem;
     display: flex;
     gap: 0.5rem;
     position: relative;
 }
 
 .post-form .user-icon {
-width: 48px;
+    width: 48px;
     height: 48px;
 }
 
 .post-account-selector {
-flex: 0 0 48px;
+    flex: 0 0 48px;
     width: 48px;
     height: 48px;
     padding: 0;
@@ -95,16 +103,16 @@ flex: 0 0 48px;
 }
 
 .post-account-selector:focus-visible {
-outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-color);
     outline-offset: 3px;
 }
 
 .post-account-selector .user-icon {
-display: block;
+    display: block;
 }
 
 .post-account-menu {
-position: absolute;
+    position: absolute;
     z-index: 30;
     top: 4.4rem;
     left: 0.75rem;
@@ -122,7 +130,7 @@ position: absolute;
 }
 
 .post-account-menu-item {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 0.65rem;
     width: 100%;
@@ -139,16 +147,16 @@ display: flex;
 .post-account-menu-item:hover,
 .post-account-menu-item:focus-visible,
 .post-account-menu-item.active {
-background: var(--hover-bg-color, var(--main-bg-color));
+    background: var(--hover-bg-color, var(--main-bg-color));
 }
 
 .post-account-menu-item:focus-visible {
-outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-color);
     outline-offset: -2px;
 }
 
 .post-account-menu-icon {
-flex: 0 0 36px;
+    flex: 0 0 36px;
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -156,7 +164,7 @@ flex: 0 0 36px;
 }
 
 .post-account-menu-user {
-display: flex;
+    display: flex;
     flex: 1;
     min-width: 0;
     flex-direction: column;
@@ -164,22 +172,22 @@ display: flex;
 
 .post-account-menu-user strong,
 .post-account-menu-user small {
-overflow: hidden;
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .post-account-menu-user small {
-color: var(--secondary-text-color);
+    color: var(--secondary-text-color);
 }
 
 .post-form .form-content {
-flex-grow: 1;
+    flex-grow: 1;
     min-width: 0;
 }
 
 .post-form textarea {
-width: 100%;
+    width: 100%;
     min-height: 60px;
     background-color: var(--main-bg-color);
     color: var(--text-color);
@@ -286,7 +294,7 @@ width: 100%;
 }
 
 /* モーダルは画面幅が狭くてもツール列を横にはみ出させない。 */
-@media (max-width: 520px) {
+@media (max-width: 416px) {
     .modal-content .post-form-actions {
         flex-direction: column;
         align-items: stretch;
@@ -336,7 +344,7 @@ width: 100%;
 }
 
 .file-preview-container {
-margin-top: 0.5rem;
+    margin-top: 0.5rem;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -349,18 +357,18 @@ margin-top: 0.5rem;
 }
 
 .file-preview-item {
-position: relative;
+    position: relative;
 }
 
 .file-preview-item img,
 .file-preview-item video {
-max-width: 100px;
+    max-width: 100px;
     max-height: 100px;
     border-radius: 8px;
 }
 
 .file-preview-remove {
-position: absolute;
+    position: absolute;
     top: -5px;
     right: -5px;
     background: rgba(0, 0, 0, 0.7);
@@ -383,14 +391,14 @@ position: absolute;
 }
 
 .thread-nested-reply {
-box-sizing: border-box;
+    box-sizing: border-box;
     margin-left: var(--reply-indent, 2rem) !important;
     width: calc(100% - var(--reply-indent, 2rem)) !important;
     padding-left: 1rem;
 }
 
 .thread-nested-reply > .post {
-width: 100%;
+    width: 100%;
     box-sizing: border-box;
 }
 
@@ -420,18 +428,18 @@ width: 100%;
 }
 
 .post .user-icon {
-width: 48px;
+    width: 48px;
     height: 48px;
     flex-shrink: 0;
 }
 
 .post-main {
-flex-grow: 1;
+    flex-grow: 1;
     min-width: 0;
 }
 
 .post-header {
-display: flex;
+    display: flex;
     box-sizing: border-box;
     min-width: 0;
     width: 100%;
@@ -443,11 +451,11 @@ display: flex;
 }
 
 .post-header.has-post-menu {
-padding-right: 32px;
+    padding-right: 32px;
 }
 
 .post-author {
-display: flex;
+    display: flex;
     min-width: 0;
     flex: 0 1 auto;
     align-items: center;
@@ -460,7 +468,7 @@ display: flex;
 }
 
 .post-author-name {
-min-width: 0;
+    min-width: 0;
     flex: 1 1 auto;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -468,25 +476,25 @@ min-width: 0;
 }
 
 .post-author:hover {
-text-decoration: underline;
+    text-decoration: underline;
 }
 
 .post-time {
-flex: 0 0 auto;
+    flex: 0 0 auto;
     white-space: nowrap;
     font-size: 0.9rem;
     color: var(--secondary-text-color);
 }
 
 .post-lock-indicator {
-display: inline-flex;
+    display: inline-flex;
     flex: 0 0 auto;
     align-items: center;
     color: var(--secondary-text-color);
 }
 
 .post-lock-indicator svg {
-width: 0.95rem;
+    width: 0.95rem;
     height: 0.95rem;
 }
 
@@ -561,7 +569,7 @@ width: 0.95rem;
 }
 
 .url-card {
-display: flex;
+    display: flex;
     min-width: 0;
     max-width: 100%;
     flex-direction: column;
@@ -578,12 +586,12 @@ display: flex;
 }
 
 .url-card:hover {
-border-color: var(--primary-color);
+    border-color: var(--primary-color);
     text-decoration: none;
 }
 
 .url-card-hostname {
-overflow: hidden;
+    overflow: hidden;
     color: var(--secondary-text-color);
     font-size: 0.78rem;
     text-overflow: ellipsis;
@@ -592,16 +600,16 @@ overflow: hidden;
 
 .url-card-title,
 .url-card-description {
-overflow-wrap: anywhere;
+    overflow-wrap: anywhere;
     word-break: break-word;
 }
 
 .url-card-title {
-font-size: 0.96rem;
+    font-size: 0.96rem;
 }
 
 .url-card-description {
-display: -webkit-box;
+    display: -webkit-box;
     overflow: hidden;
     color: var(--secondary-text-color);
     font-size: 0.88rem;
@@ -611,11 +619,11 @@ display: -webkit-box;
 }
 
 .url-card-placeholder {
-display: none;
+    display: none;
 }
 
 .post-content.post-mask-title {
-margin-bottom: auto;
+    margin-bottom: auto;
 }
 
 .post[data-clamp-content] .post-body,
@@ -650,7 +658,7 @@ margin-bottom: auto;
 }
 
 .post-clamp-toggle {
-display: none;
+    display: none;
     margin: 0.25rem 0 0.5rem;
     padding: 0.25rem 0.75rem;
     border: none;
@@ -663,15 +671,15 @@ display: none;
 }
 
 .post-clamp-toggle.is-visible {
-display: inline-flex;
+    display: inline-flex;
 }
 
 .user-me {
-line-break: anywhere;
+    line-break: anywhere;
 }
 
 .post-actions {
-display: flex;
+    display: flex;
     justify-content: space-around;
     align-items: center;
     max-width: 425px;
@@ -700,7 +708,7 @@ display: flex;
 }
 
 .post .user-icon-link {
-align-self: flex-start;
+    align-self: flex-start;
 }
 
 .replying-to {
@@ -726,7 +734,7 @@ align-self: flex-start;
 }
 
 .parent-post-container {
-padding-left: 0.9rem;
+    padding-left: 0.9rem;
     border-left: 2px solid var(--border-color);
     margin-left: 24px;
     margin-bottom: 1rem;
@@ -740,7 +748,7 @@ padding-left: 0.9rem;
 }
 
 .attachment-item {
-border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -748,14 +756,14 @@ border: 1px solid var(--border-color);
 .attachment-item img,
 .attachment-item video,
 .attachment-item audio {
-max-height: 15em;
+    max-height: 15em;
     max-width: 100%;
     display: block;
     cursor: pointer;
 }
 
 .attachment-fileinfo {
-display: block;
+    display: block;
     padding: 0.5rem;
     font-size: 0.9rem;
     text-decoration: none;
@@ -763,7 +771,7 @@ display: block;
 }
 
 .attachment-download-link {
-display: block;
+    display: block;
     padding: 0.5rem;
     font-size: 0.9rem;
     text-decoration: none;
@@ -771,72 +779,72 @@ display: block;
 }
 
 .attachment-download-link:hover {
-text-decoration: underline;
+    text-decoration: underline;
 }
 
 .load-more-trigger {
-height: 100px;
+    height: 100px;
     text-align: center;
     padding: 2rem;
     color: var(--secondary-text-color);
 }
 
 .link {
-text-decoration: none;
+    text-decoration: none;
     color: #808090;
     padding: 1px 8px 1px 8px;
 }
 
 .link:not(:last-child) {
-border-right: #808090 1.5px solid;
+    border-right: #808090 1.5px solid;
 }
 
 .link:hover {
-text-decoration: underline;
+    text-decoration: underline;
 }
 
 .sidebar-widget {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
     border-radius: 16px;
     margin-bottom: 1rem;
     overflow: hidden;
 }
 
 .widget-title {
-font-size: 1.25rem;
+    font-size: 1.25rem;
     font-weight: 800;
     padding: 0.75rem 1rem;
 }
 
 .widget-item {
-padding: 0.75rem 1rem;
+    padding: 0.75rem 1rem;
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
 .widget-item:hover {
-background-color: var(--widget-bg-color);
+    background-color: var(--widget-bg-color);
 }
 
 .recommend-user {
-display: flex;
+    display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 0.8rem; /* 要素間の隙間を追加 */
 }
 
 .recommend-user > a {
-min-width: 0; /* flexアイテムが自身のコンテンツ幅以下に縮むことを許可 */
+    min-width: 0; /* flexアイテムが自身のコンテンツ幅以下に縮むことを許可 */
     flex-shrink: 1; /* 親コンテナが狭いときに縮むことを許可 */
     overflow: hidden; /* はみ出し防止のため */
 }
 
 .recommend-user > a > div {
-overflow: hidden; /* 中のspanがはみ出た場合に隠すため */
+    overflow: hidden; /* 中のspanがはみ出た場合に隠すため */
 }
 
 .recommend-user span {
-font-weight: 700;
+    font-weight: 700;
         display: block; /* ellipsisを効かせるためにblock要素にする */
     white-space: nowrap; /* テキストを折り返さない */
     overflow: hidden; /* はみ出たテキストを隠す */
@@ -844,13 +852,13 @@ font-weight: 700;
 }
 
 .app-dialog-overlay {
-z-index: 3000;
+    z-index: 3000;
     padding: 1rem;
     box-sizing: border-box;
 }
 
 .app-dialog-content {
-box-sizing: border-box;
+    box-sizing: border-box;
     width: min(420px, 100%);
     max-width: 420px;
     padding: 1.7rem 1.25rem 1.25rem;
@@ -859,7 +867,7 @@ box-sizing: border-box;
 }
 
 .app-dialog-message {
-margin: 0;
+    margin: 0;
     color: var(--text-color);
     line-height: 1.55;
     white-space: pre-wrap;
@@ -867,7 +875,7 @@ margin: 0;
 }
 
 .app-dialog-input-group {
-display: flex;
+    display: flex;
     flex-direction: column;
     gap: 0.45rem;
     margin-top: 1.1rem;
@@ -876,11 +884,11 @@ display: flex;
 }
 
 .app-dialog-input-group.hidden {
-display: none;
+    display: none;
 }
 
 #app-dialog-input {
-box-sizing: border-box;
+    box-sizing: border-box;
     width: 100%;
     min-height: 3rem;
     padding: 0.7rem 0.85rem;
@@ -892,19 +900,19 @@ box-sizing: border-box;
 }
 
 #app-dialog-input:focus-visible {
-outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }
 
 .app-dialog-actions {
-display: flex;
+    display: flex;
     justify-content: flex-end;
     gap: 0.65rem;
     margin-top: 1.35rem;
 }
 
 #image-preview-modal {
-box-sizing: border-box;
+    box-sizing: border-box;
     width: 100vw;
     height: 100dvh;
     padding: 0;
@@ -918,23 +926,23 @@ box-sizing: border-box;
 }
 
 .scidlink {
-color: var(--secondary-text-color);
+    color: var(--secondary-text-color);
     border: none;
     text-decoration: none;
 }
 
 .scidlink:hover {
-border-bottom: 1px black solid;
+    border-bottom: 1px black solid;
 }
 
 .media-grid-container {
-display: grid;
+    display: grid;
     grid-template-columns: repeat(3, 1fr); /* 3カラム表示 */
     gap: 2px; /* グリッド間の隙間 */
 }
 
 .media-grid-item {
-position: relative;
+    position: relative;
     width: 100%;
     aspect-ratio: 1 / 1; /* 正方形を維持 */
     background-color: var(--border-color);
@@ -942,7 +950,7 @@ position: relative;
 
 .media-grid-item img,
 .media-grid-item video {
-position: absolute;
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
@@ -953,17 +961,17 @@ position: absolute;
 
 .media-grid-item:hover img,
 .media-grid-item:hover video {
-filter: brightness(0.8); /* ホバー時に少し暗くする */
+    filter: brightness(0.8); /* ホバー時に少し暗くする */
 }
 
 .setting-icon-container {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 1rem;
 }
 
 #setting-icon-preview {
-width: 80px;
+    width: 80px;
     height: 80px;
     border-radius: 50%;
     object-fit: cover;
@@ -973,14 +981,14 @@ width: 80px;
 }
 
 .setting-header-container {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
 }
 
 .setting-header-preview {
-width: min(100%, 360px);
+    width: min(100%, 360px);
     height: 120px;
     overflow: hidden;
     border: 2px solid var(--border-color);
@@ -990,7 +998,7 @@ width: min(100%, 360px);
 }
 
 .setting-header-preview.is-empty {
-display: flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     color: var(--secondary-text-color);
@@ -1003,23 +1011,23 @@ display: flex;
 }
 
 .setting-header-preview img {
-width: 100%;
+    width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
 }
 
 .attachment-download-link {
-text-decoration: none;
+    text-decoration: none;
 }
 
 .attachment-download-link:hover {
-text-decoration: underline;
+    text-decoration: underline;
 }
 
 .repost-indicator,
 .pinned-indicator {
-color: var(--secondary-text-color);
+    color: var(--secondary-text-color);
     font-size: 0.9em;
     padding-bottom: 0.5rem;
     display: flex;
@@ -1029,23 +1037,23 @@ color: var(--secondary-text-color);
 
 .repost-indicator svg,
 .pinned-indicator svg {
-width: 1em;
+    width: 1em;
     height: 1em;
     stroke: currentColor;
 }
 
 .repost-indicator a {
-color: inherit;
+    color: inherit;
     font-weight: bold;
     text-decoration: none;
 }
 
 .repost-indicator a:hover {
-text-decoration: underline;
+    text-decoration: underline;
 }
 
 .repost-indicator-icon {
-display: flex;
+    display: flex;
     align-items: center;
     justify-content: flex-end; /* 右寄せ */
     flex-basis: 48px; /* 通常のアイコン幅に合わせる */
@@ -1053,41 +1061,41 @@ display: flex;
 }
 
 .repost-indicator svg {
-width: 1.5em; /* アイコンサイズを調整 */
+    width: 1.5em; /* アイコンサイズを調整 */
     height: 1.5em;
     stroke: currentColor;
     flex-shrink: 0;
 }
 
 .nested-repost-container {
-border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: 16px;
     margin-top: 1rem;
     padding: 0.8rem;
 }
 
 .nested-repost-container .post {
-border: none;
+    border: none;
     padding: 0;
 }
 
 .nested-repost-container .post-actions {
-display: none;
+    display: none;
 }
 
 .quoting-post-preview {
-max-height: 220px;
+    max-height: 220px;
     overflow-y: auto;
     margin-top: 0.5rem;
 }
 
 .quoting-post-preview .post-content {
-max-height: 140px;
+    max-height: 140px;
     overflow: hidden;
 }
 
 .deleted-post-container {
-border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 2rem;
     text-align: center;
@@ -1095,13 +1103,13 @@ border: 1px solid var(--border-color);
 }
 
 .account-switcher-list {
-margin: 1rem 0;
+    margin: 1rem 0;
     padding: 0;
     list-style: none;
 }
 
 .account-switcher-item {
-display: flex;
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
@@ -1111,36 +1119,36 @@ display: flex;
 }
 
 .account-switcher-item .switcher-user-info {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 0.6rem;
 }
 
 .account-switcher-item .switcher-user-icon {
-width: 32px;
+    width: 32px;
     height: 32px;
     border-radius: 50%;
     object-fit: cover;
 }
 
 .account-switcher-item.active {
-background: var(--light-primary-color);
+    background: var(--light-primary-color);
 }
 
 .account-switcher-item:not(.active):hover {
-background: var(--widget-bg-color);
+    background: var(--widget-bg-color);
     cursor: pointer;
 }
 
 .account-switcher-empty {
-padding: 1rem 0.2rem;
+    padding: 1rem 0.2rem;
     text-align: center;
     color: var(--secondary-text-color);
     list-style: none;
 }
 
 .post-mask-alert {
-padding: 0.6rem 1.2rem;
+    padding: 0.6rem 1.2rem;
     border-radius: 10px;
     font-weight: 700;
     cursor: pointer;
@@ -1154,7 +1162,7 @@ padding: 0.6rem 1.2rem;
 }
 
 .post-mask-alert:hover {
-background-color: var(--light-primary-color);
+    background-color: var(--light-primary-color);
     border-color: var(--primary-color);
 }
 
@@ -1365,8 +1373,165 @@ background-color: var(--light-primary-color);
     filter: brightness(0.97);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 384px) {
     .post-schedule-menu {
         width: min(360px, calc(100vw - 16px));
+    }
+}
+
+/* ==========================================================================
+   NyaitterUI 統一 (posts / timeline / explore / likes / stars)
+   投稿カードは nui-card、アクション行は nui-actions / nui-button-secondary を
+   付与する。既存のフラットなタイムラインの見た目と操作感を保つための調整。
+   ========================================================================== */
+
+/* 投稿は nui-card クラスを持つが、NyaitterUI 付属 CSS は後から読み込まれ、
+   同詳細度で .nui-card / .nui-actions の余白・枠・背景・配置を上書きして
+   しまう。タイムラインの既存のフラットな一覧表示と操作感を保つため、
+   ここで元の値を明示的に再指定する。 */
+[data-nyaitter-ui='nui'] .post.nui-card {
+    margin: 0;
+    padding: 1rem;
+    border: 0;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
+    background: transparent;
+}
+
+/* 入れ子リポスト内の投稿はさらに枠も余白も持たない。 */
+[data-nyaitter-ui='nui'] .nested-repost-container .post.nui-card {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    margin: 0;
+}
+
+/* アクション行は既存の等間隔配置・折り返しなしを維持する。 */
+[data-nyaitter-ui='nui'] .post-actions.nui-actions {
+    flex-wrap: nowrap;
+    justify-content: space-around;
+    gap: 0;
+}
+
+/* 投稿時刻は既存の控えめな表示を維持する。 */
+[data-nyaitter-ui='nui'] .post-time.nui-list-meta {
+    color: var(--secondary-text-color);
+    font-size: 0.9rem;
+    line-height: normal;
+    word-break: normal;
+}
+
+/* 返信先・固定などの補助テキストも既存の見た目を維持する。 */
+[data-nyaitter-ui='nui'] .replying-to.nui-help-text,
+[data-nyaitter-ui='nui'] .pinned-indicator.nui-help-text {
+    color: var(--secondary-text-color);
+    font-size: 0.9em;
+    line-height: normal;
+}
+
+/* アクション行のアイコンボタンは既存のコンパクト表示を維持する */
+[data-nyaitter-ui='nui'] .post-actions .nui-button-secondary {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-weight: inherit;
+    line-height: inherit;
+}
+
+/* ただし指で操作する画面では、画面上24px（表示倍率0.8で30px）を下回らない。 */
+@media (max-width: 544px) {
+    [data-nyaitter-ui='nui'] .post-actions .nui-button-secondary {
+        min-height: 30px;
+    }
+}
+
+/* 「続きを表示」は全幅のフラットなリンク風ボタンを維持する */
+[data-nyaitter-ui='nui'] .thread-show-more-btn.nui-button-secondary {
+    justify-content: flex-start;
+    min-height: 0;
+    padding: 0.65rem 1rem;
+    border: 0;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
+    background: none;
+    color: var(--primary-color);
+}
+
+/* 投票カードは既存の淡い背景と余白を維持する */
+[data-nyaitter-ui='nui'] .post-poll-container.nui-card {
+    padding: 1rem;
+    background: color-mix(in srgb, var(--text-color) 3%, var(--main-bg-color));
+}
+
+/* 投稿本文のクッション解除ボタンを nui の見た目に寄せる */
+[data-nyaitter-ui='nui'] .post-mask-alert.nui-button-secondary {
+    width: auto;
+}
+
+.advertising-post {
+    display: block;
+    min-height: 5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.advertising-post-label {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    color: var(--secondary-text-color);
+    font-size: 0.75rem;
+}
+
+.nyaitter-ad-slot {
+    min-height: 2.5rem;
+}
+
+[data-nyaitter-ui='nui'] .post.advertising-post.nui-card {
+    padding: 0.85rem 1rem;
+}
+
+/* ==========================================================================
+   ホーム画面のヘッダー制御
+   - モバイルUI以外ではホームのヘッダーを非表示にする。
+   - モバイルUIでは「ホーム」の代わりに中央へ Nyaitter ロゴを表示する。
+   ブレークポイントは --app-scale (80%) 補正済みのモバイル境界に合わせる。
+   ========================================================================== */
+
+/* ホームヘッダーのロゴは既定では非表示 */
+.home-header-logo {
+    display: none;
+}
+
+/* モバイルUI以外: ホームではヘッダー自体を非表示にする */
+@media (min-width: 545px) {
+    body[data-active-screen='main-screen'] #page-header {
+        display: none;
+    }
+
+    /* ヘッダーが無い分、スティッキー要素の基準高さを 0 にする */
+    body[data-active-screen='main-screen'] {
+        --page-header-height: 0px;
+    }
+}
+
+/* モバイルUI: タイトルの代わりに中央へロゴを表示 */
+@media (max-width: 544px) {
+    body[data-active-screen='main-screen'] #page-header .header-with-back-button {
+        justify-content: center;
+    }
+
+    body[data-active-screen='main-screen'] #page-header #page-title {
+        display: none;
+    }
+
+    body[data-active-screen='main-screen'] .home-header-logo {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    body[data-active-screen='main-screen'] .home-header-logo .nyaitter-logo-image {
+        max-height: 1.8rem;
+        width: auto;
     }
 }

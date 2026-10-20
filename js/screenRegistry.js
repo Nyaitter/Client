@@ -1,3 +1,4 @@
+import { showStagesScreen } from './screens/stagesScreen.js';
 import { showMainScreen } from './screens/timelineScreen.js';
 import { showExploreScreen } from './screens/exploreScreen.js';
 import { showSearchResults } from './screens/searchScreen.js';
@@ -21,8 +22,11 @@ import { showDocsPortalScreen } from './screens/docsPortalScreen.js';
 import { showDocsApiScreen } from './screens/docsApiScreen.js';
 import { showDocDetailScreen } from './screens/docDetailScreen.js';
 import { openLoginApprovalModal } from './modules/auth.js';
+import { openAccountRecoveryModal } from './modules/auth.js';
 
 const screenHandlers = {
+    stages: (_, showScreenFn) => showStagesScreen(null, showScreenFn),
+    stage: (params, showScreenFn) => showStagesScreen(params.stageId, showScreenFn),
     main: (_, showScreenFn) => showMainScreen(showScreenFn),
     'post-activity': (params, showScreenFn) => showPostActivityScreen(params.postId, params.tab, showScreenFn),
     'post-detail': (params, showScreenFn) => {
@@ -58,6 +62,10 @@ const screenHandlers = {
     'login-approval': async (params, showScreenFn) => {
         await showNotificationsScreen(showScreenFn);
         return openLoginApprovalModal(params.approvalId);
+    },
+    'account-recovery': async (params, showScreenFn) => {
+        await showNotificationsScreen(showScreenFn);
+        return openAccountRecoveryModal(params.recoveryId);
     },
     explore: (_, showScreenFn) => showExploreScreen(showScreenFn),
     notifications: (_, showScreenFn) => showNotificationsScreen(showScreenFn),

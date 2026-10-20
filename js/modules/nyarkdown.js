@@ -7,6 +7,10 @@ import {
 } from '../utils/helpers.js';
 import { renderLimitedMarkdown } from '../safeMarkdown.js';
 
+// ルート直下絶対パス (/emoji/...) ではなく、このモジュール (js/modules/) からの
+// 相対で解決する。プロキシ配下のパス接頭辞を保つ。
+const EMOJI_BASE_URL = new URL('../../emoji/', import.meta.url);
+
 /**
  * NyarkDown: Nyaitterの本文装飾・制限付きMarkdownを安全なHTMLへ変換する再利用モジュール。
  *
@@ -18,7 +22,7 @@ export let customEmojiSet = new Set();
 
 export const customEmojiPromise = (async () => {
     try {
-        const res = await fetch('/emoji/list.json', { credentials: 'same-origin' });
+        const res = await fetch(new URL('list.json', EMOJI_BASE_URL), { credentials: 'same-origin' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const list = await res.json();
         const emojiList = Array.isArray(list) ? list : [];
@@ -164,7 +168,7 @@ export function renderNyarkDown(
             : '';
 
     const createCustomEmojiMarkup = (emojiId) => {
-        const image = `<img src="/emoji/${encodeURIComponent(emojiId)}.svg" alt="_${emojiId}_" data-emoji-id="${emojiId}" style="height: 1.2em; vertical-align: -0.2em; margin: 0 0.05em;" class="nyaitter-emoji">`;
+        const image = `<img src="${EMOJI_BASE_URL.href}${encodeURIComponent(emojiId)}.svg" alt="_${emojiId}_" data-emoji-id="${emojiId}" style="height: 1.2em; vertical-align: -0.2em; margin: 0 0.05em;" class="nyaitter-emoji">`;
         if (!editorSyntax) return image;
         return `<span class="markdown-editor-emoji" data-emoji-id="${emojiId}" contenteditable="false">${image}</span>`;
     };
@@ -358,9 +362,8 @@ export function renderNyarkDown(
         return output + renderSegment(standardText.slice(previousIndex));
     };
 
-    // Older profile text and other stored plain-text fields may already contain
-    // HTML entities. Normalize them once, then escape every rendered text segment.
-    // This prevents double-escaped display while keeping raw markup as text.
+    // 保存済みテキストは HTML エンティティを含むことがあるため一度デコードし、
+    // 各セグメントをエスケープして二重エスケープを防ぐ。
     const normalizedText = decodeHtmlEntities(String(text || ''));
 
     if (!allowMarkdown) {

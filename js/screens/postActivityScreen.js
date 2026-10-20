@@ -137,7 +137,7 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
         });
     } catch (err) {
         console.error('[postActivityScreen] error:', err);
-        contentDiv.innerHTML = `<div class="tab-empty-state" style="padding: 3rem 1rem; text-align: center; color: var(--secondary-text-color);"><p>${escapeHTML(err?.message || 'アクティビティの取得に失敗しました')}</p></div>`;
+        contentDiv.innerHTML = `<div class="tab-empty-state nui-empty-text" style="padding: 3rem 1rem; text-align: center; color: var(--secondary-text-color);"><p>${escapeHTML(err?.message || 'アクティビティの取得に失敗しました')}</p></div>`;
     } finally {
         showLoading(false);
     }

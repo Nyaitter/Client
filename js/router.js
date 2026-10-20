@@ -151,7 +151,15 @@ export async function router() {
 
     // Check pathname or query for direct post links (/posts/123 or ?post=123)
     let hash = window.location.hash || '#';
-    const postPathMatch = window.location.pathname.match(/^(?:\/@[^/]+)?\/posts\/(\d+)$/i);
+    // 配信ベース (document.baseURI のディレクトリ) を pathname から差し引いてから
+    // 判定する。サブパス / リバースプロキシ配下でも直接リンク・リロードが成立する。
+    // 特定のパス形状の判定はせず、標準の相対解決のみを使う。
+    const basePath = new URL('.', document.baseURI).pathname.replace(/\/+$/, '');
+    const routePath =
+        basePath && window.location.pathname.startsWith(`${basePath}/`)
+            ? window.location.pathname.slice(basePath.length)
+            : window.location.pathname;
+    const postPathMatch = routePath.match(/^(?:\/@[^/]+)?\/posts\/(\d+)$/i);
     if ((!hash || hash === '#') && postPathMatch) {
         window.location.hash = `#post/${postPathMatch[1]}`;
         return;

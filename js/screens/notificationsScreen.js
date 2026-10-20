@@ -45,6 +45,8 @@ export async function showNotificationsScreen(showScreenFn = null) {
         setPostLoadObserver(null);
     }
     const contentDiv = DOM.notificationsContent;
+    contentDiv.classList.add('nui-list');
+    contentDiv.setAttribute('data-nui', 'list');
     renderLoading(contentDiv);
 
     setupTimelinePullToRefresh(async (context) => {

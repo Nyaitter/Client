@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-nyaitter-ui="nui">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<meta name="robots" content="noindex, nofollow, noarchive" />
 		<meta name="referrer" content="strict-origin-when-cross-origin" />
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; manifest-src 'self'; worker-src 'self'; script-src 'self' https:; frame-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https: wss:;" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; manifest-src 'self'; worker-src 'self'; script-src 'self' https:; frame-src 'self' https://challenges.cloudflare.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https: wss:;" />
 		<title>Nyaitter</title>
 		<meta name="theme-color" content="#1d9bf0" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-		<link rel="manifest" href="/manifest.webmanifest" />
+		<link rel="manifest" href="./manifest.webmanifest" />
 		<link rel="icon" href="favicon.png" type="image/png" />
 		<link rel="apple-touch-icon" sizes="180x180" href="pwa-icon-192.png" />
 		<link
@@ -38,7 +38,7 @@
 			}
 			#loading-overlay .spinner {
 				border: 4px solid var(--spin, rgba(0, 0, 0, 0.1));
-				border-left-color: var(--primary-color, #ff9900);
+				border-left-color: var(--nui-accent, var(--primary-color, #ff9900));
 				width: 44px;
 				height: 44px;
 				border-radius: 50%;
@@ -61,14 +61,16 @@
 		<!-- 接続失敗エラーオーバーレイ -->
 		<div
 			id="connection-error-overlay"
-			class="modal-overlay hidden"
+			class="modal-overlay nui-modal-backdrop hidden"
 			style="z-index: 2000"
 		>
 			<div
+				class="nui-card"
 				style="
-					background: white;
+					background: var(--nui-bg);
+					color: var(--nui-text);
 					padding: 2rem;
-					border-radius: 16px;
+					border-radius: var(--nui-radius);
 					text-align: center;
 				"
 			>
@@ -76,11 +78,12 @@
 				<p>ネットワーク接続を確認して、もう一度お試しください。</p>
 				<button
 					id="retry-connection-btn"
+					class="nui-button"
 					style="
 						padding: 0.6rem 1.2rem;
 						border-radius: 9999px;
 						border: none;
-						background-color: var(--primary-color);
+						background-color: var(--nui-accent);
 						color: white;
 						font-weight: 700;
 					"
@@ -93,31 +96,33 @@
 		<!-- JavaScriptエラー / 致命的障害表示オーバーレイ -->
 		<div
 			id="mainjs-error-overlay"
-			class="modal-overlay hidden"
+			class="modal-overlay nui-modal-backdrop hidden"
 			style="z-index: 3001"
 		>
 			<div
+				class="nui-card"
 				style="
-					background: white;
+					background: var(--nui-bg);
+					color: var(--nui-text);
 					padding: 2rem;
-					border-radius: 16px;
+					border-radius: var(--nui-radius);
 					text-align: center;
 					max-width: 400px;
 					margin: 2rem auto;
 				"
 			>
-				<h2 style="margin-top: 0; color: #d9534f">エラー</h2>
+				<h2 style="margin-top: 0; color: var(--nui-danger)">エラー</h2>
 				<div
 					id="mainjs-error-text"
-					style="color: #d9534f; margin: 1em 0; word-break: break-all"
+					style="color: var(--nui-danger); margin: 1em 0; word-break: break-all"
 				></div>
-				<p style="color: #888; font-size: 0.96em">
+				<p style="color: var(--nui-muted); font-size: 0.96em">
 					Nyaitterに問題が発生しました
 				</p>
 				<ul
 					style="
 						text-align: left;
-						color: #888;
+						color: var(--nui-muted);
 						margin: 1.2em 0 1.5em 0;
 						font-size: 0.98em;
 					"
@@ -129,11 +134,12 @@
 				</ul>
 				<button
 					id="mainjs-error-reload-btn"
+					class="nui-button"
 					style="
 						padding: 0.7em 1.5em;
 						font-size: 1em;
 						border-radius: 9999px;
-						background: #1d9bf0;
+						background: var(--nui-accent);
 						color: white;
 						border: none;
 						font-weight: 700;

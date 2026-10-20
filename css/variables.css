@@ -62,6 +62,41 @@
     --spin: var(--l-spin);
     --light-primary-color: var(--l-light-primary-color);
     --danger-color: var(--l-danger-color);
+
+    /* ------------------------------------------------------------------
+       NyaitterUI トークン (--nui-*) への橋渡し。
+       NyaitterUI 付属 CSS (nyaitter-ui.css) は :root で --nui-* を定義し、
+       その既定値を下の既存変数から取る。ここでも同じ対応を明示しておく
+       ことで、付属 CSS が読み込まれない場合でもシェル/レイアウトが
+       同一トークンで描画され、テーマ (body.dark / body.light) に追随する。
+       ※ 値は var() 参照のため、ダークモード切替時も自動で更新される。
+       ------------------------------------------------------------------ */
+    --nui-accent: var(--primary-color);
+    --nui-accent-hover: var(--primary-hover-color);
+    --nui-border: var(--border-color);
+    --nui-border-strong: color-mix(in srgb, var(--secondary-text-color) 55%, var(--border-color));
+    --nui-bg: var(--main-bg-color);
+    --nui-surface: var(--bg-color);
+    --nui-text: var(--text-color);
+    --nui-muted: var(--secondary-text-color);
+    --nui-danger: var(--like-color);
+    --nui-danger-bg: var(--danger-color);
+    --nui-radius-sm: 8px;
+    --nui-radius: 12px;
+    --nui-radius-lg: 16px;
+    --nui-radius-pill: 9999px;
+    --nui-shadow: 0 1px 2px rgb(15 20 25 / 5%);
+    --nui-shadow-md: 0 8px 24px rgb(15 20 25 / 10%);
+    --nui-focus-ring: 2px;
+    --nui-font:
+        'Noto Sans JP',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
 }
 
 /* ライトモード変数指定 */

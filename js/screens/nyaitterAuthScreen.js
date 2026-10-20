@@ -45,11 +45,11 @@ export async function showNyaitterAuthScreen(showScreenFn) {
     if (!requestId) {
         showLoading(false);
         contentDiv.innerHTML = `
-            <div class="nyauth-container">
-                <div class="nyauth-card nyauth-error-card">
+            <div class="nyauth-container nui-page" data-nui="page">
+                <div class="nyauth-card nyauth-error-card nui-card nui-danger-card" data-nui="card">
                     <h3>無効なリクエスト</h3>
-                    <p class="settings-help-text">認証リクエストID (request_id) が指定されていません。</p>
-                    <a href="#" class="settings-primary-button" style="display:inline-block; margin-top:1rem; text-decoration:none;">ホームに戻る</a>
+                    <p class="settings-help-text nui-help-text">認証リクエストID (request_id) が指定されていません。</p>
+                    <a href="#" class="settings-primary-button nui-button" style="display:inline-block; margin-top:1rem; text-decoration:none;">ホームに戻る</a>
                 </div>
             </div>
         `;
@@ -72,8 +72,8 @@ export async function showNyaitterAuthScreen(showScreenFn) {
         if (!currentUser) {
             showLoading(false);
             contentDiv.innerHTML = `
-                <div class="nyauth-container">
-                    <div class="nyauth-card">
+                <div class="nyauth-container nui-page" data-nui="page">
+                    <div class="nyauth-card nui-card" data-nui="card">
                         <div class="nyauth-app-header">
                             ${authReq.icon_url ? `<img src="${escapeHTML(getSafeHttpUrl(authReq.icon_url))}" class="nyauth-app-icon" alt="${escapeHTML(authReq.name)}">` : `<div class="nyauth-app-icon-placeholder">${ICONS.apps || '📱'}</div>`}
                             <div>
@@ -82,7 +82,7 @@ export async function showNyaitterAuthScreen(showScreenFn) {
                         </div>
                         <div class="nyauth-login-notice" style="margin: 1.5rem 0; padding: 1rem; background: color-mix(in srgb, var(--primary-color) 10%, transparent); border-radius: 8px;">
                             <p style="margin: 0 0 0.75rem 0;">連携するにはログインしてください。</p>
-                            <button type="button" id="nyauth-login-btn" class="settings-primary-button" style="width: 100%;">ログイン</button>
+                            <button type="button" id="nyauth-login-btn" class="settings-primary-button nui-button" style="width: 100%;">ログイン</button>
                         </div>
                     </div>
                 </div>
@@ -122,8 +122,8 @@ export async function showNyaitterAuthScreen(showScreenFn) {
                     <div class="nyauth-scope-info">
                         <div class="nyauth-scope-name">
                             <strong>${escapeHTML(s.name || s.scope)}</strong>
-                            ${isRequired ? '<span class="nyauth-badge-required">必須</span>' : ''}
-                            ${isContinuous ? '<span class="nyauth-badge-continuous">永続</span>' : ''}
+                            ${isRequired ? '<span class="nyauth-badge-required nui-badge nui-badge-danger">必須</span>' : ''}
+                            ${isContinuous ? '<span class="nyauth-badge-continuous nui-badge">永続</span>' : ''}
                         </div>
                         ${s.description ? `<p class="nyauth-scope-desc">${escapeHTML(s.description)}</p>` : ''}
                     </div>
@@ -138,8 +138,8 @@ export async function showNyaitterAuthScreen(showScreenFn) {
             accountSectionHtml = `
                 <div class="nyauth-account-section">
                     <div class="nyauth-account-section-header">
-                        <label class="settings-help-text" style="font-weight: 600; color: var(--text-color);">アカウントを選択</label>
-                        <button type="button" id="nyauth-add-account-btn" class="settings-bot-secondary-button" style="font-size: 0.8rem; padding: 0.2rem 0.5rem;">＋ アカウント追加</button>
+                        <label class="settings-help-text nui-help-text" style="font-weight: 600; color: var(--text-color);">アカウントを選択</label>
+                        <button type="button" id="nyauth-add-account-btn" class="settings-bot-secondary-button nui-button-secondary" style="font-size: 0.8rem; padding: 0.2rem 0.5rem;">＋ アカウント追加</button>
                     </div>
                     <div class="nyauth-account-list">
                         ${accounts.map((acc) => {
@@ -150,7 +150,7 @@ export async function showNyaitterAuthScreen(showScreenFn) {
                                     <div class="nyauth-account-details">
                                         <div class="nyauth-account-name">
                                             <strong>${escapeHTML(acc.name || '不明なユーザー')}</strong>
-                                            ${acc.is_imposter ? '<span class="settings-session-current" style="font-size:0.7rem; padding: 0.1rem 0.3rem;">インポスター</span>' : ''}
+                                            ${acc.is_imposter ? '<span class="settings-session-current nui-badge" style="font-size:0.7rem; padding: 0.1rem 0.3rem;">インポスター</span>' : ''}
                                         </div>
                                         <span class="nyauth-account-id">${formatNyaitterId(acc)}</span>
                                     </div>
@@ -167,8 +167,8 @@ export async function showNyaitterAuthScreen(showScreenFn) {
             accountSectionHtml = `
                 <div class="nyauth-account-section">
                     <div class="nyauth-account-section-header">
-                        <span class="settings-help-text" style="font-weight: 600; color: var(--text-color);">アカウントを選択</span>
-                        <button type="button" id="nyauth-add-account-btn" class="settings-bot-secondary-button" style="font-size: 0.8rem; padding: 0.2rem 0.5rem;">＋ アカウント追加</button>
+                        <span class="settings-help-text nui-help-text" style="font-weight: 600; color: var(--text-color);">アカウントを選択</span>
+                        <button type="button" id="nyauth-add-account-btn" class="settings-bot-secondary-button nui-button-secondary" style="font-size: 0.8rem; padding: 0.2rem 0.5rem;">＋ アカウント追加</button>
                     </div>
                     <div class="nyauth-account-option selected" style="cursor: default;">
                         <img src="${escapeHTML(getUserIconUrl(currentUser))}" class="nyauth-account-avatar" alt="${escapeHTML(currentUser.name || '')}">
@@ -184,12 +184,13 @@ export async function showNyaitterAuthScreen(showScreenFn) {
         }
 
         contentDiv.innerHTML = `
-            <div class="nyauth-container">
-                <div class="nyauth-card">
+            <div class="nyauth-container nui-page" data-nui="page">
+                <div class="nyauth-card nui-card" data-nui="card">
                     <div class="nyauth-app-header">
                         ${authReq.icon_url ? `<img src="${escapeHTML(getSafeHttpUrl(authReq.icon_url))}" class="nyauth-app-icon" alt="${escapeHTML(authReq.name)}">` : `<div class="nyauth-app-icon-placeholder">${ICONS.apps || '📱'}</div>`}
                         <div style="flex: 1;">
                             <h3 class="nyauth-app-title">${escapeHTML(authReq.name)}</h3>
+                            ${authReq.application_id ? `<small>ID: ${escapeHTML(authReq.application_id)}</small>` : ''}
                         </div>
                     </div>
 
@@ -205,16 +206,16 @@ export async function showNyaitterAuthScreen(showScreenFn) {
 
                     ${accountSectionHtml}
 
-                    <p class="settings-help-text" style="margin-top: 1rem; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-color);">要求される権限</p>
+                    <p class="settings-help-text nui-help-text" style="margin-top: 1rem; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-color);">要求される権限</p>
                     <div class="nyauth-scopes-list">
                         ${scopesHtml}
                     </div>
 
-                    <div id="nyauth-error-msg" class="error-message hidden" style="margin-top: 1rem;"></div>
+                    <div id="nyauth-error-msg" class="error-message nui-help-text hidden" style="margin-top: 1rem;"></div>
 
-                    <div class="nyauth-actions" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
-                        <button type="button" id="nyauth-deny-btn" class="login-secondary-button">キャンセル</button>
-                        <button type="button" id="nyauth-approve-btn" class="settings-primary-button">許可</button>
+                    <div class="nyauth-actions nui-actions" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
+                        <button type="button" id="nyauth-deny-btn" class="login-secondary-button nui-button-secondary">キャンセル</button>
+                        <button type="button" id="nyauth-approve-btn" class="settings-primary-button nui-button">許可</button>
                     </div>
                 </div>
             </div>
@@ -292,11 +293,11 @@ export async function showNyaitterAuthScreen(showScreenFn) {
 
                 // Redirect to app's callback URL with code/token
                 contentDiv.innerHTML = `
-                    <div class="nyauth-container">
-                        <div class="nyauth-card" style="text-align: center; padding: 3rem 1.5rem;">
+                    <div class="nyauth-container nui-page" data-nui="page">
+                        <div class="nyauth-card nui-card" data-nui="card" style="text-align: center; padding: 3rem 1.5rem;">
                             <div class="spinner" style="margin: 0 auto 1.5rem;"></div>
                             <h3>連携が完了しました</h3>
-                            <p class="settings-help-text">アプリケーションへ移動しています</p>
+                            <p class="settings-help-text nui-help-text">アプリケーションへ移動しています</p>
                         </div>
                     </div>
                 `;
@@ -336,11 +337,11 @@ export async function showNyaitterAuthScreen(showScreenFn) {
     } catch (err) {
         console.error('[nyaitter-auth] Error loading auth request:', err);
         contentDiv.innerHTML = `
-            <div class="nyauth-container">
-                <div class="nyauth-card nyauth-error-card">
+            <div class="nyauth-container nui-page" data-nui="page">
+                <div class="nyauth-card nyauth-error-card nui-card nui-danger-card" data-nui="card">
                     <h3>認証エラー</h3>
-                    <p class="settings-help-text">${escapeHTML(err.message || '認証リクエストの取得に失敗しました。')}</p>
-                    <a href="#" class="settings-primary-button" style="display:inline-block; margin-top:1rem; text-decoration:none;">ホームに戻る</a>
+                    <p class="settings-help-text nui-help-text">${escapeHTML(err.message || '認証リクエストの取得に失敗しました。')}</p>
+                    <a href="#" class="settings-primary-button nui-button" style="display:inline-block; margin-top:1rem; text-decoration:none;">ホームに戻る</a>
                 </div>
             </div>
         `;

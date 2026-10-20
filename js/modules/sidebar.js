@@ -11,6 +11,7 @@ import {
     isCurrentUserProfile,
 } from './cache.js';
 import { getEmoji } from './format.js';
+import { getSavedSideMenu, applySideMenuZones } from './sidebarItems.js';
 import { updateFollowButtonState, openPostModal } from './posts.js';
 import { openAccountSwitcherModal } from './auth.js';
 import {
@@ -41,7 +42,7 @@ let mobileSidebarAbortController = null;
 let isMobileSidebarClosing = false;
 
 function isMobileSidebarViewport() {
-    return matchesMedia('(max-width: 680px)');
+    return matchesMedia('(max-width: 544px)');
 }
 
 export function closeMobileSidebar({ fromHistory = false } = {}) {
@@ -86,10 +87,18 @@ function setupMobileSidebarOverflow(overlay, signal) {
         : [];
     if (!menu || menuLinks.length === 0) return () => false;
 
+    // 高さあふれの自動移動が手動設定を上書きしないよう、手動固定項目は計算から外す
+    const pinnedLinks = menuLinks.filter((item) =>
+        item.hasAttribute('data-menu-overflow'),
+    );
+    const flexLinks = menuLinks.filter((item) =>
+        !item.hasAttribute('data-menu-overflow'),
+    );
+
     const overflow = document.createElement('div');
-    overflow.className = 'nav-overflow-menu mobile-nav-overflow-menu';
+    overflow.className = 'nav-overflow-menu mobile-nav-overflow-menu nui-nav';
     overflow.innerHTML = `
-        <button type="button" class="nav-item nav-overflow-toggle" aria-expanded="false" aria-controls="mobile-nav-overflow-panel">
+        <button type="button" class="nav-item nav-overflow-toggle nui-nav-item" aria-expanded="false" aria-controls="mobile-nav-overflow-panel">
             <span class="nav-item-icon-container">${ICONS.more}</span>
             <span class="nav-item-text">その他</span>
         </button>
@@ -141,13 +150,15 @@ function setupMobileSidebarOverflow(overlay, signal) {
         menuLinks.forEach((item) => menu.insertBefore(item, overflow));
         panel.replaceChildren();
         closeOverflow();
+        // replaceChildren() で panel から外れるため、手動固定した項目を必ず戻す
+        pinnedLinks.forEach((item) => panel.append(item));
 
-        let visibleCount = menuLinks.length;
+        let visibleCount = flexLinks.length;
         while (menu.scrollHeight > menu.clientHeight && visibleCount > 0) {
             visibleCount -= 1;
-            panel.prepend(menuLinks[visibleCount]);
+            panel.prepend(flexLinks[visibleCount]);
         }
-        if (visibleCount === menuLinks.length) overflow.remove();
+        if (!pinnedLinks.length && visibleCount === flexLinks.length) overflow.remove();
     };
     const scheduleOverflow = () => {
         if (scheduled) return;
@@ -176,14 +187,14 @@ export function openMobileSidebar() {
     overlay.className = 'mobile-sidebar-overlay';
     const mobileAccountMarkup = (DOM.navMenuBottom.innerHTML || '')
         .replace(
-            'id="account-button" class="nav-item account-button"',
-            'class="nav-item account-button mobile-sidebar-account-button"',
+            'id="account-button" class="nav-item account-button nui-nav-item"',
+            'class="nav-item account-button nui-nav-item mobile-sidebar-account-button"',
         );
     overlay.innerHTML = `
         <aside class="mobile-sidebar-panel" aria-label="サイドメニュー" role="dialog" aria-modal="true">
             <div class="mobile-sidebar-content">
                 <div class="mobile-sidebar-logo">${DOM.navLogo.innerHTML}</div>
-                <nav class="mobile-sidebar-menu">${DOM.navMenuTop.dataset.fullMenuMarkup || DOM.navMenuTop.innerHTML}</nav>
+                <nav class="mobile-sidebar-menu">${DOM.navMenuTop.dataset.mobileMenuMarkup || DOM.navMenuTop.innerHTML}</nav>
                 <div class="mobile-sidebar-bottom">${mobileAccountMarkup}</div>
             </div>
         </aside>`;
@@ -416,7 +427,7 @@ export function setupSidebarOverflowMenu() {
         };
         window.addEventListener('resize', sidebarOverflowResizeHandler, { passive: true });
 
-        const mql = window.matchMedia?.('(max-width: 680px)');
+        const mql = window.matchMedia?.('(max-width: 544px)');
         if (mql?.addEventListener) {
             mql.addEventListener('change', () => {
                 window.clearTimeout(sidebarOverflowResizeTimer);
@@ -436,7 +447,7 @@ export function setupSidebarOverflowMenu() {
         existingOverflow.remove();
     }
 
-    if (matchesMedia('(max-width: 680px)')) return;
+    if (matchesMedia('(max-width: 544px)')) return;
 
     const logo = DOM.navLogo;
     const menuBottom = DOM.navMenuBottom;
@@ -445,6 +456,14 @@ export function setupSidebarOverflowMenu() {
         ? [...menu.querySelectorAll(':scope > a.nav-item')]
         : [];
     if (!sidebar || !menu || menuLinks.length === 0) return;
+
+    // 高さあふれの自動移動が手動設定を上書きしないよう、手動固定項目は計算から外す
+    const pinnedLinks = menuLinks.filter((item) =>
+        item.hasAttribute('data-menu-overflow'),
+    );
+    const flexLinks = menuLinks.filter((item) =>
+        !item.hasAttribute('data-menu-overflow'),
+    );
 
     const availableMenuHeight = () =>
         Math.max(
@@ -455,12 +474,12 @@ export function setupSidebarOverflowMenu() {
                 24,
         );
 
-    if (menu.scrollHeight <= availableMenuHeight()) return;
+    if (!pinnedLinks.length && menu.scrollHeight <= availableMenuHeight()) return;
 
     const overflow = document.createElement('div');
-    overflow.className = 'nav-overflow-menu';
+    overflow.className = 'nav-overflow-menu nui-nav';
     overflow.innerHTML = `
-        <button type="button" class="nav-item nav-overflow-toggle" aria-expanded="false" aria-controls="nav-overflow-panel">
+        <button type="button" class="nav-item nav-overflow-toggle nui-nav-item" aria-expanded="false" aria-controls="nav-overflow-panel">
             <span class="nav-item-icon-container">${ICONS.more}</span>
             <span class="nav-item-text">その他</span>
         </button>
@@ -471,13 +490,15 @@ export function setupSidebarOverflowMenu() {
 
     const fitsInSidebar = () => menu.scrollHeight <= availableMenuHeight();
 
-    let visibleCount = menuLinks.length;
+    pinnedLinks.forEach((item) => panel.append(item));
+
+    let visibleCount = flexLinks.length;
     while (!fitsInSidebar() && visibleCount > 0) {
         visibleCount -= 1;
-        panel.prepend(menuLinks[visibleCount]);
+        panel.prepend(flexLinks[visibleCount]);
     }
 
-    if (visibleCount === menuLinks.length) {
+    if (!pinnedLinks.length && visibleCount === flexLinks.length) {
         overflow.remove();
         return;
     }
@@ -550,8 +571,8 @@ export function setupSidebarOverflowMenu() {
 export async function updateNavAndSidebars() {
     const hash = window.location.hash || '#';
     const menuItems = [
-        { name: 'ホーム', hash: '#', icon: ICONS.home },
-        { name: '検索', hash: '#explore', icon: ICONS.explore },
+        { key: 'home', name: 'ホーム', hash: '#', icon: ICONS.home },
+        { key: 'explore', name: '検索', hash: '#explore', icon: ICONS.explore },
     ];
     let totalUnreadDmCount = 0;
     if (getCurrentUser()) {
@@ -563,30 +584,52 @@ export async function updateNavAndSidebars() {
 
         menuItems.push(
             {
+                key: 'notifications',
                 name: '通知',
                 hash: '#notifications',
                 icon: ICONS.notifications,
                 badge: getCurrentUser().notification_unread_count,
             },
-            { name: 'いいね', hash: '#likes', icon: ICONS.likes },
-            { name: 'お気に入り', hash: '#stars', icon: ICONS.stars },
             {
+                key: 'likes',
+                name: 'いいね',
+                hash: '#likes',
+                icon: ICONS.likes,
+            },
+            {
+                key: 'stars',
+                name: 'お気に入り',
+                hash: '#stars',
+                icon: ICONS.stars,
+            },
+            {
+                key: 'dm',
                 name: 'メッセージ',
                 hash: '#dm',
                 icon: ICONS.dm,
                 badge: totalUnreadDmCount,
             },
             {
+                key: 'profile',
                 name: 'プロフィール',
-                hash: `#profile/${getCurrentUser().id}`,
+                hash: '#profile/',
+                dynamicHash: true,
                 icon: ICONS.profile,
             },
             {
+                key: 'settings',
                 name: '設定',
                 hash: '#settings',
                 icon: ICONS.settings,
             },
             {
+                key: 'spaces',
+                name: 'ステージ',
+                hash: '#stages',
+                icon: ICONS.megaphone,
+            },
+            {
+                key: 'groups',
                 name: 'グループ',
                 hash: '#groups',
                 icon: ICONS.group,
@@ -594,6 +637,7 @@ export async function updateNavAndSidebars() {
         );
         if (getCurrentUser().admin) {
             menuItems.push({
+                key: 'admin_reports',
                 name: 'リクエスト',
                 hash: '#admin/reports',
                 icon: ICONS.mask,
@@ -601,20 +645,49 @@ export async function updateNavAndSidebars() {
         }
     }
 
-    DOM.navLogo.innerHTML = `<a href="#" class="nav-logo-img">${ICONS.nyaitter_logo}</a>`;
+    const sideMenu = getSavedSideMenu();
+    const pcZones = applySideMenuZones(menuItems, sideMenu.pc);
+    const mobileZones = applySideMenuZones(menuItems, sideMenu.mobile);
+    const mobileHiddenKeys = new Set(mobileZones.moreItems.map((item) => item.key));
+    // モバイルでは下段バーがPCのDOMをCSSのorderで並べ替えるため、並び順を項目に焼き付ける。
+    const mobileOrderOf = new Map(
+        [...mobileZones.barItems, ...mobileZones.moreItems].map((item, index) => [
+            item.key,
+            index,
+        ]),
+    );
+    const toPcEntries = (items, overflow) =>
+        items.map((item) => ({
+            item,
+            overflow,
+            mobileOrder: mobileOrderOf.get(item.key) ?? 0,
+            mobileHidden: mobileHiddenKeys.has(item.key),
+        }));
+    const toMobileEntries = (items, overflow) =>
+        items.map((item) => ({ item, overflow }));
 
-    const fullMenuMarkup = `${menuItems
-        .map((item) => {
+    const renderMenuMarkup = (entries) => `${entries
+        .map((entry) => {
+            const item = entry.item;
+            // プロフィールのみIDを要するため解決してから既存のactive判定を行う
+            const href = item.dynamicHash
+                ? `#profile/${getCurrentUser()?.id}`
+                : item.hash;
             let isActive = false;
-            if (item.hash === '#') {
+            if (href === '#') {
                 isActive = hash === '#' || hash === '';
-            } else if (item.hash === '#settings') {
+            } else if (href === '#settings') {
                 isActive = hash === '#settings' || hash.startsWith('#settings/');
             } else {
-                isActive = hash.startsWith(item.hash);
+                isActive = hash.startsWith(href);
             }
+            const mobileOrderStyle = Number.isInteger(entry.mobileOrder)
+                ? ` style="--mord:${entry.mobileOrder}"`
+                : '';
             return `
-                <a href="${item.hash}" class="nav-item ${item.hash === '#admin/reports' ? 'nav-item-request' : ''} ${isActive ? 'active' : ''}">
+                <a href="${href}" class="nav-item nui-nav-item ${href === '#admin/reports' ? 'nav-item-request' : ''} ${isActive ? 'active' : ''}"${
+                    entry.overflow ? ' data-menu-overflow="1"' : ''
+                }${mobileOrderStyle}${entry.mobileHidden ? ' data-mobile-hidden="1"' : ''}>
                     <div class="nav-item-icon-container">
                         ${item.icon}
                         ${item.badge && item.badge > 0 ? `<span class="notification-badge">${item.badge > 99 ? '99+' : item.badge}</span>` : ''}
@@ -627,12 +700,23 @@ export async function updateNavAndSidebars() {
                 ? `<button class="nav-item nav-item-post"><span class="nav-item-text">ポスト</span><span class="nav-item-icon">${ICONS.send}</span></button>`
                 : ''
         }`;
+
+    DOM.navLogo.innerHTML = `<a href="#" class="nav-logo-img">${ICONS.nyaitter_logo}</a>`;
+
+    const fullMenuMarkup = renderMenuMarkup([
+        ...toPcEntries(pcZones.barItems, false),
+        ...toPcEntries(pcZones.moreItems, true),
+    ]);
+    // PC側の高さ調整でlive DOMが組み替わっても、ドロワーはモバイル設定順を維持する
+    const mobileMenuMarkup = renderMenuMarkup([
+        ...toMobileEntries(mobileZones.barItems, false),
+        ...toMobileEntries(mobileZones.moreItems, true),
+    ]);
     DOM.navMenuTop.innerHTML = fullMenuMarkup;
-    // PC側の高さ調整でDOMが移動しても、モバイルは常に全候補から組み立てる。
-    DOM.navMenuTop.dataset.fullMenuMarkup = fullMenuMarkup;
+    DOM.navMenuTop.dataset.mobileMenuMarkup = mobileMenuMarkup;
 
     DOM.navMenuBottom.innerHTML = getCurrentUser()
-        ? `<button id="account-button" class="nav-item account-button">
+        ? `<button id="account-button" class="nav-item account-button nui-nav-item">
             <img src="${getUserIconUrl(getCurrentUser())}" class="user-icon" alt="${escapeHTML(getCurrentUser().name)}'s icon">
             <div class="account-info">
                 <span class="name">${getEmoji(escapeHTML(getCurrentUser().name))}</span>
@@ -656,7 +740,7 @@ export async function updateNavAndSidebars() {
     const postButton = document.getElementsByClassName('nav-item-post')[0];
     const accountButton = document.getElementById('account-button');
     if (postButton) {
-        if (matchesMedia('(max-width:680px)') && location.hash.startsWith('#dm')) {
+        if (matchesMedia('(max-width: 544px)') && location.hash.startsWith('#dm')) {
             postButton.classList.add('hidden');
         } else {
             postButton.classList.remove('hidden');
@@ -666,7 +750,7 @@ export async function updateNavAndSidebars() {
         // メッセージ画面では操作領域を確保するため、入口アイコンを非表示にする。
         accountButton.classList.toggle(
             'hidden',
-            matchesMedia('(max-width:680px)') && location.hash.startsWith('#dm'),
+            matchesMedia('(max-width: 544px)') && location.hash.startsWith('#dm'),
         );
     }
 

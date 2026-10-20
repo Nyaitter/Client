@@ -3,8 +3,8 @@ import { ICONS } from '../../icons.js';
 import { getNetworkUsage, subscribeNetworkUsage, resetNetworkUsage } from '../../modules/networkUsage.js';
 
 const NAVIGATION = [
-    ['あなたの情報', [['overview', 'settings'], ['profile', 'profile'], ['account', 'profile'], ['privacy', 'post_lock']]],
-    ['使い心地', [['ui', 'stars'], ['editor', 'post'], ['home', 'home_outline'], ['filters', 'search'], ['notifications', 'notifications'], ['connection', 'explore']]],
+    ['あなたの情報', [['overview', 'settings'], ['profile', 'profile'], ['account', 'profile'], ['privacy', 'lock']]],
+    ['使い心地', [['ui', 'stars'], ['editor', 'post'], ['home', 'home_outline'], ['menu', 'more'], ['filters', 'search'], ['notifications', 'notifications'], ['connection', 'explore']]],
     ['管理と連携', [['storage', 'post'], ['apps', 'globe'], ['imposter', 'profile'], ['api', 'post'], ['resources', 'globe']]],
 ];
 
@@ -23,19 +23,20 @@ export function rebuildSettings(root) {
         const node = form.querySelector(selector);
         if (node) panel(group).append(node);
     };
-    for (const selector of ['.settings-login-security', '.settings-auth-providers', '.settings-sessions', '.settings-danger-zone']) move(selector, 'account');
+    for (const selector of ['.settings-login-security', '.settings-auth-providers', '.settings-sessions', '.settings-blocked-ips', '.settings-danger-zone']) move(selector, 'account');
     move('.settings-verification-application', 'profile');
     move('.settings-ng-words', 'filters');
     move('.settings-data-saver', 'connection');
     const usage = document.createElement('section');
-    usage.className = 'settings-network-usage';
-    usage.innerHTML = `<h4>このブラウザーの通信量</h4>
-        <p class="settings-help-text">今日と今月の送受信量です。計測開始後の通信だけを、この端末・ブラウザーに記録します。</p>
-        <div class="settings-usage-totals"><div><span>今日</span><strong data-usage="today"></strong></div><div><span>今月</span><strong data-usage="month"></strong></div></div>
+    usage.className = 'settings-network-usage nui-section';
+    usage.dataset.nui = 'section';
+    usage.innerHTML = `<h4 class="nui-section-title">このブラウザーの通信量</h4>
+        <p class="settings-help-text nui-help-text">今日と今月の送受信量です。計測開始後の通信だけを、この端末・ブラウザーに記録します。</p>
+        <div class="settings-usage-totals"><div class="nui-stat"><span>今日</span><strong data-usage="today"></strong></div><div class="nui-stat"><span>今月</span><strong data-usage="month"></strong></div></div>
         <dl class="settings-usage-breakdown"><div><dt>ページ・画像・APIの受信（今月）</dt><dd data-usage="httpReceived"></dd></div><div><dt>投稿・ファイルなどの送信（今月）</dt><dd data-usage="httpSent"></dd></div><div><dt>Realtimeの受信（今月）</dt><dd data-usage="realtimeReceived"></dd></div><div><dt>Realtimeの送信（今月）</dt><dd data-usage="realtimeSent"></dd></div></dl>
-        <p data-usage="coverage" class="settings-help-text" role="status"></p>
-        <p class="settings-help-text">ブラウザーが取得できる受信転送サイズと送信本文を集計しています。送信ヘッダー、ファイル送信の区切り、Realtimeの通信ヘッダーは含みません。サイズを取得できない外部リソースなどもあり、通信会社の請求量とは一致しません。</p>
-        <button type="button" class="settings-secondary-button" id="settings-reset-network-usage">計測履歴をリセット</button>`;
+        <p data-usage="coverage" class="settings-help-text nui-help-text" role="status"></p>
+        <p class="settings-help-text nui-help-text">ブラウザーが取得できる受信転送サイズと送信本文を集計しています。送信ヘッダー、ファイル送信の区切り、Realtimeの通信ヘッダーは含みません。サイズを取得できない外部リソースなどもあり、通信会社の請求量とは一致しません。</p>
+        <button type="button" class="settings-secondary-button nui-button-secondary" id="settings-reset-network-usage">計測履歴をリセット</button>`;
     panel('connection').prepend(usage);
     const dangerZone = form.querySelector('.settings-danger-zone');
     if (dangerZone) {
@@ -71,19 +72,19 @@ export function rebuildSettings(root) {
     const nav = root.querySelector('.settings-group-list');
     nav.innerHTML = '';
     const search = document.createElement('div');
-    search.className = 'settings-search';
-    search.innerHTML = '<label for="settings-search-input">設定を探す</label><input id="settings-search-input" type="search" placeholder="色、DM、ログイン…" autocomplete="off"><div id="settings-search-results" role="region" aria-label="検索結果" hidden></div>';
+    search.className = 'settings-search nui-field';
+    search.innerHTML = '<label for="settings-search-input">設定を探す</label><input id="settings-search-input" class="nui-input" type="search" placeholder="色、DM、ログイン…" autocomplete="off"><div id="settings-search-results" role="region" aria-label="検索結果" hidden></div>';
     nav.append(search);
     const mobileCategory = document.createElement('select');
     mobileCategory.id = 'settings-mobile-category';
-    mobileCategory.className = 'settings-mobile-category';
+    mobileCategory.className = 'settings-mobile-category nui-input';
     mobileCategory.setAttribute('aria-label', '設定カテゴリ');
     nav.append(mobileCategory);
     for (const [title, entries] of NAVIGATION) {
         const section = document.createElement('div');
         section.className = 'settings-navigation-section';
         const heading = document.createElement('p');
-        heading.className = 'settings-navigation-label';
+        heading.className = 'settings-navigation-label nui-help-text';
         heading.textContent = title;
         section.append(heading);
         const optionGroup = document.createElement('optgroup');
@@ -92,9 +93,10 @@ export function rebuildSettings(root) {
         for (const [key, icon] of entries) {
             const link = document.createElement('a');
             link.href = `#settings/${key}`;
-            link.className = 'settings-group-button';
+            link.className = 'settings-group-button nui-nav-item';
             link.dataset.settingsGroup = key;
-            link.innerHTML = `<span class="settings-category-icon" aria-hidden="true">${ICONS[icon] || ICONS.settings || ''}</span><span></span>`;
+            link.dataset.nui = 'nav-item';
+            link.innerHTML = `<span class="settings-category-icon nui-icon" aria-hidden="true">${ICONS[icon] || ICONS.settings || ''}</span><span></span>`;
             link.lastElementChild.textContent = key === 'overview' ? '設定トップ' : SETTINGS_GROUP_DETAILS[key].title;
             const option = document.createElement('option');
             option.value = key;
@@ -105,8 +107,8 @@ export function rebuildSettings(root) {
         nav.append(section);
     }
     const status = document.createElement('div');
-    status.className = 'settings-save-bar';
-    status.innerHTML = '<span id="settings-save-status" role="status" aria-live="polite">変更は自動保存されます</span><button type="button" id="settings-save-retry" class="settings-secondary-button" hidden>保存を再試行</button>';
+    status.className = 'settings-save-bar nui-row';
+    status.innerHTML = '<span id="settings-save-status" role="status" aria-live="polite">変更は自動保存されます</span><button type="button" id="settings-save-retry" class="settings-secondary-button nui-button-secondary" hidden>保存を再試行</button>';
     form.querySelector('.settings-detail-heading').append(status);
     const overview = panel('overview');
     const cards = document.createElement('div');
@@ -116,9 +118,10 @@ export function rebuildSettings(root) {
         const details = SETTINGS_GROUP_DETAILS[key];
         const link = document.createElement('a');
         link.href = `#settings/${key}`;
-        link.className = 'settings-overview-card';
+        link.className = 'settings-overview-card nui-card is-interactive';
         link.dataset.settingsDestination = key;
-        link.innerHTML = `<span class="settings-category-icon" aria-hidden="true">${ICONS[icon] || ''}</span><strong></strong><span class="settings-card-description"></span><span class="settings-card-arrow" aria-hidden="true">↗</span>`;
+        link.dataset.nui = 'card';
+        link.innerHTML = `<span class="settings-category-icon nui-icon" aria-hidden="true">${ICONS[icon] || ''}</span><strong></strong><span class="settings-card-description"></span><span class="settings-card-arrow" aria-hidden="true">↗</span>`;
         link.querySelector('strong').textContent = details.title;
         link.querySelector('.settings-card-description').textContent = details.description;
         cards.append(link);
@@ -130,7 +133,8 @@ export function rebuildSettings(root) {
             if (!control || control.parentElement !== section) continue;
             const help = control.nextElementSibling?.matches('.settings-help-text') ? control.nextElementSibling : null;
             const row = document.createElement('div');
-            row.className = 'settings-field-card';
+            row.className = 'settings-field-card nui-field';
+            row.dataset.nui = 'field';
             label.before(row);
             row.append(label, control);
             if (help) row.append(help);
@@ -139,9 +143,9 @@ export function rebuildSettings(root) {
     for (const label of form.querySelectorAll('label')) {
         const input = label.querySelector('input[type="checkbox"]');
         if (!input) continue;
-        label.classList.add('settings-switch-row');
+        label.classList.add('settings-switch-row', 'nui-toggle');
         const text = document.createElement('span');
-        text.className = 'settings-switch-copy';
+        text.className = 'settings-switch-copy nui-toggle-label';
         for (const node of Array.from(label.childNodes)) if (node !== input) text.append(node);
         const track = document.createElement('span');
         track.className = 'settings-toggle-track';
@@ -193,6 +197,7 @@ export function bindSettingsDiscovery(root, selectGroup, requestSave) {
             for (const item of (matches.length ? matches : [candidates[0]]).slice(0, 3)) {
                 const link = document.createElement('a');
                 link.href = `#settings/${group}`;
+                link.className = 'nui-link';
                 link.dataset.settingsDestination = group;
                 if (item.target) link.dataset.settingsTarget = item.target;
                 link.textContent = `${item.title} · ${details.title}`;

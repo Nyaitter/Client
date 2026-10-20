@@ -1,9 +1,8 @@
 /**
  * Settings screen controller boundary.
  *
- * The legacy implementation is intentionally kept behind this boundary for
- * the first migration step. Feature sections can now be extracted from this
- * controller without changing route ownership or public hash URLs.
+ * Owns the settings route and its public hash URLs; feature sections live in
+ * separate modules and are wired in from here.
  */
 import { showSettingsScreen as renderSettingsScreen } from '../settingsScreen.js';
 

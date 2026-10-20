@@ -49,54 +49,6 @@ export function createViewportObserver(callback, options = {}) {
 }
 
 /**
- * 任意の要素がビューポート外にはみ出ないように
- * 位置および最大サイズを自動調整・クランプする。
- */
-export function clampElementToViewport(element, { margin = 8, useFixed = false } = {}) {
-    if (!element || !element.isConnected) return;
-
-    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 360;
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 640;
-    const maxAllowedWidth = Math.max(120, viewportWidth - margin * 2);
-    const maxAllowedHeight = Math.max(120, viewportHeight - margin * 2);
-
-    element.style.maxWidth = `${maxAllowedWidth}px`;
-    element.style.maxHeight = `${maxAllowedHeight}px`;
-
-    const rect = element.getBoundingClientRect();
-    const scrollX = useFixed ? 0 : (window.scrollX || window.pageXOffset || 0);
-    const scrollY = useFixed ? 0 : (window.scrollY || window.pageYOffset || 0);
-
-    // 要素が absolute の場合、現在の left / top 数値を取得
-    const computedStyle = window.getComputedStyle(element);
-    let currentLeft = Number.parseFloat(computedStyle.left) || rect.left + scrollX;
-    let currentTop = Number.parseFloat(computedStyle.top) || rect.top + scrollY;
-
-    // 水平方向のはみ出し調整
-    if (rect.right > viewportWidth - margin) {
-        const overflowX = rect.right - (viewportWidth - margin);
-        currentLeft -= overflowX;
-    }
-    if (rect.left - (rect.right > viewportWidth - margin ? rect.right - (viewportWidth - margin) : 0) < margin) {
-        currentLeft = scrollX + margin;
-    }
-
-    // 垂直方向のはみ出し調整
-    if (rect.bottom > viewportHeight - margin) {
-        const overflowY = rect.bottom - (viewportHeight - margin);
-        currentTop -= overflowY;
-    }
-    if (rect.top - (rect.bottom > viewportHeight - margin ? rect.bottom - (viewportHeight - margin) : 0) < margin) {
-        currentTop = scrollY + margin;
-    }
-
-    element.style.left = `${Math.round(currentLeft)}px`;
-    element.style.top = `${Math.round(currentTop)}px`;
-    element.style.right = 'auto';
-    element.style.bottom = 'auto';
-}
-
-/**
  * トリガー要素に相対してメニューを画面内に配置する。
  * 上下左右の反転と画面外へのクランプを自動で行う。
  */
@@ -129,7 +81,6 @@ export function positionElementRelativeToAnchor(
     const menuWidth = menuRect.width || element.offsetWidth || 180;
     const menuHeight = menuRect.height || element.offsetHeight || 120;
 
-    // 垂直方向の計算
     let top;
     const preferTop = placement.startsWith('top');
     const spaceBelow = viewportHeight - anchorRect.bottom - gap - margin;
@@ -149,7 +100,6 @@ export function positionElementRelativeToAnchor(
         }
     }
 
-    // 水平方向の計算
     let left;
     const preferEnd = placement.endsWith('end');
     if (preferEnd) {
@@ -164,7 +114,6 @@ export function positionElementRelativeToAnchor(
         }
     }
 
-    // ビューポート内にクランプ
     const clampedTop = Math.max(margin, Math.min(top, viewportHeight - menuHeight - margin));
     const clampedLeft = Math.max(margin, Math.min(left, viewportWidth - menuWidth - margin));
 

@@ -38,6 +38,8 @@ import {
     getCachedUser,
     cacheUsers,
     invalidateDmCaches,
+    getScreenDataCache,
+    getDmCacheKey,
 } from './cache.js';
 import {
     escapeHTML,
@@ -542,32 +544,32 @@ export async function openDmManageModal(dmId, onComplete = null) {
         if (members) cacheUsers(members);
 
         content.innerHTML = `
-            <div class="dm-modal-body">
+            <div class="dm-modal-body nui-modal-body">
                 <div class="modal-heading">
-                    <h3 id="dm-manage-modal-title">DM管理</h3>
+                    <h3 id="dm-manage-modal-title" class="nui-modal-title">DM管理</h3>
                 </div>
                 <div class="dm-manage-section">
                     <label class="dm-manage-label" for="dm-manage-title-input">グループ名</label>
                     <div class="dm-manage-inline-row">
-                        <input id="dm-manage-title-input" class="dm-modal-input" type="text" value="${escapeHTML(dm.title || '')}" ${!isHost ? 'disabled' : ''} placeholder="未設定">
-                        ${isHost ? '<button type="button" id="dm-manage-title-save-btn" class="settings-primary-button dm-manage-btn-sm">変更</button>' : ''}
+                        <input id="dm-manage-title-input" class="dm-modal-input nui-input" type="text" value="${escapeHTML(dm.title || '')}" ${!isHost ? 'disabled' : ''} placeholder="未設定">
+                        ${isHost ? '<button type="button" id="dm-manage-title-save-btn" class="settings-primary-button dm-manage-btn-sm nui-button" data-nui="button">変更</button>' : ''}
                     </div>
                 </div>
                 <div class="dm-manage-section">
-                    <h4 class="dm-manage-section-title">参加メンバー (${memberIds.length})</h4>
-                    <div class="dm-manage-member-list"></div>
+                    <h4 class="dm-manage-section-title nui-section-title">参加メンバー (${memberIds.length})</h4>
+                    <div class="dm-manage-member-list nui-list" data-nui="list"></div>
                 </div>
                 ${isHost ? `
                 <div class="dm-manage-section">
                     <label class="dm-manage-label" for="dm-manage-add-input">メンバーを追加</label>
                     <div class="dm-manage-inline-row">
-                        <input id="dm-manage-add-input" class="dm-modal-input" type="number" placeholder="NyaitterID (数字)">
-                        <button type="button" id="dm-manage-add-btn" class="settings-primary-button dm-manage-btn-sm">追加</button>
+                        <input id="dm-manage-add-input" class="dm-modal-input nui-input" type="number" placeholder="NyaitterID (数字)">
+                        <button type="button" id="dm-manage-add-btn" class="settings-primary-button dm-manage-btn-sm nui-button" data-nui="button">追加</button>
                     </div>
                 </div>` : ''}
                 <div class="dm-manage-actions-footer">
-                    <button type="button" id="dm-manage-leave-btn" class="settings-danger-button">グループから退出</button>
-                    ${isHost ? '<button type="button" id="dm-manage-disband-btn" class="settings-danger-button">グループを解散</button>' : ''}
+                    <button type="button" id="dm-manage-leave-btn" class="settings-danger-button nui-button-danger" data-nui="button-danger">グループから退出</button>
+                    ${isHost ? '<button type="button" id="dm-manage-disband-btn" class="settings-danger-button nui-button-danger" data-nui="button-danger">グループを解散</button>' : ''}
                 </div>
             </div>
         `;
@@ -578,18 +580,19 @@ export async function openDmManageModal(dmId, onComplete = null) {
             const isUserHost = Number(dm.host_id ?? dm.host) === Number(uid);
             const isMe = Number(uid) === Number(currentUserId);
             const item = document.createElement('div');
-            item.className = 'dm-manage-member-item';
+            item.className = 'dm-manage-member-item nui-list-item nui-row';
+            item.setAttribute('data-nui', 'list-item');
             item.innerHTML = `
                 <div class="dm-manage-member-info">
-                    <img src="${getUserIconUrl(user)}" class="user-icon dm-manage-member-icon" alt="">
-                    <span class="dm-manage-member-name">${getEmoji(escapeHTML(user.name))}</span>
-                    <span class="dm-manage-member-handle">${getNyaitterId(user)}</span>
-                    ${isUserHost ? '<span class="dm-manage-host-badge">ホスト</span>' : ''}
+                    <img src="${getUserIconUrl(user)}" class="user-icon dm-manage-member-icon nui-avatar" alt="">
+                    <span class="dm-manage-member-name nui-list-title">${getEmoji(escapeHTML(user.name))}</span>
+                    <span class="dm-manage-member-handle nui-list-meta">${getNyaitterId(user)}</span>
+                    ${isUserHost ? '<span class="dm-manage-host-badge nui-badge nui-badge-accent">ホスト</span>' : ''}
                 </div>
                 <div class="dm-manage-member-actions">
                     ${isHost && !isMe ? `
-                        <button type="button" class="set-host-btn group-ui-secondary-button" data-uid="${uid}">ホストにする</button>
-                        <button type="button" class="remove-member-btn settings-session-revoke-button" data-uid="${uid}">削除</button>
+                        <button type="button" class="set-host-btn group-ui-secondary-button nui-button-secondary" data-nui="button-secondary" data-uid="${uid}">ホストにする</button>
+                        <button type="button" class="remove-member-btn settings-session-revoke-button nui-button-danger" data-nui="button-danger" data-uid="${uid}">削除</button>
                     ` : ''}
                 </div>
             `;
@@ -662,9 +665,9 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
         if (!message) throw new Error('メッセージが見つかりませんでした');
 
         content.innerHTML = `
-            <div class="dm-modal-body">
+            <div class="dm-modal-body nui-modal-body">
                 <div class="modal-heading">
-                    <h3 id="edit-dm-modal-title">メッセージを編集</h3>
+                    <h3 id="edit-dm-modal-title" class="nui-modal-title">メッセージを編集</h3>
                 </div>
                 <div class="dm-edit-content">
                     <div class="markdown-textarea-editor dm-edit-editor">
@@ -683,8 +686,8 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
                             <div id="emoji-picker" class="hidden"></div>
                         </div>
                         <div class="dm-edit-actions">
-                            <button type="button" class="login-secondary-button dm-edit-cancel-btn">キャンセル</button>
-                            <button type="button" id="update-dm-btn" class="settings-primary-button">保存</button>
+                            <button type="button" class="login-secondary-button dm-edit-cancel-btn nui-button-secondary" data-nui="button-secondary">キャンセル</button>
+                            <button type="button" id="update-dm-btn" class="settings-primary-button nui-button" data-nui="button">保存</button>
                         </div>
                     </div>
                 </div>

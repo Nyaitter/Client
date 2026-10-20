@@ -14,6 +14,8 @@ const route = (name, match, options = {}) => ({
 });
 
 export const ROUTES = [
+    route('stages', hash => hash === '#stages' || hash === '#spaces', { requiresAuth: true }),
+    route('stage', /^#stage\/([a-f0-9-]+)$/i, { requiresAuth: true, parse: match => ({ stageId: match[1] }) }),
     route('post-activity', /^#\/?post\/(\d+)\/activity(?:\/([^/]+))?$/i, {
         parse: (match) => ({ postId: match[1], tab: match[2] || 'quotes' }),
     }),
@@ -65,6 +67,10 @@ export const ROUTES = [
     route('login-approval', (hash) => hash.startsWith('#login-approval/'), {
         requiresAuth: true,
         parse: (hash) => ({ approvalId: hash.substring('#login-approval/'.length) }),
+    }),
+    route('account-recovery', (hash) => hash.startsWith('#account-recovery/'), {
+        requiresAuth: true,
+        parse: (hash) => ({ recoveryId: hash.substring('#account-recovery/'.length) }),
     }),
     route('explore', '#explore'),
     route('notifications', '#notifications', { requiresAuth: true }),

@@ -19,13 +19,13 @@ export function renderDocument(content, title, renderedBody, updatedAt) {
     if (titleElement && title) titleElement.textContent = title;
     if (!content) return;
     content.innerHTML = `
-        <article class="doc-detail-container">
-            <div class="rule-markdown-body">${renderedBody}</div>
-            ${updatedAt ? `<div class="rule-footer-meta"><small>最終更新日: ${escapeHTML(updatedAt)}</small></div>` : ''}
+        <article class="doc-detail-container nui-page" data-nui="page">
+            <div class="nui-card rule-markdown-body" data-nui="card">${renderedBody}</div>
+            ${updatedAt ? `<div class="rule-footer-meta nui-help-text"><small>最終更新日: ${escapeHTML(updatedAt)}</small></div>` : ''}
         </article>
     `;
 }
 
 export function renderError(content) {
-    if (content) content.innerHTML = '<div class="docs-empty"><p class="error-message">ドキュメントの読み込みに失敗しました。</p></div>';
+    if (content) content.innerHTML = '<div class="docs-empty nui-page" data-nui="page"><p class="error-message nui-empty-text">ドキュメントの読み込みに失敗しました。</p></div>';
 }

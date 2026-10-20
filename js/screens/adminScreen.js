@@ -47,8 +47,47 @@ export function moderationEvidenceText(value) {
 }
 
 export function renderModerationSubject(user) {
-    if (!user) return '<p class="moderation-help-text">対象ユーザーの証跡はありません。</p>';
-    return `<div class="moderation-content-evidence"><strong>${escapeHTML(user.name || '名称未設定')}</strong><br><span class="moderation-help-text">@${escapeHTML(user.scid || user.handle || String(user.id))}</span></div>`;
+    if (!user) return '<p class="moderation-help-text nui-empty-text">対象ユーザーの証跡はありません。</p>';
+    return `<div class="moderation-content-evidence"><strong>${escapeHTML(user.name || '名称未設定')}</strong><br><span class="moderation-help-text nui-help-text">@${escapeHTML(user.scid || user.handle || String(user.id))}</span></div>`;
+}
+
+export function moderationActionSummary(actions = {}) {
+    const lines = [];
+    if (actions.deletePost) lines.push('該当ポストを削除');
+    if (actions.maskPost) lines.push('ワンクッションを付与');
+    if (actions.makePrivate) lines.push('プライベートポスト化');
+    if (actions.searchExclude) lines.push('検索から除外');
+    if (actions.freeze) lines.push(`アカウントを凍結（理由: ${actions.freezeReason}）`);
+    if (actions.notice) lines.push('対象ユーザーへ管理者通知を送信');
+    return lines;
+}
+
+function renderActionCard({ id, tone, icon, title, description }) {
+    return `
+        <label class="moderation-action-card moderation-action-card--${tone} nui-list-item">
+            <input id="${id}" type="checkbox">
+            <span class="moderation-action-card__icon" aria-hidden="true">${icon}</span>
+            <span class="moderation-action-card__body">
+                <span class="moderation-action-card__title nui-list-title">${escapeHTML(title)}</span>
+                <span class="moderation-action-card__desc nui-list-meta">${escapeHTML(description)}</span>
+            </span>
+        </label>`;
+}
+
+function renderCurrentPostState(targetState, snapshot) {
+    const exists = targetState ? targetState.exists !== false : true;
+    const mask = targetState ? Boolean(targetState.mask) : Boolean(snapshot?.post?.mask);
+    const lock = targetState ? Boolean(targetState.lock) : Boolean(snapshot?.post?.lock);
+    if (!exists) {
+        return '<div class="moderation-post-state"><span class="moderation-state-badge moderation-state-badge--deleted nui-badge nui-badge-danger">削除済み</span></div>';
+    }
+    const badges = [];
+    if (mask) badges.push('<span class="moderation-state-badge moderation-state-badge--mask nui-badge">ワンクッション済み</span>');
+    if (lock) badges.push('<span class="moderation-state-badge moderation-state-badge--lock nui-badge">プライベート</span>');
+    if (badges.length === 0) {
+        return '<p class="moderation-help-text nui-help-text">現在、公開範囲の制限はありません。</p>';
+    }
+    return `<div class="moderation-post-state">${badges.join('')}</div>`;
 }
 
 export async function showAdminReportsScreen(showScreenFn = null) {
@@ -67,7 +106,18 @@ export async function showAdminReportsScreen(showScreenFn = null) {
             renderEmpty(contentDiv, '現在、あなたに割り当てられているリクエストはありません。');
             return;
         }
-        renderReportList(contentDiv, reports, formatModerationDate, moderationTargetLabel);
+        let filter = 'all';
+        const draw = () => {
+            renderReportList(contentDiv, reports, {
+                formatDate: formatModerationDate,
+                filter,
+                onFilterChange: (nextFilter) => {
+                    filter = nextFilter;
+                    draw();
+                },
+            });
+        };
+        draw();
     } catch (error) {
         console.error('リクエスト一覧の取得に失敗:', error);
         renderError(contentDiv, 'リクエスト一覧の取得に失敗しました。');
@@ -99,19 +149,25 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
         if (report.assignment_type === 'verification_application') {
             DOM.pageHeader.querySelector('#page-title').textContent = '認証申請を確認';
             contentDiv.innerHTML = `
-                <div class="moderation-review-layout">
-                    <section class="moderation-review-section">
-                        <h3>申請者</h3>
+                <div class="moderation-review-layout nui-page" data-nui="page">
+                    <header class="moderation-detail-head nui-page-heading" data-nui="page-heading">
+                        <span class="admin-request-badge admin-request-badge--verify nui-badge">
+                            <span class="admin-request-badge__icon" aria-hidden="true">${ICONS.verify}</span>認証申請
+                        </span>
+                        <span class="moderation-detail-head__meta">リクエスト #${Number(report.id)}</span>
+                    </header>
+                    <section class="moderation-review-section nui-section" data-nui="section">
+                        <h3 class="nui-section-title">申請者</h3>
                         ${renderModerationSubject(snapshot.subjectUser)}
                     </section>
-                    <section class="moderation-review-section">
-                        <h3>判断</h3>
-                        <p class="moderation-help-text">承認すると、申請者のプロフィールに認証バッジを付与します。</p>
-                        <div class="moderation-form-actions">
-                            <button type="button" class="moderation-submit-button" data-verification-decision="approved">承認して認証する</button>
-                            <button type="button" class="delete-btn" data-verification-decision="rejected">拒否する</button>
+                    <section class="moderation-review-section nui-section" data-nui="section">
+                        <h3 class="nui-section-title">判断</h3>
+                        <p class="moderation-help-text nui-help-text">承認すると、申請者のプロフィールに認証バッジを付与します。</p>
+                        <div class="moderation-form-actions nui-actions">
+                            <button type="button" class="moderation-submit-button nui-button" data-verification-decision="approved">承認して認証する</button>
+                            <button type="button" class="delete-btn nui-button-danger" data-verification-decision="rejected">拒否する</button>
                         </div>
-                        <p id="verification-decision-error" class="login-modal-message login-modal-error hidden" role="alert"></p>
+                        <p id="verification-decision-error" class="login-modal-message login-modal-error nui-help-text hidden" role="alert"></p>
                     </section>
                 </div>`;
 
@@ -153,26 +209,32 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
         if (report.assignment_type === 'freeze_appeal') {
             DOM.pageHeader.querySelector('#page-title').textContent = '異議申し立てを確認';
             contentDiv.innerHTML = `
-                <div class="moderation-review-layout">
-                    <section class="moderation-review-section">
-                        <h3>申立対象のアカウント</h3>
+                <div class="moderation-review-layout nui-page" data-nui="page">
+                    <header class="moderation-detail-head nui-page-heading" data-nui="page-heading">
+                        <span class="admin-request-badge admin-request-badge--appeal nui-badge">
+                            <span class="admin-request-badge__icon" aria-hidden="true">${ICONS.shield}</span>凍結異議
+                        </span>
+                        <span class="moderation-detail-head__meta">リクエスト #${Number(report.id)}</span>
+                    </header>
+                    <section class="moderation-review-section nui-section" data-nui="section">
+                        <h3 class="nui-section-title">申立対象のアカウント</h3>
                         ${renderModerationSubject(snapshot.subjectUser)}
                     </section>
-                    <section class="moderation-review-section">
-                        <h3>現在の凍結理由</h3>
+                    <section class="moderation-review-section nui-section" data-nui="section">
+                        <h3 class="nui-section-title">現在の凍結理由</h3>
                         <div class="moderation-content-evidence">${escapeHTML(snapshot.freezeReason || '理由は記録されていません。')}</div>
                     </section>
-                    <section class="moderation-review-section">
-                        <h3>異議申し立ての説明</h3>
+                    <section class="moderation-review-section nui-section" data-nui="section">
+                        <h3 class="nui-section-title">異議申し立ての説明</h3>
                         <div class="moderation-content-evidence">${escapeHTML(report.description || '説明は添付されていません。')}</div>
                     </section>
-                    <section class="moderation-review-section">
-                        <h3>判断</h3>
-                        <div class="moderation-form-actions" id="appeal-decision-actions">
-                            <button type="button" class="moderation-submit-button" data-appeal-decision="approved">承認して凍結を解除</button>
-                            <button type="button" class="delete-btn" data-appeal-decision="rejected">拒否する</button>
+                    <section class="moderation-review-section nui-section" data-nui="section">
+                        <h3 class="nui-section-title">判断</h3>
+                        <div class="moderation-form-actions nui-actions" id="appeal-decision-actions">
+                            <button type="button" class="moderation-submit-button nui-button" data-appeal-decision="approved">承認して凍結を解除</button>
+                            <button type="button" class="delete-btn nui-button-danger" data-appeal-decision="rejected">拒否する</button>
                         </div>
-                        <p id="appeal-decision-error" class="login-modal-message login-modal-error hidden" role="alert"></p>
+                        <p id="appeal-decision-error" class="login-modal-message login-modal-error nui-help-text hidden" role="alert"></p>
                     </section>
                 </div>`;
 
@@ -227,35 +289,93 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                 .map((m) => `<div class="moderation-message-evidence">${moderationEvidenceText(m?.content || m)}</div>`)
                 .join('') || 'メッセージ証跡はありません。';
 
+        const isPost = report.target_kind === 'post';
+        const targetState = report.target_state || null;
+        const postAvailable = isPost && (!targetState || targetState.exists !== false);
+        const alreadyMasked = targetState ? Boolean(targetState.mask) : Boolean(snapshot.post?.mask);
+        const alreadyPrivate = targetState ? Boolean(targetState.lock) : Boolean(snapshot.post?.lock);
+
+        const postStateSection = isPost
+            ? `<section class="moderation-review-section nui-section" data-nui="section">
+                   <h3 class="nui-section-title">ポストの現在の状態</h3>
+                   ${renderCurrentPostState(targetState, snapshot)}
+               </section>`
+            : '';
+
         const evidence =
-            report.target_kind === 'post'
-                ? `<div class="moderation-review-section"><h3>報告されたポスト</h3>${renderModerationSubject(snapshot.subjectUser)}<div class="moderation-content-evidence">${moderationEvidenceText(snapshot.post?.content || '')}</div></div>`
+            isPost
+                ? `<div class="moderation-review-section nui-section" data-nui="section"><h3 class="nui-section-title">報告されたポスト</h3>${renderModerationSubject(snapshot.subjectUser)}<div class="moderation-content-evidence">${moderationEvidenceText(snapshot.post?.content || '')}</div></div>`
                 : report.target_kind === 'dm_message'
-                  ? `<div class="moderation-review-section"><h3>報告されたDMメッセージ</h3>${renderModerationSubject(snapshot.subjectUser)}<div class="moderation-content-evidence">${moderationEvidenceText(snapshot.message?.content || '本文は記録されていません。')}</div><div class="moderation-content-evidence">${dmEvidence}</div></div>`
+                  ? `<div class="moderation-review-section nui-section" data-nui="section"><h3 class="nui-section-title">報告されたDMメッセージ</h3>${renderModerationSubject(snapshot.subjectUser)}<div class="moderation-content-evidence">${moderationEvidenceText(snapshot.message?.content || '本文は記録されていません。')}</div><div class="moderation-content-evidence">${dmEvidence}</div></div>`
                   : report.target_kind === 'dm'
-                    ? `<div class="moderation-review-section"><h3>報告されたDM</h3><div class="moderation-content-evidence">${dmEvidence}</div></div>`
-                    : `<div class="moderation-review-section"><h3>報告されたユーザー</h3>${renderModerationSubject(snapshot.subjectUser)}</div>`;
+                    ? `<div class="moderation-review-section nui-section" data-nui="section"><h3 class="nui-section-title">報告されたDM</h3><div class="moderation-content-evidence">${dmEvidence}</div></div>`
+                    : `<div class="moderation-review-section nui-section" data-nui="section"><h3 class="nui-section-title">報告されたユーザー</h3>${renderModerationSubject(snapshot.subjectUser)}</div>`;
+
+        const actionCards = [
+            postAvailable ? {
+                id: 'moderation-delete-post',
+                tone: 'delete',
+                icon: ICONS.trash,
+                title: '該当ポストを削除',
+                description: 'ポストを完全に削除します。',
+            } : null,
+            postAvailable && !alreadyMasked ? {
+                id: 'moderation-mask-post',
+                tone: 'mask',
+                icon: ICONS.preview,
+                title: 'ワンクッションを付与',
+                description: '閲覧前に確認を挟む状態にします。',
+            } : null,
+            postAvailable && !alreadyPrivate ? {
+                id: 'moderation-make-private',
+                tone: 'lock',
+                icon: ICONS.lock,
+                title: 'プライベートポスト化',
+                description: '投稿者のみなどに限定公開にします。',
+            } : null,
+            {
+                id: 'moderation-search-exclude',
+                tone: 'shadow',
+                icon: ICONS.search_off,
+                title: '検索から除外',
+                description: '検索結果に表示されないようにします。',
+            },
+            {
+                id: 'moderation-freeze',
+                tone: 'freeze',
+                icon: ICONS.freeze,
+                title: 'アカウントを凍結',
+                description: '理由の入力が必要です。',
+            },
+        ].filter(Boolean);
 
         contentDiv.innerHTML = `
-            <div class="moderation-review-layout">
-                <section class="moderation-review-section">
-                    <h3>報告理由</h3>
+            <div class="moderation-review-layout nui-page" data-nui="page">
+                <header class="moderation-detail-head nui-page-heading" data-nui="page-heading">
+                    <span class="admin-request-badge admin-request-badge--report nui-badge">
+                        <span class="admin-request-badge__icon" aria-hidden="true">${ICONS.report}</span>報告
+                    </span>
+                    <span class="admin-request-target">${escapeHTML(moderationTargetLabel(report.target_kind))}</span>
+                    <span class="moderation-detail-head__meta">リクエスト #${Number(report.id)}</span>
+                </header>
+                <section class="moderation-review-section nui-section" data-nui="section">
+                    <h3 class="nui-section-title">報告理由</h3>
                     <div class="moderation-content-evidence">${escapeHTML(report.description || '説明は添付されていません。')}</div>
                 </section>
                 ${evidence}
-                <section class="moderation-review-section">
-                    <h3>対応</h3>
-                    <form id="moderation-resolution-form" data-report-id="${Number(report.id)}">
-                        ${selectableUsers.length > 0 ? `<div class="moderation-action-field"><label for="moderation-target-user">対応対象ユーザー</label><select id="moderation-target-user" class="moderation-target-select"><option value="">選択してください</option>${targetOptions}</select></div>` : ''}
+                ${postStateSection}
+                <section class="moderation-review-section moderation-review-section--actions nui-section" data-nui="section">
+                    <h3 class="nui-section-title">対応</h3>
+                    <p class="moderation-help-text nui-help-text">実行する対応を選択してください。送信前に確認画面が表示されます。</p>
+                    <form id="moderation-resolution-form" class="nui-form" data-report-id="${Number(report.id)}" data-nui="form">
+                        ${selectableUsers.length > 0 ? `<div class="moderation-action-field nui-field"><label for="moderation-target-user">対応対象ユーザー</label><select id="moderation-target-user" class="moderation-target-select nui-input"><option value="">選択してください</option>${targetOptions}</select><p class="moderation-help-text nui-help-text">「検索から除外」「アカウントを凍結」「通知」を使う場合は選択してください。</p></div>` : ''}
                         <div class="moderation-action-grid">
-                            ${report.target_kind === 'post' ? '<label><input id="moderation-delete-post" type="checkbox"> 該当ポストを削除</label>' : ''}
-                            <label><input id="moderation-search-exclude" type="checkbox"> 検索から除外</label>
-                            <label><input id="moderation-freeze" type="checkbox"> アカウントを凍結</label>
+                            ${actionCards.map((card) => renderActionCard(card)).join('')}
                         </div>
-                        <div class="moderation-action-field"><label for="moderation-freeze-reason">凍結理由</label><input id="moderation-freeze-reason" class="moderation-target-select" type="text" maxlength="2000" placeholder="凍結する場合のみ入力"></div>
-                        <div class="moderation-action-field"><label for="moderation-notice">対象ユーザーへの通知</label><textarea id="moderation-notice" class="moderation-textarea" maxlength="2000" rows="4" placeholder="任意の通知本文"></textarea></div>
-                        <div class="moderation-form-actions"><button type="submit" class="moderation-submit-button">対応を完了する</button></div>
-                        <p id="moderation-resolution-error" class="login-modal-message login-modal-error hidden" role="alert"></p>
+                        <div class="moderation-action-field nui-field"><label for="moderation-freeze-reason">凍結理由</label><input id="moderation-freeze-reason" class="moderation-target-select nui-input" type="text" maxlength="2000" placeholder="凍結する場合のみ入力"></div>
+                        <div class="moderation-action-field nui-field"><label for="moderation-notice">対象ユーザーへの通知（任意）</label><textarea id="moderation-notice" class="moderation-textarea nui-input" maxlength="2000" rows="4" placeholder="任意の通知本文"></textarea></div>
+                        <div class="moderation-form-actions nui-actions"><button type="submit" class="moderation-submit-button nui-button">対応を完了する</button></div>
+                        <p id="moderation-resolution-error" class="login-modal-message login-modal-error nui-help-text hidden" role="alert"></p>
                     </form>
                 </section>
             </div>`;
@@ -267,12 +387,21 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
             const targetUserId = document.getElementById('moderation-target-user')?.value || null;
             const actions = {
                 deletePost: Boolean(document.getElementById('moderation-delete-post')?.checked),
+                maskPost: Boolean(document.getElementById('moderation-mask-post')?.checked),
+                makePrivate: Boolean(document.getElementById('moderation-make-private')?.checked),
                 searchExclude: Boolean(document.getElementById('moderation-search-exclude')?.checked),
                 freeze: Boolean(document.getElementById('moderation-freeze')?.checked),
                 freezeReason: document.getElementById('moderation-freeze-reason')?.value || '',
                 notice: document.getElementById('moderation-notice')?.value || '',
                 targetUserId: targetUserId ? Number(targetUserId) : null,
             };
+
+            if (errorElement) errorElement.classList.add('hidden');
+            const summary = moderationActionSummary(actions);
+            const confirmation = summary.length > 0
+                ? `以下の内容で対応を完了します。\n\n・${summary.join('\n・')}\n\nよろしいですか？`
+                : '実行する対応を選択していません。\nこのまま完了しますか？';
+            if (!(await showAppConfirm(confirmation))) return;
 
             const submit = form.querySelector('button[type="submit"]');
             if (submit) submit.disabled = true;
@@ -293,7 +422,7 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
         });
     } catch (error) {
         console.error('報告詳細の取得に失敗:', error);
-        contentDiv.innerHTML = '<div class="admin-reports-container"><p class="error-message">報告詳細の取得に失敗しました。</p></div>';
+        contentDiv.innerHTML = '<div class="admin-requests-container nui-page" data-nui="page"><p class="error-message nui-empty-text">報告詳細の取得に失敗しました。</p></div>';
     } finally {
         showLoading(false);
     }
@@ -351,7 +480,7 @@ export async function showAdminLogsScreen(showScreenFn = null) {
 
             if (error) {
                 console.error('ログの取得に失敗:', error);
-                trigger.innerHTML = `<p class="error-message">${escapeHTML(error.message)}</p>`;
+                trigger.innerHTML = `<p class="error-message nui-empty-text">${escapeHTML(error.message)}</p>`;
                 hasMore = false;
                 return;
             }
@@ -359,12 +488,12 @@ export async function showAdminLogsScreen(showScreenFn = null) {
             if (data && data.length > 0) {
                 data.forEach((log) => {
                     const logItem = document.createElement('div');
-                    logItem.className = 'widget-item';
+                    logItem.className = 'widget-item nui-list-item';
                     logItem.style.cssText = 'display: flex; flex-direction: column; gap: 0.25rem;';
                     logItem.innerHTML = `
-                        <div><strong>SCID:</strong> ${escapeHTML(log.scratch_id)} (#${log.nyaitter_id})</div>
+                        <div><strong>SCID:</strong> ${escapeHTML(log.scratch_id)} (#${escapeHTML(log.nyaitter_id)})</div>
                         <div style="font-size: 0.9rem; color: var(--secondary-text-color);">${new Date(log.log_time).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}</div>
-                        <div style="font-size: 0.8rem; color: var(--secondary-text-color); font-family: monospace; word-break: break-all;">識別子: ${log.masked_ip_uuid}</div>
+                        <div style="font-size: 0.8rem; color: var(--secondary-text-color); font-family: monospace; word-break: break-all;">識別子: ${escapeHTML(log.masked_ip_uuid)}</div>
                     `;
                     contentDiv.insertBefore(logItem, trigger);
                 });
