@@ -204,12 +204,7 @@
 .call-tool-button:disabled { opacity: .35; cursor: default; }
 .call-leave-button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 16px; border: 0; border-radius: 12px; background: #b84048; color: white; font-size: .8rem !important; cursor: pointer; }
 .call-leave-button:hover { background: #a4333b; }
-.call-footer-utility { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.call-settings-button { display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 12px; background: transparent; color: var(--secondary-text-color); cursor: pointer; }
-.call-settings-button:hover { background: var(--bg-color); color: var(--text-color); }
-.call-settings-button svg { width: 19px; height: 19px; fill: none; stroke: currentColor; }
-.call-manage-button { min-height: 42px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 12px; background: transparent; color: var(--text-color); font-size: .78rem; cursor: pointer; }
-.call-manage-button:hover { background: var(--bg-color); }
+.call-footer-utility { display: flex; align-items: center; gap: 10px; margin-left: 0; }
 .call-settings-modal { position: absolute; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / 38%); }
 .call-settings-modal[hidden] { display: none; }
 .call-settings-card { display: flex; flex-direction: column; width: min(420px, 100%); max-height: 100%; overflow: auto; border: 1px solid var(--border-color); border-radius: 16px; background: var(--main-bg-color); color: var(--text-color); box-shadow: 0 12px 40px rgb(0 0 0 / 30%); }

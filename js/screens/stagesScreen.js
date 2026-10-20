@@ -1,10 +1,11 @@
-import { api, apiRequest } from '../api.js';
+import { apiRequest } from '../api.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { getCurrentUser } from '../state.js';
-import { escapeHTML, showAppConfirm, getUserIconUrl } from '../utils/helpers.js';
+import { escapeHTML, getUserIconUrl } from '../utils/helpers.js';
 import { showScreenCompat, getActiveScreenContext } from '../screenManager.js';
 import { openCall } from '../modules/calls.js';
+import { openStageManageModal } from '../modules/stageManage.js';
 import { createUserInvitePicker } from '../modules/userInvite.js';
 
 async function request(path, options = {}) {
@@ -223,66 +224,14 @@ async function showDetail(id, container, context) {
             <div class="stage-join-row"><button type="button" class="settings-primary-button nui-button" data-nui="button" data-stage-join ${stage.status === 'ended' ? 'disabled' : ''}>${stage.status === 'ended' ? '終了しました' : stage.status === 'scheduled' && data.role === 'audience' ? '開始を待つ' : stage.status === 'scheduled' ? 'ステージを開く' : '参加する'}</button><span class="nui-badge">${data.guest ? 'ゲスト' : data.role === 'host' ? 'ホスト' : data.role === 'speaker' ? 'スピーカー' : 'リスナー'}</span></div>
             <p data-stage-error class="stage-feedback" role="status" aria-live="polite"></p>
         </section>
-        ${isHost && stage.status !== 'ended' ? `<section class="stage-host-section"><details class="stage-host-controls"><summary class="nui-section-title">ステージを管理</summary><div class="stage-management-content">
-            ${stage.status === 'scheduled' ? '<div class="stage-management-row"><div><h4 class="nui-section-title">ステージを開始</h4></div><button type="button" class="settings-primary-button nui-button" data-nui="button" data-stage-status="live">開始する</button></div>' : ''}
-            <label class="stage-guest-toggle nui-toggle"><span class="stage-guest-toggle-copy">ゲストユーザーの参加を許可<span class="stage-field-help nui-help-text">ゲストは視聴のみで、コメントやスピーカーへの昇格はできません。</span></span><input type="checkbox" data-stage-guest-toggle ${stage.allow_guest_join ? 'checked' : ''}><span class="settings-toggle-track" aria-hidden="true"></span></label>
-            <form data-stage-invite class="stage-invite-form user-invite-form">${inviteBlock('detail', { submit: true, heading: '参加者を招待' })}</form>
-            <form data-stage-speakers class="stage-invite-form user-invite-form" data-nui="form">${inviteBlock('speaker', { submit: true, heading: 'スピーカー', buttonLabel: '発言権を更新', note: '一覧から外した人はリスナーになります。' })}</form>
-            <div class="stage-management-row"><div><h4 class="nui-section-title">ステージを終了</h4><p>参加者全員が退出します。</p></div><button type="button" class="settings-secondary-button nui-button-secondary stage-end-button" data-stage-status="ended">終了する</button></div>
-        </div></details></section>` : ''}
+        ${isHost && stage.status !== 'ended' ? `<section class="stage-host-section"><button type="button" class="stage-manage-open" data-stage-manage-open>${ICONS.sliders}<span>ステージを管理</span></button></section>` : ''}
     </div>`;
     const report = error => { if (!context.signal.aborted) container.querySelector('[data-stage-error]').textContent = error.message; };
     container.querySelector('[data-stage-join]').onclick = () => { void openCall('stage', id).catch(report); };
-    async function update(body) {
-        const wasOpen = container.querySelector('.stage-host-controls')?.open;
-        await request(`/stages/${encodeURIComponent(id)}`, { method: 'PATCH', body });
-        if (!context.signal.aborted) {
-            await showDetail(id, container, context);
-            const controls = container.querySelector('.stage-host-controls');
-            if (controls && wasOpen) controls.open = true;
-        }
-    }
-    for (const button of container.querySelectorAll('[data-stage-status]')) button.onclick = async () => {
-        if (button.dataset.stageStatus === 'ended' && !await showAppConfirm('ステージを終了しますか？ 参加者全員が退出します。')) return;
-        button.disabled = true;
-        try { await update({ status: button.dataset.stageStatus }); } catch (error) { report(error); button.disabled = false; }
+    const manageButton = container.querySelector('[data-stage-manage-open]');
+    if (manageButton) manageButton.onclick = () => {
+        void openStageManageModal(id, {
+            onUpdated: () => { if (!context.signal.aborted) void showDetail(id, container, context); },
+        });
     };
-    const guestToggle = container.querySelector('[data-stage-guest-toggle]');
-    if (guestToggle) guestToggle.onchange = async () => {
-        guestToggle.disabled = true;
-        try { await update({ allow_guest_join: guestToggle.checked }); }
-        catch (error) { guestToggle.checked = !guestToggle.checked; report(error); guestToggle.disabled = false; }
-    };
-    const inviteForm = container.querySelector('[data-stage-invite]');
-    if (inviteForm) {
-        const picker = setupInvitePicker(inviteForm, context);
-        inviteForm.onsubmit = async event => {
-            event.preventDefault();
-            if (!picker.size) return;
-            inviteForm.querySelector('[data-invite-submit]').disabled = true;
-            try { await update({ invite_ids: picker.ids }); }
-            catch (error) { report(error); inviteForm.querySelector('[data-invite-submit]').disabled = false; }
-        };
-    }
-    const speakerForm = container.querySelector('[data-stage-speakers]');
-    if (speakerForm) {
-        const speakerPicker = setupInvitePicker(speakerForm, context, { keepSubmitEnabled: true, emptyText: 'スピーカーにするユーザーを検索してください。' });
-        const speakerIds = (stage.speaker_ids || []).map(Number);
-        if (speakerIds.length) {
-            void api.from('user').select('id, name, scid, me, nyaitter_id, icon_data').in('id', speakerIds).signal(context.signal)
-                .then(({ data, error }) => {
-                    if (context.signal.aborted) return;
-                    if (error) return;
-                    for (const user of Array.isArray(data) ? data : []) speakerPicker.add(user);
-                })
-                .catch(() => {});
-        }
-        speakerForm.onsubmit = async event => {
-            event.preventDefault();
-            const button = speakerForm.querySelector('[data-invite-submit]');
-            button.disabled = true;
-            try { await update({ speaker_ids: speakerPicker.ids }); }
-            catch (error) { report(error); button.disabled = false; }
-        };
-    }
 }

@@ -4,6 +4,7 @@ import { apiRequest } from '../api.js';
 import { getCurrentUser, getRealtimeChannel } from '../state.js';
 import { escapeHTML, formatNyaitterId, getUserIconUrl, showAppAlert } from '../utils/helpers.js';
 import { connectGuestRealtime, stopGuestRealtime } from './realtime.js';
+import { openStageManageModal } from './stageManage.js';
 
 // 複数の通話/ステージへ同時参加できるよう、状態はルームキー単位の record で持つ。
 // record = { key, session, panel, window, pending, activePersonTools, personToolsCloseTimer }
@@ -629,6 +630,7 @@ function setSettingsOpen(record, open) {
         panel.querySelector('[data-call-action="settings"]')?.focus();
     }
 }
+
 
 async function updateDevices(record, requested) {
     const panel = record.panel;
@@ -1305,11 +1307,8 @@ async function perform(record, action) {
     if (action === 'settings') { setSettingsOpen(record, true); return; }
     if (action === 'close-settings') { setSettingsOpen(record, false); return; }
     if (action === 'manage-stage') {
-        if (!session || session.kind !== 'stage') return;
-        const stageId = session.id;
-        setSettingsOpen(record, false);
-        minimize(record);
-        window.location.hash = `#stage/${encodeURIComponent(stageId)}`;
+        if (!session || session.kind !== 'stage' || session.role !== 'host') return;
+        void openStageManageModal(session.id);
         return;
     }
     if (action === 'chat') {

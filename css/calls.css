@@ -46,13 +46,26 @@
 .stage-join-row > span { color: var(--secondary-text-color); font-size: .8rem; }
 .stage-detail-main .stage-feedback { margin-top: 12px; }
 .stage-host-section { border-top: 1px solid var(--border-color); padding: 0 20px; }
-.stage-host-controls > summary, .stage-form-options > summary { cursor: pointer; color: var(--secondary-text-color); font-size: .9rem; padding: 18px 0; }
-.stage-management-content { display: grid; gap: 24px; padding: 4px 0 24px; }
-.stage-management-content form { padding-bottom: 24px; border-bottom: 1px solid var(--border-color); }
-.stage-invite-form { display: grid; gap: 10px; padding: 18px; border: 1px solid var(--border-color); border-radius: 14px; background: var(--bg-color); }
-.stage-invite-form h4 { margin: 0; font-size: .98rem; }
-.stage-invite-form > label { font-size: .82rem; color: var(--secondary-text-color); }
-.stage-invite-form > input { width: 100%; min-width: 0; box-sizing: border-box; padding: 11px 12px; border: 1px solid var(--border-color); border-radius: 9px; background: var(--main-bg-color); color: var(--text-color); font: inherit; }
+.stage-manage-open { display: inline-flex; align-items: center; gap: 8px; margin: 16px 0; min-height: 42px; padding: 0 14px; border: 1px solid var(--border-color); border-radius: 12px; background: transparent; color: var(--text-color); font-size: .85rem; cursor: pointer; }
+.stage-manage-open:hover { background: var(--bg-color); }
+.stage-manage-open svg { flex-shrink: 0; width: 18px; height: 18px; fill: none; stroke: currentColor; }
+.stage-manage-dialog { width: min(520px, calc(100vw - 32px)); max-height: min(82dvh, 760px); padding: 0; border: 1px solid var(--border-color); border-radius: 16px; background: var(--main-bg-color); color: var(--text-color); box-shadow: 0 18px 60px rgb(0 0 0 / 35%); }
+.stage-manage-dialog::backdrop { background: rgb(0 0 0 / 40%); }
+.stage-manage-card { display: flex; flex-direction: column; max-height: inherit; }
+.stage-manage-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border-color); }
+.stage-manage-header h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1rem; }
+.stage-manage-header h2 svg { width: 18px; height: 18px; fill: none; stroke: currentColor; }
+.stage-manage-close { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--secondary-text-color); cursor: pointer; }
+.stage-manage-close:hover { background: var(--bg-color); color: var(--text-color); }
+.stage-manage-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; }
+.stage-manage-body { display: grid; gap: 22px; padding: 16px; overflow: auto; }
+.stage-manage-section { display: grid; gap: 10px; }
+.stage-manage-heading { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--secondary-text-color); font-size: .82rem; }
+.stage-manage-heading svg { width: 16px; height: 16px; fill: none; stroke: currentColor; }
+.stage-manage-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.stage-manage-row p { margin: 0; color: var(--text-color); font-size: .9rem; }
+.stage-manage-row button { flex-shrink: 0; }
+.stage-form-options > summary { cursor: pointer; color: var(--secondary-text-color); font-size: .9rem; padding: 18px 0; }
 .user-invite-form { display: grid; gap: 10px; }
 .user-invite-suggestions { display: grid; gap: 4px; max-height: 220px; overflow-y: auto; }
 .user-invite-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px; border: 0; border-radius: 9px; background: transparent; color: var(--text-color); text-align: left; font: inherit; cursor: pointer; }
@@ -68,10 +81,6 @@
 .user-invite-chip button { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--secondary-text-color); font-size: 1.1rem; cursor: pointer; }
 .user-invite-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .user-invite-actions p { margin: 0; }
-.stage-management-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.stage-management-row h4 { margin: 0 0 5px; font-size: .95rem; }
-.stage-management-row p { margin: 0; color: var(--secondary-text-color); font-size: .8rem; }
-.stage-management-row button { flex-shrink: 0; }
 .stage-end-button { color: var(--like-color); }
 .stage-create-dialog { border: 1px solid var(--border-color); border-radius: 16px; padding: 0; color: var(--text-color); background: var(--main-bg-color); max-height: calc(100dvh - 40px); overflow: hidden; }
 .stage-create-dialog[open] { display: flex; flex-direction: column; }
@@ -85,13 +94,16 @@
 .stage-dialog-body { display: grid; align-content: start; gap: 22px; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; }
 .stage-form-section { display: grid; gap: 12px; }
 .stage-create-form .stage-form-section-title { margin: 0; color: var(--text-color); font-size: .82rem; font-weight: 700; letter-spacing: .02em; }
-.stage-create-form label, .stage-management-content label { font-size: .9rem; }
+.stage-create-form label { font-size: .9rem; }
 .stage-field-help { font-size: .78rem; line-height: 1.6; font-weight: 400; color: var(--secondary-text-color); }
-.stage-create-form .stage-guest-toggle, .stage-management-content .stage-guest-toggle { display: grid; grid-template-columns: minmax(0, 1fr) 46px; grid-template-rows: auto auto; align-items: center; gap: 4px 16px; position: relative; min-height: 44px; padding: 12px 0; border-bottom: 1px solid var(--border-color); color: var(--text-color); font-size: .88rem; font-weight: 400; cursor: pointer; }
-.stage-create-form .stage-guest-toggle-copy, .stage-management-content .stage-guest-toggle-copy { grid-column: 1; grid-row: 1 / span 2; font-weight: 500; }
+.stage-guest-toggle { display: grid; grid-template-columns: minmax(0, 1fr) 46px; grid-template-rows: auto auto; align-items: center; gap: 4px 16px; position: relative; min-height: 44px; padding: 12px 0; border-bottom: 1px solid var(--border-color); color: var(--text-color); font-size: .88rem; font-weight: 400; cursor: pointer; }
+.stage-guest-toggle-copy { grid-column: 1; grid-row: 1 / span 2; font-weight: 500; }
 .stage-guest-toggle .stage-field-help { display: block; margin-top: 4px; font-weight: 400; }
-.stage-create-form .stage-guest-toggle input, .stage-management-content .stage-guest-toggle input { position: absolute; z-index: 1; top: 50%; right: 0; width: 46px; height: 28px; margin: 0; opacity: 0; transform: translateY(-50%); cursor: pointer; }
-.stage-create-form .stage-guest-toggle .settings-toggle-track, .stage-management-content .stage-guest-toggle .settings-toggle-track { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
+.stage-guest-toggle input { position: absolute; z-index: 1; top: 50%; right: 0; width: 46px; height: 28px; margin: 0; opacity: 0; transform: translateY(-50%); cursor: pointer; }
+.stage-guest-toggle .settings-toggle-track { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
+.stage-guest-toggle input:checked + .settings-toggle-track { background: var(--primary-color); }
+.stage-guest-toggle input:checked + .settings-toggle-track::after { transform: translateX(18px); }
+.stage-guest-toggle input:focus-visible + .settings-toggle-track { outline: 2px solid var(--primary-color); outline-offset: 3px; }
 .stage-guest-toggle input:checked + .settings-toggle-track { background: var(--primary-color); }
 .stage-guest-toggle input:checked + .settings-toggle-track::after { transform: translateX(18px); }
 .stage-guest-toggle input:focus-visible + .settings-toggle-track { outline: 2px solid var(--primary-color); outline-offset: 3px; }
@@ -149,5 +161,4 @@
     .stage-dialog-header { padding: 16px; }
     .stage-dialog-body { padding: 16px; gap: 20px; }
     .stage-dialog-footer { padding: 12px 16px; }
-    .stage-management-row { flex-wrap: wrap; }
 }
