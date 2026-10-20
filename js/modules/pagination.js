@@ -195,12 +195,146 @@ export function isActivePaginationLoader(container, trigger, options) {
     );
 }
 
+let advertisingScriptPromise = null;
+
+function getAdvertisingConfig() {
+    const config = globalThis.NyaitterClientConfig?.advertising;
+    if (!config || typeof config !== 'object' || config.enabled === false) return null;
+    const interval = Number(config.interval);
+    const provider = config.provider === 'adsense' ? 'adsense' : config.provider === 'generic' ? 'generic' : null;
+    if (!provider || !Number.isSafeInteger(interval) || interval < 1) {
+        console.error('[advertising] invalid provider or interval in manifest.json');
+        return null;
+    }
+    const configuredScriptUrl = String(config.script_url || '').trim();
+    const defaultScriptUrl = provider === 'adsense'
+        ? 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
+        : '';
+    if (!configuredScriptUrl && !defaultScriptUrl) {
+        console.error('[advertising] script_url is required for the generic provider');
+        return null;
+    }
+    let scriptUrl;
+    try {
+        scriptUrl = new URL(configuredScriptUrl || defaultScriptUrl, globalThis.location.href);
+    } catch (_) {
+        console.error('[advertising] invalid script_url in manifest.json');
+        return null;
+    }
+    if (scriptUrl.protocol !== 'https:' || scriptUrl.username || scriptUrl.password
+        || (provider === 'adsense'
+            && (scriptUrl.hostname !== 'pagead2.googlesyndication.com'
+                || scriptUrl.pathname !== '/pagead/js/adsbygoogle.js'))) {
+        console.error('[advertising] script_url must be an allowed HTTPS URL');
+        return null;
+    }
+    if (provider === 'adsense'
+        && (!/^ca-pub-\d+$/.test(String(config.client || ''))
+            || !/^\d+$/.test(String(config.slot || '')))) {
+        console.error('[advertising] AdSense client and slot must be configured');
+        return null;
+    }
+    if (config.init_function != null
+        && (provider !== 'generic'
+            || !/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/.test(String(config.init_function)))) {
+        console.error('[advertising] init_function must be a generic provider function path');
+        return null;
+    }
+    return { ...config, interval, scriptUrl: scriptUrl.href, provider };
+}
+
+function loadAdvertisingScript(config) {
+    if (advertisingScriptPromise) return advertisingScriptPromise;
+    advertisingScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = config.scriptUrl;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('広告スクリプトを読み込めませんでした。'));
+        document.head.appendChild(script);
+    }).catch((error) => {
+        advertisingScriptPromise = null;
+        console.error('[advertising] script load failed:', error);
+        throw error;
+    });
+    return advertisingScriptPromise;
+}
+
+function createAdvertisingPost(config) {
+    const post = document.createElement('article');
+    post.className = 'post advertising-post nui-card';
+    post.dataset.nui = 'card';
+    post.setAttribute('aria-label', '広告');
+    const label = document.createElement('span');
+    label.className = 'advertising-post-label nui-badge';
+    label.textContent = '広告';
+    const slot = document.createElement(config.provider === 'adsense' ? 'ins' : 'div');
+    slot.className = config.provider === 'adsense'
+        ? 'adsbygoogle nyaitter-ad-slot'
+        : 'nyaitter-ad-slot';
+    if (config.provider === 'adsense') {
+        slot.style.display = 'block';
+        slot.setAttribute('data-ad-client', config.client);
+        slot.setAttribute('data-ad-slot', config.slot);
+        slot.setAttribute('data-ad-format', String(config.format || 'auto'));
+        if (config.full_width_responsive !== false) {
+            slot.setAttribute('data-full-width-responsive', 'true');
+        }
+    } else if (config.attributes && typeof config.attributes === 'object') {
+        for (const [name, value] of Object.entries(config.attributes)) {
+            if (/^data-[a-z0-9_-]+$/.test(name) && typeof value === 'string') {
+                slot.setAttribute(name, value);
+            }
+        }
+    }
+    post.append(label, slot);
+    void loadAdvertisingScript(config).then(() => {
+        try {
+            if (config.provider === 'adsense') {
+                globalThis.adsbygoogle = globalThis.adsbygoogle || [];
+                globalThis.adsbygoogle.push({});
+            } else if (config.init_function) {
+                const path = String(config.init_function).split('.');
+                const functionName = path.pop();
+                const owner = path.reduce((value, key) => value?.[key], globalThis);
+                const initialize = owner?.[functionName];
+                if (typeof initialize !== 'function') {
+                    throw new Error(`広告初期化関数が見つかりません: ${config.init_function}`);
+                }
+                initialize.call(owner, slot);
+            }
+        } catch (error) {
+            console.error('[advertising] ad slot initialization failed:', error);
+            post.remove();
+        }
+    }).catch(() => post.remove());
+    return post;
+}
+
+function insertRenderedPosts(trigger, posts, state) {
+    const fragment = document.createDocumentFragment();
+    for (const post of posts) {
+        if (!post) continue;
+        fragment.appendChild(post);
+        state.count += 1;
+        if (state.config && state.count % state.config.interval === 0) {
+            fragment.appendChild(createAdvertisingPost(state.config));
+        }
+    }
+    if (fragment.childNodes.length > 0) trigger.before(fragment);
+}
+
 export async function loadPostsWithPagination(container, type, options = {}) {
+    await globalThis.NyaitterClientConfig?.ready;
     options = bindPaginationOptionsToRoute(options);
     const pageSize = getPostsPerPage();
     let localPostLoadObserver;
     const postPageCache = options.pageCache || { pages: new Map() };
     const preloadPromises = new Map();
+    const advertisingState = { config: getAdvertisingConfig(), count: 0 };
+    // 同じコンテナ要素で再入される（タイムラインのタブ切替・プロフィールのタブ切替・forceRefresh）ため、
+    // 描画済みIDはここで必ずリセットする。残すと既出IDが無言に落ち続けて投稿が消える。
+    container._renderedPostIds = new Set();
     setCurrentPagination({ page: 0, hasMore: true, type, options });
 
     const trigger = document.createElement('div');
@@ -293,6 +427,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                     cacheUser(user);
                 }
                 posts = filterBlockedPosts(posts);
+                const renderedPostIds = container._renderedPostIds;
                 const metricsPromise = Promise.resolve();
 
                 await ensureMentionedUsersCached(posts.map((p) => p.content));
@@ -310,13 +445,21 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                         if (!isActivePaginationLoader(container, currentTrigger, options)) {
                             return false;
                         }
-                        if (postEl) currentTrigger.before(postEl);
+                        if (postEl) insertRenderedPosts(currentTrigger, [postEl], advertisingState);
+                        if (Number.isInteger(Number(pinPost.id))) renderedPostIds.add(Number(pinPost.id));
                     }
                 }
 
-                const regularPosts = posts.filter(
-                    (post) => !(showPinPost && isPinnedPost(post.id, options.pinId)),
-                );
+                const regularPosts = posts
+                    .filter((post) => !(showPinPost && isPinnedPost(post.id, options.pinId)))
+                    // スコア順の窓送りで重複することがあるため、描画済みIDは除外する。
+                    .filter((post) => {
+                        const id = Number(post?.id);
+                        if (!Number.isInteger(id)) return true;
+                        if (renderedPostIds.has(id)) return false;
+                        renderedPostIds.add(id);
+                        return true;
+                    });
 
                 if (isLoadedFromCache) {
                     // キャッシュからの復元時は遅延なしで即時一括描画する
@@ -329,11 +472,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                     if (!isActivePaginationLoader(container, currentTrigger, options)) {
                         return false;
                     }
-                    const fragment = document.createDocumentFragment();
-                    for (const postEl of renderedPosts) {
-                        if (postEl) fragment.appendChild(postEl);
-                    }
-                    if (fragment.childNodes.length > 0) currentTrigger.before(fragment);
+                    insertRenderedPosts(currentTrigger, renderedPosts, advertisingState);
                 } else {
                     // ネットワーク経由の初回フェッチ時は段階的に描画して制御を返す
                     const RENDER_CHUNK_SIZE = 6;
@@ -349,11 +488,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                                 clampHeight: true,
                                 hideGroupIndicator: Boolean(options.hideGroupIndicator),
                             })));
-                        const fragment = document.createDocumentFragment();
-                        for (const postEl of renderedPosts) {
-                            if (postEl) fragment.appendChild(postEl);
-                        }
-                        if (fragment.childNodes.length > 0) currentTrigger.before(fragment);
+                        insertRenderedPosts(currentTrigger, renderedPosts, advertisingState);
                         if (start + RENDER_CHUNK_SIZE < regularPosts.length) {
                             await new Promise((resolve) => requestAnimationFrame(resolve));
                         }

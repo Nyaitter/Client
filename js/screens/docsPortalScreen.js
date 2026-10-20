@@ -27,7 +27,7 @@ function renderPortalList(documents) {
 
     if (filtered.length === 0) {
         listContainer.innerHTML = `
-            <div class="docs-empty">
+            <div class="docs-empty nui-empty-text">
                 <p>該当するドキュメントが見つかりませんでした。</p>
             </div>
         `;
@@ -41,15 +41,15 @@ function renderPortalList(documents) {
             : (getSafeConfiguredFileUrl(rawUrl) || '#');
         const isExternal = /^https?:\/\//i.test(safeUrl);
         return `
-        <a href="${escapeHTML(safeUrl)}" class="docs-portal-item" ${isExternal ? 'target="_blank" rel="noopener noreferrer"' : ''}>
+        <a href="${escapeHTML(safeUrl)}" class="docs-portal-item nui-list-item nui-list-link" ${isExternal ? 'target="_blank" rel="noopener noreferrer"' : ''}>
             <div class="docs-portal-item-icon">
                 ${getDocumentIcon(doc.icon)}
             </div>
-            <div class="docs-portal-item-main">
+            <div class="docs-portal-item-main nui-list-copy">
                 <div class="docs-portal-item-header">
-                    <h4 class="docs-portal-item-title">${escapeHTML(doc.title)}</h4>
+                    <h4 class="docs-portal-item-title nui-list-title">${escapeHTML(doc.title)}</h4>
                 </div>
-                <p class="docs-portal-item-desc">${escapeHTML(doc.description || '')}</p>
+                <p class="docs-portal-item-desc nui-list-meta">${escapeHTML(doc.description || '')}</p>
             </div>
             <div class="docs-portal-item-arrow">
                 ${isExternal ? ICONS.external_link : (ICONS.chevron_down ? `<span style="transform: rotate(-90deg); display:inline-flex;">${ICONS.chevron_down}</span>` : '→')}
@@ -112,7 +112,7 @@ export async function showDocsPortalScreen(showScreenFn) {
                 ` : ''}
             </div>
 
-            <div class="docs-portal-list" id="docs-portal-list"></div>
+            <div class="docs-portal-list nui-list" id="docs-portal-list" data-nui="list"></div>
         `;
 
         const searchInput = document.getElementById('docs-portal-search-input');
@@ -136,7 +136,7 @@ export async function showDocsPortalScreen(showScreenFn) {
     } catch (err) {
         console.error('[docs] Failed to load documents from server:', err);
         contentDiv.innerHTML = `
-            <div class="docs-empty">
+            <div class="docs-empty nui-empty-text">
                 <p class="error-message">ドキュメント情報の読み込みに失敗しました。</p>
             </div>
         `;

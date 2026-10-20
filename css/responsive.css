@@ -8,7 +8,7 @@
     }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 544px) {
 .thread-nested-reply {
         margin-left: min(var(--reply-indent, 2rem), 2.5rem) !important;
         width: calc(100% - min(var(--reply-indent, 2rem), 2.5rem)) !important;
@@ -16,7 +16,7 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 384px) {
 .app-dialog-overlay {
         padding: 0.5rem;
     }
@@ -36,13 +36,13 @@
     }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 880px) {
 #right-sidebar {
         display: none;
     }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 800px) {
 #left-nav {
         width: 88px;
     }
@@ -86,7 +86,7 @@
     }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 544px) {
 .app-container {
         flex-direction: column;
         padding-bottom: 50px;
@@ -117,11 +117,11 @@
     .nav-overflow-menu {
         display: none;
     }
-    #left-nav .nav-item[href='#likes'],
-    #left-nav .nav-item[href='#stars'],
-    #left-nav .nav-item[href='#groups'],
-    #left-nav .nav-item[href='#admin/reports'] {
+    #left-nav .nav-item[data-mobile-hidden] {
         display: none;
+    }
+    #nav-menu-top .nav-item {
+        order: var(--mord, 0);
     }
     .nav-item-post {
         position: fixed;
@@ -134,15 +134,42 @@
         position: fixed;
         z-index: 30;
         top: 0;
-        right: 0.5rem;
+        left: 0.5rem;
+        right: auto;
         width: auto;
+    }
+    /* 左上のアカウントアイコンに重ならないようヘッダー内容を右へずらす。 */
+    #page-header {
+        padding-left: 5rem;
+    }
+    /* アカウントアイコンを出さない画面は、ヘッダーを左端から使う。 */
+    body[data-active-screen='main-screen'] #page-header,
+    body[data-active-screen='profile-screen'] #page-header,
+    body[data-active-screen='post-detail-screen'] #page-header,
+    body[data-active-screen='dm-screen'] #page-header {
+        padding-left: 1rem;
+    }
+    /* 戻るボタンはモバイルでは基本非表示。ポスト詳細とプロフィールのみ表示する。 */
+    .header-back-btn {
+        display: none;
+    }
+    body[data-active-screen='post-detail-screen'] .header-back-btn,
+    body[data-active-screen='profile-screen'] .header-back-btn {
+        display: flex;
+    }
+    /* 上記2画面では左上に戻るボタンを出すため、アカウントボタンは隠す。 */
+    body[data-active-screen='post-detail-screen'] #account-button,
+    body[data-active-screen='profile-screen'] #account-button {
+        display: none;
+    }
+    /* 右上にアカウントアイコンがあった前提で左へずらしていた分を元に戻す。 */
+    .header-action-btn {
+        position: static;
+        margin-left: auto;
+        right: 0;
     }
     .header-search-bar {
         width: calc(95% - 4rem);
-    }
-    .header-action-btn {
-        position: sticky;
-        right: 4.5rem;
     }
     #profile-tabs .tab-button.mobile-hidden {
         display: block;
@@ -164,7 +191,7 @@
     }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 560px) {
 .settings-layout {
         grid-template-columns: 1fr;
         padding: 0.75rem;
@@ -180,13 +207,13 @@
     }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 560px) {
 .settings-color-grid {
         grid-template-columns: 1fr;
     }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 560px) {
 .settings-session-item {
         align-items: stretch;
         flex-direction: column;
@@ -198,10 +225,12 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 384px) {
 .login-modal-content {
-        width: calc(100vw - 1rem);
-        padding: 1.5rem 1rem 1rem;
+        width: min(100%, 34rem);
+        max-height: calc(100dvh - max(1rem, env(safe-area-inset-top)) - max(1rem, env(safe-area-inset-bottom)));
+        padding: 1.25rem 1rem 1rem;
+        border-radius: 18px;
     }
 
     .login-modal-links {
@@ -210,7 +239,7 @@
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
 .settings-bot-create-form {
         flex-direction: column;
     }
@@ -240,7 +269,7 @@
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
 .report-modal-content {
         width: calc(100% - 2rem);
         padding: 1.25rem;
@@ -250,13 +279,21 @@
         grid-template-columns: 1fr;
     }
 
-    .moderation-report-meta {
+    .admin-requests-overview {
         flex-direction: column;
-        gap: 0.2rem;
+        align-items: flex-start;
+    }
+
+    .admin-request-card__head {
+        flex-wrap: wrap;
+    }
+
+    .admin-request-card__time {
+        margin-left: 0;
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 384px) {
 .freeze-panel {
         padding: 1.45rem;
     }
@@ -268,7 +305,7 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 384px) {
 .verification-application-modal-content {
         width: calc(100% - 1rem);
         padding: 1.5rem 1rem 1rem;
@@ -279,13 +316,13 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 384px) {
 .login-approval-wait-actions .login-secondary-button {
         width: 100%;
     }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 416px) {
 .groups-index-heading,
     .group-manage-heading,
     .group-invite-card,
@@ -298,7 +335,7 @@
     }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 544px) {
 body.mobile-sidebar-open {
         overflow: hidden;
     }
@@ -433,7 +470,7 @@ body.mobile-sidebar-open {
     }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 512px) {
 .group-ui-page {
         gap: 1rem;
         padding: 0.75rem;
@@ -483,7 +520,7 @@ body.mobile-sidebar-open {
     }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 608px) {
 .group-modal-images,
     .group-role-form {
         grid-template-columns: 1fr;
@@ -535,7 +572,7 @@ body.mobile-sidebar-open {
 
 }
 
-@media (max-width: 420px) {
+@media (max-width: 336px) {
 .group-modal-form {
         padding: 1.25rem 1rem;
     }
@@ -549,7 +586,7 @@ body.mobile-sidebar-open {
     }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 512px) {
     .group-profile-header-preview {
         width: 100%;
     }
@@ -600,7 +637,7 @@ body.mobile-sidebar-open {
     }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 608px) {
 .group-ui-manage-page > .group-ui-page-heading {
         top: 0;
         margin: -1rem -1rem 0;

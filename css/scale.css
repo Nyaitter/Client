@@ -1,0 +1,69 @@
+/* ==========================================================================
+   Nyaitter - 全体表示スケール
+   画面全体を --app-scale (既定 80%) に縮小する。
+   CSS の zoom は viewport 単位にも係数がかかるため、画面いっぱいに広げる
+   要素は 1/--app-scale で補正して viewport を埋める。
+
+   注意: CSS zoom では viewport 幅を基準にしたメディアクエリの実効値が
+   変わる (実効幅 = 物理幅 / --app-scale)。px ベースの UI 切り替えは
+   このスケールに合わせて補正すること (各 CSS / matchMedia で実施済み)。
+   ========================================================================== */
+
+:root {
+    --app-scale: 0.8;
+    --app-vh: calc(100vh / var(--app-scale));
+    --app-dvh: calc(100dvh / var(--app-scale));
+    --app-vw: calc(100vw / var(--app-scale));
+}
+
+html {
+    zoom: var(--app-scale);
+}
+
+.app-container {
+    min-height: var(--app-vh);
+}
+
+/* 左ナビ / 右サイドバーはデスクトップでは画面高に追従させる。
+   モバイル (max-width: 544px) では #left-nav は下部固定バー (height: auto)
+   なので、ここで height を上書きするとバーが画面全体を覆ってしまう。 */
+@media (min-width: 545px) {
+    #left-nav,
+    #right-sidebar {
+        height: var(--app-vh);
+    }
+}
+
+/* 設定画面は app-container / main-content を画面高に固定している。 */
+@media (min-width: 545px) {
+    body[data-active-screen='settings-screen'] #main-content,
+    body[data-active-screen='settings-screen'] .app-container {
+        height: var(--app-dvh);
+    }
+}
+
+/* DM 画面も画面高固定。 */
+body[data-active-screen='dm-screen'],
+body:has(#dm-screen:not(.hidden)) {
+    height: var(--app-dvh);
+}
+
+body[data-active-screen='dm-screen'] .app-container,
+body:has(#dm-screen:not(.hidden)) .app-container {
+    height: var(--app-dvh);
+    min-height: var(--app-dvh);
+    max-height: var(--app-dvh);
+}
+
+/* 画像プレビュー等の全画面オーバーレイ。 */
+#image-preview-modal {
+    width: var(--app-vw);
+    height: var(--app-dvh);
+}
+
+/* モバイルのサイドバーパネル。 */
+@media (max-width: 544px) {
+    .mobile-sidebar-panel {
+        min-height: var(--app-dvh);
+    }
+}

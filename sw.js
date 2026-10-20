@@ -2,26 +2,50 @@ const STATIC_ASSET_PATTERN = /\.(?:html|css|js|mjs|json|webmanifest|png|jpe?g|gi
 importScripts('./config.js');
 
 const { apiUrl } = self.NyaitterClientConfig;
-let apiEndpointPath = getSameOriginEndpointPath(apiUrl('/'));
+// configReady解決前は未設定。fetchハンドラはnullを許容する。
+let apiEndpointPath = null;
 let userFileEndpointPath = null;
 const configReady = self.NyaitterClientConfig.ready.then(() => {
   apiEndpointPath = getSameOriginEndpointPath(apiUrl('/'));
   userFileEndpointPath = getSameOriginEndpointPath(self.NyaitterClientConfig.userFileEndpoint || '');
 });
 
-async function sdkRequest(method, path, options = {}) {
-  await configReady;
-  const response = await fetch(apiUrl(path), {
-    method,
-    credentials: 'include',
-    headers: { Accept: 'application/json', ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
+// bootstrap.js と同じ規則で nyaitter.js の読み込み先を決める。
+// URL が指定されていればそれを、そうでなければ nyaitter_js (既定 latest) を
+// jsDelivr のバージョンとして使う。
+function resolveNyaitterJsUrl(value) {
+  const source = String(value || '').trim();
+  if (/^(?:https?:)?\/\//i.test(source)) return source;
+  const version = source || 'latest';
+  return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(version)}/dist/nyaitter.js`;
 }
 
-const CACHE_NAME = 'nyaitter-client-v2';
+// configReady 解決後に Nyaitter.js SDK を importScripts で読み込み、
+// NyaitterClient を遅延生成して使い回す。既に読み込み済みなら再ロードしない。
+let sdkClientPromise;
+function getSdkClient() {
+  if (!sdkClientPromise) {
+    sdkClientPromise = (async () => {
+      await configReady;
+      if (!globalThis.Nyaitter?.NyaitterClient) {
+        importScripts(resolveNyaitterJsUrl(self.NyaitterClientConfig.nyaitterJs));
+      }
+      const NyaitterClient = globalThis.Nyaitter?.NyaitterClient;
+      if (!NyaitterClient) throw new Error('Nyaitter.js SDK の読み込みに失敗しました。');
+      // 解決済みの API エンドポイントから SDK の baseUrl を組み立てる。
+      const endpoint = new URL(self.NyaitterClientConfig.apiEndpoint, self.location.href);
+      const baseUrl = `${endpoint.origin}${endpoint.pathname.replace(/\/+$/, '')}`;
+      return new NyaitterClient({ baseUrl });
+    })();
+    // 失敗した Promise を握り続けず、次回の呼び出しで再試行できるようにする。
+    sdkClientPromise.catch(() => {
+      sdkClientPromise = null;
+    });
+  }
+  return sdkClientPromise;
+}
+
+const CACHE_NAME = 'nyaitter-client-v18';
 const REVALIDATE_INTERVAL = 30_000;
 let cachePromise;
 const pendingFetches = new Map();
@@ -72,23 +96,29 @@ function matchesEndpointPath(url, endpointPath) {
   return url.pathname === endpointPath || url.pathname.startsWith(`${endpointPath}/`);
 }
 
-const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/config.js',
-  '/manifest.json',
-  '/js/main.js',
-  '/js/app.js',
-  '/js/state.js',
-  '/js/api.js',
-  '/js/dom.js',
-  '/js/icons.js',
-  '/manifest.webmanifest',
-  '/favicon.png',
-  '/pwa-icon-192.png',
-  '/pwa-icon-512.png',
+// 配信ベース配下 (任意のリバースプロキシ接頭辞) でもパス接頭辞を保つよう、APP_SHELL は
+// ルート直下絶対パスではなく SW スクリプト (self.location) 基準の相対で解決する。
+const APP_SHELL_PATHS = [
+  './',
+  'index.html',
+  'style.css',
+  'config.js',
+  'manifest.json',
+  'js/main.js',
+  'js/app.js',
+  'js/state.js',
+  'js/api.js',
+  'js/dom.js',
+  'js/icons.js',
+  'manifest.webmanifest',
+  'favicon.png',
+  'pwa-icon-192.png',
+  'pwa-icon-512.png',
 ];
+
+const APP_SHELL = APP_SHELL_PATHS.map((path) => new URL(path, self.location.href).href);
+// ナビゲーション要求のキャッシュキーも APP_SHELL の index.html と一致させる。
+const INDEX_CACHE_KEY = new URL('index.html', self.location.href).href;
 
 function base64UrlToUint8Array(base64Url) {
   const padding = '='.repeat((4 - (base64Url.length % 4)) % 4);
@@ -194,7 +224,7 @@ self.addEventListener('fetch', (event) => {
 
   const isStaticAsset = STATIC_ASSET_PATTERN.test(url.pathname);
   if (request.mode === 'navigate' || isStaticAsset) {
-    const cacheKey = request.mode === 'navigate' ? '/index.html' : request;
+    const cacheKey = request.mode === 'navigate' ? INDEX_CACHE_KEY : request;
     event.respondWith(
       openAssetCache().then((cache) => cache?.match(cacheKey)).catch(() => null).then((cachedResponse) => {
         if (cachedResponse) {
@@ -256,7 +286,8 @@ self.addEventListener('notificationclick', (event) => {
     // 通知クリック時に自動でその通知を既読(clicked)にする
     if (notificationId) {
       try {
-        await sdkRequest('PUT', apiUrl(`/server/api/notifications/${encodeURIComponent(String(notificationId))}/clicked`));
+        const client = await getSdkClient();
+        await client.notifications.markAsClicked(notificationId);
       } catch (_) {
         // オフラインまたはエラー時はアプリ起動側の処理へフォールバック
       }
@@ -275,9 +306,10 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil((async () => {
     try {
+      const client = await getSdkClient();
       let subscription = event.newSubscription;
       if (!subscription) {
-        const config = await sdkRequest('GET', apiUrl('/server/api/push/config'));
+        const config = await client.push.getConfig();
         if (!config.enabled || !config.vapid_public_key) return;
         subscription = await self.registration.pushManager.subscribe({
           userVisibleOnly: true,
@@ -285,9 +317,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
         });
       }
 
-      await sdkRequest('POST', apiUrl('/server/api/push/subscriptions'), {
-        body: { subscription: subscription.toJSON() },
-      });
+      await client.push.subscribe({ subscription });
     } catch (_) {
       // A later settings-page visit will reconcile the subscription if this background update fails.
     }

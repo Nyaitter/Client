@@ -4,8 +4,17 @@
 (() => {
     'use strict';
 
-    const CLIENT_CONFIG = { apiEndpoint: '/server' };
     let manifestConfig = {};
+
+    // このスクリプト自身の位置を配信ベースとする。API 設定が得られない場合は
+    // その配下の server/ を既定にし、任意のサブパス配下でも成立させる。
+    const pageBaseUrl = (() => {
+        const scriptUrl =
+            typeof document !== 'undefined' ? document.currentScript?.src : undefined;
+        const base = scriptUrl || (typeof self !== 'undefined' ? self.location?.href : undefined);
+        return base ? new URL('.', base).href : null;
+    })();
+    const defaultApiEndpoint = pageBaseUrl ? new URL('server', pageBaseUrl).href : null;
 
     const manifestReady = (async () => {
         try {
@@ -14,18 +23,26 @@
             const manifest = await response.json();
             manifestConfig = manifest && typeof manifest === 'object' ? manifest : {};
         } catch (_) {
-            // マニフェストがない環境でも config.js の設定で起動する。
+            // マニフェストがない環境でも他の設定源で起動する。
         }
     })();
 
+    // api_url (クライアント自身の設定) をサーバーの client_config.api_endpoint より優先し、
+    // 未設定ならサーバー設定、それも無ければ配信ベース配下の server/ を使う。
     const getConfig = (name, fallback) => {
         const status = globalThis.NyaitterServerStatus?.client_config;
         const manifestName = name === 'api_endpoint' ? 'api_url' : name;
-        return status?.[name] ?? manifestConfig?.[manifestName] ?? CLIENT_CONFIG?.[name] ?? fallback;
+        if (name === 'api_endpoint') {
+            const manifestApiUrl = String(manifestConfig?.[manifestName] ?? '').trim();
+            if (manifestApiUrl) return manifestApiUrl;
+            return status?.api_endpoint ?? fallback ?? defaultApiEndpoint;
+        }
+        return status?.[name] ?? manifestConfig?.[manifestName] ?? fallback;
     };
 
     function normalizeEndpoint(value) {
-        const endpoint = String(value || '').trim() || '/server';
+        const endpoint = String(value || '').trim();
+        if (!endpoint) throw new Error('api_endpoint is not configured');
         const url = new URL(endpoint, globalThis.location.href);
         if (!/^https?:$/.test(url.protocol)) {
             throw new Error('apiEndpoint must use an HTTP(S) URL or a relative path');
@@ -43,19 +60,27 @@
         return url;
     }
 
+    // ユーザーファイルのエンドポイントは、配信ベースが何であっても標準の相対解決で
+    // 成立させる。特定のパス形状 (リバースプロキシ接頭辞) を判定・逆算しない。
+    // 優先順位: クライアント自身の設定 (manifest.user_file_endpoint) →
+    // サーバー/設定値 (user_file_endpoint) → 既定 (API ベース配下の uploads)。
+    // 値が絶対 URL ならそのまま、相対/ルート相対なら apiUrl() と同じ規則で解決する。
     function getUserFileEndpoint() {
-        const configuredEndpoint = getConfig('user_file_endpoint', null);
-        if (configuredEndpoint) return String(configuredEndpoint).trim();
+        const resolveEndpoint = (value) => {
+            const endpoint = String(value ?? '').trim();
+            if (!endpoint) return null;
+            if (/^https?:\/\//i.test(endpoint)) return endpoint;
+            return apiUrl(endpoint);
+        };
 
-        const apiEndpoint = normalizeEndpoint(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint));
-        const basePath = apiEndpoint.pathname.replace(/\/+$/, '');
-        apiEndpoint.pathname = `${basePath}/uploads`.replace(/\/{2,}/g, '/');
-        apiEndpoint.search = '';
-        apiEndpoint.hash = '';
-        const configuredApiEndpoint = String(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint) || '').trim();
-        return /^https?:\/\//i.test(configuredApiEndpoint)
-            ? apiEndpoint.href
-            : apiEndpoint.pathname;
+        const manifestEndpoint = resolveEndpoint(manifestConfig?.user_file_endpoint);
+        if (manifestEndpoint) return manifestEndpoint;
+
+        const configuredEndpoint = resolveEndpoint(getConfig('user_file_endpoint', null));
+        if (configuredEndpoint) return configuredEndpoint;
+
+        // 既定は API ベース配下の uploads。
+        return apiUrl('/uploads');
     }
 
     function userFileUrl(fileId = '') {
@@ -79,7 +104,7 @@
     }
 
     function apiUrl(path = '') {
-        const endpoint = normalizeEndpoint(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint));
+        const endpoint = normalizeEndpoint(getConfig('api_endpoint'));
         const request = new URL(String(path || '/'), endpoint.origin);
         const basePath = endpoint.pathname.replace(/\/+$/, '');
         let normalizedPath = request.pathname;
@@ -97,21 +122,13 @@
         endpoint.search = request.search;
         endpoint.hash = request.hash;
 
-        const configured = String(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint) || '').trim();
+        const configured = String(getConfig('api_endpoint') || '').trim();
         if (/^https?:\/\//i.test(configured)) return endpoint.href;
         return `${endpoint.pathname}${endpoint.search}${endpoint.hash}`;
     }
 
-    function apiServerUrl(path = '/') {
-        const endpoint = normalizeEndpoint(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint));
-        const url = new URL(String(path || '/'), endpoint.origin);
-        const configured = String(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint) || '').trim();
-        if (/^https?:\/\//i.test(configured)) return url.href;
-        return `${url.pathname}${url.search}${url.hash}`;
-    }
-
     function apiWebSocketUrl(path = '/realtime') {
-        const endpoint = normalizeEndpoint(getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint));
+        const endpoint = normalizeEndpoint(getConfig('api_endpoint'));
         endpoint.protocol = endpoint.protocol === 'https:' ? 'wss:' : 'ws:';
         const basePath = endpoint.pathname.replace(/\/+$/, '');
         endpoint.pathname = `${basePath}/${String(path).replace(/^\/+/, '')}`.replace(
@@ -126,15 +143,21 @@
     const clientConfig = {
         ready: manifestReady,
         apiUrl,
-        apiServerUrl,
         userFileUrl,
         apiWebSocketUrl,
     };
     Object.defineProperties(clientConfig, {
-        apiEndpoint: { get: () => getConfig('api_endpoint', CLIENT_CONFIG.apiEndpoint) },
+        apiEndpoint: { get: () => getConfig('api_endpoint') },
         nyaitterJs: { get: () => getConfig('nyaitter_js', 'latest') },
-        userFileEndpoint: { get: () => getConfig('user_file_endpoint', null) },
+        nyaitterUi: { get: () => getConfig('nyaitter_ui', '') },
+        userFileEndpoint: { get: () => getUserFileEndpoint() },
         postShareUrl: { get: () => getConfig('post_share_url', null) },
+        advertising: {
+            get: () => {
+                const config = manifestConfig?.advertising;
+                return config && typeof config === 'object' ? config : null;
+            },
+        },
         turnstileSiteKey: { get: () => String(getConfig('turnstile_site_key', '') || '').trim() },
         resourceLinks: { get: () => Object.freeze([...(getConfig('resource_links', []) || [])]) },
         widgetLinks: { get: () => Object.freeze([...(getConfig('widget_links', []) || [])]) },

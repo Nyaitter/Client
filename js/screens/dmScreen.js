@@ -104,7 +104,7 @@ function renderDmListItem(dm, unreadCount, currentUserId) {
         const otherUser = otherUsers[0];
         if (!title) title = otherUser.name || `ユーザー #${otherUser.id}`;
         subtitle = getNyaitterId(otherUser);
-        avatarHtml = `<img src="${getUserIconUrl(otherUser)}" class="dm-list-item-avatar" alt="">`;
+        avatarHtml = `<img src="${getUserIconUrl(otherUser)}" class="dm-list-item-avatar nui-avatar" alt="">`;
     } else if (otherUsers.length > 1) {
         if (!title) {
             title = otherUsers.map((u) => u.name || `#${u.id}`).join(', ');
@@ -113,13 +113,13 @@ function renderDmListItem(dm, unreadCount, currentUserId) {
         const firstAvatar = otherUsers[0] ? getUserIconUrl(otherUsers[0]) : getUserIconUrl({});
         const secondAvatar = otherUsers[1] ? getUserIconUrl(otherUsers[1]) : getUserIconUrl({});
         avatarHtml = `<div class="dm-group-avatar-stack">
-            <img src="${firstAvatar}" class="dm-list-item-avatar dm-group-avatar-1" alt="">
-            <img src="${secondAvatar}" class="dm-list-item-avatar dm-group-avatar-2" alt="">
+            <img src="${firstAvatar}" class="dm-list-item-avatar nui-avatar dm-group-avatar-1" alt="">
+            <img src="${secondAvatar}" class="dm-list-item-avatar nui-avatar dm-group-avatar-2" alt="">
         </div>`;
     } else {
         if (!title) title = '自分のみのメッセージ';
         subtitle = 'プライベートメモ';
-        avatarHtml = `<img src="${getUserIconUrl(getCurrentUser())}" class="dm-list-item-avatar" alt="">`;
+        avatarHtml = `<img src="${getUserIconUrl(getCurrentUser())}" class="dm-list-item-avatar nui-avatar" alt="">`;
     }
 
     if (isDmPending(dm)) {
@@ -130,16 +130,16 @@ function renderDmListItem(dm, unreadCount, currentUserId) {
     const titleEscaped = getEmoji(escapeHTML(title || 'メッセージ'));
 
     return `
-        <article class="dm-list-item ${unreadCount > 0 ? 'is-unread' : ''}" data-action="open-dm" data-dm-id="${dmIdStr}">
+        <article class="dm-list-item nui-list-item ${unreadCount > 0 ? 'is-unread' : ''}" data-nui="list-item" data-action="open-dm" data-dm-id="${dmIdStr}">
             <div class="dm-list-item-avatar-wrap">
                 ${avatarHtml}
                 ${unreadCount > 0 ? `<span class="dm-avatar-unread-badge">${unreadCount}</span>` : ''}
             </div>
-            <div class="dm-list-item-main">
+            <div class="dm-list-item-main nui-list-copy">
                 <div class="dm-list-item-header">
-                    <span class="dm-list-item-title">${titleEscaped}</span>
+                    <span class="dm-list-item-title nui-list-title">${titleEscaped}</span>
                 </div>
-                ${subtitle ? `<div class="dm-list-item-sub">${escapeHTML(subtitle)}</div>` : ''}
+                ${subtitle ? `<div class="dm-list-item-sub nui-list-meta">${escapeHTML(subtitle)}</div>` : ''}
             </div>
             <button type="button" class="dm-manage-btn" title="DM管理メニュー" aria-label="DM管理メニュー" data-action="open-dm-manage" data-dm-id="${dmIdStr}">${ICONS.more}</button>
         </article>
@@ -211,14 +211,14 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
                 if (currentList.length === 0) {
                     listItemsWrapper.innerHTML = tab === 'requests'
                         ? `
-                            <div class="dm-empty-state">
-                                <p class="settings-help-text">メッセージリクエストはありません。</p>
+                            <div class="dm-empty-state nui-empty-text">
+                                <p class="settings-help-text nui-help-text">メッセージリクエストはありません。</p>
                             </div>
                         `
                         : `
-                            <div class="dm-empty-state">
-                                <p class="settings-help-text">まだメッセージはありません。<br>ダイレクトメッセージを送ってみましょう。</p>
-                                <button type="button" class="settings-primary-button dm-empty-create-btn" data-action="open-create-dm">新しいメッセージを作成</button>
+                            <div class="dm-empty-state nui-empty-text">
+                                <p class="settings-help-text nui-help-text">まだメッセージはありません。<br>ダイレクトメッセージを送ってみましょう。</p>
+                                <button type="button" class="settings-primary-button dm-empty-create-btn nui-button" data-nui="button" data-action="open-create-dm">新しいメッセージを作成</button>
                             </div>
                         `;
                 } else {
@@ -387,6 +387,7 @@ export async function showDmConversation(dmId) {
                     <h2 id="page-title" class="dm-header-title">${getEmoji(escapeHTML(headerTitle))}</h2>
                     <span class="dm-header-subtitle">${escapeHTML(headerSubtitle)}</span>
                 </div>
+                <button type="button" class="dm-manage-btn" title="通話に参加" aria-label="通話に参加" data-action="join-dm-call" data-dm-id="${escapeHTML(String(dm.id))}">${ICONS.phone}</button>
                 <button type="button" class="dm-manage-btn" title="DM管理メニュー" aria-label="DM管理メニュー" data-action="open-dm-manage" data-dm-id="${escapeHTML(String(dm.id))}">${ICONS.more}</button>
             </div>
         `;
@@ -436,8 +437,8 @@ export async function showDmConversation(dmId) {
                         <p class="dm-request-approval-text">${getEmoji(escapeHTML(headerTitle))} さんからのメッセージリクエストです。承認するとメッセージの返信や通知の受信が可能になります。</p>
                     </div>
                     <div class="dm-request-approval-actions">
-                        <button type="button" class="dm-request-btn dm-request-decline-btn" id="dm-decline-request-btn">拒否・削除</button>
-                        <button type="button" class="dm-request-btn dm-request-accept-btn" id="dm-accept-request-btn">承認する</button>
+                        <button type="button" class="dm-request-btn dm-request-decline-btn nui-button-secondary" data-nui="button-secondary" id="dm-decline-request-btn">拒否・削除</button>
+                        <button type="button" class="dm-request-btn dm-request-accept-btn nui-button" data-nui="button" id="dm-accept-request-btn">承認する</button>
                     </div>
                 </div>
             `;
@@ -763,15 +764,15 @@ async function sendDirectMessage(dmId, files = []) {
 
 export function openCreateDmModal() {
     DOM.createDmModalContent.innerHTML = `
-        <div class="dm-modal-body">
+        <div class="dm-modal-body nui-modal-body">
             <div class="modal-heading">
-                <h3 id="create-dm-modal-title">新しいメッセージ</h3>
-                <p class="settings-help-text">ユーザー名またはNyaitterIDで検索してDMを開始します。</p>
+                <h3 id="create-dm-modal-title" class="nui-modal-title">新しいメッセージ</h3>
+                <p class="settings-help-text nui-help-text">ユーザー名またはNyaitterIDで検索してDMを開始します。</p>
             </div>
             <div class="dm-modal-search-box">
-                <input type="text" id="dm-user-search" class="dm-modal-search-input dm-search-input" placeholder="ユーザー名またはNyaitterIDで検索" autofocus>
+                <input type="text" id="dm-user-search" class="dm-modal-search-input dm-search-input nui-input" placeholder="ユーザー名またはNyaitterIDで検索" autofocus>
             </div>
-            <div id="dm-user-search-results" class="dm-search-results"></div>
+            <div id="dm-user-search-results" class="dm-search-results nui-list" data-nui="list"></div>
         </div>
     `;
 
@@ -804,17 +805,17 @@ export function openCreateDmModal() {
                     resultsContainer.innerHTML = users
                         .map(
                             (u) => `
-                        <div class="dm-search-user-item" data-user-id="${escapeHTML(String(u.id))}">
-                            <img src="${getUserIconUrl(u)}" class="user-icon dm-search-user-icon" alt="">
-                            <div class="dm-search-user-info">
-                                <span class="dm-search-user-name">${getEmoji(escapeHTML(u.name))}</span>
-                                <span class="dm-search-user-handle">${getNyaitterId(u)}</span>
+                        <div class="dm-search-user-item nui-list-item" data-nui="list-item" data-user-id="${escapeHTML(String(u.id))}">
+                            <img src="${getUserIconUrl(u)}" class="user-icon dm-search-user-icon nui-avatar" alt="">
+                            <div class="dm-search-user-info nui-list-copy">
+                                <span class="dm-search-user-name nui-list-title">${getEmoji(escapeHTML(u.name))}</span>
+                                <span class="dm-search-user-handle nui-list-meta">${getNyaitterId(u)}</span>
                             </div>
                         </div>`,
                         )
                         .join('');
                 } else {
-                    resultsContainer.innerHTML = `<div class="dm-search-empty">一致するユーザーが見つかりません。</div>`;
+                    resultsContainer.innerHTML = `<div class="dm-search-empty nui-empty-text">一致するユーザーが見つかりません。</div>`;
                 }
             }
         }, 250);

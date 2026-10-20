@@ -1,0 +1,51 @@
+.app-window, .app-window-dock, .app-window-snap-preview { zoom: calc(1 / var(--app-scale, 1)); }
+.app-window[open] { position: fixed; z-index: 1800; display: flex; flex-direction: column; box-sizing: border-box; container: app-window / inline-size; margin: 0; padding: 0; max-width: none; max-height: none; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--nui-border); border-radius: var(--nui-radius); box-shadow: var(--nui-shadow-md); background: var(--nui-bg); color: var(--nui-text); }
+.app-window[data-maximized="true"] { border-radius: 0; box-shadow: none; }
+.app-window-header { display: flex; align-items: center; gap: 12px; flex-shrink: 0; min-width: 0; padding: 12px 16px; cursor: grab; touch-action: none; user-select: none; }
+.app-window-header > :first-child { min-width: 0; }
+.app-window-header h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-window-controls { display: flex; gap: 4px; flex-shrink: 0; margin-left: auto; }
+[data-nyaitter-ui='nui'] .app-window-controls button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--nui-muted); cursor: pointer; }
+.app-window-controls button:hover { background: var(--hover-bg-color, var(--nui-surface)); color: var(--nui-text); }
+.app-window-controls [data-window-action="close"]:hover { background: #b84048; color: white; }
+.app-window-controls svg, .app-window-dock svg { width: 18px; height: 18px; fill: none; stroke: currentColor; }
+[data-nyaitter-ui='nui'] .app-window-dock { position: fixed; z-index: 1800; right: max(20px, env(safe-area-inset-right)); bottom: calc(88px + env(safe-area-inset-bottom)); display: grid; place-items: center; width: 56px; height: 56px; padding: 0; border: 1px solid var(--nui-border); border-radius: 50%; background: var(--nui-bg); color: var(--nui-accent); box-shadow: 0 4px 16px rgb(0 0 0 / 12%); cursor: pointer; }
+[data-nyaitter-ui='nui'] .app-window-dock[hidden] { display: none; }
+[data-nyaitter-ui='nui']     .app-window-dock:hover { background: var(--nui-surface); }
+.app-window-controls button:focus-visible, .app-window-dock:focus-visible { outline: 2px solid var(--nui-accent); outline-offset: 2px; }
+.app-window-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.app-window-snap-preview { position: fixed; z-index: 1790; box-sizing: border-box; pointer-events: none; border: 2px solid var(--nui-accent, var(--primary-color, #ff9900)); border-radius: 12px; background: color-mix(in srgb, var(--nui-accent, #ff9900) 16%, transparent); }
+.app-window-snap-preview[hidden] { display: none; }
+.app-window-moving, .app-window-moving * { user-select: none !important; }
+.app-window-resize { position: absolute; z-index: 2; touch-action: none; }
+.app-window[data-maximized="true"] > .app-window-resize { display: none; }
+.app-window-resize-n, .app-window-resize-s { left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
+.app-window-resize-n { top: 0; }
+.app-window-resize-s { bottom: 0; }
+.app-window-resize-e, .app-window-resize-w { top: 10px; bottom: 10px; width: 6px; cursor: ew-resize; }
+.app-window-resize-e { right: 0; }
+.app-window-resize-w { left: 0; }
+.app-window-resize-ne, .app-window-resize-nw, .app-window-resize-se, .app-window-resize-sw { width: 12px; height: 12px; }
+.app-window-resize-ne { top: 0; right: 0; cursor: nesw-resize; }
+.app-window-resize-nw { top: 0; left: 0; cursor: nwse-resize; }
+.app-window-resize-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.app-window-resize-se { bottom: 0; right: 0; padding: 0; border: 0; border-radius: 0 0 12px; background: transparent; cursor: nwse-resize; }
+[data-nyaitter-ui='nui'] .app-window-resize-se::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 5px; height: 5px; border-right: 1px solid var(--nui-muted); border-bottom: 1px solid var(--nui-muted); }
+@container app-window (max-width: 600px) {
+    .app-window-header { padding: 10px 12px; gap: 8px; }
+    .app-window-controls { gap: 0; }
+    .app-window-controls button { width: 30px; height: 32px; }
+}
+
+.app-window-frame { display: block; width: 100%; height: 100%; border: 0; background: var(--nui-bg); }
+.app-link-window > .app-window-body { position: relative; overflow: hidden; }
+.app-window-loading > .spinner { position: absolute; inset: 0; margin: auto; z-index: 1; }
+.app-window-loading > .app-window-frame { visibility: hidden; }
+html[data-app-window-content='true'] .app-container { width: 100%; max-width: none; min-height: 100dvh; margin: 0; padding: 0; }
+html[data-app-window-content='true'] #left-nav,
+html[data-app-window-content='true'] #right-sidebar { display: none !important; }
+html[data-app-window-content='true'] #main-content { width: 100%; max-width: none; min-height: 100dvh; margin: 0; padding-bottom: 0; border: 0; }
+
+.app-link-window > .app-window-header { min-height: 52px; box-sizing: border-box; border-bottom: 1px solid var(--nui-border, var(--border-color)); }
+.app-link-window > .app-window-header h2 { margin: 0; font-size: 15px; line-height: 1.4; font-weight: 650; }
+.app-window:focus { outline: none; }

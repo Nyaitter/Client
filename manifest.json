@@ -5,6 +5,14 @@
   "author": "NyaitterTeam",
   "creator": "NyaitterTeam",
   "repository": "https://github.com/Nyaitter/Client",
-  "api_url": "/server",
-  "nyaitter_js": "latest"
+  "api_url": "/proxy/3000/server",
+  "nyaitter_js": "latest",
+  "nyaitter_ui": "latest",
+  "advertising": {
+    "enabled": false,
+    "interval": 10,
+    "provider": "adsense",
+    "client": "",
+    "slot": ""
+  }
 }

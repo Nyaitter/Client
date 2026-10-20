@@ -1,3 +1,4 @@
+import { openCall } from './modules/calls.js';
 /**
  * events.js
  * Global delegated event handlers for click, keydown, submit, hashchange, etc.
@@ -44,7 +45,12 @@ import {
     copyTextToClipboard,
     showAppAlert,
 } from './utils/helpers.js';
+
 import { positionElementRelativeToAnchor } from './utils/viewport.js';
+
+// ルート直下絶対パス (/emoji/neko.svg) ではなく、このモジュール (js/) からの
+// 相対で解決する。プロキシ配下のパス接頭辞を保つ。
+const NEKO_EMOJI_URL = new URL('../emoji/neko.svg', import.meta.url).href;
 
 /**
  * Attach all global delegated event listeners.
@@ -130,7 +136,7 @@ export function setupGlobalEventListeners() {
                     target.classList.contains('post-account-menu-icon') ||
                     target.id === 'setting-icon-preview';
                 if (isUserAvatar && !target.src.endsWith('/emoji/neko.svg')) {
-                    target.src = '/emoji/neko.svg';
+                    target.src = NEKO_EMOJI_URL;
                 }
             }
         },
@@ -154,7 +160,11 @@ export function setupGlobalEventListeners() {
     });
 
     // ---- hashchange → router ----
-    window.addEventListener('hashchange', router);
+    // サーバー設定取得前に描画するとCDNのbase URLが未確定のまま画像URLを組んでしまう。
+    window.addEventListener('hashchange', () => {
+        if (!globalThis.NyaitterServerStatus) return;
+        router();
+    });
 
     // ---- Image modal close & spoiler keyboard toggle ----
     document.addEventListener('keydown', (e) => {
@@ -288,8 +298,13 @@ function handleGlobalClick(e) {
 
     if (action === 'open-dm') {
         const dmId = String(actionTarget.dataset.dmId || '').trim();
-        if (dmId && dmId.length <= 128)
-            window.location.hash = `#dm/${encodeURIComponent(dmId)}`;
+        if (dmId && dmId.length <= 128) window.location.hash = `#dm/${encodeURIComponent(dmId)}`;
+        return;
+    }
+
+    if (action === 'join-dm-call') {
+        e.preventDefault();
+        void openCall('dm', actionTarget.dataset.dmId).catch(error => showAppAlert(error.message));
         return;
     }
 
@@ -376,7 +391,6 @@ function handleGlobalClick(e) {
         return;
     }
 
-    // Close any open post-menu when clicking outside it.
     if (!target.closest('.post-menu')) {
         const openMenus = [...document.querySelectorAll('.post-menu.is-visible')];
         if (openMenus.length > 0) {
@@ -624,6 +638,13 @@ function handleGlobalClick(e) {
             });
         }
         if (notification) {
+            if (notification.type === 'dm_call' || notification.type === 'group_call') {
+                const dmId = notification.target?.kind === 'dm' ? notification.target.id : null;
+                if (dmId != null) {
+                    void openCall('dm', dmId, { requireActive: true }).catch(error => showAppAlert(error.message));
+                    return;
+                }
+            }
             window.location.hash = getNotificationTargetHash(notification);
         }
         return;

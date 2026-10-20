@@ -7,7 +7,7 @@
     .markdown-preview-button.active svg,
     .nyaitter-ime-button.active svg,
     .post-announcement-button.active svg {
-stroke: var(--primary-color);
+    stroke: var(--primary-color);
 }
 
 .nyaitter-ime-spinner {
@@ -112,26 +112,26 @@ ruby.nyaitter-ime-ruby rt {
 }
 
 .markdown-textarea-editor.is-plain-textarea .markdown-editor-paint {
-display: none;
+    display: none;
 }
 
 .markdown-textarea-editor.is-markdown-previewing .markdown-content-editor {
-z-index: 0;
+    z-index: 0;
     pointer-events: none;
 }
 
 .markdown-textarea-editor.is-markdown-previewing .markdown-editor-paint {
-z-index: 2;
+    z-index: 2;
 }
 
 .markdown-textarea-editor.is-markdown-previewing .markdown-editor-selection,
 .markdown-textarea-editor.is-markdown-previewing .markdown-editor-composition,
 .markdown-textarea-editor.is-markdown-previewing .markdown-editor-caret {
-display: none;
+    display: none;
 }
 
 .markdown-textarea-editor.is-plain-textarea .markdown-content-editor {
-z-index: auto;
+    z-index: auto;
     color: var(--text-color) !important;
     caret-color: auto;
     -webkit-text-fill-color: currentColor;
@@ -174,26 +174,26 @@ z-index: auto;
 
 .markdown-textarea-editor.is-plain-textarea
     .markdown-content-editor::selection {
-color: var(--text-color);
+    color: var(--text-color);
     background: color-mix(in srgb, var(--primary-color) 35%, transparent);
 }
 
 .markdown-textarea-editor.is-plain-textarea
     .markdown-content-editor::placeholder {
-color: var(--secondary-text-color) !important;
+    color: var(--secondary-text-color) !important;
     -webkit-text-fill-color: var(--secondary-text-color);
     opacity: 1;
 }
 
 .markdown-textarea-editor.is-plain-textarea.is-markdown-previewing
     .markdown-editor-paint {
-display: block;
+    display: block;
     z-index: 2;
 }
 
 .markdown-textarea-editor.is-plain-textarea.is-markdown-previewing
     .markdown-content-editor {
-z-index: 0;
+    z-index: 0;
     color: transparent !important;
     caret-color: transparent;
     -webkit-text-fill-color: transparent;
@@ -203,7 +203,7 @@ z-index: 0;
 
 .markdown-editor-preview,
 .markdown-editor-placeholder {
-box-sizing: border-box;
+    box-sizing: border-box;
     min-width: 100%;
     min-height: 100%;
     overflow-wrap: anywhere;
@@ -212,47 +212,47 @@ box-sizing: border-box;
 }
 
 .markdown-editor-placeholder {
-position: absolute;
+    position: absolute;
     inset: 0;
     color: var(--secondary-text-color);
 }
 
 .markdown-editor-sentinel,
 .markdown-editor-caret-anchor {
-color: transparent;
+    color: transparent;
     pointer-events: none;
 }
 
 .markdown-editor-selection,
 .markdown-editor-composition,
 .markdown-editor-caret {
-position: absolute;
+    position: absolute;
     inset: 0;
     pointer-events: none;
 }
 
 .markdown-editor-selection-rect {
-position: absolute;
+    position: absolute;
     border-radius: 2px;
     background: color-mix(in srgb, var(--primary-color) 35%, transparent);
 }
 
 .markdown-editor-composition-underline {
-position: absolute;
+    position: absolute;
     display: block;
     box-sizing: border-box;
     border-bottom: 2px solid var(--primary-color);
 }
 
 .markdown-editor-caret {
-inset: auto;
+    inset: auto;
     width: 2px;
     background: var(--text-color);
     animation: markdown-editor-caret-blink 1s steps(1, end) infinite;
 }
 
 .post-form .markdown-content-editor {
-border: none;
+    border: none;
     background-color: var(--main-bg-color);
     color: var(--text-color);
     padding: 0.5rem 0;
@@ -261,12 +261,12 @@ border: none;
 
 .post-form .markdown-editor-preview,
 .post-form .markdown-editor-placeholder {
-padding: 0.5rem 0;
+    padding: 0.5rem 0;
     font-size: 1.25rem;
 }
 
 .post-form .markdown-editor-preview {
-color: var(--text-color);
+    color: var(--text-color);
 }
 
 .markdown-content-editor p,
@@ -285,20 +285,20 @@ color: var(--text-color);
 .markdown-editor-preview ul,
 .markdown-editor-preview ol,
 .markdown-editor-preview pre {
-margin: 0;
+    margin: 0;
 }
 
 .markdown-content-editor ul,
 .markdown-content-editor ol,
 .markdown-editor-preview ul,
 .markdown-editor-preview ol {
-padding-left: 0;
+    padding-left: 0;
     list-style: none;
 }
 
 .markdown-content-editor .markdown-syntax,
 .markdown-editor-preview .markdown-syntax {
-color: color-mix(in srgb, var(--secondary-text-color) 72%, transparent);
+    color: color-mix(in srgb, var(--secondary-text-color) 72%, transparent);
     font-style: normal;
     font-weight: 400;
     text-decoration: none;
@@ -306,20 +306,20 @@ color: color-mix(in srgb, var(--secondary-text-color) 72%, transparent);
 
 .markdown-content-editor a,
 .markdown-editor-preview a {
-color: var(--primary-color);
+    color: var(--primary-color);
     text-decoration: none;
 }
 
 .markdown-content-editor .markdown-spoiler,
 .markdown-editor-preview .markdown-spoiler {
-position: relative;
+    position: relative;
     isolation: isolate;
     cursor: text;
 }
 
 .markdown-content-editor .markdown-spoiler::before,
 .markdown-editor-preview .markdown-spoiler::before {
-position: absolute;
+    position: absolute;
     z-index: 2;
     inset: 0;
     border-radius: inherit;
@@ -331,7 +331,7 @@ position: absolute;
 
 .markdown-content-editor .markdown-spoiler-content,
 .markdown-editor-preview .markdown-spoiler-content {
-position: relative;
+    position: relative;
     z-index: 1;
 }
 
@@ -339,17 +339,17 @@ position: relative;
 .markdown-content-editor .markdown-spoiler:not(.is-revealed) *,
 .markdown-editor-preview .markdown-spoiler:not(.is-revealed),
 .markdown-editor-preview .markdown-spoiler:not(.is-revealed) * {
-color: var(--text-color) !important;
+    color: var(--text-color) !important;
     text-shadow: none !important;
 }
 
 .markdown-content-editor .markdown-spoiler:not(.is-revealed) img,
 .markdown-editor-preview .markdown-spoiler:not(.is-revealed) img {
-opacity: 1;
+    opacity: 1;
 }
 
 textarea.markdown-content-editor::selection {
-color: transparent;
+    color: transparent;
     background: transparent;
 }
 
@@ -360,7 +360,7 @@ color: transparent;
 }
 
 .markdown-spoiler {
-display: inline;
+    display: inline;
     padding: 0.06em 0.22em;
     border-radius: 4px;
     background: var(--secondary-text-color);
@@ -370,16 +370,16 @@ display: inline;
 
 .markdown-spoiler:not(.is-revealed),
 .markdown-spoiler:not(.is-revealed) * {
-color: transparent !important;
+    color: transparent !important;
     text-shadow: none !important;
 }
 
 .markdown-spoiler:not(.is-revealed) img {
-opacity: 0;
+    opacity: 0;
 }
 
 .markdown-spoiler.is-revealed {
-background: color-mix(
+    background: color-mix(
         in srgb,
         var(--secondary-text-color) 16%,
         transparent
@@ -389,12 +389,12 @@ background: color-mix(
 }
 
 .markdown-spoiler:focus-visible {
-outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }
 
 .inline-code-wrapper {
-display: inline-flex;
+    display: inline-flex;
     align-items: center;
     background-color: rgba(0, 0, 0, 0.08);
     border-radius: 4px;
@@ -403,7 +403,7 @@ display: inline-flex;
 }
 
 .markdown-copy-btn {
-position: absolute;
+    position: absolute;
     top: 0.5em;
     right: 0.5em;
     padding: 0.3em 0.5em;
@@ -526,10 +526,10 @@ hr.markdown-hr {
 }
 
 .markdown-copy-btn-inline:hover {
-background-color: rgba(0, 0, 0, 0.1);
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 #get-code-btn:disabled {
-opacity: 0.6;
+    opacity: 0.6;
     cursor: not-allowed;
 }

@@ -6,14 +6,14 @@
 #profile-tabs::-webkit-scrollbar,
 .search-tabs::-webkit-scrollbar,
 #profile-sub-tabs-container::-webkit-scrollbar {
-display: none;
+    display: none;
     width: 0;
     height: 0;
 }
 
 .recommend-user button,
 .profile-follow-button {
-padding: 0.5rem 1rem;
+    padding: 0.5rem 1rem;
     border-radius: 9999px !important;
     /* !importantで形状を強制 */
     font-weight: 700;
@@ -26,18 +26,18 @@ padding: 0.5rem 1rem;
 }
 
 #profile-header {
-padding: 1rem;
+    padding: 1rem;
     border-bottom: 1px solid var(--border-color);
 }
 
 #profile-header .profile-banner {
-width: calc(100% + 2rem);
+    width: calc(100% + 2rem);
     margin: -1rem -1rem 0;
     text-align: center;
 }
 
 #profile-header .profile-banner img {
-display: block;
+    display: block;
     width: 100%;
     height: auto;
     max-height: min(50vh, 360px);
@@ -46,11 +46,11 @@ display: block;
 }
 
 #profile-header.has-profile-banner .profile-actions {
-margin-top: 4.5rem;
+    margin-top: 4.5rem;
 }
 
 #profile-header .user-icon-large {
-object-fit: cover; /* アイコンが潰れるのを防ぐ */
+    object-fit: cover; /* アイコンが潰れるのを防ぐ */
     width: 128px;
     height: 128px;
     border-radius: 50%;
@@ -59,26 +59,26 @@ object-fit: cover; /* アイコンが潰れるのを防ぐ */
 }
 
 #profile-header .profile-actions {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
 #profile-header .profile-info {
-margin-top: 1rem;
+    margin-top: 1rem;
 }
 
 #profile-header h2 {
-margin: 0;
+    margin: 0;
 }
 
 #profile-header .user-id {
-color: var(--secondary-text-color);
+    color: var(--secondary-text-color);
     margin-bottom: 1rem;
 }
 
 #profile-header .user-stats {
-display: flex;
+    display: flex;
     gap: 1rem;
     margin-top: 1rem;
 }
@@ -241,10 +241,13 @@ display: flex;
     color: var(--primary-color);
     flex-shrink: 0;
 }
-.profile-info h2 .user-group-badges {
-    max-width: 100%;
+.profile-info .user-group-badges {
+    display: flex;
+    align-items: center;
     flex-wrap: wrap;
-    row-gap: 5px;
+    gap: 5px;
+    max-width: 100%;
+    margin: 0 0 0.6rem;
 }
 .profile-info .user-group-badge-default {
     display: inline-flex;
@@ -257,4 +260,244 @@ display: flex;
     fill: none;
     stroke: currentColor;
     stroke-width: 1.8;
+}
+
+/* ==========================================================================
+   NyaitterUI プロフィール調整（nui モード専用）
+   レガシー用の #profile-header ルールは legacy 表示のためにそのまま残し、
+   nui 構造 (nui-profile*) に必要な上書きだけを [data-nyaitter-ui="nui"] で
+   スコープする。legacy では付属 CSS が無効なため、ここは一切適用されない。
+   ========================================================================== */
+
+[data-nyaitter-ui='nui'] #profile-header.nui-profile {
+    padding: 0;
+}
+
+[data-nyaitter-ui='nui'] #profile-header .nui-profile-main {
+    position: relative;
+    padding: 1rem;
+}
+
+/* ヘッダー画像があるときだけ、情報表示の上半分を画像に重ねる。
+   画像が無いときに持ち上げると上が詰まって見えるため、重ねない。 */
+[data-nyaitter-ui='nui'] #profile-header.has-profile-banner .nui-profile-main {
+    margin-top: -5.5rem;
+    --nui-profile-actions-top: 6rem;
+    /* 重なった部分は上ほど透明にし、画像を透かしつつ下部は背景色へ戻す。 */
+    background: linear-gradient(to bottom, transparent 0, var(--nui-surface, var(--bg-color)) 72%);
+}
+
+[data-nyaitter-ui='nui'] #profile-header .nui-profile-copy {
+    margin-top: 0;
+}
+
+[data-nyaitter-ui='nui'] #profile-header .nui-profile-copy .user-stats {
+    margin-top: 0.6rem;
+}
+
+[data-nyaitter-ui='nui'] #profile-header .user-icon-large {
+    width: 152px;
+    height: 152px;
+    border-width: 4px;
+}
+
+[data-nyaitter-ui='nui'] #profile-header .profile-banner {
+    width: 100%;
+    margin: 0;
+    background: var(--nui-surface, var(--bg-color));
+}
+
+/* ヘッダー画像はプロフィール領域の幅に合わせ、はみ出す上下を中央基準でクロップする。
+   付属CSS の .nui-profile-header は cover 前提のため、レガシー用 img ルール
+   (height:auto / contain) を nui で打ち消して cover に戻す。 */
+[data-nyaitter-ui='nui'] #profile-header .profile-banner.nui-profile-header img {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    object-fit: cover;
+    object-position: center;
+}
+
+[data-nyaitter-ui='nui'] #profile-header.has-profile-banner .profile-actions {
+    margin-top: 0;
+}
+
+[data-nyaitter-ui='nui'] #profile-tabs.nui-tabs,
+[data-nyaitter-ui='nui'] .profile-sub-tabs.nui-tabs {
+    flex-wrap: nowrap;
+    gap: 0;
+}
+
+[data-nyaitter-ui='nui'] .profile-sub-tabs.nui-tabs {
+    border-bottom: 0;
+}
+
+[data-nyaitter-ui='nui'] #profile-tabs .tab-button.nui-tab.active::after,
+[data-nyaitter-ui='nui'] #profile-sub-tabs-container .tab-button.nui-tab.active::after {
+    display: none;
+}
+
+[data-nyaitter-ui='nui'] #profile-tabs .tab-button.nui-tab,
+[data-nyaitter-ui='nui'] #profile-sub-tabs-container .tab-button.nui-tab {
+    flex: 1 0 8rem;
+    min-width: 8rem;
+    padding: 0.75rem 1rem;
+}
+
+[data-nyaitter-ui='nui'] #profile-header .nui-profile-actions {
+    position: absolute;
+    top: var(--nui-profile-actions-top, 1rem);
+    right: 1rem;
+    z-index: 1;
+    min-width: 0;
+    max-width: calc(100% - 92px);
+    justify-content: flex-end;
+}
+
+/* ==========================================================================
+   legacy 表示: 共有マークアップ（nui-profile-main）を従来のヘッダー配置に戻す。
+   nui モードでは付属 CSS のグリッド（avatar / 本文 / 操作の3カラム）を使うため
+   この節は適用されない。legacy では従来どおり「アバター + 操作」を1段、
+   その下に本文を置く。
+   ========================================================================== */
+
+[data-nyaitter-ui='legacy'] #profile-header .nui-profile-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+[data-nyaitter-ui='legacy'] #profile-header.has-profile-banner .nui-profile-main {
+    margin-top: -4rem;
+}
+
+[data-nyaitter-ui='legacy'] #profile-header .nui-profile-main > .profile-info {
+    order: 3;
+    flex: 0 0 100%;
+    margin-top: 1rem;
+}
+
+.profile-identity { display: contents; }
+
+@media (max-width: 544px) {
+    .profile-identity { display: block; }
+    body[data-active-screen='profile-screen'] #profile-header:not(.has-profile-banner) .nui-profile-main {
+        padding-top: 3.5rem;
+    }
+    /* 名前をヘッダーへつなぎ、アイコンは本文の位置で縮小する。 */
+    body[data-active-screen='profile-screen'] #page-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        box-sizing: border-box;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        overflow: visible;
+        background-color: color-mix(in srgb, var(--main-bg-color) calc(var(--profile-header-reveal, 0) * 100%), transparent);
+        border-bottom-color: color-mix(in srgb, var(--border-color) calc(var(--profile-header-reveal, 0) * 100%), transparent);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        pointer-events: none;
+    }
+    body.profile-morph-active #page-title {
+        visibility: hidden;
+    }
+    body[data-active-screen='profile-screen'] .header-back-btn {
+        pointer-events: auto;
+        position: relative;
+        z-index: 1;
+        color: var(--text-color);
+        background: var(--main-bg-color);
+        border-radius: 50%;
+        box-shadow: 0 2px 10px #0002;
+    }
+    .profile-morph-anchor {
+        visibility: hidden;
+        pointer-events: none;
+    }
+    body[data-active-screen='profile-screen'] > .profile-morph-avatar,
+    #page-header .profile-morph-identity {
+        position: absolute;
+        left: 0;
+        top: 0;
+        margin: 0;
+        transform-origin: left top;
+        pointer-events: auto;
+    }
+    body[data-active-screen='profile-screen'] > .profile-morph-avatar {
+        position: fixed;
+        z-index: 8;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 4px solid var(--pg-bg-color);
+        box-sizing: border-box;
+        background: var(--pg-bg-color);
+    }
+    .profile-identity h2,
+    #page-header .profile-morph-identity h2 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+    .profile-identity .user-id {
+        margin-bottom: 0;
+        color: var(--secondary-text-color);
+        font-size: 1rem;
+    }
+    #page-header .profile-morph-identity {
+        font-weight: normal;
+        min-width: 0;
+    }
+    #page-header .profile-morph-identity h2,
+    #page-header .profile-morph-identity .user-id {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #page-header .profile-morph-identity h2 {
+        width: max-content;
+    }
+    #page-header .profile-morph-identity .user-id,
+    #page-header .profile-morph-count {
+        position: absolute;
+        left: 0;
+        margin: 0;
+        color: var(--secondary-text-color);
+        font-size: 1rem;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+
+    body[data-active-screen='profile-screen'] #page-header .header-back-btn:hover {
+        color: var(--text-color);
+        background: color-mix(in srgb, var(--primary-color) 15%, var(--main-bg-color));
+    }
+
+    [data-nyaitter-ui='nui'] #profile-header .nui-profile-main {
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: start;
+    }
+    [data-nyaitter-ui='nui'] #profile-header .nui-profile-main > .user-icon-large {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    [data-nyaitter-ui='nui'] #profile-header .nui-profile-main > .profile-info {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    [data-nyaitter-ui='nui'] #profile-header .nui-profile-main > .profile-actions {
+        top: var(--nui-profile-actions-top, 2rem);
+    }
+    #profile-header .profile-actions {
+        flex-wrap: wrap;
+    }
+
 }

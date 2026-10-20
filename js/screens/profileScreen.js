@@ -26,6 +26,7 @@ import {
 import {
     ensureMentionedUsersCached,
     updateFollowButtonState,
+    renderPost,
 } from '../modules/posts.js';
 import { handleDmButtonClick } from '../modules/dm.js';
 import {
@@ -66,11 +67,164 @@ import {
     showAppAlert,
     showAppConfirm,
     getGroupBadgesHtml,
+    matchesMedia,
 } from '../utils/helpers.js';
 import { renderHeader, renderTabs } from './profile/view.js';
-import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
+import {
+    getActiveScreenContext,
+    onScreenCleanup,
+    showScreenCompat,
+} from '../screenManager.js';
 
 let activeProfilePullRefreshUser = null;
+
+let profileScrollCleanup = null;
+let profileMorph = null;
+
+function clampProgress(value) {
+    return Math.max(0, Math.min(1, value));
+}
+
+function restoreProfileIdentity() {
+    if (!profileMorph) return;
+    for (const [element, anchor] of profileMorph.parts) {
+        element.classList.remove('profile-morph-avatar', 'profile-morph-identity');
+        element.querySelector('.profile-morph-count')?.remove();
+        element.querySelectorAll('h2, .user-id').forEach(child => child.removeAttribute('style'));
+        element.removeAttribute('style');
+        anchor.replaceWith(element);
+    }
+    profileMorph = null;
+    document.body.classList.remove('profile-morph-active');
+}
+
+function updateProfileScrollProgress() {
+    const root = document.documentElement;
+    const card = document.getElementById('profile-header');
+    const header = document.getElementById('page-header');
+    if (!matchesMedia('(max-width: 544px)')
+        || document.body.dataset.activeScreen !== 'profile-screen'
+        || !card || card.classList.contains('hidden') || !header) {
+        restoreProfileIdentity();
+        root.style.setProperty('--profile-header-reveal', '1');
+        return;
+    }
+    if (!profileMorph) {
+        const avatar = card.querySelector('.user-icon-large');
+        const identity = card.querySelector('.profile-identity');
+        if (!avatar || !identity) return;
+        const parts = [avatar, identity].map((element, index) => {
+            // 元の配置を残すことで、変形中も本文とスクロール位置を動かさない。
+            const anchor = element.cloneNode(true);
+            anchor.setAttribute('aria-hidden', 'true');
+            anchor.classList.add('profile-morph-anchor');
+            anchor.querySelectorAll('a').forEach(link => link.tabIndex = -1);
+            element.replaceWith(anchor);
+            element.classList.add(index === 0 ? 'profile-morph-avatar' : 'profile-morph-identity');
+            (index === 0 ? document.body : header).appendChild(element);
+            return [element, anchor];
+        });
+        const count = document.createElement('div');
+        count.className = 'profile-morph-count';
+        identity.appendChild(count);
+        profileMorph = { parts, count };
+        document.body.classList.add('profile-morph-active');
+    }
+
+    const headerRect = header.getBoundingClientRect();
+    const scale = headerRect.width / header.offsetWidth || 1;
+    const backRect = header.querySelector('.header-back-btn').getBoundingClientRect();
+    const [avatarPart, identityPart] = profileMorph.parts;
+    const avatarRect = avatarPart[1].getBoundingClientRect();
+    const identityRect = identityPart[1].getBoundingClientRect();
+    const scroll = window.scrollY || 0;
+    const distance = Math.max(180 * scale, identityRect.top + scroll - headerRect.top);
+    const progress = clampProgress(scroll / distance);
+    const avatarScale = 1 - progress * 0.5;
+    const identityScale = 1 - progress * 0.25;
+    const targetX = backRect.right - headerRect.left + 12 * scale;
+    const targetIdentityX = targetX;
+    const targetIdentityY = (headerRect.height - identityRect.height * 0.75) / 2;
+
+    for (const [part, rect, targetLeft, targetTop, shrink] of [
+        [avatarPart, avatarRect, 0, 0, avatarScale],
+        [identityPart, identityRect, targetIdentityX, targetIdentityY, identityScale],
+    ]) {
+        const [element] = part;
+        const isAvatar = part === avatarPart;
+        const left = isAvatar
+            ? rect.left - headerRect.left + rect.width * (1 - shrink) / 2
+            : (rect.left - headerRect.left) * (1 - progress) + targetLeft * progress;
+        const top = isAvatar
+            ? rect.top - headerRect.top + rect.height * (1 - shrink) / 2
+            : (rect.top + scroll - headerRect.top) * (1 - progress) + targetTop * progress;
+        const availableWidth = headerRect.width - targetIdentityX - 16 * scale;
+        const width = part === identityPart
+            ? rect.width * (1 - progress) + Math.max(0, availableWidth / shrink) * progress
+            : rect.width;
+        element.style.width = `${width / scale}px`;
+        element.style.height = `${rect.height / scale}px`;
+        element.style.transform = `translate(${left / scale}px, ${top / scale}px) scale(${shrink})`;
+    }
+    const identity = identityPart[0];
+    const name = identity.querySelector('h2');
+    const id = identity.querySelector('.user-id');
+    const identityWidth = parseFloat(identity.style.width);
+    name.style.maxWidth = `${identityWidth * (1 - progress * 0.45)}px`;
+    const nameRect = name.getBoundingClientRect();
+    const idRect = id.getBoundingClientRect();
+    const nameWidth = nameRect.width / (scale * identityScale);
+    const nameHeight = nameRect.height / (scale * identityScale);
+    const idHeight = idRect.height / (scale * identityScale);
+    const idLeft = (nameWidth + 8) * progress;
+    id.style.left = `${idLeft}px`;
+    id.style.top = `${nameHeight * (1 - progress) + (nameHeight - idHeight) / 2 * progress}px`;
+    id.style.width = `${Math.max(0, identityWidth - idLeft)}px`;
+    profileMorph.count.textContent = document.getElementById('page-title-sub')?.textContent || '';
+    profileMorph.count.style.top = `${nameHeight + 4}px`;
+    profileMorph.count.style.opacity = progress.toFixed(3);
+    profileMorph.count.setAttribute('aria-hidden', progress === 0 ? 'true' : 'false');
+    root.style.setProperty('--profile-collapse', progress.toFixed(3));
+    const reveal = clampProgress((-identityRect.top + identityRect.height * 0.25) / (96 * scale));
+    root.style.setProperty('--profile-header-reveal', (reveal * reveal * (3 - 2 * reveal)).toFixed(3));
+}
+
+function teardownProfileScrollTracking() {
+    profileScrollCleanup?.();
+    profileScrollCleanup = null;
+    restoreProfileIdentity();
+    document.body.classList.remove('profile-has-banner');
+    document.documentElement.style.setProperty('--profile-collapse', '0');
+    document.documentElement.style.setProperty('--profile-header-reveal', '0');
+}
+
+function setupProfileScrollTracking() {
+    teardownProfileScrollTracking();
+    let frame = null;
+    const scheduleUpdate = () => {
+        if (frame !== null) return;
+        frame = window.requestAnimationFrame(() => {
+            frame = null;
+            updateProfileScrollProgress();
+        });
+    };
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
+    const observer = new ResizeObserver(scheduleUpdate);
+    observer.observe(document.getElementById('profile-header'));
+    observer.observe(document.getElementById('page-header'));
+    const titleObserver = new MutationObserver(scheduleUpdate);
+    titleObserver.observe(document.getElementById('page-title-sub'), { childList: true, characterData: true, subtree: true });
+    profileScrollCleanup = () => {
+        window.removeEventListener('scroll', scheduleUpdate);
+        window.removeEventListener('resize', scheduleUpdate);
+        if (frame !== null) window.cancelAnimationFrame(frame);
+        observer.disconnect();
+        titleObserver.disconnect();
+    };
+    onScreenCleanup(teardownProfileScrollTracking);
+    scheduleUpdate();
+}
 const profileTimelineModes = new Map();
 const profilePostOrders = new Map();
 const profileGroupOrders = new Map();
@@ -283,6 +437,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
     renderHeader();
 
     showScreenCompat('profile-screen', showScreenFn);
+    setupProfileScrollTracking();
 
     const profileHeader = document.getElementById('profile-header');
     const profileTabs = document.getElementById('profile-tabs');
@@ -291,6 +446,8 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
     document.getElementById('profile-content').innerHTML = '';
     profileHeader.innerHTML = '<div class="spinner"></div>';
     profileTabs.innerHTML = '';
+    // 前回表示の名残で持ち上げ（has-profile-banner）が残らないよう、描画前に必ず外す。
+    profileHeader.classList.remove('has-profile-banner');
 
     try {
         const userResult = await getPublicProfile(userId);
@@ -311,14 +468,16 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                 escapeHTML(user.name),
             );
             document.getElementById('page-title-sub').textContent = `${getNyaitterId(user)}`;
+            profileHeader.classList.add('nui-profile');
+            profileHeader.setAttribute('data-nui', 'card');
             profileHeader.innerHTML = `
-                <div class="header-top">
-                    <img src="${getUserIconUrl(user)}" class="user-icon-large" alt="${escapeHTML(user.name)}'s icon">
-                    <div id="profile-actions" class="profile-actions"></div>
-                </div>
-                <div class="profile-info">
-                    <h2>${getEmoji(escapeHTML(user.name))}</h2>
-                    <div class="user-id" title="Nyaitter ID">${getNyaitterId(user)}</div>
+                <div class="nui-profile-main">
+                    <img src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar nui-profile-avatar" alt="${escapeHTML(user.name)}'s icon">
+                    <div class="profile-info nui-profile-copy">
+                        <div class="profile-identity"><h2>${getEmoji(escapeHTML(user.name))}</h2>
+                        <div class="user-id" title="Nyaitter ID">${getNyaitterId(user)}</div></div>
+                    </div>
+                    <div id="profile-actions" class="profile-actions nui-profile-actions"></div>
                 </div>`;
             const actionsContainer = profileHeader.querySelector('#profile-actions');
             if (actionsContainer && getCurrentUser()?.admin && !isCurrentUserProfile(user)) {
@@ -368,52 +527,56 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         const headerImageUrl = getUserHeaderImageUrl(user);
         const userMeHtml = renderNyarkDown(user.me || '', getAllUsersCache());
         profileHeader.classList.toggle('has-profile-banner', Boolean(headerImageUrl));
+        document.body.classList.toggle('profile-has-banner', Boolean(headerImageUrl));
         const profileBannerHtml = headerImageUrl
-            ? `<div class="profile-banner"><img src="${escapeHTML(headerImageUrl)}" alt="${escapeHTML(user.name)}のヘッダー画像"></div>`
+            ? `<div class="profile-banner nui-profile-header"><img src="${escapeHTML(headerImageUrl)}" alt="${escapeHTML(user.name)}のヘッダー画像"></div>`
             : '';
 
+        profileHeader.classList.add('nui-profile');
+        profileHeader.setAttribute('data-nui', 'card');
         profileHeader.innerHTML = `
             ${profileBannerHtml}
-            <div class="header-top">
-                <img src="${getUserIconUrl(user)}" class="user-icon-large" alt="${escapeHTML(user.name)}'s icon">
-                <div id="profile-actions" class="profile-actions"></div>
-            </div>
-            <div class="profile-info">
-                <h2>
-                    ${getEmoji(escapeHTML(user.name))}
-                    ${user.admin ? `<img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">` : user.verify ? `<img src="icons/verify.png" class="verify-badge" title="認証済み">` : ''}
+            <div class="nui-profile-main">
+                <img src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar nui-profile-avatar" alt="${escapeHTML(user.name)}'s icon">
+                <div class="profile-info nui-profile-copy">
+                    <div class="profile-identity"><h2>
+                        ${getEmoji(escapeHTML(user.name))}
+                        ${user.admin ? `<img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">` : user.verify ? `<img src="icons/verify.png" class="verify-badge" title="認証済み">` : ''}
+                        ${user.is_imposter ? '<span class="imposter-badge" title="偽のNyaitterID">インポスター</span>' : ''}
+                    </h2>
+                    <div class="user-id" title="Nyaitter ID">${getNyaitterId(user)} ${user.visibility?.scid === 'public' && user.scid ? `(<a href="https://scratch.mit.edu/users/${user.scid}" class="scidlink" target="_blank" rel="noopener noreferrer">@${user.scid}</a>)` : ''}</div>
+                    </div>
                     ${getGroupBadgesHtml(user, { maxCount: Infinity })}
-                    ${user.is_imposter ? '<span class="imposter-badge" title="偽のNyaitterID">インポスター</span>' : ''}
-                </h2>
-                <div class="user-id" title="Nyaitter ID">${getNyaitterId(user)} ${user.visibility?.scid === 'public' && user.scid ? `(<a href="https://scratch.mit.edu/users/${user.scid}" class="scidlink" target="_blank" rel="noopener noreferrer">@${user.scid}</a>)` : ''}</div>
-                <p class="user-me">${userMeHtml}</p>
-                <div class="profile-joined" aria-label="アカウント作成日">
-                    <svg class="calendar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    <span class="profile-joined-text">${(() => {
-                        const value = user.created_at;
-                        const d = value ? new Date(value) : null;
-                        if (!d || Number.isNaN(d.getTime())) {
-                            return 'Nyaitterを利用しています';
-                        }
-                        const parts = new Intl.DateTimeFormat('ja-JP', {
-                            timeZone: 'Asia/Tokyo',
-                            year: 'numeric',
-                            month: 'numeric',
-                            day: 'numeric',
-                        }).formatToParts(d);
-                        const get = (type) => parts.find((part) => part.type === type)?.value;
-                        return `${get('year')}年${get('month')}月${get('day')}日よりNyaitterを利用しています`;
-                    })()}</span>
+                    <p class="user-me">${userMeHtml}</p>
+                    <div class="profile-joined" aria-label="アカウント作成日">
+                        <svg class="calendar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span class="profile-joined-text">${(() => {
+                            const value = user.created_at;
+                            const d = value ? new Date(value) : null;
+                            if (!d || Number.isNaN(d.getTime())) {
+                                return 'Nyaitterを利用しています';
+                            }
+                            const parts = new Intl.DateTimeFormat('ja-JP', {
+                                timeZone: 'Asia/Tokyo',
+                                year: 'numeric',
+                                month: 'numeric',
+                                day: 'numeric',
+                            }).formatToParts(d);
+                            const get = (type) => parts.find((part) => part.type === type)?.value;
+                            return `${get('year')}年${get('month')}月${get('day')}日よりNyaitterを利用しています`;
+                        })()}</span>
+                    </div>
+                    <div class="user-stats">
+                        <a href="#profile/${user.id}/following"><strong>${user.following_count || 0}</strong> フォロー中</a>
+                        <a href="#profile/${user.id}/followers" id="follower-count"><strong>${followerCount}</strong> フォロワー</a>
+                    </div>
                 </div>
-                <div class="user-stats">
-                    <a href="#profile/${user.id}/following"><strong>${user.following_count || 0}</strong> フォロー中</a>
-                    <a href="#profile/${user.id}/followers" id="follower-count"><strong>${followerCount}</strong> フォロワー</a>
-                </div>
+                <div id="profile-actions" class="profile-actions nui-profile-actions"></div>
             </div>`;
 
         if (getCurrentUser() && !isCurrentUserProfile(user)) {
@@ -515,6 +678,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         await loadProfileTabContent(user, subpage);
         const currentHash = window.location.hash || `#profile/${user.id}`;
         restoreScrollPosition(getScrollRouteKey(currentHash));
+        updateProfileScrollProgress();
     } catch (err) {
         profileHeader.innerHTML = '<h2>プロフィールの読み込みに失敗しました</h2>';
         console.error(err);
@@ -560,9 +724,9 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
         const subTabsContainer = document.createElement('div');
         subTabsContainer.id = 'profile-sub-tabs-container';
         subTabsContainer.innerHTML = `
-            <div class="profile-sub-tabs">
-                <button class="tab-button ${subpage === 'following' ? 'active' : ''}" data-sub-tab="following">フォロー中</button>
-                <button class="tab-button ${subpage === 'followers' ? 'active' : ''}" data-sub-tab="followers">フォロワー</button>
+            <div class="profile-sub-tabs nui-tabs" data-nui="tabs">
+                <button class="tab-button nui-tab ${subpage === 'following' ? 'active is-active' : ''}" data-sub-tab="following">フォロー中</button>
+                <button class="tab-button nui-tab ${subpage === 'followers' ? 'active is-active' : ''}" data-sub-tab="followers">フォロワー</button>
             </div>`;
 
         DOM.pageHeader.parentNode.insertBefore(
@@ -587,7 +751,11 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
     } else {
         document
             .querySelectorAll('#profile-tabs .tab-button')
-            .forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === subpage));
+            .forEach((btn) => {
+                const isActive = btn.dataset.tab === subpage;
+                btn.classList.toggle('active', isActive);
+                btn.classList.toggle('is-active', isActive);
+            });
     }
 
     try {
@@ -612,7 +780,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'likes':
                 if (user.visibility?.likes !== 'public') {
                     contentDiv.innerHTML =
-                        '<p style="padding: 2rem; text-align:center;">🔒 このユーザーのいいねは非公開です。</p>';
+                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">🔒 このユーザーのいいねは非公開です。</p>';
                     break;
                 }
                 await loadPostsWithPagination(contentDiv, 'likes', {
@@ -624,7 +792,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'stars':
                 if (user.visibility?.stars !== 'public') {
                     contentDiv.innerHTML =
-                        '<p style="padding: 2rem; text-align:center;">🔒 このユーザーのお気に入りは非公開です。</p>';
+                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">🔒 このユーザーのお気に入りは非公開です。</p>';
                     break;
                 }
                 await loadPostsWithPagination(contentDiv, 'stars', {
@@ -636,7 +804,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'following':
                 if (user.visibility?.following !== 'public') {
                     contentDiv.innerHTML =
-                        '<p style="padding: 2rem; text-align:center;">🔒 このユーザーのフォローリストは非公開です。</p>';
+                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">🔒 このユーザーのフォローリストは非公開です。</p>';
                     break;
                 }
                 await loadUsersWithPagination(contentDiv, 'follows', {
@@ -650,7 +818,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'followers':
                 if (user.visibility?.followers !== 'public') {
                     contentDiv.innerHTML =
-                        '<p style="padding: 2rem; text-align:center;">🔒 このユーザーのフォロワーリストは非公開です。</p>';
+                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">🔒 このユーザーのフォロワーリストは非公開です。</p>';
                     break;
                 }
                 await loadUsersWithPagination(contentDiv, 'followers', {
@@ -664,6 +832,29 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'media': {
                 const mediaSubType = getProfileMediaMode(user.id);
                 await loadMediaGrid(contentDiv, { userId: user.id, type: mediaSubType === 'all' ? null : mediaSubType });
+                break;
+            }
+            case 'scheduled': {
+                if (!isCurrentUserProfile(user)) {
+                    contentDiv.innerHTML =
+                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">予約済みのポストはありません。</p>';
+                    break;
+                }
+                const { data, error } = await apiRequest(
+                    `/server/api/users/${encodeURIComponent(user.id)}/scheduled?limit=50&offset=0`,
+                    { signal },
+                );
+                if (error) throw error;
+                const scheduledPosts = data?.posts || [];
+                if (scheduledPosts.length === 0) {
+                    contentDiv.innerHTML =
+                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">予約済みのポストはありません。</p>';
+                    break;
+                }
+                for (const post of scheduledPosts) {
+                    const postEl = await renderPost(post, post.author, { forceDetailedDate: true });
+                    if (postEl) contentDiv.appendChild(postEl);
+                }
                 break;
             }
             default:
@@ -798,7 +989,7 @@ export async function loadMediaGrid(container, options = {}) {
                 if (!hasMore) {
                     trigger.innerHTML =
                         gridContainer.querySelectorAll('.media-grid-item').length === 0
-                            ? '<p style="padding:2rem;text-align:center;">まだメディアはありません。</p>'
+                            ? '<p class="nui-empty-text" style="padding:2rem;text-align:center;">まだメディアはありません。</p>'
                             : 'すべてのメディアを読み込みました';
                     mediaObserver?.disconnect();
                 } else {

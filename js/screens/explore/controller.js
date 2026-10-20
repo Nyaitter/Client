@@ -1,3 +1,4 @@
+import { bindAdvancedSearch } from '../search/advancedSearch.js';
 import { DOM } from '../../dom.js';
 import { apiRequest } from '../../api.js';
 import { initTabGroup } from '../../modules/tabSwipe.js';
@@ -7,7 +8,14 @@ import { renderError, renderHeader, renderInitial, renderTrends } from './view.j
 let activeExploreTab = 'tags';
 let trendsCache = null;
 let trendsRequest = null;
+let trendsGeneration = 0;
 const TRENDS_CACHE_TTL_MS = 60 * 1000;
+
+export function invalidateExploreTrends() {
+    trendsCache = null;
+    trendsRequest = null;
+    trendsGeneration += 1;
+}
 
 function renderTrendTabs(tabsContainer, trendsContainer, context, trends) {
     const renderCurrentTab = (tab) => {
@@ -33,6 +41,7 @@ export async function mountExploreScreen(showScreenFn) {
 
     const context = getActiveScreenContext();
     const signal = context?.signal;
+    bindAdvancedSearch(DOM.pageHeader, context);
     const searchInput = document.getElementById('search-input');
     searchInput?.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter') return;
@@ -45,6 +54,7 @@ export async function mountExploreScreen(showScreenFn) {
     const trendsContainer = document.getElementById('explore-trends-container');
     if (!trendsContainer) return;
 
+    const generation = trendsGeneration;
     const cached = trendsCache && trendsCache.expiresAt > Date.now()
         ? trendsCache.value
         : null;
@@ -55,7 +65,7 @@ export async function mountExploreScreen(showScreenFn) {
 
     try {
         if (!trendsRequest) {
-            trendsRequest = apiRequest('/server/api/posts/trending-hashtags?limit=30')
+            const request = apiRequest('/server/api/posts/trending-hashtags?limit=30')
                 .then(({ data: responseData, error }) => {
                     if (error) throw error;
                     const allTrends = Array.isArray(responseData?.trends)
@@ -70,11 +80,12 @@ export async function mountExploreScreen(showScreenFn) {
                     return { hashtags, tags };
                 })
                 .finally(() => {
-                    trendsRequest = null;
+                    if (trendsRequest === request) trendsRequest = null;
                 });
+            trendsRequest = request;
         }
         const trends = await trendsRequest;
-        if (signal?.aborted) return;
+        if (signal?.aborted || generation !== trendsGeneration) return;
         trendsCache = {
             value: trends,
             expiresAt: Date.now() + TRENDS_CACHE_TTL_MS,

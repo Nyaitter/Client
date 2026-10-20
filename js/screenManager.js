@@ -1,9 +1,8 @@
 /**
  * Shared lifecycle manager for screens.
  *
- * Existing screens can continue to render imperatively while they are being
- * migrated. Each navigation gets an AbortSignal and a cleanup bucket so new
- * controllers can cancel requests and unsubscribe listeners consistently.
+ * Each navigation gets an AbortSignal and a cleanup bucket so controllers can
+ * cancel requests and unsubscribe listeners consistently.
  */
 
 let activeScreenId = null;

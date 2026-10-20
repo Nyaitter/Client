@@ -3,13 +3,13 @@
    ========================================================================== */
 
 .app-container {
-display: flex;
+    display: flex;
     margin: 0 auto;
     min-height: 100vh;
 }
 
 #left-nav {
-position: sticky;
+    position: sticky;
     top: 0;
     height: 100vh;
     width: 275px;
@@ -22,31 +22,31 @@ position: sticky;
 }
 
 .nav-logo-img {
-color: var(--logo-color);
+    color: var(--logo-color);
 }
 
 .nav-logo-img svg {
-fill: var(--logo-color) !important;
+    fill: var(--logo-color) !important;
     stroke: var(--logo-color) !important;
 }
 
 .nav-logo-img .nyaitter-logo-image {
-display: block;
+    display: block;
     width: 100%;
     height: auto;
 }
 
 #left-nav.sidebar-overflow-open {
-z-index: 500;
+    z-index: 500;
 }
 
 .nav-overflow-menu {
-position: relative;
+    position: relative;
     width: 100%;
 }
 
 .nav-overflow-toggle {
-width: 100%;
+    width: 100%;
 }
 
 .nav-overflow-panel {
@@ -64,12 +64,12 @@ width: 100%;
 }
 
 .nav-overflow-panel .nav-item {
-width: 100%;
+    width: 100%;
     box-sizing: border-box;
 }
 
 .nav-item {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 1.2rem;
     padding: 0.75rem;
@@ -86,11 +86,11 @@ display: flex;
 }
 
 .nav-logo-img {
-width: 1.8rem;
+    width: 1.8rem;
 }
 
 .nav-item-icon-container {
-position: relative; /* バッジの位置の基準 */
+    position: relative; /* バッジの位置の基準 */
     display: flex; /* 中の要素をflexで制御 */
     align-items: center;
     justify-content: center;
@@ -100,7 +100,7 @@ position: relative; /* バッジの位置の基準 */
 }
 
 .nav-item svg {
-width: 100%; /* コンテナいっぱいに広がる */
+    width: 100%; /* コンテナいっぱいに広がる */
     height: 100%;
     fill: none;
     stroke: currentColor;
@@ -111,57 +111,57 @@ width: 100%; /* コンテナいっぱいに広がる */
 }
 
 .nav-item:hover {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
 }
 
 .nav-item.active {
-font-weight: 700;
+    font-weight: 700;
 }
 
 .nav-item.active svg {
-fill: none;
+    fill: none;
     stroke-width: 2.5;
 }
 
 .nav-item[href='#'].active svg path {
-fill: currentColor;
+    fill: currentColor;
     stroke: none;
 }
 
 .nav-item[href='#'].active svg rect {
-fill: white;
+    fill: white;
     stroke: none;
 }
 
 .nav-item[href='#explore'].active svg,
 .nav-item[href^='#dm'].active svg {
-stroke-width: 2.5;
+    stroke-width: 2.5;
 }
 
 .nav-item.active:not([href='#']):not([href='#explore']):not([href^='#dm']) svg {
-fill: currentColor;
+    fill: currentColor;
     stroke: none;
 }
 
 .nav-item[href^='#settings'].active svg circle {
-stroke: none;
+    stroke: none;
 }
 
 .nav-item-request svg,
 .nav-item-request.active svg {
-fill: none !important;
+    fill: none !important;
     stroke: currentColor !important;
 }
 
 .nav-item-request svg circle,
 .nav-item-request svg line {
-fill: none !important;
+    fill: none !important;
     stroke: currentColor !important;
     stroke-width: 0.45 !important;
 }
 
 .nav-item-post {
-background-color: var(--primary-color);
+    background-color: var(--primary-color);
     color: white;
     width: 90%;
     justify-content: center;
@@ -172,15 +172,15 @@ background-color: var(--primary-color);
 }
 
 .nav-item-post:hover {
-background-color: var(--primary-hover-color);
+    background-color: var(--primary-hover-color);
 }
 
 .nav-item-post .nav-item-icon {
-display: none; /* デフォルトではアイコンを非表示 */
+    display: none; /* デフォルトではアイコンを非表示 */
 }
 
 .nav-item[href='#notifications'] {
-position: relative;
+    position: relative;
 }
 
 #main-content {
@@ -193,7 +193,7 @@ position: relative;
 }
 
 #page-header {
-position: sticky;
+    position: sticky;
     top: 0;
     background-color: var(--pg-bg-color);
     backdrop-filter: blur(12px);
@@ -203,13 +203,13 @@ position: sticky;
 }
 
 .header-with-back-button {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 1.5rem;
 }
 
 .header-back-btn {
-background: none;
+    background: none;
     border: none;
     cursor: pointer;
     padding: 0.5rem;
@@ -220,21 +220,21 @@ background: none;
 }
 
 .header-back-btn:hover {
-background-color: var(--bg-color);
+    background-color: var(--bg-color);
 }
 
 .header-back-btn svg {
-width: 20px;
+    width: 20px;
     height: 20px;
 }
 
 #page-header h2 {
-margin: 0;
+    margin: 0;
     font-size: 1.25rem;
 }
 
 .header-search-bar {
-display: flex;
+    display: flex;
     align-items: center;
     background-color: var(--bg-color);
     border-radius: 9999px;
@@ -243,7 +243,7 @@ display: flex;
 }
 
 .header-search-bar svg {
-flex-shrink: 0;
+    flex-shrink: 0;
     width: 20px;
     height: 20px;
     fill: none;
@@ -251,7 +251,7 @@ flex-shrink: 0;
 }
 
 .header-search-bar input {
-flex-grow: 1;
+    flex-grow: 1;
     border: none;
     background: transparent;
     outline: none;
@@ -260,14 +260,14 @@ flex-grow: 1;
 }
 
 .header-with-action-button {
-display: flex;
+    display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
 }
 
 .header-action-btn {
-padding: 0.5rem 1rem;
+    padding: 0.5rem 1rem;
     border-radius: 9999px;
     border: 1px solid var(--text-color); /* 黒い枠線 */
     background: var(--main-bg-color);
@@ -279,11 +279,11 @@ padding: 0.5rem 1rem;
 }
 
 .header-action-btn:hover {
-background-color: var(--bg-color); /* ホバー時に薄いグレーに */
+    background-color: var(--bg-color); /* ホバー時に薄いグレーに */
 }
 
 #right-sidebar {
-position: sticky;
+    position: sticky;
     top: 0;
     height: 100vh;
     width: 340px;
@@ -293,12 +293,12 @@ position: sticky;
 }
 
 #right-sidebar-links-container {
-font-size: 14px;
+    font-size: 14px;
     display: inline;
 }
 
 #profile-header .header-top {
-display: flex;
+    display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 1rem;
@@ -306,7 +306,7 @@ display: flex;
 }
 
 #profile-header.has-profile-banner .header-top {
-margin-top: -4rem;
+    margin-top: -4rem;
 }
 
 @keyframes mobile-sidebar-enter {
@@ -327,4 +327,24 @@ margin-top: -4rem;
 @keyframes mobile-sidebar-overlay-exit {
     from { opacity: 1; }
     to { opacity: 0; }
+}
+
+/* ==========================================================================
+   NyaitterUI シェル補助（nui モード専用）
+   左ナビは NyaitterUI の nav (nui-nav / nui-nav-item) を使い、色・角丸・
+   余白は --nui-* トークンに委ねる。ここではシェル固有のアイコン寸法と
+   ポストボタンの見た目だけを補う。legacy では付属 CSS が無効なため、
+   これらの調整が漏れないよう [data-nyaitter-ui="nui"] にスコープする。
+   ========================================================================== */
+
+[data-nyaitter-ui='nui'] #left-nav.nui-nav {
+    gap: 0;
+}
+
+[data-nyaitter-ui='nui'] #left-nav .nav-item-icon-container {
+    flex-shrink: 0;
+}
+
+[data-nyaitter-ui='nui'] #left-nav .nav-overflow-panel .nav-item.nui-nav-item {
+    width: 100%;
 }

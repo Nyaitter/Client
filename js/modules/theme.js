@@ -1,6 +1,13 @@
 import { DOM } from '../dom.js';
 import { getCurrentUser, getIsDarkmode, setIsDarkmode } from '../state.js';
 import { matchesMedia } from '../utils/helpers.js';
+import {
+    auxiliaryPostPageCaches,
+    userPageCaches,
+    screenDataCaches,
+    persistPageCaches,
+} from './cache.js';
+import { invalidateExploreTrends } from '../screens/explore/controller.js';
 
 export const POSTS_PER_PAGE = 30;
 export const DATA_SAVER_POSTS_PER_PAGE = 12;
@@ -102,6 +109,12 @@ export function applyInterfaceTheme(themePreference = null) {
     setIsDarkmode(isDark);
     document.documentElement.setAttribute(
         'data-theme',
+        isDark ? 'dark' : 'light',
+    );
+    // NyaitterUI 付属 CSS のトークン ([data-nui-theme]) もアプリのテーマに合わせる。
+    // これで nui-* コンポーネントが、OS 設定ではなくアプリの選択テーマに追随する。
+    document.documentElement.setAttribute(
+        'data-nui-theme',
         isDark ? 'dark' : 'light',
     );
     document.body.classList.toggle('dark', isDark);
@@ -251,6 +264,41 @@ export function updatePullToRefreshAvailability() {
 
 let ptrInitialized = false;
 let ptrOnRefresh = null;
+
+// 一覧をページキャッシュから復元する画面は、そのまま再描画しても通信が
+// 発生しない。PTR は明示的な再読込なので、対象画面のキャッシュを捨ててから
+// 画面側の refresh を呼ぶ。
+function invalidatePullToRefreshCaches(context) {
+    if (context?.type === 'explore') invalidateExploreTrends();
+
+    const scopeMarkers = [];
+    if (context?.type === 'search') {
+        scopeMarkers.push(':search:');
+    } else if (context?.type === 'likes') {
+        scopeMarkers.push(':likes:');
+    } else if (context?.type === 'stars') {
+        scopeMarkers.push(':stars:');
+    } else if (context?.type === 'dm') {
+        scopeMarkers.push(':dm:');
+    }
+    if (scopeMarkers.length === 0) return;
+
+    let changed = false;
+    for (const cache of [
+        auxiliaryPostPageCaches,
+        userPageCaches,
+        screenDataCaches,
+    ]) {
+        for (const key of [...cache.keys()]) {
+            if (scopeMarkers.some((marker) => key.includes(marker))) {
+                cache.delete(key);
+                changed = true;
+            }
+        }
+    }
+    if (changed) persistPageCaches();
+}
+
 export function setupTimelinePullToRefresh(onRefresh) {
     ptrOnRefresh = typeof onRefresh === 'function' ? onRefresh : null;
     if (ptrInitialized) {
@@ -318,7 +366,9 @@ export function setupTimelinePullToRefresh(onRefresh) {
     };
 
     const runRefresh = async () => {
-        if (refreshInProgress || !getActivePullToRefreshContext() || !ptrOnRefresh) return;
+        if (refreshInProgress || !ptrOnRefresh) return;
+        const context = getActivePullToRefreshContext();
+        if (!context) return;
         refreshInProgress = true;
         indicator.classList.remove('is-pulling', 'is-ready');
         indicator.classList.add('is-refreshing');
@@ -328,9 +378,8 @@ export function setupTimelinePullToRefresh(onRefresh) {
         if (label) label.textContent = '更新中';
 
         try {
-            if (ptrOnRefresh) {
-                await ptrOnRefresh(getActivePullToRefreshContext());
-            }
+            invalidatePullToRefreshCaches(context);
+            await ptrOnRefresh(context);
         } finally {
             setTimeout(() => {
                 refreshInProgress = false;
@@ -398,12 +447,13 @@ export function setupTimelinePullToRefresh(onRefresh) {
     }, { passive: true });
 
     document.addEventListener('keydown', (event) => {
-        if (event.repeat || !event.altKey || event.ctrlKey || event.metaKey
-            || String(event.key || '').toLowerCase() !== 'r') return;
+        const isRKey = event.code === 'KeyR'
+            || String(event.key || '').toLowerCase() === 'r';
+        if (event.repeat || !event.altKey || event.ctrlKey || event.metaKey || !isRKey) return;
         if (!getActivePullToRefreshContext()) return;
         event.preventDefault();
         void runRefresh();
-    });
+    }, true);
 
     window.addEventListener('resize', updatePullToRefreshAvailability, { passive: true });
     updatePullToRefreshAvailability();

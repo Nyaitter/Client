@@ -1,5 +1,5 @@
 export const SETTINGS_GROUP_DETAILS = Object.freeze({
-    overview: Object.freeze({ title: '自分に合うNyaitterに', description: '変えたいことから設定を選べます。変更は自動で保存されます。' }),
+    overview: Object.freeze({ title: '設定', description: 'Nyaitterを自分用にカスタマイズ' }),
     account: Object.freeze({ title: 'アカウントとログイン', description: 'ログイン方法、利用中の端末、NyaitterIDを管理します。' }),
     editor: Object.freeze({ title: '投稿とエディタ', description: '文字入力とポスト日時の表示を選びます。' }),
     filters: Object.freeze({ title: 'ミュートとフィルター', description: '見たくない言葉を含むポストを検索から除外します。' }),
@@ -11,6 +11,10 @@ export const SETTINGS_GROUP_DETAILS = Object.freeze({
     home: Object.freeze({
         title: 'ホームのカスタマイズ',
         description: 'ホーム画面のタイムラインタブの追加・削除や並び順をカスタマイズします。',
+    }),
+    menu: Object.freeze({
+        title: 'サイドメニューのカスタマイズ',
+        description: 'メニューに表示する項目と並び順を、PCとモバイルで別々に設定します。隠した項目は「その他」から使えます。',
     }),
     privacy: Object.freeze({
         title: '公開範囲とDM',

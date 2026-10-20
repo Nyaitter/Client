@@ -16,8 +16,13 @@
 @import './css/profile.css';
 @import './css/search.css';
 @import './css/groups.css';
+@import './css/calls.css';
+@import './css/window.css';
+@import './css/callView.css';
 @import './css/settings.css';
 @import './css/auth.css';
 @import './css/docs.css';
 @import './css/responsive.css';
+@import './css/scale.css';
 
+@import './css/header.css';

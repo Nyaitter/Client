@@ -1,9 +1,11 @@
 import { apiRequest } from '../api.js';
 import {
+    getCurrentUser,
     getPwaRegistrationPromise,
     setPwaRegistrationPromise,
 } from '../state.js';
 import { showAppAlert } from '../utils/helpers.js';
+import { openCall } from './calls.js';
 
 export function supportsWebPush() {
     return (
@@ -30,8 +32,12 @@ export function base64UrlToUint8Array(base64UrlData) {
 export function registerPwaServiceWorker() {
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
     if (!getPwaRegistrationPromise()) {
+        // プロキシ配下のパス接頭辞を保つため、このモジュール (js/modules/pwa.js) からの
+        // 相対で sw.js と、その配信ディレクトリを scope に指定する。
+        const swUrl = new URL('../../sw.js', import.meta.url).href;
+        const swScope = new URL('../../', import.meta.url).href;
         const registrationPromise = navigator.serviceWorker
-            .register('/sw.js', { scope: '/' })
+            .register(swUrl, { scope: swScope })
             .catch((error) => {
                 console.warn('Service Worker registration failed:', error);
                 return null;
@@ -226,6 +232,18 @@ export async function handlePendingPushNotificationOpen() {
         }
     }
 
+    if (openType === 'dm_call') {
+        const dmId = String(openTarget || '').trim();
+        if (dmId) {
+            currentUrl.hash = `#dm/${encodeURIComponent(dmId)}`;
+            // 未ログイン時はハッシュ遷移だけでログインへ誘導し、通話参加はログイン後に任せる
+            if (getCurrentUser()) {
+                void openCall('dm', dmId, { requireActive: true }).catch(error => showAppAlert(error.message));
+            }
+        }
+        replaceCurrentLocation(currentUrl);
+        return false;
+    }
     if (openType === 'dm') {
         const dmId = String(openTarget || '').trim();
         if (dmId) currentUrl.hash = `#dm/${encodeURIComponent(dmId)}`;

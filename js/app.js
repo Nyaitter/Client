@@ -1,5 +1,5 @@
 /**
- * app.js — Application entry module (refactored).
+ * app.js — Application entry module.
  *
  * Responsibilities:
  *   1. Load server client limits (connectivity check).

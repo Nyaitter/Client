@@ -7,6 +7,7 @@ import {
 } from '../state.js';
 import { cacheUser, invalidateTimelinePageCache, invalidateDmCaches } from './cache.js';
 import { applyInterfaceTheme } from './theme.js';
+import { applyUserUiMode } from './uiMode.js';
 import { router } from '../router.js';
 import { subscribeToChanges, unsubscribeFromChanges } from './realtime.js';
 import {
@@ -65,6 +66,7 @@ export async function handleLogout(onLogoutComplete) {
         await apiRequest('/server/auth/logout', { method: 'POST' });
         setCurrentUser(null);
         applyInterfaceTheme();
+        applyUserUiMode(null);
         invalidateTimelinePageCache();
         invalidateDmCaches();
         if (typeof onLogoutComplete === 'function') {
@@ -527,6 +529,118 @@ export async function openLoginApprovalModal(approvalRequest) {
     modal.classList.remove('hidden');
 }
 
+function accountRecoveryStatusLabel(status) {
+    switch (status) {
+        case 'waiting': return '待機期間中';
+        case 'approved': return '承認済み';
+        case 'blocked': return 'ブロック済み';
+        case 'consumed': return '使用済み';
+        default: return '不明';
+    }
+}
+
+export async function openAccountRecoveryModal(recoveryRequest) {
+    const modal = document.getElementById('account-recovery-modal');
+    const body = document.getElementById('account-recovery-modal-body');
+    if (!modal || !body) return;
+
+    let requestData = recoveryRequest;
+    if (typeof recoveryRequest === 'string') {
+        const recoveryId = recoveryRequest.trim();
+        if (!recoveryId) return;
+        const { data, error } = await apiRequest(
+            `/server/auth/account-recovery/${encodeURIComponent(recoveryId)}`,
+        );
+        if (error || !data?.recovery) {
+            await showAppAlert(error?.message || '復旧依頼を取得できませんでした。');
+            return;
+        }
+        requestData = data.recovery;
+    }
+    if (!requestData?.id) {
+        await showAppAlert('復旧依頼が無効です。');
+        return;
+    }
+
+    const closeModal = () => {
+        modal.classList.add('hidden');
+        if (window.location.hash.startsWith('#account-recovery/')) {
+            window.history.replaceState(window.history.state, '', '#notifications');
+        }
+    };
+    modal.querySelector('.modal-close-btn').onclick = closeModal;
+    modal.onclick = (event) => {
+        if (event.target === modal) closeModal();
+    };
+
+    const providerName =
+        requestData.auth_provider_display_name ||
+        requestData.auth_provider ||
+        '不明なログイン方法';
+    const status = String(requestData.status || '');
+    const pending = status === 'waiting';
+    const isCurrentIp = requestData.is_your_current_ip === true;
+
+    body.innerHTML = `
+        <h3 id="account-recovery-modal-title">不明な場所から復旧依頼が来ている</h3>
+        <p class="settings-help-text">アカウントへのアクセスを復旧する依頼が、下記の場所から送信されています。</p>
+        <div class="login-approval-details">
+            <p><strong>IPアドレス:</strong> ${escapeHTML(requestData.ip_masked || '不明')}</p>
+            <p><strong>端末情報:</strong> ${escapeHTML(requestData.user_agent || '不明')}</p>
+            <p><strong>ログイン方法:</strong> ${escapeHTML(providerName)}</p>
+            <p><strong>依頼日時:</strong> ${new Date(requestData.started_at || Date.now()).toLocaleString()}</p>
+            ${pending ? `<p><strong>待機期間の終了:</strong> ${new Date(requestData.wait_until).toLocaleString()}</p>` : ''}
+        </div>
+        ${isCurrentIp ? '<p class="settings-help-text" style="color:#e5484d;"><strong>警告: この依頼元のIPは、いまあなたがこの画面を開いているIPと同一です。ブロックすると現在の端末が締め出されます。</strong></p>' : ''}
+        <p class="settings-help-text">これがあなたの送信したものなら<strong>[承認]</strong>を押すことで自動的に依頼元の場所が信頼されます。</p>
+        <p class="settings-help-text">もし送信した覚えがないのなら<strong>[ブロック]</strong>を押したのち、侵害された認証プロバイダ（Scratch、メールアドレスなど依頼送信元が使用した認証プロバイダ）側で措置を行ってください。</p>
+        <p class="settings-help-text">今回の依頼元が使用したログイン方法: <strong>${escapeHTML(providerName)}</strong></p>
+        <p class="settings-help-text">ブロックすると、依頼元のIPは恒久的にブロックされます。利用可能なログイン方法が2つ以上ある場合は、侵害されたプロバイダの連携も自動で解除されます。</p>
+        ${pending ? `
+        <div class="login-approval-actions">
+            <button type="button" class="login-secondary-button account-recovery-block-btn">ブロック</button>
+            <button type="button" class="settings-primary-button account-recovery-approve-btn">承認</button>
+        </div>` : `
+        <p class="settings-help-text">この復旧依頼はすでに処理されています（状態: ${escapeHTML(accountRecoveryStatusLabel(status))}）。</p>`}
+    `;
+
+    const decide = async (action) => {
+        if (action === 'block') {
+            const confirmed = await showAppConfirm(
+                isCurrentIp
+                    ? 'この依頼をブロックしますか？依頼元はあなたが現在使用中のIPと同一です。恒久的にブロックされると、この端末は別のネットワークに切り替えるまでログインできなくなります。心当たりがある場合は「承認」を選んでください。'
+                    : 'この依頼をブロックしますか？依頼元のIPは恒久的にブロックされます。心当たりがある場合は「承認」を選んでください。',
+            );
+            if (!confirmed) return;
+        }
+        showLoading(true);
+        try {
+            const { data, error } = await apiRequest(
+                `/server/auth/account-recovery/${encodeURIComponent(requestData.id)}/decision`,
+                { method: 'POST', body: { decision: action } },
+            );
+            if (error) throw error;
+            closeModal();
+            if (action === 'approve') {
+                await showAppAlert('復旧依頼を承認しました。依頼元の場所が信頼されました。');
+            } else if (data?.current_ip_blocked) {
+                await showAppAlert('復旧依頼をブロックしました。あなたが現在使用しているIPが恒久的にブロックされたため、この端末からログインするには別のネットワークへ切り替える必要があります。解除は 設定 → セッション の「ブロックしたIPアドレス」一覧から行えます。');
+            } else {
+                await showAppAlert('復旧依頼をブロックしました。必要に応じて認証プロバイダ側で措置を行ってください。');
+            }
+        } catch (error) {
+            console.error('復旧依頼の処理に失敗:', error);
+            await showAppAlert('処理に失敗しました。');
+        } finally {
+            showLoading(false);
+        }
+    };
+
+    body.querySelector('.account-recovery-block-btn')?.addEventListener('click', () => decide('block'));
+    body.querySelector('.account-recovery-approve-btn')?.addEventListener('click', () => decide('approve'));
+    modal.classList.remove('hidden');
+}
+
 export async function checkSession({
     route = true,
     onSessionReady = null,
@@ -543,6 +657,8 @@ export async function checkSession({
             setCurrentUser(null);
             DOM.loginBanner?.classList.remove('hidden');
             applyInterfaceTheme();
+            // 未ログイン時はユーザー設定を解除し、サーバー既定へフォールバックする。
+            applyUserUiMode(null);
             unsubscribeFromChanges();
             if (typeof onSessionReady === 'function') {
                 await onSessionReady(null);
@@ -555,6 +671,8 @@ export async function checkSession({
 
         setCurrentUser(userData);
         cacheUser(userData);
+        // セッション確定ユーザーの表示UI設定を反映する（テーマ反映と対称）。
+        applyUserUiMode(userData.settings?.ui_mode ?? null);
 
         if (userData.freeze) {
             if (DOM.freezeReason) {
@@ -585,6 +703,8 @@ export async function checkSession({
         setCurrentUser(null);
         DOM.loginBanner?.classList.remove('hidden');
         applyInterfaceTheme();
+        // セッション確認に失敗した場合は未ログイン扱いにし、サーバー既定へ戻す。
+        applyUserUiMode(null);
         if (typeof onSessionReady === 'function') {
             await onSessionReady(null);
         }

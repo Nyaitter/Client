@@ -20,9 +20,9 @@ export function renderLoading(content) {
 export function renderRules(content, renderedHtml, updatedAt) {
     if (!content) return;
     content.innerHTML = `
-        <div class="rule-container">
-            <div class="rule-markdown-body">${renderedHtml}</div>
-            ${updatedAt ? `<div class="rule-footer-meta"><small>最終更新日: ${escapeHTML(updatedAt)}</small></div>` : ''}
+        <div class="rule-container nui-page" data-nui="page">
+            <article class="nui-card rule-markdown-body" data-nui="card">${renderedHtml}</article>
+            ${updatedAt ? `<div class="rule-footer-meta nui-help-text"><small>最終更新日: ${escapeHTML(updatedAt)}</small></div>` : ''}
         </div>
     `;
 }
@@ -30,8 +30,8 @@ export function renderRules(content, renderedHtml, updatedAt) {
 export function renderError(content) {
     if (!content) return;
     content.innerHTML = `
-        <div class="rule-container">
-            <p class="error-message">ルールの取得に失敗しました。</p>
+        <div class="rule-container nui-page" data-nui="page">
+            <p class="error-message nui-empty-text">ルールの取得に失敗しました。</p>
         </div>
     `;
 }

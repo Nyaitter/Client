@@ -6,7 +6,7 @@ export function renderAppShellHTML() {
     return `
         <div class="app-container">
             <!-- 左側ナビゲーションメニュー -->
-            <nav id="left-nav">
+            <nav id="left-nav" class="nui-nav" data-nui="nav">
                 <div id="nav-logo"></div>
                 <div id="nav-menu-top"></div>
                 <div id="nav-menu-bottom"></div>
@@ -54,6 +54,7 @@ export function renderAppShellHTML() {
                         <div id="profile-tabs"></div>
                         <div id="profile-content"></div>
                     </div>
+                    <div id="stages-screen" class="screen hidden"><div id="stages-content"></div></div>
                     <div id="groups-screen" class="screen hidden">
                         <div id="groups-content"></div>
                     </div>
@@ -114,7 +115,7 @@ export function renderAppShellHTML() {
         </div>
 
         <!-- ログインモーダル -->
-        <div id="login-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="login-title">
+        <div id="login-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="login-title" tabindex="-1">
             <div class="modal-content login-modal-content">
                 <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
                 <div class="login-modal-heading">
@@ -205,6 +206,11 @@ export function renderAppShellHTML() {
                 <p class="settings-help-text">ログイン済みの端末に許可リクエストを送信しました。そちらで許可されると、自動的にログインします。</p>
                 <div class="login-approval-wait-progress" aria-hidden="true"><div class="spinner"></div><span>確認中</span></div>
                 <p id="login-approval-wait-status" class="login-approval-detail login-approval-wait-status" role="status">許可を待機しています</p>
+                <div id="login-approval-recovery-section" class="login-approval-recovery hidden">
+                    <p class="settings-help-text">ログイン済みの端末がない場合は、アカウントアクセスの復旧を開始できます。復旧依頼をブロックしないまま、信頼度に応じた待機期間が過ぎると、この場所は自動的に信頼されログインできます。</p>
+                    <button type="button" id="account-recovery-start-btn" class="login-secondary-button">アカウントアクセスの復旧を開始</button>
+                </div>
+                <p id="account-recovery-wait-status" class="login-approval-detail login-approval-wait-status hidden" role="status"></p>
                 <div class="login-approval-actions login-approval-wait-actions">
                     <button type="button" id="login-approval-wait-cancel-btn" class="login-secondary-button">ログインをキャンセル</button>
                 </div>
@@ -282,6 +288,13 @@ export function renderAppShellHTML() {
             <div class="modal-content login-approval-modal-content">
                 <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
                 <div id="login-approval-modal-body"></div>
+            </div>
+        </div>
+
+        <div id="account-recovery-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="account-recovery-modal-title">
+            <div class="modal-content login-approval-modal-content account-recovery-modal-content">
+                <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+                <div id="account-recovery-modal-body"></div>
             </div>
         </div>
 

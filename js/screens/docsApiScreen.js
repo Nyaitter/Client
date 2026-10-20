@@ -9,11 +9,14 @@ let activeTag = 'all';
 let currentSearchQuery = '';
 
 function renderAuthBadge(badge) {
-    if (!badge) return '<span class="docs-api-auth-tag">認証不要</span>';
+    if (!badge) return '<span class="docs-api-auth-tag nui-badge">認証不要</span>';
     const typeClass = badge.type === 'required' ? 'docs-api-auth-required'
         : badge.type === 'admin' ? 'docs-api-auth-admin'
         : '';
-    return `<span class="docs-api-auth-tag ${typeClass}">${escapeHTML(badge.label || '認証不要')}</span>`;
+    const nuiTone = badge.type === 'required' ? ' nui-badge-danger'
+        : badge.type === 'admin' ? ' nui-badge-accent'
+        : '';
+    return `<span class="docs-api-auth-tag nui-badge${nuiTone} ${typeClass}">${escapeHTML(badge.label || '認証不要')}</span>`;
 }
 
 function renderEndpointsList(endpoints) {
@@ -41,7 +44,7 @@ function renderEndpointsList(endpoints) {
 
     if (filtered.length === 0) {
         listContainer.innerHTML = `
-            <div class="docs-empty">
+            <div class="docs-empty nui-empty-text">
                 <p>該当する API エンドポイントが見つかりませんでした。</p>
             </div>
         `;
@@ -55,10 +58,10 @@ function renderEndpointsList(endpoints) {
         const tagLabel = ep.tagLabel || cachedTagLabels[ep.tag] || ep.tag;
 
         return `
-            <article class="docs-api-item" data-index="${idx}">
+            <article class="docs-api-item nui-list-item" data-index="${idx}" data-nui="list-item">
                 <div class="docs-api-item-header" role="button" tabindex="0" aria-expanded="false">
                     <div class="docs-api-item-left">
-                        <span class="docs-api-method-badge docs-api-method-${methodUpper}">${methodUpper}</span>
+                        <span class="docs-api-method-badge docs-api-method-${methodUpper} nui-badge">${methodUpper}</span>
                         <span class="docs-api-path">${escapeHTML(ep.fullPath)}</span>
                         ${ep.summary ? `<span class="docs-api-summary" title="${escapeHTML(ep.summary)}">${escapeHTML(ep.summary)}</span>` : ''}
                     </div>
@@ -69,21 +72,21 @@ function renderEndpointsList(endpoints) {
                 </div>
                 <div class="docs-api-item-body">
                     ${ep.description ? `<p style="margin:0 0 0.75rem; color:var(--text-color);">${escapeHTML(ep.description)}</p>` : ''}
-                    <div class="docs-api-section-title">カテゴリー</div>
+                    <div class="docs-api-section-title nui-section-title">カテゴリー</div>
                     <p style="margin:0 0 0.5rem; font-weight:600;">${escapeHTML(tagLabel)} (<code>${escapeHTML(ep.tag)}</code>)</p>
 
                     ${sdkSnippet ? `
-                        <div class="docs-api-section-title">Nyaitter.js SDK コード例</div>
+                        <div class="docs-api-section-title nui-section-title">Nyaitter.js SDK コード例</div>
                         <div class="docs-api-code-block">
-                            <button type="button" class="docs-api-copy-btn" data-copy="${escapeHTML(sdkSnippet)}">コピー</button>
+                            <button type="button" class="docs-api-copy-btn nui-button-secondary" data-copy="${escapeHTML(sdkSnippet)}">コピー</button>
                             <pre><code>${escapeHTML(sdkSnippet)}</code></pre>
                         </div>
                     ` : ''}
 
                     ${curlSnippet ? `
-                        <div class="docs-api-section-title">cURL リクエスト例</div>
+                        <div class="docs-api-section-title nui-section-title">cURL リクエスト例</div>
                         <div class="docs-api-code-block">
-                            <button type="button" class="docs-api-copy-btn" data-copy="${escapeHTML(curlSnippet)}">コピー</button>
+                            <button type="button" class="docs-api-copy-btn nui-button-secondary" data-copy="${escapeHTML(curlSnippet)}">コピー</button>
                             <pre><code>${escapeHTML(curlSnippet)}</code></pre>
                         </div>
                     ` : ''}
@@ -174,7 +177,7 @@ export async function showDocsApiScreen(showScreenFn) {
                 </div>
             </div>
 
-            <div class="docs-api-list" id="docs-api-endpoints-list"></div>
+            <div class="docs-api-list nui-list" id="docs-api-endpoints-list" data-nui="list"></div>
         `;
 
         const searchInput = document.getElementById('docs-api-search-input');
@@ -198,7 +201,7 @@ export async function showDocsApiScreen(showScreenFn) {
     } catch (err) {
         console.error('[docs] Failed to load API spec:', err);
         contentDiv.innerHTML = `
-            <div class="docs-empty">
+            <div class="docs-empty nui-empty-text">
                 <p class="error-message">API 仕様の読み込みに失敗しました。</p>
             </div>
         `;

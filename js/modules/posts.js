@@ -3,6 +3,7 @@ import { ICONS, decorateMenuButtons } from '../icons.js';
 import { api, apiRequest } from '../api.js';
 import {
     getCurrentUser,
+    getCurrentTimelineTab,
     getSelectedFiles,
     setSelectedFiles,
     getReplyingTo,
@@ -48,14 +49,12 @@ import {
     showLoading,
     showAppAlert,
     showAppConfirm,
+    showToast,
     copyTextToClipboard,
     renderGroupBadgesElement,
     getGroupIconUrl,
 } from '../utils/helpers.js';
-import {
-    clampElementToViewport,
-    positionElementRelativeToAnchor,
-} from '../utils/viewport.js';
+import { positionElementRelativeToAnchor } from '../utils/viewport.js';
 
 export const METRICS_FALLBACK = '?';
 
@@ -163,7 +162,8 @@ export function isPostReactionActive(post, serverField, accountField) {
 
 export function renderUnknownPostReference(post) {
     const postEl = document.createElement('div');
-    postEl.className = 'post unknown-post';
+    postEl.className = 'post unknown-post nui-card';
+    postEl.dataset.nui = 'card';
     if (Number.isInteger(Number(post?.id))) {
         postEl.dataset.postId = String(post.id);
     }
@@ -181,7 +181,7 @@ export function renderUnknownPostReference(post) {
     postHeader.append(authorName, account);
 
     const message = document.createElement('div');
-    message.className = 'deleted-post-container';
+    message.className = 'deleted-post-container nui-help-text';
     message.textContent = '不明なポストです。';
     postMain.append(postHeader, message);
     postEl.appendChild(postMain);
@@ -204,6 +204,7 @@ export async function renderPost(post, author, options = {}) {
         quoteDepth = 0,
         onReportClick,
         hideGroupIndicator = false,
+        forceDetailedDate = false,
     } = options;
 
     const baseAuthor = author || post.author || post.user;
@@ -218,19 +219,20 @@ export async function renderPost(post, author, options = {}) {
 
         if (!originalPost) {
             const deletedPostWrapper = document.createElement('div');
-            deletedPostWrapper.className = 'post';
+            deletedPostWrapper.className = 'post nui-card';
+            deletedPostWrapper.dataset.nui = 'card';
             deletedPostWrapper.dataset.postId = post.id;
 
             const deletedPostMain = document.createElement('div');
             deletedPostMain.className = 'post-main';
 
             const repostIndicator = document.createElement('div');
-            repostIndicator.className = 'repost-indicator';
+            repostIndicator.className = 'repost-indicator nui-help-text';
             repostIndicator.innerHTML = `${ICONS.repost} <a href="#profile/${authorOfRepost.id}">${getEmoji(escapeHTML(authorOfRepost.name))}</a><span> さんがリポストしました</span>`;
             deletedPostMain.appendChild(repostIndicator);
 
             const deletedContainer = document.createElement('div');
-            deletedContainer.className = 'deleted-post-container';
+            deletedContainer.className = 'deleted-post-container nui-help-text';
             deletedContainer.textContent = 'このポストは削除されました。';
             deletedPostMain.appendChild(deletedContainer);
 
@@ -251,7 +253,7 @@ export async function renderPost(post, author, options = {}) {
         const repostedPostMain = postEl.querySelector('.post-main');
         if (repostedPostMain) {
             const repostIndicator = document.createElement('div');
-            repostIndicator.className = 'repost-indicator';
+            repostIndicator.className = 'repost-indicator nui-help-text';
             repostIndicator.innerHTML = `${ICONS.repost} <a href="#profile/${authorOfRepost.id}">${getEmoji(escapeHTML(authorOfRepost.name))}</a><span> さんがリポストしました</span>`;
             repostedPostMain.prepend(repostIndicator);
 
@@ -300,7 +302,8 @@ export async function renderPost(post, author, options = {}) {
     if (!author && !post.author) return null;
 
     const postEl = document.createElement('div');
-    postEl.className = 'post';
+    postEl.className = 'post nui-card';
+    postEl.dataset.nui = 'card';
     postEl.dataset.postId = post.id;
     postEl.dataset.actionTargetId = post.id;
     postEl._nyaitterPost = post;
@@ -311,7 +314,7 @@ export async function renderPost(post, author, options = {}) {
     userIconLink.className = 'user-icon-link';
     const userIcon = document.createElement('img');
     userIcon.src = getUserIconUrl(displayAuthor);
-    userIcon.className = 'user-icon';
+    userIcon.className = 'user-icon nui-avatar';
     userIcon.alt = `${displayAuthor.name}'s icon`;
     userIconLink.appendChild(userIcon);
     postEl.appendChild(userIconLink);
@@ -321,23 +324,23 @@ export async function renderPost(post, author, options = {}) {
 
     if (isPinned) {
         const pinnedDiv = document.createElement('div');
-        pinnedDiv.className = 'pinned-indicator';
+        pinnedDiv.className = 'pinned-indicator nui-help-text';
         pinnedDiv.innerHTML = `${ICONS.pin} <span>ピン留めされたポスト</span>`;
         postMain.appendChild(pinnedDiv);
     } else if (!isDirectReply) {
         if (post.reply_to_post && post.reply_to_post.author) {
             const replyDiv = document.createElement('div');
-            replyDiv.className = 'replying-to';
+            replyDiv.className = 'replying-to nui-help-text';
             replyDiv.innerHTML = `<a href="#profile/${post.reply_to_post.author.id}">@${getEmoji(escapeHTML(post.reply_to_post.author.name))}</a><span> さんに返信</span>`;
             postMain.appendChild(replyDiv);
         } else if (post.reply_to_user_id && post.reply_to_user_name) {
             const replyDiv = document.createElement('div');
-            replyDiv.className = 'replying-to';
+            replyDiv.className = 'replying-to nui-help-text';
             replyDiv.innerHTML = `<a href="#profile/${post.reply_to_user_id}">@${getEmoji(escapeHTML(post.reply_to_user_name))}</a><span> さんに返信</span>`;
             postMain.appendChild(replyDiv);
         } else if (post.reply_to_post?.unknown) {
             const replyDiv = document.createElement('div');
-            replyDiv.className = 'replying-to';
+            replyDiv.className = 'replying-to nui-help-text';
             replyDiv.innerHTML = `<span>不明なポストに返信</span>`;
             postMain.appendChild(replyDiv);
         }
@@ -374,8 +377,8 @@ export async function renderPost(post, author, options = {}) {
     }
 
     const postTime = document.createElement('span');
-    postTime.className = 'post-time';
-    postTime.textContent = `${getNyaitterId(displayAuthor)} · ${formatPostTimestamp(post)}`;
+    postTime.className = 'post-time nui-list-meta';
+    postTime.textContent = `${getNyaitterId(displayAuthor)} · ${formatPostTimestamp(post, forceDetailedDate ? 'absolute_24' : undefined)}`;
     postHeader.appendChild(postTime);
 
     if (!hideGroupIndicator && (post.groupId || post.group_id)) {
@@ -589,7 +592,7 @@ export async function renderPost(post, author, options = {}) {
 
     if (post.mask) {
         const postAlert = document.createElement('button');
-        postAlert.className = 'post-mask-alert';
+        postAlert.className = 'post-mask-alert nui-button-secondary';
         postAlert.innerText = 'このポストにはワンクッションが付与されています';
         postBody.appendChild(postAlert);
     }
@@ -691,7 +694,7 @@ export async function renderPost(post, author, options = {}) {
             }
         } else {
             const deletedContainer = document.createElement('div');
-            deletedContainer.className = 'deleted-post-container';
+            deletedContainer.className = 'deleted-post-container nui-help-text';
             deletedContainer.textContent = 'このポストは削除されました。';
             nestedContainer.appendChild(deletedContainer);
         }
@@ -702,12 +705,12 @@ export async function renderPost(post, author, options = {}) {
 
     if (getCurrentUser() && !isNested) {
         const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'post-actions';
+        actionsDiv.className = 'post-actions nui-actions';
         const actionTargetPost = isSimpleRepost && post.reposted_post ? post.reposted_post : post;
 
         if (actionTargetPost) {
             const replyBtn = document.createElement('button');
-            replyBtn.className = 'reply-button';
+            replyBtn.className = 'reply-button nui-button-secondary';
             const replyAuthor = actionTargetPost.author
                 || actionTargetPost.user
                 || displayAuthor;
@@ -743,17 +746,17 @@ export async function renderPost(post, author, options = {}) {
             actionsDiv.appendChild(replyBtn);
 
             const likeBtn = document.createElement('button');
-            likeBtn.className = `like-button ${isPostReactionActive(actionTargetPost, 'liked_by_me', 'like') ? 'liked' : ''}`;
+            likeBtn.className = `like-button nui-button-secondary ${isPostReactionActive(actionTargetPost, 'liked_by_me', 'like') ? 'liked' : ''}`;
             likeBtn.innerHTML = `${ICONS.likes} <span>---</span>`;
             actionsDiv.appendChild(likeBtn);
 
             const starBtn = document.createElement('button');
-            starBtn.className = `star-button ${isPostReactionActive(actionTargetPost, 'starred_by_me', 'star') ? 'starred' : ''}`;
+            starBtn.className = `star-button nui-button-secondary ${isPostReactionActive(actionTargetPost, 'starred_by_me', 'star') ? 'starred' : ''}`;
             starBtn.innerHTML = `${ICONS.stars} <span>---</span>`;
             actionsDiv.appendChild(starBtn);
 
             const repostBtn = document.createElement('button');
-            repostBtn.className = 'repost-button';
+            repostBtn.className = 'repost-button nui-button-secondary';
             repostBtn.innerHTML = `${ICONS.repost} <span>---</span>`;
             repostBtn._nyaitterPost = actionTargetPost;
             actionsDiv.appendChild(repostBtn);
@@ -966,7 +969,7 @@ export function createPostFormHTML(isModal = false) {
     return `
         <div class="post-form">
             <button type="button" class="post-account-selector" title="投稿アカウント: ${escapeHTML(currentUser?.name || '不明なユーザー')}" aria-label="投稿アカウント: ${escapeHTML(currentUser?.name || '不明なユーザー')}" aria-haspopup="menu" aria-expanded="false">
-                <img src="${getUserIconUrl(currentUser)}" class="user-icon" alt="${escapeHTML(currentUser?.name || 'アカウント')}のアイコン">
+                <img src="${getUserIconUrl(currentUser)}" class="user-icon nui-avatar" alt="${escapeHTML(currentUser?.name || 'アカウント')}のアイコン">
             </button>
             <div class="post-account-menu hidden" role="menu"></div>
             ${isModal ? '<button class="modal-close-btn">×</button>' : ''}
@@ -998,7 +1001,7 @@ export function createPostFormHTML(isModal = false) {
                         <button type="button" class="post-tool-btn post-group-button" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
                     </div>
                     <div class="post-form-submit-row">
-                        <button id="post-submit-button">ポスト</button>
+                        <button id="post-submit-button" class="nui-button" data-nui="button">ポスト</button>
                     </div>
                     <input type="file" id="file-input" class="hidden" multiple>
                     <div id="emoji-picker" class="hidden"></div>
@@ -1593,7 +1596,8 @@ export function renderPostPoll(parentContainer, poll, post = null) {
     let pollContainer = parentContainer.querySelector(`.post-poll-container[data-poll-id="${poll.id}"]`);
     if (!pollContainer) {
         pollContainer = document.createElement('div');
-        pollContainer.className = 'post-poll-container';
+        pollContainer.className = 'post-poll-container nui-card';
+        pollContainer.dataset.nui = 'card';
         pollContainer.dataset.pollId = String(poll.id);
         pollContainer.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1644,8 +1648,8 @@ export function renderPostPoll(parentContainer, poll, post = null) {
 
         html += `
             <div class="post-poll-actions">
-                <button type="submit" class="post-poll-vote-btn" disabled>投票する</button>
-                ${showResultsBeforeVoting ? '<button type="button" class="post-poll-view-results-btn">結果を見る</button>' : ''}
+                <button type="submit" class="post-poll-vote-btn nui-button" data-nui="button" disabled>投票する</button>
+                ${showResultsBeforeVoting ? '<button type="button" class="post-poll-view-results-btn nui-button-secondary" data-nui="button-secondary">結果を見る</button>' : ''}
             </div>
         </form>`;
     } else {
@@ -1718,7 +1722,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
     html += `
         <div class="post-poll-footer">
             <span>${totalVoters}人が投票 (${totalVotes}票) ${expiryText}</span>
-            ${showResults && !isExpired && !hasVoted && currentUser && isViewingResults ? '<button type="button" class="post-poll-back-to-vote-btn">投票する</button>' : ''}
+            ${showResults && !isExpired && !hasVoted && currentUser && isViewingResults ? '<button type="button" class="post-poll-back-to-vote-btn nui-button-secondary" data-nui="button-secondary">投票する</button>' : ''}
         </div>
     `;
 
@@ -1817,7 +1821,7 @@ export function renderPollAttachmentPreview(container) {
 
     if (!pollPreview) {
         pollPreview = document.createElement('div');
-        pollPreview.className = 'poll-attachment-preview';
+        pollPreview.className = 'poll-attachment-preview nui-card';
         previewContainer.appendChild(pollPreview);
     }
 
@@ -1865,7 +1869,7 @@ export function openCreatePollModal(container) {
 
     const modal = document.createElement('div');
     modal.id = 'create-poll-modal';
-    modal.className = 'modal-overlay';
+    modal.className = 'modal-overlay nui-modal-backdrop';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
 
@@ -1879,9 +1883,9 @@ export function openCreatePollModal(container) {
     const initialShowResults = initialPoll?.show_results_before_voting ?? true;
 
     modal.innerHTML = `
-        <div class="poll-modal-content">
+        <div class="poll-modal-content nui-modal">
             <button type="button" class="modal-close-btn" id="poll-modal-close-btn">×</button>
-            <div class="poll-modal-title">投票を作成</div>
+            <div class="poll-modal-title nui-modal-title">投票を作成</div>
             
             <div class="poll-field-group">
                 <label class="poll-field-label" for="poll-title-input">質問 / タイトル</label>
@@ -1936,8 +1940,8 @@ export function openCreatePollModal(container) {
             </div>
 
             <div class="poll-modal-actions">
-                <button type="button" class="poll-btn-cancel" id="poll-btn-cancel">キャンセル</button>
-                <button type="button" class="poll-btn-submit" id="poll-btn-submit">投票を追加</button>
+                <button type="button" class="poll-btn-cancel nui-button-secondary" data-nui="button-secondary" id="poll-btn-cancel">キャンセル</button>
+                <button type="button" class="poll-btn-submit nui-button" data-nui="button" id="poll-btn-submit">投票を追加</button>
             </div>
         </div>
     `;
@@ -2425,12 +2429,12 @@ function renderQuotingPostPreview(container, quotingPost) {
         || getCachedUser(quotingPost.userid)
         || { name: '不明なユーザー' };
     const nestedPost = document.createElement('div');
-    nestedPost.className = 'nested-repost-container quoting-post-preview';
+    nestedPost.className = 'nested-repost-container quoting-post-preview nui-card';
 
     const header = document.createElement('div');
     header.className = 'post-header';
     const icon = document.createElement('img');
-    icon.className = 'user-icon';
+    icon.className = 'user-icon nui-avatar';
     icon.src = getUserIconUrl(author);
     icon.alt = `${author.name || '不明なユーザー'}のアイコン`;
     header.appendChild(icon);
@@ -2684,7 +2688,7 @@ export async function openEditPostModal(postId, onSaved = null) {
 
         DOM.editPostModalContent.innerHTML = `
             <div class="post-form" style="padding: 1rem;">
-                <img src="${getUserIconUrl(getCurrentUser())}" class="user-icon" alt="your icon">
+                <img src="${getUserIconUrl(getCurrentUser())}" class="user-icon nui-avatar" alt="your icon">
                 <button class="modal-close-btn">×</button>
                 <div class="form-content">
                     <div class="markdown-textarea-editor post-form-textarea"><textarea id="edit-post-textarea" class="markdown-content-editor" rows="5" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length">${escapeHTML(String(post.content || ''))}</textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
@@ -2698,7 +2702,7 @@ export async function openEditPostModal(postId, onSaved = null) {
                             ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
                         </div>
                         <div class="post-form-submit-row">
-                            <button id="update-post-button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700;">保存</button>
+                            <button id="update-post-button" class="nui-button" data-nui="button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700;">保存</button>
                         </div>
                         <input type="file" id="edit-file-input" class="hidden" multiple>
                         <div id="emoji-picker" class="hidden"></div>
@@ -3146,12 +3150,21 @@ export async function handleDislikePost(postId, menu = null) {
     if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
     menu?.classList.remove('is-visible');
     try {
-        const { data, error } = await apiRequest(`/server/api/posts/${encodeURIComponent(String(postId))}/dislike`, {
+        const { error } = await apiRequest(`/server/api/posts/${encodeURIComponent(String(postId))}/dislike`, {
             method: 'POST',
         });
         if (error) throw error;
+        // おすすめタブではサーバーが候補から完全除外するのでその場で消す。
+        // 時系列タブ（フォロー・すべて・グループ等）は再読込で戻るのでカードを残し、文面も切り分ける。
+        if (getCurrentTimelineTab() === 'foryou') {
+            removePostFromTimeline(postId);
+            showToast('このポストを表示しないようにしました。');
+        } else {
+            showToast('関連性が低いと評価しました。おすすめでの表示を減らします。');
+        }
     } catch (e) {
         console.error('Dislike error:', e);
+        showToast('評価の送信に失敗しました。');
     }
 }
 
@@ -3226,15 +3239,15 @@ export function openReplyControlModal(post, onUpdated = null) {
     const currentControl = post.reply_control || post.replyControl || 'everyone';
     const modal = document.createElement('div');
     modal.id = 'reply-control-modal';
-    modal.className = 'modal-overlay';
+    modal.className = 'modal-overlay nui-modal-backdrop';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 440px; padding: 1.25rem;">
+        <div class="modal-content nui-modal" style="max-width: 440px; padding: 1.25rem;">
             <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
             <div style="margin-bottom: 1rem;">
                 <h3 style="margin: 0 0 0.4rem 0; font-size: 1.15rem;">返信可能なユーザーの変更</h3>
-                <p style="margin: 0; font-size: 0.85rem; color: var(--secondary-text-color);">
+                <p class="nui-help-text" style="margin: 0; font-size: 0.85rem; color: var(--secondary-text-color);">
                     このポストに返信できるユーザーを選択してください。条件を満たさなくなった既存の返信は自動的に削除されます。
                 </p>
             </div>
@@ -3297,228 +3310,5 @@ export function openReplyControlModal(post, onUpdated = null) {
     });
 }
 
-export async function openPostActivityModal(postId) {
-    if (!postId) return;
-
-    let existingModal = document.getElementById('post-activity-modal');
-    if (existingModal) existingModal.remove();
-
-    const modal = document.createElement('div');
-    modal.className = 'modal post-activity-modal';
-    modal.id = 'post-activity-modal';
-
-    const modalContent = document.createElement('div');
-    modalContent.className = 'modal-content post-activity-modal-content';
-
-    modalContent.innerHTML = `
-        <div class="post-activity-header">
-            <h3 class="post-activity-title">ポストアクティビティ</h3>
-            <button type="button" class="modal-close-btn" id="post-activity-close-btn" aria-label="閉じる">×</button>
-        </div>
-        <div class="post-activity-tabs" id="post-activity-tabs">
-            <button type="button" class="post-activity-tab is-active" data-tab="quotes">引用</button>
-            <button type="button" class="post-activity-tab" data-tab="reposts">リポスト</button>
-        </div>
-        <div class="post-activity-body" id="post-activity-body">
-            <div class="post-activity-loading">
-                <div class="loading-spinner"></div>
-                <p>アクティビティを読み込み中</p>
-            </div>
-        </div>
-    `;
-
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
-
-    const closeModal = () => {
-        modal.remove();
-        document.removeEventListener('keydown', handleKeyDown);
-    };
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'Escape') closeModal();
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    modal.querySelector('#post-activity-close-btn').addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-
-    const tabsContainer = modal.querySelector('#post-activity-tabs');
-    const bodyContainer = modal.querySelector('#post-activity-body');
-
-    try {
-        const { data, error } = await apiRequest(`/server/api/posts/${postId}/activity`);
-        if (error || !data) {
-            bodyContainer.innerHTML = `<div class="post-activity-empty"><p>${escapeHTML(error || 'アクティビティの取得に失敗しました')}</p></div>`;
-            return;
-        }
-
-        const isAuthor = Boolean(data.is_author);
-        const quotes = Array.isArray(data.quotes) ? data.quotes : [];
-        const reposts = Array.isArray(data.reposts) ? data.reposts : [];
-        const likes = Array.isArray(data.likes) ? data.likes : [];
-        const stars = Array.isArray(data.stars) ? data.stars : [];
-
-        // タブバーを再生成
-        let tabsHtml = `
-            <button type="button" class="post-activity-tab is-active" data-tab="quotes">引用 <span class="tab-count">${quotes.length}</span></button>
-            <button type="button" class="post-activity-tab" data-tab="reposts">リポスト <span class="tab-count">${reposts.length}</span></button>
-        `;
-
-        if (isAuthor) {
-            tabsHtml += `
-                <button type="button" class="post-activity-tab" data-tab="likes">いいね <span class="tab-count">${likes.length}</span></button>
-                <button type="button" class="post-activity-tab" data-tab="stars">お気に入り <span class="tab-count">${stars.length}</span></button>
-            `;
-        }
-
-        tabsContainer.innerHTML = tabsHtml;
-
-        // タブ切り替えとコンテンツ描画関数
-        let currentActiveTab = 'quotes';
-
-        if (quotes.length === 0 && reposts.length > 0) {
-            currentActiveTab = 'reposts';
-        } else if (quotes.length === 0 && reposts.length === 0 && isAuthor && likes.length > 0) {
-            currentActiveTab = 'likes';
-        } else if (quotes.length === 0 && reposts.length === 0 && isAuthor && stars.length > 0) {
-            currentActiveTab = 'stars';
-        }
-
-        const renderActiveTabContent = (tabName) => {
-            tabsContainer.querySelectorAll('.post-activity-tab').forEach((t) => {
-                t.classList.toggle('is-active', t.dataset.tab === tabName);
-            });
-
-            bodyContainer.innerHTML = '';
-
-            if (tabName === 'quotes') {
-                if (quotes.length === 0) {
-                    bodyContainer.innerHTML = '<div class="post-activity-empty"><p>引用ポストはまだありません</p></div>';
-                    return;
-                }
-                const list = document.createElement('div');
-                list.className = 'post-activity-quotes-list';
-                for (const q of quotes) {
-                    const el = renderPostElement(q);
-                    if (el) list.appendChild(el);
-                }
-                bodyContainer.appendChild(list);
-            } else {
-                let userList = [];
-                let emptyText = '';
-                if (tabName === 'reposts') {
-                    userList = reposts;
-                    emptyText = 'リポストしたユーザーはいません';
-                } else if (tabName === 'likes') {
-                    userList = likes;
-                    emptyText = 'いいねしたユーザーはいません';
-                } else if (tabName === 'stars') {
-                    userList = stars;
-                    emptyText = 'お気に入り登録したユーザーはいません';
-                }
-
-                if (userList.length === 0) {
-                    bodyContainer.innerHTML = `<div class="post-activity-empty"><p>${emptyText}</p></div>`;
-                    return;
-                }
-
-                const list = document.createElement('div');
-                list.className = 'post-activity-users-list';
-
-                for (const u of userList) {
-                    const item = document.createElement('div');
-                    item.className = 'post-activity-user-item';
-
-                    const avatarLink = document.createElement('a');
-                    avatarLink.href = `#profile/${u.id || u.user_id}`;
-                    avatarLink.className = 'user-icon-link';
-                    avatarLink.onclick = () => closeModal();
-
-                    const img = document.createElement('img');
-                    img.src = u.icon_url || '/emoji/neko.svg';
-                    img.className = 'user-icon';
-                    img.alt = `${u.name || 'User'}'s icon`;
-                    img.onerror = () => { img.src = '/emoji/neko.svg'; };
-                    avatarLink.appendChild(img);
-
-                    const info = document.createElement('div');
-                    info.className = 'post-activity-user-info';
-
-                    const nameRow = document.createElement('div');
-                    nameRow.className = 'post-activity-user-name-row';
-
-                    const nameLink = document.createElement('a');
-                    nameLink.href = `#profile/${u.id || u.user_id}`;
-                    nameLink.className = 'post-author-name';
-                    nameLink.innerHTML = getEmoji(escapeHTML(u.name || '不明'));
-                    nameLink.onclick = () => closeModal();
-                    nameRow.appendChild(nameLink);
-
-                    if (u.admin) {
-                        const adminBadge = document.createElement('img');
-                        adminBadge.src = 'icons/admin.png';
-                        adminBadge.className = 'admin-badge';
-                        adminBadge.title = 'NyaitterTeam';
-                        nameRow.appendChild(adminBadge);
-                    } else if (u.verify) {
-                        const verifyBadge = document.createElement('img');
-                        verifyBadge.src = 'icons/verify.png';
-                        verifyBadge.className = 'verify-badge';
-                        verifyBadge.title = '認証済み';
-                        nameRow.appendChild(verifyBadge);
-                    }
-
-                    info.appendChild(nameRow);
-
-                    const handle = document.createElement('div');
-                    handle.className = 'post-activity-user-handle';
-                    handle.textContent = getNyaitterId(u);
-                    info.appendChild(handle);
-
-                    if (u.bio) {
-                        const bio = document.createElement('div');
-                        bio.className = 'post-activity-user-bio';
-                        bio.innerHTML = getEmoji(escapeHTML(u.bio));
-                        info.appendChild(bio);
-                    }
-
-                    item.appendChild(avatarLink);
-                    item.appendChild(info);
-                    list.appendChild(item);
-                }
-
-                bodyContainer.appendChild(list);
-            }
-        };
-
-        tabsContainer.addEventListener('click', (e) => {
-            const tabBtn = e.target.closest('.post-activity-tab');
-            if (tabBtn && tabBtn.dataset.tab) {
-                renderActiveTabContent(tabBtn.dataset.tab);
-            }
-        });
-
-        renderActiveTabContent(currentActiveTab);
-    } catch (err) {
-        console.error(err);
-        bodyContainer.innerHTML = '<div class="post-activity-empty"><p>アクティビティの取得に失敗しました</p></div>';
-    }
-}
-
-// Bind to window for backwards compatibility if needed
-window.copyPost = copyPost;
-window.pinPost = pinPost;
-window.deletePost = deletePost;
-window.handleReplyClick = handleReplyClick;
-window.handleLike = handleLike;
-window.handleStar = handleStar;
-window.handleShowMaskedPost = handleShowMaskedPost;
+// サイドバー/プロフィールが動的ハンドラから window 経由で参照する。
 window.handleFollowToggle = handleFollowToggle;
-window.handleDislikePost = handleDislikePost;
-window.handleFollowMenuToggle = handleFollowMenuToggle;
-window.handleBlockMenuToggle = handleBlockMenuToggle;
-window.openReplyControlModal = openReplyControlModal;
-window.openPostActivityModal = openPostActivityModal;

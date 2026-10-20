@@ -5,13 +5,13 @@ export function renderHeader() {
     DOM.pageHeader.innerHTML = `
         <div class="header-with-action-button">
             <h2 id="page-title">通知</h2>
-            <button id="mark-all-read-btn" class="header-action-btn">すべて既読</button>
+            <button id="mark-all-read-btn" class="header-action-btn nui-button-secondary" data-nui="button-secondary">すべて既読</button>
         </div>`;
 }
 
 export function renderLoggedOut() {
     if (DOM.notificationsContent) {
-        DOM.notificationsContent.innerHTML = '<p class="notifications-empty-message">通知を見るにはログインが必要です。</p>';
+        DOM.notificationsContent.innerHTML = '<p class="notifications-empty-message nui-empty-text">通知を見るにはログインが必要です。</p>';
     }
 }
 
@@ -21,18 +21,18 @@ export function renderLoading(content) {
 
 export function createNotificationElement(notification) {
     const notice = document.createElement('div');
-    notice.className = 'widget-item notification-item';
+    notice.className = 'widget-item notification-item nui-list-item';
     if (!notification.clicked) notice.classList.add('notification-new');
     if (notification.clicked) notice.classList.add('notification-clicked');
     notice.dataset.notificationId = notification.id;
     notice.dataset.notificationClicked = String(notification.clicked);
 
     const content = document.createElement('div');
-    content.className = 'notification-item-content';
+    content.className = 'notification-item-content nui-list-copy';
     appendNotificationDisplay(content, notification);
 
     const deleteButton = document.createElement('button');
-    deleteButton.className = 'notification-delete-btn';
+    deleteButton.className = 'notification-delete-btn nui-button-danger';
     deleteButton.textContent = '×';
     deleteButton.title = '通知を削除';
     notice.append(content, deleteButton);

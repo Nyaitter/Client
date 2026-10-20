@@ -105,8 +105,16 @@
 
 body[data-active-screen="settings-screen"] #main-content { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
 body[data-active-screen="settings-screen"] .app-container { height: 100dvh; min-height: 0; box-sizing: border-box; overflow: hidden; }
-@media (max-width: 680px) {
-    body[data-active-screen="settings-screen"] #main-content { height: calc(100dvh - 50px); min-height: 0; }
+@media (max-width: 544px) {
+    body[data-active-screen="settings-screen"] .app-container {
+        height: var(--app-dvh, 100dvh);
+        padding-bottom: 0;
+    }
+    body[data-active-screen="settings-screen"] #main-content {
+        flex: none;
+        height: calc(var(--app-dvh, 100dvh) - var(--settings-bottom-inset, 0px));
+        min-height: 0;
+    }
 }
 body[data-active-screen="settings-screen"] #page-header { flex-shrink: 0; }
 body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 0; overflow: hidden; }
@@ -123,7 +131,7 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 .settings-usage-breakdown { margin: 16px 0; }
 .settings-usage-breakdown > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-color); font-size: .8rem; }
 .settings-usage-breakdown dd { margin: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
-@media (max-width: 760px) {
+@media (max-width: 608px) {
     .settings-redesigned .settings-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); padding: 16px; gap: 12px; }
     .settings-redesigned .settings-group-list { position: static; display: grid; grid-template-columns: 1fr; gap: 8px; }
     .settings-redesigned .settings-group-list { height: auto; max-height: 35dvh; }
@@ -135,14 +143,14 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     .settings-redesigned .settings-category-icon svg { width: 16px; height: 16px; }
     .settings-navigation-label { font-size: .64rem; margin-left: 5px; }
 }
-@media (max-width: 420px) {
+@media (max-width: 336px) {
     .settings-overview-grid { grid-template-columns: 1fr; }
     .settings-redesigned .settings-group-button .settings-category-icon { display: none; }
     .settings-redesigned .settings-layout { padding: 12px; }
 }
 
 .imposter-badge {
-display: inline-block;
+    display: inline-block;
     margin-left: 0.35rem;
     padding: 0.1rem 0.42rem;
     border: 1px solid var(--accent-color, #6f42c1);
@@ -156,23 +164,23 @@ display: inline-block;
 
 .app-dialog-actions .login-secondary-button,
 .app-dialog-actions .settings-primary-button {
-min-height: 2.75rem;
+    min-height: 2.75rem;
 }
 
 #settings-form {
-padding: 1rem;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
 }
 
 #settings-form label {
-font-weight: 700;
+    font-weight: 700;
 }
 
 #settings-form input[type='text'],
 #settings-form textarea {
-width: 100%;
+    width: 100%;
     padding: 0.8rem;
     background-color: var(--main-bg-color);
     border: 1px solid var(--border-color);
@@ -184,28 +192,28 @@ width: 100%;
 }
 
 #settings-form fieldset {
-border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 1rem;
 }
 
 #settings-form fieldset legend {
-font-weight: 700;
+    font-weight: 700;
     padding: 0 0.5rem;
 }
 
 #settings-form fieldset label {
-font-weight: 400;
+    font-weight: 400;
 }
 
 #settings-form input[type='checkbox'],
 #settings-form select {
-background-color: var(--main-bg-color);
+    background-color: var(--main-bg-color);
     color: var(--text-color);
 }
 
 #settings-form button[type='submit'] {
-align-self: flex-end;
+    align-self: flex-end;
     padding: 0.6rem 1.2rem;
     border-radius: 9999px;
     border: none;
@@ -217,13 +225,13 @@ align-self: flex-end;
 }
 
 #settings-form button[type='submit']:hover {
-background-color: var(--primary-hover-color);
+    background-color: var(--primary-hover-color);
 }
 
 .settings-primary-button,
 .settings-secondary-button,
 .settings-danger-button {
-padding: 0.6rem 1.2rem;
+    padding: 0.6rem 1.2rem;
     border-radius: 9999px;
     font-weight: 700;
     cursor: pointer;
@@ -235,61 +243,61 @@ padding: 0.6rem 1.2rem;
 }
 
 .settings-primary-button {
-border: none;
+    border: none;
     background-color: var(--primary-color);
     color: white;
 }
 
 .settings-secondary-button {
-border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
     background: none;
     color: var(--secondary-text-color);
 }
 
 .settings-danger-button {
-border: none;
+    border: none;
     border-color: var(--like-color);
     color: var(--like-color);
 }
 
 .settings-primary-button:hover:not(:disabled) {
-background-color: var(--primary-hover-color);
+    background-color: var(--primary-hover-color);
 }
 
 .settings-secondary-button:hover:not(:disabled) {
-background-color: var(--hover-bg-color, rgba(0, 0, 0, 0.05));
+    background-color: var(--hover-bg-color, rgba(0, 0, 0, 0.05));
     border-color: var(--secondary-text-color);
     color: var(--text-color);
 }
 
 .settings-danger-button:hover:not(:disabled) {
-background: var(--danger-color);
+    background: var(--danger-color);
 }
 
 .settings-primary-button:disabled,
 .settings-secondary-button:disabled {
-cursor: not-allowed;
+    cursor: not-allowed;
     opacity: 0.6;
 }
 
 .settings-danger-zone {
-margin-top: 2rem;
+    margin-top: 2rem;
     padding: 1.5rem 1rem;
     border-top: 1px solid var(--border-color);
 }
 
 .settings-account-identity,
 .settings-account-delete {
-margin-bottom: 1.25rem;
+    margin-bottom: 1.25rem;
 }
 
 .settings-account-identity h4,
 .settings-account-delete h4 {
-margin: 0 0 0.35rem;
+    margin: 0 0 0.35rem;
 }
 
 #settings-reassign-nyaitter-id-btn {
-padding: 0.6rem 1.2rem;
+    padding: 0.6rem 1.2rem;
     border: 1px solid var(--primary-color);
     border-radius: 9999px;
     background: var(--main-bg-color);
@@ -300,13 +308,13 @@ padding: 0.6rem 1.2rem;
 
 #settings-reassign-nyaitter-id-btn:disabled,
 #settings-delete-account-btn:disabled {
-cursor: not-allowed;
+    cursor: not-allowed;
     opacity: 0.6;
 }
 
 #settings-logout-btn,
 #settings-showlog-btn {
-padding: 0.6rem 1.2rem;
+    padding: 0.6rem 1.2rem;
     border-radius: 9999px;
     font-weight: 700;
     cursor: pointer;
@@ -321,12 +329,12 @@ padding: 0.6rem 1.2rem;
 
 #settings-logout-btn:hover,
 #settings-showlog-btn:hover {
-background-color: var(--danger-color);
+    background-color: var(--danger-color);
     border-color: var(--like-color);
 }
 
 #settings-account-switcher-btn {
-padding: 0.6rem 1.2rem;
+    padding: 0.6rem 1.2rem;
     border-radius: 9999px;
     font-weight: 700;
     cursor: pointer;
@@ -340,12 +348,12 @@ padding: 0.6rem 1.2rem;
 }
 
 #settings-account-switcher-btn:hover {
-background-color: var(--light-primary-color);
+    background-color: var(--light-primary-color);
     border-color: var(--primary-color);
 }
 
 .settings-layout {
-display: grid;
+    display: grid;
     grid-template-columns: minmax(11rem, 0.34fr) minmax(0, 1fr);
     gap: 1rem;
     padding: 1rem;
@@ -353,7 +361,7 @@ display: grid;
 }
 
 .settings-coming-soon {
-display: inline-block;
+    display: inline-block;
     margin-left: 0.3rem;
     padding: 0.08rem 0.35rem;
     border-radius: 9999px;
@@ -364,23 +372,23 @@ display: inline-block;
 }
 
 #settings-form.settings-detail {
-min-width: 0;
+    min-width: 0;
     gap: 1rem;
     padding: 0;
 }
 
 .settings-detail-heading {
-padding-bottom: 0.9rem;
+    padding-bottom: 0.9rem;
     border-bottom: 1px solid var(--border-color);
 }
 
 .settings-detail-heading h3 {
-margin: 0;
+    margin: 0;
     font-size: 1.2rem;
 }
 
 .settings-select {
-width: 100%;
+    width: 100%;
     padding: 0.8rem;
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -390,13 +398,13 @@ width: 100%;
 }
 
 .settings-resource-links {
-display: grid;
+    display: grid;
     grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
     gap: 0.7rem;
 }
 
 .settings-resource-links a {
-padding: 0.8rem;
+    padding: 0.8rem;
     border: 1px solid var(--border-color);
     border-radius: 9px;
     color: var(--primary-color);
@@ -405,56 +413,56 @@ padding: 0.8rem;
 }
 
 .settings-resource-links a:hover {
-background: var(--light-primary-color);
+    background: var(--light-primary-color);
 }
 
 .settings-save-row {
-display: flex;
+    display: flex;
     justify-content: flex-end;
     padding-top: 0.5rem;
 }
 
 .settings-save-row[hidden] {
-display: none;
+    display: none;
 }
 
 .settings-custom-colors {
-padding: 1rem;
+    padding: 1rem;
     border: 1px solid var(--border-color);
     border-radius: 10px;
     background: var(--main-bg-color);
 }
 
 .settings-custom-colors[hidden] {
-display: none;
+    display: none;
 }
 
 .settings-custom-colors h4 {
-margin: 0;
+    margin: 0;
 }
 
 .settings-color-grid {
-display: grid;
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
     margin-top: 0.9rem;
 }
 
 .settings-color-field {
-display: flex;
+    display: flex;
     flex-direction: column;
     gap: 0.4rem;
     font-weight: 700;
 }
 
 .settings-color-control {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
 .settings-color-control input[type='color'] {
-width: 2.6rem;
+    width: 2.6rem;
     height: 2.4rem;
     padding: 0.15rem;
     border: 1px solid var(--border-color);
@@ -464,7 +472,7 @@ width: 2.6rem;
 }
 
 .settings-color-code {
-min-width: 0;
+    min-width: 0;
     flex: 1;
     padding: 0.65rem 0.7rem;
     border: 1px solid var(--border-color);
@@ -481,38 +489,40 @@ min-width: 0;
 
 .settings-color-code:focus,
 .settings-color-control input[type='color']:focus-visible {
-outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }
 
 .settings-color-code:disabled,
 .settings-color-control input[type='color']:disabled {
-cursor: not-allowed;
+    cursor: not-allowed;
     opacity: 0.6;
 }
 
 .settings-dm-privacy,
 .settings-login-security,
 .settings-auth-providers,
-.settings-sessions {
-margin-top: 1.25rem;
+.settings-sessions,
+.settings-blocked-ips {
+    margin-top: 1.25rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
 }
 
 .settings-auth-providers h4,
-.settings-sessions h4 {
-margin: 0;
+.settings-sessions h4,
+.settings-blocked-ips h4 {
+    margin: 0;
     font-size: 1rem;
 }
 
 .settings-auth-providers-list,
 .settings-sessions-list {
-margin-top: 0.75rem;
+    margin-top: 0.75rem;
 }
 
 .settings-session-item {
-display: flex;
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
@@ -522,15 +532,15 @@ display: flex;
 }
 
 .settings-session-item:first-child {
-border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
 }
 
 .settings-session-details {
-min-width: 0;
+    min-width: 0;
 }
 
 .settings-session-title {
-display: flex;
+    display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 0.45rem;
@@ -538,7 +548,7 @@ display: flex;
 }
 
 .settings-session-current {
-display: inline-block;
+    display: inline-block;
     padding: 0.08rem 0.42rem;
     border-radius: 9999px;
     background: var(--light-primary-color);
@@ -548,7 +558,7 @@ display: inline-block;
 }
 
 .settings-provider-unlinked {
-display: inline-block;
+    display: inline-block;
     padding: 0.08rem 0.42rem;
     border-radius: 9999px;
     background: var(--border-color);
@@ -558,7 +568,7 @@ display: inline-block;
 }
 
 .settings-session-item p {
-margin: 0.25rem 0 0;
+    margin: 0.25rem 0 0;
     color: var(--secondary-text-color);
     font-size: 0.85rem;
     line-height: 1.45;
@@ -566,12 +576,12 @@ margin: 0.25rem 0 0;
 }
 
 .settings-session-dates {
-font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums;
 }
 
 .settings-session-actions,
 .login-approval-actions {
-display: flex;
+    display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.5rem;
@@ -579,7 +589,7 @@ display: flex;
 }
 
 .settings-session-actions button {
-padding: 0.45rem 0.8rem;
+    padding: 0.45rem 0.8rem;
     border: 1px solid var(--primary-color);
     border-radius: 9999px;
     background: var(--main-bg-color);
@@ -594,44 +604,44 @@ padding: 0.45rem 0.8rem;
 }
 
 .settings-session-actions button:hover:not(:disabled) {
-background: var(--light-primary-color);
+    background: var(--light-primary-color);
 }
 
 .settings-session-actions button:disabled {
-cursor: not-allowed;
+    cursor: not-allowed;
     opacity: 0.6;
 }
 
 .settings-session-actions .settings-session-revoke-button {
-border-color: var(--like-color);
+    border-color: var(--like-color);
     color: var(--like-color);
 }
 
 .settings-session-actions .settings-session-revoke-button:hover:not(:disabled) {
-background: var(--danger-color);
+    background: var(--danger-color);
 }
 
 .settings-bot-section {
-display: flex;
+    display: flex;
     flex-direction: column;
     gap: 1.25rem;
 }
 
 .settings-bot-create-container {
-padding: 1.1rem;
+    padding: 1.1rem;
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: var(--bg-color);
 }
 
 .settings-bot-create-form {
-display: flex;
+    display: flex;
     gap: 0.6rem;
     margin-top: 0.6rem;
 }
 
 .settings-bot-create-form input[type='text'] {
-flex: 1;
+    flex: 1;
     min-width: 0;
     margin: 0 !important;
     padding: 0.65rem 0.9rem;
@@ -647,28 +657,28 @@ flex: 1;
 }
 
 .settings-bot-create-form input[type='text']:focus {
-outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-color);
     outline-offset: 1px;
     border-color: transparent;
 }
 
 .settings-imposter .settings-bot-create-form select {
-flex: 0 1 8rem;
+    flex: 0 1 8rem;
 }
 
 .settings-imposter .settings-session-actions select {
-max-width: 9rem;
+    max-width: 9rem;
 }
 
 .settings-imposter .settings-bot-create-form input:disabled,
 .settings-imposter .settings-bot-create-form select:disabled,
 .settings-imposter .settings-session-actions select:disabled {
-opacity: 0.6;
+    opacity: 0.6;
     cursor: not-allowed;
 }
 
 .settings-bot-create-form button {
-flex-shrink: 0;
+    flex-shrink: 0;
     padding: 0.65rem 1.25rem;
     border: none;
     border-radius: 9999px;
@@ -684,43 +694,43 @@ flex-shrink: 0;
 }
 
 .settings-bot-create-form button:hover:not(:disabled) {
-background-color: var(--primary-hover-color);
+    background-color: var(--primary-hover-color);
 }
 
 .settings-bot-create-form button:disabled {
-opacity: 0.6;
+    opacity: 0.6;
     cursor: not-allowed;
 }
 
 .settings-bot-new-key-box {
-padding: 1.1rem;
+    padding: 1.1rem;
     border: 1px solid var(--primary-color);
     border-radius: 12px;
     background: var(--light-primary-color);
 }
 
 .settings-bot-new-key-header strong {
-display: block;
+    display: block;
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--primary-color);
 }
 
 .settings-bot-new-key-warning {
-margin: 0.3rem 0 0.8rem !important;
+    margin: 0.3rem 0 0.8rem !important;
     color: var(--secondary-text-color) !important;
     font-size: 0.85rem !important;
     line-height: 1.45;
 }
 
 .settings-bot-new-key-display {
-display: flex;
+    display: flex;
     gap: 0.5rem;
     align-items: center;
 }
 
 .settings-bot-new-key-display input[type='text'] {
-flex: 1;
+    flex: 1;
     min-width: 0;
     margin: 0 !important;
     padding: 0.6rem 0.85rem;
@@ -734,7 +744,7 @@ flex: 1;
 }
 
 .settings-bot-copy-button {
-flex-shrink: 0;
+    flex-shrink: 0;
     padding: 0.6rem 1.15rem;
     border: none;
     border-radius: 9999px;
@@ -750,11 +760,11 @@ flex-shrink: 0;
 }
 
 .settings-bot-copy-button:hover {
-background-color: var(--primary-hover-color);
+    background-color: var(--primary-hover-color);
 }
 
 .settings-bot-copy-button:active {
-transform: scale(0.97);
+    transform: scale(0.97);
 }
 
 /* --------------------------------------------------------------------------
@@ -982,7 +992,7 @@ transform: scale(0.97);
     display: none;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 560px) {
     .settings-layout {
         gap: 0.75rem;
         padding: 0.75rem;
@@ -1021,7 +1031,7 @@ transform: scale(0.97);
 }
 
 .settings-bot-secondary-button {
-padding: 0.45rem 1rem;
+    padding: 0.45rem 1rem;
     border: 1px solid var(--border-color);
     border-radius: 9999px;
     background: var(--main-bg-color);
@@ -1037,13 +1047,13 @@ padding: 0.45rem 1rem;
 }
 
 .settings-bot-secondary-button:hover {
-background: var(--bg-color);
+    background: var(--bg-color);
     color: var(--text-color);
     border-color: var(--secondary-text-color);
 }
 
 .settings-bot-token-id {
-display: inline-block;
+    display: inline-block;
     padding: 0.08rem 0.42rem;
     border-radius: 9999px;
     background: var(--bg-color);
@@ -1054,18 +1064,18 @@ display: inline-block;
 }
 
 .settings-bot-docs-section {
-margin-top: 0.5rem;
+    margin-top: 0.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
 }
 
 .settings-bot-docs-section h4 {
-margin: 0;
+    margin: 0;
     font-size: 1rem;
 }
 
 .settings-code-example {
-margin-top: 0.6rem;
+    margin-top: 0.6rem;
     padding: 0.85rem 1rem;
     border-radius: 8px;
     background: var(--bg-color);
@@ -1078,40 +1088,40 @@ margin-top: 0.6rem;
 }
 
 .settings-verification-application {
-margin: 1.2rem 0;
+    margin: 1.2rem 0;
     padding: 1rem;
     border: 1px solid var(--border-color);
     border-radius: 0.75rem;
 }
 
 .settings-verification-application h4 {
-margin: 0 0 0.45rem;
+    margin: 0 0 0.45rem;
 }
 
 .verification-application-modal-content > .settings-help-text {
-margin: 0 0 1rem;
+    margin: 0 0 1rem;
     color: var(--secondary-text-color);
     line-height: 1.55;
 }
 
 .login-approval-wait-content .settings-help-text {
-margin: 0 0 1rem;
+    margin: 0 0 1rem;
     line-height: 1.55;
 }
 
 .settings-storage-heading {
-display: flex;
+    display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
 }
 
 .settings-storage-heading h4 {
-margin: 0;
+    margin: 0;
 }
 
 .settings-storage-progress {
-width: 100%;
+    width: 100%;
     height: 0.6rem;
     overflow: hidden;
     border-radius: 999px;
@@ -1120,7 +1130,7 @@ width: 100%;
 }
 
 .settings-storage-progress-value {
-width: 0;
+    width: 0;
     height: 100%;
     border-radius: inherit;
     background: var(--primary-color);
@@ -1128,7 +1138,7 @@ width: 0;
 }
 
 .settings-storage-file .settings-session-title {
-overflow: hidden;
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -1330,4 +1340,303 @@ overflow: hidden;
 
 #settings-screen .home-tabs-divider-icon {
     display: none;
+}
+
+/* ==========================================================================
+   Side Menu Customizer
+   ========================================================================== */
+.settings-group-panel > .side-menu-outlet-tabs,
+.settings-group-panel > .side-menu-customizer {
+    min-width: 0;
+}
+
+.side-menu-outlet-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.35rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background-color: var(--secondary-bg-color, rgba(0, 0, 0, 0.03));
+}
+
+/* 付属CSSの .nui-tabs は折り返しと下線を付けるため、区切りボタン本来の見た目を優先する。
+   モバイルではラベルが長いので、下のメディアクエリどおり折り返す。 */
+@media (min-width: 545px) {
+    [data-nyaitter-ui='nui'] .side-menu-outlet-tabs.nui-tabs {
+        flex-wrap: nowrap;
+    }
+}
+
+[data-nyaitter-ui='nui'] .side-menu-outlet-tabs.nui-tabs {
+    gap: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.side-menu-outlet-tab {
+    flex: 1 1 0;
+    min-height: 2.4rem;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: none;
+    color: var(--secondary-text-color);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+}
+
+.side-menu-outlet-tab[aria-selected='true'] {
+    color: var(--primary-color);
+    background-color: var(--main-bg-color);
+    border-color: var(--primary-color);
+}
+
+.side-menu-outlet-tab:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.side-menu-customizer {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+}
+
+.side-menu-zone {
+    display: grid;
+    gap: 0.2rem;
+    padding: 1.2rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background-color: var(--secondary-bg-color, rgba(0, 0, 0, 0.03));
+}
+
+.side-menu-zone[hidden] {
+    display: none;
+}
+
+.side-menu-zone-title {
+    margin: 0 0 0.4rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.side-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-height: 56px;
+    margin-top: 0.8rem;
+    padding: 0.4rem;
+    border-radius: 8px;
+    border: 2px dashed transparent;
+}
+
+.side-menu-list.drag-over {
+    border-color: var(--primary-color);
+    background-color: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+.side-menu-list:empty::after {
+    content: '';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    color: var(--secondary-text-color);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.side-menu-zone[data-zone='bar'] .side-menu-list:empty::after {
+    content: 'バーに表示されている項目はありません';
+}
+
+.side-menu-zone[data-zone='more'] .side-menu-list:empty::after {
+    content: '他にまとめた項目はありません';
+}
+
+.side-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: grab;
+    user-select: none;
+}
+
+.side-menu-item:active {
+    cursor: grabbing;
+}
+
+.side-menu-item.dragging {
+    opacity: 0.45;
+}
+
+.side-menu-item-main {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.side-menu-handle {
+    color: var(--secondary-text-color);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: grab;
+}
+
+.side-menu-name {
+    font-weight: 700;
+    font-size: 0.98rem;
+    color: var(--text-color);
+}
+
+.side-menu-hash {
+    color: var(--secondary-text-color);
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.side-menu-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.side-menu-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.2rem;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: none;
+    color: var(--text-color);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.side-menu-action-btn:hover {
+    background-color: var(--hover-bg-color, rgba(0, 0, 0, 0.05));
+    border-color: var(--text-color);
+}
+
+.side-menu-action-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.side-menu-action-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.side-menu-to-more-btn,
+.side-menu-to-bar-btn {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+#side-menu-reset-btn {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 544px) {
+    .side-menu-outlet-tabs {
+        flex-wrap: wrap;
+    }
+
+    .side-menu-outlet-tab {
+        flex: 1 1 8rem;
+        font-size: 0.8rem;
+    }
+
+    .side-menu-customizer {
+        gap: 0.9rem;
+    }
+
+    .side-menu-zone {
+        padding: 0.9rem;
+    }
+
+    .side-menu-zone-title {
+        font-size: 1rem;
+    }
+
+    .side-menu-item {
+        align-items: flex-start;
+        padding: 0.7rem 0.75rem;
+    }
+
+    .side-menu-hash {
+        display: none;
+    }
+
+    .side-menu-actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.3rem;
+    }
+
+    .side-menu-action-btn {
+        min-height: 2.4rem;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* ── NyaitterUI ブリッジ ─────────────────────────────────────────────────
+   設定画面は nui-* を併用するため、nui 側の汎用値が画面固有の見た目を
+   上書きしてしまう箇所を 2 クラス指定で元に戻す。 */
+
+[data-nyaitter-ui='nui'] .settings-session-item.nui-list-item {
+    padding: 0.9rem 0;
+    border: 0;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
+    background: transparent;
+}
+
+[data-nyaitter-ui='nui'] .settings-session-item.nui-list-item:first-child {
+    border-top: 1px solid var(--border-color);
+}
+
+[data-nyaitter-ui='nui'] .settings-session-current.nui-badge {
+    padding: 0.08rem 0.42rem;
+    border-radius: 9999px;
+    background: var(--light-primary-color);
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+[data-nyaitter-ui='nui'] .home-tab-item.nui-list-item,
+[data-nyaitter-ui='nui'] .side-menu-item.nui-list-item {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+}
+
+@media (max-width: 544px) {
+    [data-nyaitter-ui='nui']     .side-menu-item.nui-list-item {
+        padding: 0.7rem 0.75rem;
+    }
 }
