@@ -16,14 +16,15 @@
         return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(version)}/dist/nyaitter.js`;
     }
 
-    // NyaitterUI は同一配信ベース配下 (nyaitter-ui/) を先に試し、無ければ CDN を見る。
+    // NyaitterUI は npm パッケージを CDN から読む。CDN に到達できない場合のみ、
+    // 開発用に配信ベース配下 (nyaitter-ui/) のビルドへフォールバックする。
     function getNyaitterUiUrls(value) {
         const source = String(value || '').trim();
         if (/^(?:https?:)?\/\//i.test(source)) return [source, localNyaitterUiUrl];
         const version = source || 'latest';
         return [
-            localNyaitterUiUrl,
             `https://cdn.jsdelivr.net/npm/nyaitter-ui@${encodeURIComponent(version)}/dist/nyaitter-ui.js`,
+            localNyaitterUiUrl,
         ];
     }
 
