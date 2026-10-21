@@ -1,6 +1,6 @@
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
-import { api } from '../api.js';
+import { apiRequest } from '../api.js';
 import {
     getCurrentUser,
     getRecommendedUsersCache,
@@ -12,7 +12,7 @@ import {
 } from './cache.js';
 import { getEmoji } from './format.js';
 import { getSavedSideMenu, applySideMenuZones } from './sidebarItems.js';
-import { updateFollowButtonState, openPostModal } from './posts.js';
+import { openPostModal } from './posts.js';
 import { openAccountSwitcherModal } from './auth.js';
 import {
     escapeHTML,
@@ -326,19 +326,11 @@ export async function loadRightSidebar() {
     let error = null;
     if (getRecommendedUsersCache() === null) {
         if (!recommendedUsersRequest) {
-            let query = api
-                .from('user')
-                .select('id, name, scid, icon_data');
-            if (getCurrentUser()) {
-                query = query.neq('id', getCurrentUser().id);
-            }
-            recommendedUsersRequest = query
-                .order('created_at', { ascending: false })
-                .limit(3)
+            recommendedUsersRequest = apiRequest('/server/users/recommended')
                 .then((result) => {
                     if (!result.error) {
                         setRecommendedUsersCache(
-                            Array.isArray(result.data) ? result.data : [],
+                            Array.isArray(result.data?.users) ? result.data.users : [],
                         );
                     }
                     return result;
@@ -366,7 +358,11 @@ export async function loadRightSidebar() {
             .join('');
     }
 
-    const recommendedUsers = Array.isArray(data) ? data : [];
+    const currentUser = getCurrentUser();
+    const recommendedUsers = (Array.isArray(data) ? data : []).filter((user) => (
+        !currentUser
+        || (!userIdListIncludes(currentUser.follow, user.id) && !isCurrentUserProfile(user))
+    ));
     if (error || recommendedUsers.length === 0) {
         if (DOM.rightSidebar.recommendations) {
             DOM.rightSidebar.recommendations.innerHTML = '';
@@ -376,13 +372,7 @@ export async function loadRightSidebar() {
 
     let recHTML = '<div class="widget-title">おすすめユーザー</div>';
     recHTML += recommendedUsers
-        .map((user) => {
-            const isFollowing = userIdListIncludes(getCurrentUser()?.follow, user.id);
-            const btnClass = isFollowing
-                ? 'follow-button-following'
-                : 'follow-button-not-following';
-            const btnText = isFollowing ? 'フォロー中' : 'フォロー';
-            return `<div class="widget-item recommend-user">
+        .map((user) => `<div class="widget-item recommend-user">
                 <a href="#profile/${user.id}" class="profile-link" style="text-decoration:none; color:inherit; display:flex; align-items:center; gap:0.5rem;">
                     <img src="${getUserIconUrl(user)}" class="user-icon" style="width:40px;height:40px;" alt="${escapeHTML(user.name)}'s icon">
                     <div>
@@ -390,9 +380,8 @@ export async function loadRightSidebar() {
                         <small style="color:var(--secondary-text-color); display:block;">${getNyaitterId(user)}</small>
                     </div>
                 </a>
-                ${getCurrentUser() && !isCurrentUserProfile(user) ? `<button class="${btnClass}" data-user-id="${user.id}">${btnText}</button>` : ''}
-            </div>`;
-        })
+                ${currentUser ? `<button class="follow-button-not-following" data-user-id="${user.id}">フォロー</button>` : ''}
+            </div>`)
         .join('');
 
     if (DOM.rightSidebar.recommendations) {
@@ -403,11 +392,14 @@ export async function loadRightSidebar() {
         ?.querySelectorAll('.recommend-user button')
         .forEach((button) => {
             const userId = parseInt(button.dataset.userId, 10);
-            if (!isNaN(userId)) {
-                const isFollowing = getCurrentUser()?.follow?.includes(userId);
-                updateFollowButtonState(button, isFollowing);
-                button.onclick = () => window.handleFollowToggle(userId, button);
-            }
+            if (isNaN(userId)) return;
+            button.onclick = async () => {
+                await window.handleFollowToggle(userId, button);
+                if (userIdListIncludes(getCurrentUser()?.follow, userId)) {
+                    setRecommendedUsersCache(null);
+                    void loadRightSidebar();
+                }
+            };
         });
 }
 

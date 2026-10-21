@@ -75,7 +75,15 @@ export function callMarkup(kind, info, user, canCapture, uid = '') {
     const liveListener = isStage && audience && info.stage?.status === 'live';
     const title = info.stage?.name || info.title || '通話';
     return `
-        <header class="call-panel-header"><div class="call-window-title"><span class="call-kind nui-badge">${isStage ? 'ステージ' : '通話'}</span><h2 id="call-title${suffix}">${escapeHTML(title)}</h2><span class="call-header-count nui-badge" data-call-header-count></span></div></header>
+        <header class="call-panel-header">
+            <div class="call-window-title">
+                <span class="call-window-icon" aria-hidden="true">${isStage ? ICONS.activity : ICONS.phone}</span>
+                <div class="call-window-copy">
+                    <h2 id="call-title${suffix}">${escapeHTML(title)}</h2>
+                    <p class="call-window-meta"><span>${isStage ? 'ステージ' : '通話'}</span><span class="call-header-count" data-call-header-count></span></p>
+                </div>
+            </div>
+        </header>
         <div class="call-panel-body">
             <div class="call-media-parking" data-call-media-parking aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none"></div>
             ${waiting ? `<section class="call-waiting" data-call-waiting><h3>開始を待っています</h3><button type="button" class="settings-secondary-button nui-button-secondary" data-call-action="cancel">キャンセル</button></section>` : `<div class="call-prejoin" data-call-prejoin ${liveListener ? 'hidden' : ''}>

@@ -3,7 +3,7 @@ import { AppWindow } from './appWindow.js';
 import { apiRequest } from '../api.js';
 import { getCurrentUser, getRealtimeChannel } from '../state.js';
 import { escapeHTML, formatNyaitterId, getUserIconUrl, showAppAlert } from '../utils/helpers.js';
-import { connectGuestRealtime, stopGuestRealtime } from './realtime.js';
+import { connectGuestRealtime, stopGuestRealtime, waitForRealtimeOpen } from './realtime.js';
 import { openStageManageModal } from './stageManage.js';
 
 // 複数の通話/ステージへ同時参加できるよう、状態はルームキー単位の record で持つ。
@@ -522,8 +522,11 @@ export async function openCall(kind, id, options = {}) {
             else if (info.stage?.status === 'live') return perform(record, 'join');
         }).catch(error => { if (record.session?.guestId === guestId) status(error.message); });
     } else if (kind === 'stage' && info.stage?.status === 'scheduled' && role === 'audience') {
-        try { session.watching = true; send(record, 'call:watch'); }
-        catch (error) { status(error.message); }
+        void waitForRealtimeOpen().then(() => {
+            if (record.session !== session) return;
+            session.watching = true;
+            send(record, 'call:watch');
+        }).catch(error => status(error.message));
     }
     if (info.stage?.status === 'ended') {
         node.querySelector('[data-call-action="join"]')?.setAttribute('disabled', '');
@@ -1322,9 +1325,10 @@ async function perform(record, action) {
     if (action === 'join') {
         if (record.pending || current.joined) return;
         const button = panel.querySelector('[data-call-action="join"]');
-        button.disabled = true;
+        if (button) button.disabled = true;
         try {
-            if (record.session !== current) return;
+            await waitForRealtimeOpen();
+            if (record.session !== current || record.pending || current.joined) return;
             await new Promise((resolve, reject) => {
                 const id = `${Date.now()}-${++requestSequence}`;
                 const timeout = setTimeout(() => { if (record.pending?.id === id) { record.pending = null; try { send(record, 'call:leave'); } catch (_) {} reject(new Error('参加できませんでした。再試行してください。')); } }, 10000);
@@ -1332,7 +1336,7 @@ async function perform(record, action) {
                 try { send(record, 'call:join', { request_id: id, muted: !hasActiveMicrophone(current), camera: localTracks(current, 'video').some(track => track.readyState === 'live' && track.enabled) }); }
                 catch (error) { record.pending.reject(error); record.pending = null; }
             });
-        } finally { if (button.isConnected) button.disabled = false; }
+        } finally { if (button?.isConnected) button.disabled = false; }
     } else if (action === 'share' && current.joined && current.role !== 'audience') {
         if (current.screen) { stopSharing(record); return; }
         if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('画面共有に対応していません。');

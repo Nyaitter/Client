@@ -9,48 +9,48 @@ import { escapeHTML, getNyaitterId, getSafeConfiguredFileUrl, getUserIconUrl, sh
 import { showScreenCompat } from '../screenManager.js';
 
 const VISIBILITY_LABELS = {
-    open: 'Open',
-    open_invite: 'OpenInvite',
-    invite: 'Invite',
-    private: 'Private',
+    open: '公開',
+    open_invite: '承認制',
+    private: '限定公開',
+    invite: '招待制',
 };
 
 const PERMISSION_CONFIG = [
     {
         id: 'admin',
-        label: '管理者権限',
+        label: 'すべての操作',
         badge: '全権限',
-        description: 'グループの設定、ロール、メンバー管理を含むすべての操作を行えます。',
+        description: '設定・メンバー・ロールを含むすべての操作ができます。',
     },
     {
         id: 'profile',
-        label: 'プロフィール編集',
-        description: 'グループの名前・説明・アイコン・ヘッダー画像・公開レベルを変更できます。',
+        label: '基本情報の編集',
+        description: '名前・説明・画像・公開範囲を変更できます。',
     },
     {
         id: 'invite',
-        label: '招待・申請管理',
-        description: '新規メンバーの招待送信や、保留中の参加申請の承認・拒否を行えます。',
+        label: '招待と申請',
+        description: 'メンバーの招待と参加申請の対応ができます。',
     },
     {
         id: 'ban',
-        label: 'メンバー追放・禁止',
-        description: '迷惑行為を行うメンバーの追放および参加禁止を行えます。',
+        label: 'メンバーの禁止',
+        description: 'メンバーを外し、参加を禁止できます。',
     },
     {
         id: 'post',
-        label: 'タイムライン投稿',
-        description: 'グループタイムラインへの新規ポストを投稿できます。',
+        label: '投稿',
+        description: 'グループに投稿できます。',
     },
     {
         id: 'announce',
-        label: 'アナウンス投稿',
-        description: 'グループメンバー全員への重要なお知らせを投稿できます。',
+        label: 'アナウンス',
+        description: 'メンバー全員へのお知らせを投稿できます。',
     },
     {
         id: 'delete',
         label: '投稿の削除',
-        description: '他メンバーの投稿を含むグループ内の不適切なポストを削除できます。',
+        description: 'グループ内の投稿を削除できます。',
     },
 ];
 
@@ -122,8 +122,8 @@ function groupHeader(group) {
 }
 
 function groupMeta(group) {
-    const visibility = VISIBILITY_LABELS[group?.visibility] || group?.visibility || 'Open';
-    return `${escapeHTML(visibility)} ・ ${Number(group?.member_count || 0)}人`;
+    const visibility = VISIBILITY_LABELS[group?.visibility] || '公開';
+    return `${visibility} ・ メンバー${Number(group?.member_count || 0)}人`;
 }
 
 function renderGroupCard(group, { joined = false } = {}) {
@@ -225,7 +225,7 @@ function openGroupModal(group = null) {
     modal.innerHTML = `<div class="modal-content group-modal-content">
         <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
         <form id="group-modal-form" class="nui-form group-modal-form">
-            <header class="group-modal-heading"><h3 id="group-modal-title">${editing ? 'グループを編集' : 'グループを作成'}</h3><p class="nui-help-text">${editing ? 'グループのプロフィールと公開レベルを変更できます。' : '作成後もプロフィールや公開レベルを変更できます。'}</p></header>
+            <header class="group-modal-heading"><h3 id="group-modal-title">${editing ? 'グループを編集' : 'グループを作成'}</h3><p class="nui-help-text">${editing ? '名前や公開範囲を変更できます。' : '作成後も名前や公開範囲を変更できます。'}</p></header>
             <div class="group-modal-images">
                 <div class="group-modal-image-field">
                     <span class="group-modal-image-label">アイコン</span>
@@ -245,8 +245,8 @@ function openGroupModal(group = null) {
                 </div>
             </div>
             <label>グループ名<input name="name" maxlength="100" required value="${escapeHTML(group?.name || '')}" placeholder="グループ名"></label>
-            <label>説明<textarea name="description" maxlength="2000" rows="4" placeholder="グループの説明">${escapeHTML(group?.description || '')}</textarea></label>
-            <label>公開レベル<select name="visibility" class="settings-select">${visibilityOptions(group?.visibility || 'open')}</select></label>
+            <label>説明<textarea name="description" maxlength="2000" rows="4" placeholder="グループの目的やルール">${escapeHTML(group?.description || '')}</textarea></label>
+            <label>公開範囲<select name="visibility" class="settings-select">${visibilityOptions(group?.visibility || 'open')}</select></label>
             <div class="settings-save-row"><button type="button" class="nui-button-secondary group-ui-secondary-button group-modal-cancel-button" data-nui="button-secondary" data-close-group-modal>キャンセル</button><button type="submit" class="nui-button settings-primary-button" data-nui="button">${editing ? '変更を保存' : '作成'}</button></div>
         </form>
     </div>`;
@@ -397,16 +397,16 @@ export async function showGroupsScreen(showScreenFn = null) {
         const joinedIds = new Set(joinedGroups.map((group) => String(group.id)));
         content.innerHTML = `<main class="nui-page group-ui-page" data-nui="page">
             <header class="nui-page-heading settings-detail-heading group-ui-page-heading" data-nui="page-heading">
-                <div><h3>グループ</h3><p class="nui-help-text settings-group-description">グループは共通の話題でポスト可能なスペースです。</p></div>
+                <div><h3>グループ</h3><p class="nui-help-text settings-group-description">同じ話題で投稿できる場所です。</p></div>
                 <button type="button" class="nui-button settings-primary-button" data-nui="button" id="open-create-group" data-nui-feature="groupCreate">グループを作成</button>
             </header>
-            ${invites.length ? renderGroupSection('グループ招待', `<div class="nui-list">${invites.map((invite) => `<article class="nui-list-item nui-row" data-nui="list-item"><div class="nui-list-copy"><span class="nui-list-title">${escapeHTML(invite.group?.name || 'グループ')}</span><p class="nui-list-meta">グループへの招待が届いています。</p></div><div class="nui-actions"><button type="button" class="nui-button settings-primary-button" data-nui="button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="accept">参加</button><button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>`, '', { feature: 'groupInvites' }) : ''}
+            ${invites.length ? renderGroupSection('グループ招待', `<div class="nui-list">${invites.map((invite) => `<article class="nui-list-item nui-row" data-nui="list-item"><div class="nui-list-copy"><span class="nui-list-title">${escapeHTML(invite.group?.name || 'グループ')}</span><p class="nui-list-meta">招待が届いています。</p></div><div class="nui-actions"><button type="button" class="nui-button settings-primary-button" data-nui="button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="accept">参加</button><button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>`, '', { feature: 'groupInvites' }) : ''}
             ${renderGroupSection('参加中のグループ', joinedGroups.length ? `<div class="nui-list">${joinedGroups.map((group) => renderGroupCard(group, { joined: true })).join('')}</div>` : '<p class="nui-empty-text">参加中のグループはありません。</p>')}
-            ${renderGroupSection('見つける', publicGroups.length ? `<div class="nui-list">${publicGroups.map((group) => renderGroupCard(group, { joined: joinedIds.has(String(group.id)) })).join('')}</div>` : '<p class="nui-empty-text">公開グループはまだありません。</p>', '', { feature: 'groupDiscovery' })}
+            ${renderGroupSection('公開グループ', publicGroups.length ? `<div class="nui-list">${publicGroups.map((group) => renderGroupCard(group, { joined: joinedIds.has(String(group.id)) })).join('')}</div>` : '<p class="nui-empty-text">公開グループはまだありません。</p>', '', { feature: 'groupDiscovery' })}
         </main>`;
         bindGroupsIndexEvents();
     } catch (error) {
-        content.innerHTML = `<p class="error-message">グループの読み込みに失敗しました。${escapeHTML(error.message || '')}</p>`;
+        content.innerHTML = `<p class="nui-empty-text">グループの読み込みに失敗しました。${escapeHTML(error.message || '')}</p>`;
     } finally {
         showLoading(false);
     }
@@ -445,7 +445,7 @@ export async function showGroupDetailScreen(groupId, section = 'overview', showS
         if (section === 'manage') await renderGroupManage(content, group, initialManageTab || 'profile');
         else renderGroupOverview(content, group, data.join_request || null);
     } catch (error) {
-        content.innerHTML = `<p class="error-message">グループを読み込めませんでした。${escapeHTML(error.message || '')}</p>`;
+        content.innerHTML = `<p class="nui-empty-text">グループを読み込めませんでした。${escapeHTML(error.message || '')}</p>`;
     } finally {
         showLoading(false);
     }
@@ -471,7 +471,7 @@ function renderGroupOverview(content, group, pendingJoinRequest = null) {
                     ${hasPendingJoinRequest ? '<button type="button" class="nui-button settings-primary-button" data-nui="button" disabled aria-disabled="true">承認待ち</button>' : ''}
                     ${membership?.status === 'invited' ? '<span class="nui-badge nui-badge-accent">招待に応答してください</span>' : ''}
                     ${isActive && !isGroupOwner(group) ? '<button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="leave-group-btn">退出する</button>' : ''}
-                    ${canManage ? `<a class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" href="#group/${groupId}/manage">管理</a>` : ''}
+                    ${canManage ? `<a class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" href="#group/${groupId}/manage">設定</a>` : ''}
                 </div>
             </div>
         </section>
@@ -529,32 +529,32 @@ async function leaveGroup(group) {
 const VISIBILITY_CONFIG = [
     {
         id: 'open',
-        label: 'Open',
-        badge: '誰でも参加可能・検索可能',
-        description: 'グループ一覧や検索に表示され、誰でも自由に参加できます。',
+        label: '公開',
+        badge: '誰でも参加できます',
+        description: 'グループ一覧と検索に表示され、誰でも参加できます。',
     },
     {
         id: 'open_invite',
-        label: 'OpenInvite',
-        badge: '参加に承認が必要・検索可能',
-        description: 'グループ一覧や検索に表示されますが、参加には管理者の承認が必要です。',
+        label: '承認制',
+        badge: '承認が必要です',
+        description: 'グループ一覧と検索に表示され、参加には承認が必要です。',
     },
     {
         id: 'private',
-        label: 'Private',
-        badge: '誰でも参加可能・検索不可能',
-        description: 'グループ一覧や検索には表示されませんが、リンクを知っていれば誰でも自由に参加できます。',
+        label: '限定公開',
+        badge: 'リンクから参加できます',
+        description: '一覧と検索には表示されません。リンクを知っている人は参加できます。',
     },
     {
         id: 'invite',
-        label: 'Invite',
-        badge: '参加に承認が必要・検索不可能',
-        description: 'グループ一覧や検索には表示されず、参加には招待または管理者の承認が必要です。',
+        label: '招待制',
+        badge: '招待された人だけ',
+        description: '一覧と検索には表示されず、招待された人だけが参加できます。',
     },
 ];
 
 function renderVisibilityCards(currentVisibility = 'open') {
-    return `<div class="group-visibility-grid">
+    return `<div class="group-visibility-grid" role="radiogroup" aria-label="公開範囲">
         ${VISIBILITY_CONFIG.map((vis) => {
             const isSelected = vis.id === currentVisibility;
             return `<label class="group-visibility-card ${isSelected ? 'is-selected' : ''}" data-visibility-card="${vis.id}">
@@ -589,9 +589,10 @@ function renderGroupProfileForm(group) {
         </div>
         <input type="file" id="group-profile-header-input" accept="image/*" class="hidden">
         <label for="group-profile-description">説明</label>
-        <textarea id="group-profile-description" name="description" maxlength="2000" rows="4">${escapeHTML(group?.description || '')}</textarea>
-        <label>公開レベル</label>
+        <textarea id="group-profile-description" name="description" maxlength="2000" rows="4" placeholder="グループの目的やルール">${escapeHTML(group?.description || '')}</textarea>
+        <label>公開範囲</label>
         ${renderVisibilityCards(currentVis)}
+        <p class="nui-help-text group-profile-save-status" id="group-profile-save-status" role="status" aria-live="polite">変更は自動で保存されます。</p>
     </form>`;
 }
 
@@ -656,9 +657,9 @@ function renderRoleCard(role) {
     if (ownerRole) {
         badgeHtml = '<span class="settings-session-current group-role-badge-owner">オーナー</span>';
     } else if (roleType === 'admin') {
-        badgeHtml = '<span class="settings-session-current group-role-badge-admin">管理者・既定</span>';
+        badgeHtml = '<span class="settings-session-current group-role-badge-admin">管理者（既定）</span>';
     } else if (defaultRole) {
-        badgeHtml = '<span class="settings-session-current group-role-badge-default">メンバー・既定</span>';
+        badgeHtml = '<span class="settings-session-current group-role-badge-default">メンバー（既定）</span>';
     } else {
         badgeHtml = '<span class="settings-session-current group-role-badge-custom">カスタム</span>';
     }
@@ -675,12 +676,11 @@ function renderRoleCard(role) {
                 </div>
             </div>
             <div class="group-role-summary-actions">
-                ${ownerRole ? '<span class="group-role-locked-tag">変更不可</span>' : `
-                    <button type="button" class="nui-button-secondary group-ui-secondary-button group-role-edit-toggle-btn" data-nui="button-secondary" data-toggle-role="${roleId}">
-                        <span class="edit-text">編集</span>
-                        <span class="close-text hidden">閉じる</span>
+                ${ownerRole ? '<span class="group-role-locked-tag">編集できません</span>' : `
+                    <button type="button" class="nui-button-secondary group-ui-secondary-button group-role-edit-toggle-btn" data-nui="button-secondary" data-toggle-role="${roleId}" aria-expanded="false" aria-controls="role-editor-${roleId}">
+                        編集
                     </button>
-                    ${defaultRole ? '' : `<button type="button" class="settings-session-revoke-button group-role-delete-btn" data-delete-role="${roleId}">削除</button>`}
+                    ${defaultRole ? '' : `<button type="button" class="settings-session-revoke-button group-role-delete-btn" data-delete-role="${roleId}" aria-label="ロール「${roleName}」を削除">削除</button>`}
                 `}
             </div>
         </div>
@@ -693,15 +693,15 @@ function renderRoleCard(role) {
                 </div>
                 <div class="group-role-perm-section">
                     <div class="group-role-perm-header">
-                        <span class="group-role-input-label">許可する操作</span>
-                        <span class="nui-help-text">チェックした権限がこのロールに付与されます</span>
+                        <span class="group-role-input-label">できる操作</span>
+                        <span class="nui-help-text">選んだ操作だけができるようになります。</span>
                     </div>
                     <div class="group-role-perm-grid">
                         ${renderRolePermissionCards(role)}
                     </div>
                 </div>
                 <div class="group-role-card-actions">
-                    <span class="group-role-save-status" id="save-status-${roleId}"></span>
+                    <span class="group-role-save-status" id="save-status-${roleId}" role="status" aria-live="polite"></span>
                     <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" data-cancel-role="${roleId}">閉じる</button>
                     <button type="submit" class="nui-button settings-primary-button group-role-save-btn" data-nui="button">変更を保存</button>
                 </div>
@@ -716,10 +716,10 @@ function renderRolesPanel(group) {
     return `<div class="group-roles-container">
         <div class="group-roles-header">
             <div class="group-roles-header-text">
-                <p class="nui-help-text">ロールごとにメンバーへ付与する権限を設定できます。オーナー以外のロールは名前や権限のカスタマイズが可能です。</p>
+                <p class="nui-help-text">役割ごとにできる操作を決められます。オーナーの権限は変更できません。</p>
             </div>
             <button type="button" class="nui-button settings-primary-button group-role-add-btn" data-nui="button" id="toggle-create-role-btn">
-                + ロールを追加
+                ロールを追加
             </button>
         </div>
 
@@ -727,7 +727,7 @@ function renderRolesPanel(group) {
             <form id="group-role-form" class="group-role-card group-role-create-card">
                 <div class="group-role-card-header">
                     <div class="group-role-card-title-wrap">
-                        <h5 class="group-role-card-title">新しいロールを作成</h5>
+                        <h5 class="group-role-card-title">ロールを作成</h5>
                         <span class="settings-session-current group-role-badge-custom">カスタム</span>
                     </div>
                     <button type="button" class="modal-close-btn group-role-create-close-btn" id="cancel-create-role-btn" aria-label="閉じる">×</button>
@@ -738,8 +738,8 @@ function renderRolesPanel(group) {
                 </div>
                 <div class="group-role-perm-section">
                     <div class="group-role-perm-header">
-                        <span class="group-role-input-label">付与する権限を選択</span>
-                        <span class="nui-help-text">必要な操作だけにチェックを付けてください</span>
+                        <span class="group-role-input-label">できる操作</span>
+                        <span class="nui-help-text">必要な操作だけを選んでください。</span>
                     </div>
                     <div class="group-role-perm-grid">
                         ${renderRolePermissionCards()}
@@ -760,17 +760,17 @@ function renderRolesPanel(group) {
 
 function renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, canTransfer }) {
     const tabs = [];
-    if (canProfile) tabs.push({ id: 'profile', label: 'プロフィール', description: 'グループの名前、説明、公開レベル、画像を管理します。' });
-    if (canMembers) tabs.push({ id: 'members', label: 'メンバー', description: 'メンバーのロール変更と参加禁止を管理します。' });
-    if (canInvite) tabs.push({ id: 'invites', label: '招待・申請', description: 'ユーザーの招待と参加申請を管理します。' });
-    if (canAdmin) tabs.push({ id: 'roles', label: 'ロール', description: 'ロールと権限を管理します。' });
-    if (canTransfer) tabs.push({ id: 'danger', label: '危険ゾーン', description: 'オーナー権限の移譲とグループ削除は取り消せません。' });
+    if (canProfile) tabs.push({ id: 'profile', label: '基本情報', description: '名前・説明・画像・公開範囲を変更します。' });
+    if (canMembers) tabs.push({ id: 'members', label: 'メンバー', description: 'メンバーの役割変更と参加の禁止を行います。' });
+    if (canInvite) tabs.push({ id: 'invites', label: '招待と申請', description: '招待の送信と参加申請の承認を行います。' });
+    if (canAdmin) tabs.push({ id: 'roles', label: 'ロール', description: '役割ごとにできる操作を決めます。' });
+    if (canTransfer) tabs.push({ id: 'danger', label: '危険な操作', description: 'オーナーの移譲とグループの削除を行います。' });
     return tabs;
 }
 
 async function renderGroupManage(content, group, initialTab = 'profile') {
     if (!isGroupAdmin(group) && !hasGroupPermission(group, 'profile') && !hasGroupPermission(group, 'invite') && !hasGroupPermission(group, 'ban')) {
-        content.innerHTML = '<p class="error-message">このグループを管理する権限がありません。</p>';
+        content.innerHTML = '<p class="nui-empty-text">このグループを管理する権限がありません。</p>';
         return;
     }
     const canProfile = hasGroupPermission(group, 'profile');
@@ -794,7 +794,7 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
             <div class="group-ui-manage-context">
                 ${groupAvatar(group, 'nui-avatar group-ui-manage-avatar')}
                 <div class="group-ui-manage-heading-copy">
-                    <span class="group-ui-manage-eyebrow">GROUP SETTINGS</span>
+                    <span class="group-ui-manage-eyebrow">グループ管理</span>
                     <h3>${escapeHTML(group.name || '')} の管理</h3>
                     <p class="nui-help-text settings-group-description">${escapeHTML(tabs.find((tab) => tab.id === selectedTab)?.description || '')}</p>
                 </div>
@@ -802,15 +802,15 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
             <a href="#group/${groupId}" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary">グループへ戻る</a>
         </header>
         <div class="nui-split settings-layout group-ui-manage-layout">
-            <nav class="nui-nav settings-group-list group-ui-manage-nav" aria-label="グループ管理項目" data-nui="nav">
-                ${tabs.map((tab) => `<button type="button" class="nui-nav-item settings-group-button ${tab.id === selectedTab ? 'active' : ''}" data-nui="nav-item" data-group-manage-tab="${tab.id}" data-group-manage-title="${escapeHTML(tab.label)}" data-group-manage-description="${escapeHTML(tab.description)}">${escapeHTML(tab.label)}</button>`).join('')}
-            </nav>
+            <div class="nui-nav settings-group-list group-ui-manage-nav" role="tablist" aria-label="グループ管理" data-nui="nav">
+                ${tabs.map((tab) => `<button type="button" class="nui-nav-item settings-group-button ${tab.id === selectedTab ? 'active' : ''}" id="group-manage-tab-${tab.id}" role="tab" aria-selected="${tab.id === selectedTab ? 'true' : 'false'}" aria-controls="group-manage-panel-${tab.id}" data-nui="nav-item" data-group-manage-tab="${tab.id}" data-group-manage-title="${escapeHTML(tab.label)}" data-group-manage-description="${escapeHTML(tab.description)}">${escapeHTML(tab.label)}</button>`).join('')}
+            </div>
             <div class="nui-manage-detail group-ui-manage-detail">
-                ${canProfile ? `<section class="settings-group-panel" data-group-manage-panel="profile" ${selectedTab === 'profile' ? '' : 'hidden'}>${renderGroupSection('基本設定', renderGroupProfileForm(group), 'グループのアイコン、ヘッダー画像、名前、説明、公開レベルを編集します。')}</section>` : ''}
-                ${canMembers ? `<section class="settings-group-panel" data-group-manage-panel="members" ${selectedTab === 'members' ? '' : 'hidden'}>${renderGroupSection('メンバー管理', `
+                ${canProfile ? `<section class="settings-group-panel" id="group-manage-panel-profile" role="tabpanel" aria-labelledby="group-manage-tab-profile" data-group-manage-panel="profile" ${selectedTab === 'profile' ? '' : 'hidden'}>${renderGroupSection('基本情報', renderGroupProfileForm(group))}</section>` : ''}
+                ${canMembers ? `<section class="settings-group-panel" id="group-manage-panel-members" role="tabpanel" aria-labelledby="group-manage-tab-members" data-group-manage-panel="members" ${selectedTab === 'members' ? '' : 'hidden'}>${renderGroupSection('メンバー管理', `
                     <div class="nui-toolbar group-members-toolbar">
-                        <input type="search" class="group-members-search-input" id="group-member-search" placeholder="メンバーを検索 (名前・ID)" aria-label="メンバー検索">
-                        <span class="nui-help-text" id="group-member-count-label">全 ${members.length} 名</span>
+                        <input type="search" class="group-members-search-input" id="group-member-search" placeholder="名前やIDで検索" aria-label="メンバーを検索" aria-controls="group-members-list">
+                        <span class="nui-help-text" id="group-member-count-label" role="status" aria-live="polite">全 ${members.length} 名</span>
                     </div>
                     <div class="nui-list group-members-list" id="group-members-list">${members.map((entry) => {
                         const member = entry.membership || {};
@@ -819,7 +819,7 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                         const memberName = escapeHTML(user.name || `ユーザー #${member.user_id}`);
                         const handle = escapeHTML(getNyaitterId(user) || `#${member.user_id}`);
                         const avatarUrl = getUserIconUrl(user);
-                        return `<article class="nui-list-item nui-row group-member-item" data-nui="list-item" data-member-id="${Number(member.user_id)}" data-member-search-text="${(user.name || '').toLowerCase()} ${String(member.user_id)}">
+                        return `<article class="nui-list-item nui-row group-member-item" data-nui="list-item" data-member-id="${Number(member.user_id)}" data-member-search-text="${escapeHTML((user.name || '').toLowerCase())} ${String(member.user_id)}">
                             <div class="group-member-info">
                                 <img src="${escapeHTML(avatarUrl)}" class="nui-avatar group-member-avatar" alt="">
                                 <div class="group-member-details">
@@ -831,23 +831,24 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                                 </div>
                             </div>
                             <div class="nui-actions group-member-actions">
-                                ${canAdmin && !owner ? `<select class="settings-select group-ui-role-select" data-member-role="${Number(member.user_id)}" aria-label="${memberName}のロール">${roles.map((role) => `<option value="${escapeHTML(String(role.id))}" ${String(role.id) === String(member.role_id) ? 'selected' : ''}>${escapeHTML(role.name)}</option>`).join('')}</select>` : ''}
-                                ${canBan && !owner ? `<button type="button" class="nui-button-danger settings-session-revoke-button" data-nui="button-danger" data-ban-member="${Number(member.user_id)}">禁止</button>` : ''}
+                                ${canAdmin && !owner ? `<select class="settings-select group-ui-role-select" data-member-role="${Number(member.user_id)}" aria-label="${memberName} のロール">${roles.map((role) => `<option value="${escapeHTML(String(role.id))}" ${String(role.id) === String(member.role_id) ? 'selected' : ''}>${escapeHTML(role.name)}</option>`).join('')}</select>` : ''}
+                                ${canBan && !owner ? `<button type="button" class="nui-button-danger settings-session-revoke-button" data-nui="button-danger" data-ban-member="${Number(member.user_id)}" aria-label="${memberName} の参加を禁止">参加を禁止</button>` : ''}
                             </div>
                         </article>`;
                     }).join('') || '<p class="nui-empty-text">メンバーがいません。</p>'}</div>
-                `, 'グループに参加しているメンバーのロール変更やモデレーションを行います。')}</section>` : ''}
-                ${canInvite ? `<section class="settings-group-panel" data-group-manage-panel="invites" ${selectedTab === 'invites' ? '' : 'hidden'}>
-                    ${renderGroupSection('ユーザーを招待', `
+                    <p class="nui-empty-text group-members-empty" id="group-members-empty" hidden>該当するメンバーはいません。</p>
+                `)}</section>` : ''}
+                ${canInvite ? `<section class="settings-group-panel" id="group-manage-panel-invites" role="tabpanel" aria-labelledby="group-manage-tab-invites" data-group-manage-panel="invites" ${selectedTab === 'invites' ? '' : 'hidden'}>
+                    ${renderGroupSection('メンバーを招待', `
                         <form id="group-invite-form" class="user-invite-form">
-                            <label for="group-invite-search">ユーザーIDまたはハンドル</label>
+                            <label for="group-invite-search">ユーザーID または ハンドル</label>
                             <input id="group-invite-search" type="search" autocomplete="off" placeholder="#1234 または @handle" data-invite-input>
                             <div class="user-invite-suggestions" data-invite-suggestions role="listbox" aria-label="ユーザー候補"></div>
                             <div class="user-invite-selected" data-invite-selected aria-live="polite"></div>
-                            <div class="user-invite-actions"><p class="nui-help-text">候補を選んでから招待します。</p><button type="submit" class="nui-button settings-primary-button" data-nui="button" data-invite-submit disabled>招待を送信</button></div>
+                            <div class="user-invite-actions"><p class="nui-help-text">候補を選ぶと招待できます。</p><button type="submit" class="nui-button settings-primary-button" data-nui="button" data-invite-submit disabled>招待を送信</button></div>
                         </form>
-                    `, 'IDまたは名前で検索してグループにメンバーを招待します。')}
-                    ${renderGroupSection('保留中の参加申請', joinRequests.length ? `
+                    `)}
+                    ${renderGroupSection('参加申請', joinRequests.length ? `
                         <div class="nui-list group-requests-list">${joinRequests.map((item) => {
                             const reqUser = item.user || {};
                             const reqUserId = Number(item.userId ?? item.user_id);
@@ -867,25 +868,27 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                                 </div>
                             </article>`;
                         }).join('')}</div>
-                    ` : '<p class="nui-empty-text">保留中の参加申請はありません。</p>', 'グループへの参加申請を承認または拒否します。')}
+                    ` : '<p class="nui-empty-text">参加申請はありません。</p>')}
                 </section>` : ''}
-                ${canAdmin ? `<section class="settings-group-panel" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロールと権限', renderRolesPanel(group), 'グループ内の権限とロールを設定します。')}</section>` : ''}
-                ${canTransfer ? `<section class="settings-group-panel" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>
-                    <div class="nui-card nui-danger-card group-danger-card" data-nui="card">
-                        <h4 class="nui-section-title group-danger-card-title">オーナー権限を移譲</h4>
-                        <p class="nui-help-text group-danger-card-desc">グループの最高権限を別のメンバーに移譲します。移譲後は一般管理者ロールに変更されます。この操作は取り消せません。</p>
-                        <form id="group-transfer-owner-form" class="group-ui-inline-form">
-                            <label>新しいオーナーのNyaitterID<input name="user_id" inputmode="numeric" required placeholder="#0000の数字部分"></label>
-                            <button type="submit" class="nui-button-danger settings-danger-button" data-nui="button-danger">権限を移譲</button>
-                        </form>
-                    </div>
-                    <div class="nui-card nui-danger-card group-danger-card" data-nui="card" style="margin-top: 1rem;">
-                        <h4 class="nui-section-title group-danger-card-title">グループを完全に削除</h4>
-                        <p class="nui-help-text group-danger-card-desc">グループと紐づくすべてのポスト、メンバーシップ、設定が完全に削除されます。この操作は絶対に取り消せません。</p>
-                        <div>
-                            <button type="button" id="delete-group-button" class="nui-button-danger settings-danger-button" data-nui="button-danger">グループを削除</button>
+                ${canAdmin ? `<section class="settings-group-panel" id="group-manage-panel-roles" role="tabpanel" aria-labelledby="group-manage-tab-roles" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロールと権限', renderRolesPanel(group))}</section>` : ''}
+                ${canTransfer ? `<section class="settings-group-panel" id="group-manage-panel-danger" role="tabpanel" aria-labelledby="group-manage-tab-danger" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>
+                    ${renderGroupSection('危険な操作', `<div class="group-danger-stack">
+                        <div class="nui-card nui-danger-card group-danger-card" data-nui="card">
+                            <h4 class="nui-section-title group-danger-card-title">オーナーを移譲</h4>
+                            <p class="nui-help-text group-danger-card-desc">グループの所有者を別のメンバーに変更します。移譲すると、あなたは管理者になります。取り消せません。</p>
+                            <form id="group-transfer-owner-form" class="group-ui-inline-form">
+                                <label>新しいオーナーのユーザーID<input name="user_id" inputmode="numeric" required placeholder="例: 1234"></label>
+                                <button type="submit" class="nui-button-danger settings-danger-button" data-nui="button-danger">移譲する</button>
+                            </form>
                         </div>
-                    </div>
+                        <div class="nui-card nui-danger-card group-danger-card" data-nui="card">
+                            <h4 class="nui-section-title group-danger-card-title">グループを削除</h4>
+                            <p class="nui-help-text group-danger-card-desc">グループとすべての投稿が削除されます。取り消せません。</p>
+                            <div>
+                                <button type="button" id="delete-group-button" class="nui-button-danger settings-danger-button" data-nui="button-danger">グループを削除</button>
+                            </div>
+                        </div>
+                    </div>`)}
                 </section>` : ''}
             </div>
         </div>
@@ -904,11 +907,22 @@ function bindGroupProfileForm(group) {
 
     const nameInput = document.getElementById('group-profile-name');
     const descriptionInput = document.getElementById('group-profile-description');
-    const visibilityInput = document.getElementById('group-profile-visibility');
     const iconInput = document.getElementById('group-profile-icon-input');
     const headerInput = document.getElementById('group-profile-header-input');
     const iconPreview = document.getElementById('group-profile-icon-picker');
     const headerPreview = document.getElementById('group-profile-header-picker');
+    const saveStatus = document.getElementById('group-profile-save-status');
+    let statusTimer = null;
+    const setSaveStatus = (text, reset = false) => {
+        if (!saveStatus) return;
+        clearTimeout(statusTimer);
+        saveStatus.textContent = text;
+        if (reset) {
+            statusTimer = setTimeout(() => {
+                saveStatus.textContent = '変更は自動で保存されます。';
+            }, 2500);
+        }
+    };
     let newIconDataUrl = null;
     let newHeaderDataUrl = null;
     let resetIcon = false;
@@ -922,7 +936,7 @@ function bindGroupProfileForm(group) {
     const hasPendingChanges = () => (
         String(nameInput?.value || '') !== savedName
         || String(descriptionInput?.value || '') !== savedDescription
-        || String(visibilityInput?.value || '') !== savedVisibility
+        || String(form.querySelector('input[name="visibility"]:checked')?.value || savedVisibility) !== savedVisibility
         || resetIcon
         || resetHeader
         || Boolean(newIconDataUrl)
@@ -946,6 +960,7 @@ function bindGroupProfileForm(group) {
         }
         if (!hasPendingChanges() || !form.reportValidity()) return;
         saveInFlight = true;
+        setSaveStatus('保存中…');
         const values = new FormData(form);
         const body = {
             name: values.get('name'),
@@ -992,6 +1007,7 @@ function bindGroupProfileForm(group) {
                 resetHeader = false;
             }
             updateSavedGroup(data.group || {});
+            setSaveStatus('保存しました', true);
             if (previousFileIds.size > 0) {
                 void deleteFilesViaEdgeFunction([...previousFileIds]).catch((error) => {
                     console.warn('グループの古い画像を削除できませんでした。', error);
@@ -1001,7 +1017,8 @@ function bindGroupProfileForm(group) {
             if (uploadedFileIds.length > 0) {
                 await deleteFilesViaEdgeFunction(uploadedFileIds).catch(() => {});
             }
-            showAppAlert(error.message || 'プロフィールを更新できませんでした。');
+            setSaveStatus('保存できませんでした');
+            showAppAlert(error.message || 'グループを更新できませんでした。');
         } finally {
             saveInFlight = false;
             if (saveQueued) {
@@ -1094,6 +1111,7 @@ function bindGroupManageEvents(group) {
     const memberSearchInput = document.getElementById('group-member-search');
     const memberItems = document.querySelectorAll('.group-member-item');
     const memberCountLabel = document.getElementById('group-member-count-label');
+    const memberEmpty = document.getElementById('group-members-empty');
     if (memberSearchInput) {
         memberSearchInput.addEventListener('input', () => {
             const query = memberSearchInput.value.trim().toLowerCase();
@@ -1108,6 +1126,9 @@ function bindGroupManageEvents(group) {
                 memberCountLabel.textContent = query
                     ? `${visibleCount} / ${memberItems.length} 名`
                     : `全 ${memberItems.length} 名`;
+            }
+            if (memberEmpty) {
+                memberEmpty.hidden = !(query && visibleCount === 0 && memberItems.length > 0);
             }
         });
     }
@@ -1193,8 +1214,8 @@ function bindGroupManageEvents(group) {
             if (!editor) return;
             const isHidden = editor.classList.contains('hidden');
             editor.classList.toggle('hidden', !isHidden);
-            button.querySelector('.edit-text')?.classList.toggle('hidden', isHidden);
-            button.querySelector('.close-text')?.classList.toggle('hidden', !isHidden);
+            button.textContent = isHidden ? '閉じる' : '編集';
+            button.setAttribute('aria-expanded', String(isHidden));
         });
     });
 
@@ -1205,8 +1226,8 @@ function bindGroupManageEvents(group) {
             const toggleBtn = document.querySelector(`[data-toggle-role="${roleId}"]`);
             if (editor) editor.classList.add('hidden');
             if (toggleBtn) {
-                toggleBtn.querySelector('.edit-text')?.classList.remove('hidden');
-                toggleBtn.querySelector('.close-text')?.classList.add('hidden');
+                toggleBtn.textContent = '編集';
+                toggleBtn.setAttribute('aria-expanded', 'false');
             }
         });
     });
@@ -1321,19 +1342,19 @@ function bindGroupManageEvents(group) {
     document.getElementById('group-transfer-owner-form')?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const userId = Number(new FormData(event.currentTarget).get('user_id'));
-        if (!await showAppConfirm('オーナー権限を移譲しますか？この操作は取り消せません。')) return;
+        if (!await showAppConfirm('オーナーを移譲しますか？この操作は取り消せません。')) return;
         try {
             showLoading(true);
             await request(groupPath(group.id, '/transfer-owner'), { method: 'POST', body: { user_id: userId } });
             window.location.hash = `#group/${group.id}`;
         } catch (error) {
-            showAppAlert(error.message || 'オーナー権限を移譲できませんでした。');
+            showAppAlert(error.message || 'オーナーを移譲できませんでした。');
         } finally {
             showLoading(false);
         }
     });
     document.getElementById('delete-group-button')?.addEventListener('click', async () => {
-        if (!await showAppConfirm(`「${group.name || 'このグループ'}」を削除しますか？紐づくポストもすべて削除されます。`)) return;
+        if (!await showAppConfirm(`「${group.name || 'このグループ'}」を削除しますか？グループ内の投稿もすべて削除されます。`)) return;
         if (!await showAppConfirm('この操作は取り消せません。本当にグループを削除しますか？')) return;
         try {
             showLoading(true);

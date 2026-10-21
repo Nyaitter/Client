@@ -1238,8 +1238,10 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 
 .home-tab-info {
     display: flex;
+    flex: 1;
     flex-direction: column;
     min-width: 0;
+    text-align: left;
 }
 
 .home-tab-name {
@@ -1606,7 +1608,7 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
    設定画面は nui-* を併用するため、nui 側の汎用値が画面固有の見た目を
    上書きしてしまう箇所を 2 クラス指定で元に戻す。 */
 
-[data-nyaitter-ui='nui'] .settings-session-item.nui-list-item {
+[data-nyaitter-ui='nui'] :not(.nui-list--flush) > .settings-session-item.nui-list-item {
     padding: 0.9rem 0;
     border: 0;
     border-bottom: 1px solid var(--border-color);
@@ -1614,8 +1616,21 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     background: transparent;
 }
 
-[data-nyaitter-ui='nui'] .settings-session-item.nui-list-item:first-child {
+[data-nyaitter-ui='nui'] :not(.nui-list--flush) > .settings-session-item.nui-list-item:first-child {
     border-top: 1px solid var(--border-color);
+}
+
+/* 連結リストでは外枠と区切り線を nui-list--flush に任せる。 */
+[data-nyaitter-ui='nui'] .nui-list--flush > .settings-session-item.nui-list-item {
+    padding: 0.9rem 0.85rem;
+}
+
+[data-nyaitter-ui='nui'] .nui-list--flush > .settings-session-item.nui-list-item:first-child {
+    border-top: 0;
+}
+
+[data-nyaitter-ui='nui'] .nui-list--flush > .settings-help-text {
+    padding: 1rem;
 }
 
 [data-nyaitter-ui='nui'] .settings-session-current.nui-badge {

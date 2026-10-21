@@ -203,8 +203,8 @@ export function renderAppShellHTML() {
                 <div class="login-modal-heading">
                     <h3 id="login-approval-wait-title">ログインの許可を待っています</h3>
                 </div>
-                <p class="settings-help-text">ログイン済みの端末に許可リクエストを送信しました。そちらで許可されると、自動的にログインします。</p>
-                <div class="login-approval-wait-progress" aria-hidden="true"><div class="spinner"></div><span>確認中</span></div>
+                <p id="login-approval-wait-description" class="settings-help-text">ログイン済みの端末に許可リクエストを送信しました。そちらで許可されると、自動的にログインします。</p>
+                <div class="login-approval-wait-progress" aria-hidden="true"><div class="spinner"></div><span id="login-approval-wait-progress-label">確認中</span></div>
                 <p id="login-approval-wait-status" class="login-approval-detail login-approval-wait-status" role="status">許可を待機しています</p>
                 <div id="login-approval-recovery-section" class="login-approval-recovery hidden">
                     <p class="settings-help-text">ログイン済みの端末がない場合は、アカウントアクセスの復旧を開始できます。復旧依頼をブロックしないまま、信頼度に応じた待機期間が過ぎると、この場所は自動的に信頼されログインできます。</p>

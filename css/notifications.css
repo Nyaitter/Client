@@ -165,6 +165,16 @@
     padding-left: calc(1rem - 4px);
 }
 
+/* 連結リストでも未読の左アクセントを残す。 */
+.nui-list--flush > .notification-item.nui-list-item.notification-new {
+    border-left: 4px solid var(--primary-color);
+    padding-left: calc(1rem - 4px);
+}
+
+.nui-list--flush > .error-message {
+    padding: 1rem;
+}
+
 [data-nyaitter-ui='nui'] .notification-item.nui-list-item.notification-clicked {
     background-color: var(--nui-bg, var(--main-bg-color));
 }

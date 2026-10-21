@@ -697,6 +697,10 @@
     gap: 0.45rem;
 }
 
+.group-modal-header-field {
+    min-width: 0;
+}
+
 .group-modal-image-label {
     color: var(--text-color);
     font-weight: 700;
@@ -970,6 +974,11 @@
 
 .group-profile-form {
     gap: 0.6rem;
+}
+
+.group-profile-save-status {
+    margin: 0.35rem 0 0;
+    font-size: 0.82rem;
 }
 
 .group-profile-form > label {
@@ -1798,6 +1807,28 @@
     border-color: var(--primary-color);
 }
 
+.group-members-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--main-bg-color);
+}
+
+.group-members-empty {
+    margin: 0;
+    padding: 1rem;
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.group-members-empty[hidden] {
+    display: none;
+}
+
 .group-member-item {
     display: flex;
     align-items: center;
@@ -1906,6 +1937,12 @@
 }
 
 /* Danger Zone Cards */
+.group-danger-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
 .group-danger-card {
     border: 1.5px solid rgba(239, 68, 68, 0.35);
     background: color-mix(in srgb, #ef4444 3%, var(--main-bg-color));

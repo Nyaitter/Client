@@ -580,36 +580,41 @@ export async function openAccountRecoveryModal(recoveryRequest) {
     const status = String(requestData.status || '');
     const pending = status === 'waiting';
     const isCurrentIp = requestData.is_your_current_ip === true;
+    const formatDate = value => {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '不明' : date.toLocaleString();
+    };
 
     body.innerHTML = `
-        <h3 id="account-recovery-modal-title">不明な場所から復旧依頼が来ている</h3>
-        <p class="settings-help-text">アカウントへのアクセスを復旧する依頼が、下記の場所から送信されています。</p>
-        <div class="login-approval-details">
-            <p><strong>IPアドレス:</strong> ${escapeHTML(requestData.ip_masked || '不明')}</p>
-            <p><strong>端末情報:</strong> ${escapeHTML(requestData.user_agent || '不明')}</p>
-            <p><strong>ログイン方法:</strong> ${escapeHTML(providerName)}</p>
-            <p><strong>依頼日時:</strong> ${new Date(requestData.started_at || Date.now()).toLocaleString()}</p>
-            ${pending ? `<p><strong>待機期間の終了:</strong> ${new Date(requestData.wait_until).toLocaleString()}</p>` : ''}
-        </div>
-        ${isCurrentIp ? '<p class="settings-help-text" style="color:#e5484d;"><strong>警告: この依頼元のIPは、いまあなたがこの画面を開いているIPと同一です。ブロックすると現在の端末が締め出されます。</strong></p>' : ''}
-        <p class="settings-help-text">これがあなたの送信したものなら<strong>[承認]</strong>を押すことで自動的に依頼元の場所が信頼されます。</p>
-        <p class="settings-help-text">もし送信した覚えがないのなら<strong>[ブロック]</strong>を押したのち、侵害された認証プロバイダ（Scratch、メールアドレスなど依頼送信元が使用した認証プロバイダ）側で措置を行ってください。</p>
-        <p class="settings-help-text">今回の依頼元が使用したログイン方法: <strong>${escapeHTML(providerName)}</strong></p>
-        <p class="settings-help-text">ブロックすると、依頼元のIPは恒久的にブロックされます。利用可能なログイン方法が2つ以上ある場合は、侵害されたプロバイダの連携も自動で解除されます。</p>
+        <h3 id="account-recovery-modal-title">アカウントアクセスの復旧依頼</h3>
+        <p class="settings-help-text">心当たりのない場所から、アカウントへのアクセス復旧が求められています。</p>
+        <dl class="account-recovery-facts">
+            <div><dt>接続元</dt><dd>${escapeHTML(requestData.ip_masked || '不明')}</dd></div>
+            <div><dt>端末</dt><dd>${escapeHTML(requestData.user_agent || '不明')}</dd></div>
+            <div><dt>ログイン方法</dt><dd>${escapeHTML(providerName)}</dd></div>
+            <div><dt>依頼日時</dt><dd>${escapeHTML(formatDate(requestData.started_at))}</dd></div>
+            ${pending ? `<div><dt>待機期間の終了</dt><dd>${escapeHTML(formatDate(requestData.wait_until))}</dd></div>` : ''}
+        </dl>
+        ${isCurrentIp ? '<p class="account-recovery-warning" role="alert">この依頼は、いま使っている場所から送信されています。ブロックすると、この端末からログインできなくなります。</p>' : ''}
         ${pending ? `
-        <div class="login-approval-actions">
-            <button type="button" class="login-secondary-button account-recovery-block-btn">ブロック</button>
-            <button type="button" class="settings-primary-button account-recovery-approve-btn">承認</button>
-        </div>` : `
-        <p class="settings-help-text">この復旧依頼はすでに処理されています（状態: ${escapeHTML(accountRecoveryStatusLabel(status))}）。</p>`}
+            <p class="settings-help-text">自分で依頼した場合は「承認」を、心当たりがない場合は「ブロック」を選んでください。</p>
+            <div class="login-approval-actions">
+                <button type="button" class="login-secondary-button account-recovery-block-btn">ブロック</button>
+                <button type="button" class="settings-primary-button account-recovery-approve-btn">承認</button>
+            </div>
+            <details class="account-recovery-more">
+                <summary>ブロックするとどうなりますか？</summary>
+                <p>依頼元の場所からログインできなくなります。ログイン方法が2つ以上ある場合は、依頼に使われた方法の連携も解除されます。</p>
+            </details>
+        ` : `<p class="settings-help-text">この依頼はすでに処理されています（${escapeHTML(accountRecoveryStatusLabel(status))}）。</p>`}
     `;
 
     const decide = async (action) => {
         if (action === 'block') {
             const confirmed = await showAppConfirm(
                 isCurrentIp
-                    ? 'この依頼をブロックしますか？依頼元はあなたが現在使用中のIPと同一です。恒久的にブロックされると、この端末は別のネットワークに切り替えるまでログインできなくなります。心当たりがある場合は「承認」を選んでください。'
-                    : 'この依頼をブロックしますか？依頼元のIPは恒久的にブロックされます。心当たりがある場合は「承認」を選んでください。',
+                    ? 'この依頼をブロックしますか？いま使っている場所からもログインできなくなります。'
+                    : 'この依頼をブロックしますか？依頼元の場所からログインできなくなります。',
             );
             if (!confirmed) return;
         }
@@ -622,11 +627,11 @@ export async function openAccountRecoveryModal(recoveryRequest) {
             if (error) throw error;
             closeModal();
             if (action === 'approve') {
-                await showAppAlert('復旧依頼を承認しました。依頼元の場所が信頼されました。');
+                await showAppAlert('復旧依頼を承認しました。依頼元の場所からログインできるようになりました。');
             } else if (data?.current_ip_blocked) {
-                await showAppAlert('復旧依頼をブロックしました。あなたが現在使用しているIPが恒久的にブロックされたため、この端末からログインするには別のネットワークへ切り替える必要があります。解除は 設定 → セッション の「ブロックしたIPアドレス」一覧から行えます。');
+                await showAppAlert('復旧依頼をブロックしました。この端末も、別のネットワークに切り替えるまでログインできません。解除は 設定 → セッション から行えます。');
             } else {
-                await showAppAlert('復旧依頼をブロックしました。必要に応じて認証プロバイダ側で措置を行ってください。');
+                await showAppAlert('復旧依頼をブロックしました。');
             }
         } catch (error) {
             console.error('復旧依頼の処理に失敗:', error);

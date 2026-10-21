@@ -47,6 +47,9 @@ function setupLoginModal() {
   const errorMessage = document.getElementById('error-message');
   const copyMessage = document.getElementById('copy-message');
   const loginApprovalWaitModal = document.getElementById('login-approval-wait-modal');
+  const loginApprovalWaitTitle = document.getElementById('login-approval-wait-title');
+  const loginApprovalWaitDescription = document.getElementById('login-approval-wait-description');
+  const loginApprovalWaitProgressLabel = document.getElementById('login-approval-wait-progress-label');
   const loginApprovalWaitStatus = document.getElementById('login-approval-wait-status');
   const loginApprovalWaitCancelBtn = document.getElementById('login-approval-wait-cancel-btn');
   const loginApprovalRecoverySection = document.getElementById('login-approval-recovery-section');
@@ -420,7 +423,13 @@ function setupLoginModal() {
     activeApprovalWait = state;
     loginModal?.classList.add('hidden');
     showLoading(false);
-    if (loginApprovalWaitStatus) loginApprovalWaitStatus.textContent = '許可を待機しています';
+    if (loginApprovalWaitTitle) loginApprovalWaitTitle.textContent = 'ログインの許可を待っています';
+    if (loginApprovalWaitDescription) loginApprovalWaitDescription.textContent = 'ログイン済みの端末に許可リクエストを送信しました。そちらで許可されると、自動的にログインします。';
+    if (loginApprovalWaitProgressLabel) loginApprovalWaitProgressLabel.textContent = '確認中';
+    if (loginApprovalWaitStatus) {
+      loginApprovalWaitStatus.textContent = '許可を待機しています';
+      loginApprovalWaitStatus.classList.remove('hidden');
+    }
     if (accountRecoveryWaitStatus) {
       accountRecoveryWaitStatus.textContent = '';
       accountRecoveryWaitStatus.classList.add('hidden');
@@ -442,6 +451,48 @@ function setupLoginModal() {
     if (restoreLogin) loginModal?.classList.remove('hidden');
   }
 
+  function showRecoveryWait(data) {
+    const state = {
+      cancelled: false,
+      pendingLogin: null,
+      recovery: { id: String(data.recovery_id), token: String(data.recovery_token) },
+    };
+    activeApprovalWait = state;
+    loginModal?.classList.add('hidden');
+    showLoading(false);
+    if (loginApprovalWaitTitle) loginApprovalWaitTitle.textContent = '復旧の待機期間中です';
+    if (loginApprovalWaitDescription) loginApprovalWaitDescription.textContent = 'この場所からのログインは、待機期間が終わるまで保留されています。';
+    if (loginApprovalWaitProgressLabel) loginApprovalWaitProgressLabel.textContent = '待機中';
+    if (loginApprovalWaitStatus) loginApprovalWaitStatus.classList.add('hidden');
+    if (loginApprovalRecoverySection) loginApprovalRecoverySection.classList.add('hidden');
+    updateRecoveryStatus(data.wait_until);
+    loginApprovalWaitModal?.classList.remove('hidden');
+    return state;
+  }
+
+  async function completeRecoveryWait(data) {
+    const waitState = showRecoveryWait(data);
+    let approved = false;
+    try {
+      while (!waitState.cancelled) {
+        const recovered = await pollRecoveryForWait(waitState.recovery);
+        if (recovered) {
+          approved = true;
+          return recovered;
+        }
+        if (waitState.cancelled) break;
+        await wait(30000);
+      }
+      throw new Error('ログインをキャンセルしました。');
+    } finally {
+      const ownsWaitModal = activeApprovalWait === waitState;
+      if (ownsWaitModal) {
+        activeApprovalWait = null;
+        closeApprovalWait({ restoreLogin: !approved });
+      }
+    }
+  }
+
   function cancelApprovalWait() {
     if (!activeApprovalWait) return;
     activeApprovalWait.cancelled = true;
@@ -450,6 +501,7 @@ function setupLoginModal() {
   }
 
   async function completeApprovedLogin(pendingLogin) {
+    if (pendingLogin?.recovery_waiting) return completeRecoveryWait(pendingLogin);
     const approvalId = String(pendingLogin?.approval_id || '');
     const approvalToken = String(pendingLogin?.approval_token || '');
     const expiresAt = new Date(pendingLogin?.expires_at || 0).getTime();
@@ -940,7 +992,7 @@ function setupLoginModal() {
           throw new Error(data.error || '認証に失敗しました。');
         }
         resetTurnstile();
-        if (data.approval_required) data = await completeApprovedLogin(data);
+        if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
         if (!data.success) throw new Error('セッションの設定に失敗しました。');
         finishLogin();
       } catch (error) {
@@ -1051,7 +1103,7 @@ function setupLoginModal() {
           throw new Error(data.error || '認証に失敗しました。');
         }
         resetTurnstile();
-        if (data.approval_required) data = await completeApprovedLogin(data);
+        if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
         if (!data.success) throw new Error('セッションの設定に失敗しました。');
         finishLogin();
       } catch (error) {
@@ -1091,7 +1143,7 @@ function setupLoginModal() {
           }
           throw new Error(data.error || '登録に失敗しました。');
         }
-        if (data.approval_required) data = await completeApprovedLogin(data);
+        if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
         if (!data.success) throw new Error('セッションの設定に失敗しました。');
         finishLogin();
       } catch (error) {
@@ -1324,7 +1376,7 @@ function setupLoginModal() {
           }
           throw new Error(data.error || 'パスキー認証に失敗しました。');
         }
-        if (data.approval_required) data = await completeApprovedLogin(data);
+        if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
         if (!data.success) throw new Error('セッションの設定に失敗しました。');
         finishLogin();
       } catch (error) {
@@ -1466,7 +1518,7 @@ function setupLoginModal() {
       if (!ok || result.error) {
         throw new Error(result.error || '認証に失敗しました。');
       }
-      if (result.approval_required) result = await completeApprovedLogin(result);
+      if (result.approval_required || result.recovery_waiting) result = await completeApprovedLogin(result);
       if (!result.success) throw new Error('セッションの設定に失敗しました。');
 
       clearOAuthCallbackQuery();
@@ -1555,7 +1607,7 @@ function setupLoginModal() {
       if (!verifyRes.ok || data.error) {
         throw new Error(data.error || '認証に失敗しました。');
       }
-      if (data.approval_required) data = await completeApprovedLogin(data);
+      if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
       if (!data.success) throw new Error('セッションの設定に失敗しました。');
 
       // Clear callback url params

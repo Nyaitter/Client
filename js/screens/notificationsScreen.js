@@ -45,7 +45,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
         setPostLoadObserver(null);
     }
     const contentDiv = DOM.notificationsContent;
-    contentDiv.classList.add('nui-list');
+    contentDiv.classList.add('nui-list', 'nui-list--flush');
     contentDiv.setAttribute('data-nui', 'list');
     renderLoading(contentDiv);
 
