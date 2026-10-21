@@ -189,9 +189,9 @@ export async function loadServerClientLimits() {
             return false;
         }
         globalThis.NyaitterServerStatus = data;
-        // 公開UI設定 (client_config.ui) を NyaitterUI に取り込む。読み込み時点で未取得でも、
-        // ここで再読込することでテーマ/アクセント/機能フラグ/翻訳が反映される。
+        // 公開UI設定を NyaitterUI に渡す。設定が無くても既定値で動作する。
         globalThis.NyaitterUI?.resetConfig?.();
+        globalThis.NyaitterUI?.configure?.(data?.client_config?.ui);
         // サーバー既定の表示UIを反映する（ユーザー設定があればそちらが優先される）。
         applyServerUiMode(data?.client_config?.ui?.uiMode);
         // ログイン済みならアカウント設定 (user.settings.ui_mode) を優先適用する。

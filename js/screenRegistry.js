@@ -1,4 +1,5 @@
 import { showStagesScreen } from './screens/stagesScreen.js';
+import { showCallScreen } from './screens/callScreen.js';
 import { showMainScreen } from './screens/timelineScreen.js';
 import { showExploreScreen } from './screens/exploreScreen.js';
 import { showSearchResults } from './screens/searchScreen.js';
@@ -27,6 +28,8 @@ import { openAccountRecoveryModal } from './modules/auth.js';
 const screenHandlers = {
     stages: (_, showScreenFn) => showStagesScreen(null, showScreenFn),
     stage: (params, showScreenFn) => showStagesScreen(params.stageId, showScreenFn),
+    'call-dm': (params, showScreenFn) => showCallScreen('dm', params.dmId, showScreenFn),
+    'call-stage': (params, showScreenFn) => showCallScreen('stage', params.stageId, showScreenFn),
     main: (_, showScreenFn) => showMainScreen(showScreenFn),
     'post-activity': (params, showScreenFn) => showPostActivityScreen(params.postId, params.tab, showScreenFn),
     'post-detail': (params, showScreenFn) => {

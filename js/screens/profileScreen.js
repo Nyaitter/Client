@@ -468,16 +468,16 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                 escapeHTML(user.name),
             );
             document.getElementById('page-title-sub').textContent = `${getNyaitterId(user)}`;
-            profileHeader.classList.add('nui-profile');
+            profileHeader.classList.add('profile-hero');
             profileHeader.setAttribute('data-nui', 'card');
             profileHeader.innerHTML = `
-                <div class="nui-profile-main">
-                    <img src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar nui-profile-avatar" alt="${escapeHTML(user.name)}'s icon">
-                    <div class="profile-info nui-profile-copy">
+                <div class="profile-hero-main">
+                    <img src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar profile-hero-avatar" alt="${escapeHTML(user.name)}'s icon">
+                    <div class="profile-info profile-hero-copy">
                         <div class="profile-identity"><h2>${getEmoji(escapeHTML(user.name))}</h2>
                         <div class="user-id" title="Nyaitter ID">${getNyaitterId(user)}</div></div>
                     </div>
-                    <div id="profile-actions" class="profile-actions nui-profile-actions"></div>
+                    <div id="profile-actions" class="profile-actions profile-hero-actions"></div>
                 </div>`;
             const actionsContainer = profileHeader.querySelector('#profile-actions');
             if (actionsContainer && getCurrentUser()?.admin && !isCurrentUserProfile(user)) {
@@ -529,16 +529,16 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         profileHeader.classList.toggle('has-profile-banner', Boolean(headerImageUrl));
         document.body.classList.toggle('profile-has-banner', Boolean(headerImageUrl));
         const profileBannerHtml = headerImageUrl
-            ? `<div class="profile-banner nui-profile-header"><img src="${escapeHTML(headerImageUrl)}" alt="${escapeHTML(user.name)}のヘッダー画像"></div>`
+            ? `<div class="profile-banner nui-cover"><img src="${escapeHTML(headerImageUrl)}" alt="${escapeHTML(user.name)}のヘッダー画像"></div>`
             : '';
 
-        profileHeader.classList.add('nui-profile');
+        profileHeader.classList.add('profile-hero');
         profileHeader.setAttribute('data-nui', 'card');
         profileHeader.innerHTML = `
             ${profileBannerHtml}
-            <div class="nui-profile-main">
-                <img src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar nui-profile-avatar" alt="${escapeHTML(user.name)}'s icon">
-                <div class="profile-info nui-profile-copy">
+            <div class="profile-hero-main">
+                <img src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar profile-hero-avatar" alt="${escapeHTML(user.name)}'s icon">
+                <div class="profile-info profile-hero-copy">
                     <div class="profile-identity"><h2>
                         ${getEmoji(escapeHTML(user.name))}
                         ${user.admin ? `<img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">` : user.verify ? `<img src="icons/verify.png" class="verify-badge" title="認証済み">` : ''}
@@ -576,7 +576,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                         <a href="#profile/${user.id}/followers" id="follower-count"><strong>${followerCount}</strong> フォロワー</a>
                     </div>
                 </div>
-                <div id="profile-actions" class="profile-actions nui-profile-actions"></div>
+                <div id="profile-actions" class="profile-actions profile-hero-actions"></div>
             </div>`;
 
         if (getCurrentUser() && !isCurrentUserProfile(user)) {

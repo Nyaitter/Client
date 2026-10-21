@@ -55,6 +55,7 @@ export function renderAppShellHTML() {
                         <div id="profile-content"></div>
                     </div>
                     <div id="stages-screen" class="screen hidden"><div id="stages-content"></div></div>
+                    <div id="call-screen" class="screen hidden"><div id="call-content"></div></div>
                     <div id="groups-screen" class="screen hidden">
                         <div id="groups-content"></div>
                     </div>
