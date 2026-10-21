@@ -7,6 +7,7 @@ import { initTabGroup } from '../modules/tabSwipe.js';
 import { createUserInvitePicker } from '../modules/userInvite.js';
 import { escapeHTML, getNyaitterId, getSafeConfiguredFileUrl, getUserIconUrl, showAppAlert, showAppConfirm, showLoading } from '../utils/helpers.js';
 import { showScreenCompat } from '../screenManager.js';
+import { copyEntityUrl } from '../modules/share.js';
 
 const VISIBILITY_LABELS = {
     open: '公開',
@@ -118,7 +119,7 @@ function groupAvatar(group, className = 'nui-avatar') {
 function groupHeader(group) {
     const imageUrl = getGroupImageUrl(group?.header_image);
     if (!imageUrl) return '';
-    return `<div class="nui-profile-header"><img src="${escapeHTML(imageUrl)}" alt=""></div>`;
+    return `<div class="nui-cover"><img src="${escapeHTML(imageUrl)}" alt=""></div>`;
 }
 
 function groupMeta(group) {
@@ -461,17 +462,18 @@ function renderGroupOverview(content, group, pendingJoinRequest = null) {
     const groupId = escapeHTML(String(group.id));
     const joinBtnText = isApprovalRequired ? '参加申請する' : '参加する';
     content.innerHTML = `<main class="nui-page group-ui-page" data-nui="page">
-        <section class="nui-card nui-profile" data-nui="card">
+        <section class="nui-card profile-hero" data-nui="card">
             ${groupHeader(group)}
-            <div class="nui-profile-main">
-                ${groupAvatar(group, 'nui-avatar nui-profile-avatar')}
-                <div class="nui-profile-copy"><h3>${escapeHTML(group.name || '')}</h3><p class="nui-help-text settings-group-description">${groupMeta(group)}</p><p>${escapeHTML(group.description || '説明はありません。')}</p></div>
-                <div class="nui-profile-actions">
+            <div class="profile-hero-main">
+                ${groupAvatar(group, 'nui-avatar profile-hero-avatar')}
+                <div class="profile-hero-copy"><h3>${escapeHTML(group.name || '')}</h3><p class="nui-help-text settings-group-description">${groupMeta(group)}</p><p>${escapeHTML(group.description || '説明はありません。')}</p></div>
+                <div class="profile-hero-actions">
                     ${canJoin && !hasPendingJoinRequest ? `<button type="button" class="nui-button settings-primary-button" data-nui="button" id="join-group-btn">${joinBtnText}</button>` : ''}
                     ${hasPendingJoinRequest ? '<button type="button" class="nui-button settings-primary-button" data-nui="button" disabled aria-disabled="true">承認待ち</button>' : ''}
                     ${membership?.status === 'invited' ? '<span class="nui-badge nui-badge-accent">招待に応答してください</span>' : ''}
                     ${isActive && !isGroupOwner(group) ? '<button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="leave-group-btn">退出する</button>' : ''}
                     ${canManage ? `<a class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" href="#group/${groupId}/manage">設定</a>` : ''}
+                    <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="share-group-btn" title="共有URLをコピー">${ICONS.share}<span>共有</span></button>
                 </div>
             </div>
         </section>
@@ -498,6 +500,10 @@ function renderGroupOverview(content, group, pendingJoinRequest = null) {
     }
     document.getElementById('join-group-btn')?.addEventListener('click', () => joinGroup(group));
     document.getElementById('leave-group-btn')?.addEventListener('click', () => leaveGroup(group));
+    const shareButton = document.getElementById('share-group-btn');
+    shareButton?.addEventListener('click', () => {
+        void copyEntityUrl('group', group.id, shareButton).catch(error => showAppAlert(error.message || '共有URLをコピーできませんでした。'));
+    });
 }
 
 async function joinGroup(group) {
@@ -805,7 +811,7 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
             <div class="nui-nav settings-group-list group-ui-manage-nav" role="tablist" aria-label="グループ管理" data-nui="nav">
                 ${tabs.map((tab) => `<button type="button" class="nui-nav-item settings-group-button ${tab.id === selectedTab ? 'active' : ''}" id="group-manage-tab-${tab.id}" role="tab" aria-selected="${tab.id === selectedTab ? 'true' : 'false'}" aria-controls="group-manage-panel-${tab.id}" data-nui="nav-item" data-group-manage-tab="${tab.id}" data-group-manage-title="${escapeHTML(tab.label)}" data-group-manage-description="${escapeHTML(tab.description)}">${escapeHTML(tab.label)}</button>`).join('')}
             </div>
-            <div class="nui-manage-detail group-ui-manage-detail">
+            <div class="group-ui-manage-detail">
                 ${canProfile ? `<section class="settings-group-panel" id="group-manage-panel-profile" role="tabpanel" aria-labelledby="group-manage-tab-profile" data-group-manage-panel="profile" ${selectedTab === 'profile' ? '' : 'hidden'}>${renderGroupSection('基本情報', renderGroupProfileForm(group))}</section>` : ''}
                 ${canMembers ? `<section class="settings-group-panel" id="group-manage-panel-members" role="tabpanel" aria-labelledby="group-manage-tab-members" data-group-manage-panel="members" ${selectedTab === 'members' ? '' : 'hidden'}>${renderGroupSection('メンバー管理', `
                     <div class="nui-toolbar group-members-toolbar">

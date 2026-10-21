@@ -262,36 +262,78 @@
     stroke-width: 1.8;
 }
 
+/* プロフィールカード。汎用の nui-card / nui-avatar / nui-cover に載せる基本レイアウト。 */
+[data-nyaitter-ui='nui'] .nui-card.profile-hero {
+    padding: 0;
+    overflow: hidden;
+}
+
+[data-nyaitter-ui='nui'] .profile-hero-main {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+[data-nyaitter-ui='nui'] .nui-avatar.profile-hero-avatar {
+    width: 76px;
+    height: 76px;
+}
+
+[data-nyaitter-ui='nui'] .profile-hero-copy {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+[data-nyaitter-ui='nui'] .profile-hero-copy h3,
+[data-nyaitter-ui='nui'] .profile-hero-copy p {
+    margin: 0;
+}
+
+[data-nyaitter-ui='nui'] .profile-hero-copy > p:last-child {
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+[data-nyaitter-ui='nui'] .profile-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 /* ==========================================================================
-   NyaitterUI プロフィール調整（nui モード専用）
+   プロフィールカードの nui モード調整
    レガシー用の #profile-header ルールは legacy 表示のためにそのまま残し、
-   nui 構造 (nui-profile*) に必要な上書きだけを [data-nyaitter-ui="nui"] で
-   スコープする。legacy では付属 CSS が無効なため、ここは一切適用されない。
+   profile-hero* に必要な上書きだけを [data-nyaitter-ui="nui"] でスコープする。
+   legacy では付属 CSS が無効なため、ここは一切適用されない。
    ========================================================================== */
 
-[data-nyaitter-ui='nui'] #profile-header.nui-profile {
+[data-nyaitter-ui='nui'] #profile-header.profile-hero {
     padding: 0;
 }
 
-[data-nyaitter-ui='nui'] #profile-header .nui-profile-main {
+[data-nyaitter-ui='nui'] #profile-header .profile-hero-main {
     position: relative;
     padding: 1rem;
 }
 
 /* ヘッダー画像があるときだけ、情報表示の上半分を画像に重ねる。
    画像が無いときに持ち上げると上が詰まって見えるため、重ねない。 */
-[data-nyaitter-ui='nui'] #profile-header.has-profile-banner .nui-profile-main {
+[data-nyaitter-ui='nui'] #profile-header.has-profile-banner .profile-hero-main {
     margin-top: -5.5rem;
-    --nui-profile-actions-top: 6rem;
+    --profile-hero-actions-top: 6rem;
     /* 重なった部分は上ほど透明にし、画像を透かしつつ下部は背景色へ戻す。 */
     background: linear-gradient(to bottom, transparent 0, var(--nui-surface, var(--bg-color)) 72%);
 }
 
-[data-nyaitter-ui='nui'] #profile-header .nui-profile-copy {
+[data-nyaitter-ui='nui'] #profile-header .profile-hero-copy {
     margin-top: 0;
 }
 
-[data-nyaitter-ui='nui'] #profile-header .nui-profile-copy .user-stats {
+[data-nyaitter-ui='nui'] #profile-header .profile-hero-copy .user-stats {
     margin-top: 0.6rem;
 }
 
@@ -307,10 +349,8 @@
     background: var(--nui-surface, var(--bg-color));
 }
 
-/* ヘッダー画像はプロフィール領域の幅に合わせ、はみ出す上下を中央基準でクロップする。
-   付属CSS の .nui-profile-header は cover 前提のため、レガシー用 img ルール
-   (height:auto / contain) を nui で打ち消して cover に戻す。 */
-[data-nyaitter-ui='nui'] #profile-header .profile-banner.nui-profile-header img {
+/* ヘッダー画像はプロフィール領域の幅に合わせ、はみ出す上下を中央基準でクロップする。 */
+[data-nyaitter-ui='nui'] #profile-header .profile-banner.nui-cover img {
     width: 100%;
     height: 100%;
     max-height: none;
@@ -345,9 +385,9 @@
     padding: 0.75rem 1rem;
 }
 
-[data-nyaitter-ui='nui'] #profile-header .nui-profile-actions {
+[data-nyaitter-ui='nui'] #profile-header .profile-hero-actions {
     position: absolute;
-    top: var(--nui-profile-actions-top, 1rem);
+    top: var(--profile-hero-actions-top, 1rem);
     right: 1rem;
     z-index: 1;
     min-width: 0;
@@ -356,13 +396,13 @@
 }
 
 /* ==========================================================================
-   legacy 表示: 共有マークアップ（nui-profile-main）を従来のヘッダー配置に戻す。
-   nui モードでは付属 CSS のグリッド（avatar / 本文 / 操作の3カラム）を使うため
-   この節は適用されない。legacy では従来どおり「アバター + 操作」を1段、
-   その下に本文を置く。
+   legacy 表示: 共有マークアップ（profile-hero-main）を従来のヘッダー配置に戻す。
+   nui モードでは基本レイアウトのグリッド（avatar / 本文 / 操作の3カラム）を
+   使うためこの節は適用されない。legacy では従来どおり「アバター + 操作」を
+   1段、その下に本文を置く。
    ========================================================================== */
 
-[data-nyaitter-ui='legacy'] #profile-header .nui-profile-main {
+[data-nyaitter-ui='legacy'] #profile-header .profile-hero-main {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
@@ -371,11 +411,11 @@
     position: relative;
 }
 
-[data-nyaitter-ui='legacy'] #profile-header.has-profile-banner .nui-profile-main {
+[data-nyaitter-ui='legacy'] #profile-header.has-profile-banner .profile-hero-main {
     margin-top: -4rem;
 }
 
-[data-nyaitter-ui='legacy'] #profile-header .nui-profile-main > .profile-info {
+[data-nyaitter-ui='legacy'] #profile-header .profile-hero-main > .profile-info {
     order: 3;
     flex: 0 0 100%;
     margin-top: 1rem;
@@ -385,7 +425,7 @@
 
 @media (max-width: 544px) {
     .profile-identity { display: block; }
-    body[data-active-screen='profile-screen'] #profile-header:not(.has-profile-banner) .nui-profile-main {
+    body[data-active-screen='profile-screen'] #profile-header:not(.has-profile-banner) .profile-hero-main {
         padding-top: 3.5rem;
     }
     /* 名前をヘッダーへつなぎ、アイコンは本文の位置で縮小する。 */
@@ -479,22 +519,22 @@
         background: color-mix(in srgb, var(--primary-color) 15%, var(--main-bg-color));
     }
 
-    [data-nyaitter-ui='nui'] #profile-header .nui-profile-main {
+    [data-nyaitter-ui='nui'] #profile-header .profile-hero-main {
         grid-template-columns: auto minmax(0, 1fr);
         align-items: start;
     }
-    [data-nyaitter-ui='nui'] #profile-header .nui-profile-main > .user-icon-large {
+    [data-nyaitter-ui='nui'] #profile-header .profile-hero-main > .user-icon-large {
         grid-column: 1;
         grid-row: 1;
     }
-    [data-nyaitter-ui='nui'] #profile-header .nui-profile-main > .profile-info {
+    [data-nyaitter-ui='nui'] #profile-header .profile-hero-main > .profile-info {
         grid-column: 1 / -1;
         grid-row: 2;
         min-width: 0;
         overflow-wrap: anywhere;
     }
-    [data-nyaitter-ui='nui'] #profile-header .nui-profile-main > .profile-actions {
-        top: var(--nui-profile-actions-top, 2rem);
+    [data-nyaitter-ui='nui'] #profile-header .profile-hero-main > .profile-actions {
+        top: var(--profile-hero-actions-top, 2rem);
     }
     #profile-header .profile-actions {
         flex-wrap: wrap;

@@ -8,32 +8,6 @@
 const UI_MODES = Object.freeze(['nui', 'legacy']);
 const DEFAULT_UI_MODE = 'nui';
 
-// NyaitterUI.enhance が data-nui から付与するクラス。
-// legacy では data-nui を残したまま、このクラスだけを外す。
-const NUI_CLASS_BY_KIND = Object.freeze({
-    page: 'nui-page',
-    'page-heading': 'nui-page-heading',
-    section: 'nui-section',
-    card: 'nui-card',
-    list: 'nui-list',
-    'list-item': 'nui-list-item',
-    nav: 'nui-nav',
-    'nav-item': 'nui-nav-item',
-    split: 'nui-split',
-    toolbar: 'nui-toolbar',
-    tabs: 'nui-tabs',
-    form: 'nui-form',
-    field: 'nui-field',
-    heading: 'nui-heading',
-    badge: 'nui-badge',
-    avatar: 'nui-avatar',
-    icon: 'nui-icon',
-    button: 'nui-button',
-    'button-secondary': 'nui-button-secondary',
-    'button-danger': 'nui-button-danger',
-    'empty-text': 'nui-empty-text',
-});
-
 const NUI_STYLE_SELECTOR =
     'link[rel="stylesheet"][data-nui-styles], link[rel="stylesheet"][href*="nyaitter-ui"]';
 
@@ -90,8 +64,10 @@ function ensureHeadObserver() {
 
 function downgradeNuiClasses(root) {
     if (!root || typeof root.querySelectorAll !== 'function') return;
+    const classForKind = getNyaitterUI()?.classForKind;
+    if (typeof classForKind !== 'function') return;
     for (const element of root.querySelectorAll('[data-nui]')) {
-        const className = NUI_CLASS_BY_KIND[element.dataset?.nui];
+        const className = classForKind(element.dataset?.nui);
         if (className) element.classList.remove(className);
     }
 }

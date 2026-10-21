@@ -16,6 +16,13 @@ const route = (name, match, options = {}) => ({
 export const ROUTES = [
     route('stages', hash => hash === '#stages' || hash === '#spaces', { requiresAuth: true }),
     route('stage', /^#stage\/([a-f0-9-]+)$/i, { requiresAuth: true, parse: match => ({ stageId: match[1] }) }),
+    route('call-dm', /^#call\/dm\/([^/?#]+)$/i, {
+        requiresAuth: true,
+        parse: match => ({ dmId: decodeURIComponent(match[1]) }),
+    }),
+    route('call-stage', /^#call\/stage\/([^/?#]+)$/i, {
+        parse: match => ({ stageId: decodeURIComponent(match[1]) }),
+    }),
     route('post-activity', /^#\/?post\/(\d+)\/activity(?:\/([^/]+))?$/i, {
         parse: (match) => ({ postId: match[1], tab: match[2] || 'quotes' }),
     }),
