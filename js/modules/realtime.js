@@ -307,6 +307,31 @@ export function connectRealtimeSocket(guestMode = guestRealtime) {
     };
 }
 
+export function waitForRealtimeOpen(timeoutMs = 8000) {
+    const socket = getRealtimeChannel();
+    if (socket?.readyState === WebSocket.OPEN) return Promise.resolve();
+    if (isDataSaverEnabled()) {
+        return Promise.reject(new Error('データセーバーが有効なため通話に接続できません。'));
+    }
+    setRealtimeShouldReconnect(true);
+    if (socket?.readyState !== WebSocket.CONNECTING) {
+        if (socket) setRealtimeChannel(null);
+        connectRealtimeSocket(guestRealtime);
+    }
+    return new Promise((resolve, reject) => {
+        const startedAt = Date.now();
+        const poll = () => {
+            const current = getRealtimeChannel();
+            if (current?.readyState === WebSocket.OPEN) return resolve();
+            if (Date.now() - startedAt > timeoutMs) {
+                return reject(new Error('接続が切れました。再接続してください。'));
+            }
+            setTimeout(poll, 100);
+        };
+        poll();
+    });
+}
+
 export function connectGuestRealtime() {
     guestRealtime = true;
     setRealtimeShouldReconnect(true);

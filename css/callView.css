@@ -24,11 +24,14 @@
     background: var(--light-primary-color);
     color: var(--text-color);
 }
-.call-panel-header { display: flex; align-items: center; gap: 16px; border-bottom: 1px solid var(--border-color); }
-.call-window-title { display: flex; align-items: center; gap: 12px; overflow: hidden; }
-.call-kind { flex-shrink: 0; color: var(--secondary-text-color); font-size: .75rem; }
-.call-panel-header h2 { margin: 0; font-size: .95rem; font-weight: 700; }
-.call-header-count { flex-shrink: 0; color: var(--secondary-text-color); font-size: .75rem; }
+.call-panel-header { display: flex; align-items: center; gap: 16px; min-height: 64px; box-sizing: border-box; border-bottom: 1px solid var(--border-color); }
+.call-window-title { display: flex; flex: 1; align-items: center; gap: 12px; min-width: 0; }
+.call-window-icon { display: grid; flex: 0 0 auto; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--light-primary-color); color: var(--primary-color); }
+.call-window-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; }
+.call-window-copy { display: grid; gap: 2px; min-width: 0; }
+.call-panel-header h2 { margin: 0; overflow: hidden; font-size: .95rem; font-weight: 700; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.call-window-meta { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--secondary-text-color); font-size: .72rem; line-height: 1.4; }
+.call-window-meta > span + span::before { content: '・'; margin-right: 6px; }
 .call-header-count:empty { display: none; }
 .call-panel-body { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: auto; background: var(--bg-color); }
 .call-status { flex-shrink: 0; margin: 0; padding: 12px 24px; color: var(--text-color); background: var(--main-bg-color); border-bottom: 1px solid var(--border-color); font-size: .85rem; line-height: 1.6; }
@@ -224,7 +227,9 @@
 .call-settings-section .call-device-select { flex: 1 1 100%; justify-content: space-between; }
 .call-settings-section .call-device-select select { flex: 1 1 auto; min-width: 0; max-width: none; }
 @container app-window (max-width: 759px) {
-    .call-kind,     .call-window-title { gap: 8px; }
+    .call-panel-header { min-height: 56px; gap: 8px; }
+    .call-window-title { gap: 8px; }
+    .call-window-icon { width: 32px; height: 32px; border-radius: 8px; }
     .call-prejoin { gap: 20px; padding: 24px; }
     .call-prejoin-preview { aspect-ratio: 16 / 10; max-height: 280px; }
     .call-room { display: flex; flex-direction: column; }

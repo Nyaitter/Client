@@ -25,6 +25,6 @@ export function renderListShell(content, activeTab) {
             </button>
         </div>
         <div id="dm-list-container" class="dm-list-container">
-            <div id="dm-list-items-wrapper" class="dm-list-items-wrapper nui-list spinner" data-nui="list" aria-label="読み込み中"></div>
+            <div id="dm-list-items-wrapper" class="dm-list-items-wrapper nui-list nui-list--flush spinner" data-nui="list" aria-label="読み込み中"></div>
         </div>`;
 }

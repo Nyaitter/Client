@@ -53,8 +53,10 @@
 .stage-manage-dialog::backdrop { background: rgb(0 0 0 / 40%); }
 .stage-manage-card { display: flex; flex-direction: column; max-height: inherit; }
 .stage-manage-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border-color); }
+.stage-manage-heading { display: grid; gap: 3px; min-width: 0; }
 .stage-manage-header h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1rem; }
 .stage-manage-header h2 svg { width: 18px; height: 18px; fill: none; stroke: currentColor; }
+.stage-manage-heading p { margin: 0; color: var(--secondary-text-color); font-size: .78rem; line-height: 1.4; }
 .stage-manage-close { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--secondary-text-color); cursor: pointer; }
 .stage-manage-close:hover { background: var(--bg-color); color: var(--text-color); }
 .stage-manage-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; }

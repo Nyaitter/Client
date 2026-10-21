@@ -111,7 +111,13 @@ export async function openStageManageModal(stageId, { onUpdated } = {}) {
     dialog.className = 'stage-manage-dialog';
     dialog.setAttribute('aria-labelledby', 'stage-manage-title');
     dialog.innerHTML = `<div class="stage-manage-card">
-        <header class="stage-manage-header"><h2 id="stage-manage-title">${ICONS.sliders}<span>ステージを管理</span></h2><button type="button" class="stage-manage-close" aria-label="閉じる">${ICONS.close}</button></header>
+        <header class="stage-manage-header">
+            <div class="stage-manage-heading">
+                <h2 id="stage-manage-title">${ICONS.sliders}<span>ステージを管理</span></h2>
+                <p>開始・終了や参加者を設定できます。</p>
+            </div>
+            <button type="button" class="stage-manage-close" aria-label="閉じる">${ICONS.close}</button>
+        </header>
         <div class="stage-manage-body" data-stage-manage-body><div class="spinner"></div></div>
     </div>`;
     document.body.append(dialog);

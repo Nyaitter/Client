@@ -534,7 +534,7 @@ export async function showSettingsScreen(
                     <section class="nui-section settings-auth-providers" aria-labelledby="settings-auth-providers-title">
                         <h4 class="nui-section-title" id="settings-auth-providers-title">認証プロバイダー連携</h4>
                         <p class="settings-help-text nui-help-text">アカウントに紐づけるログイン方法を管理します。連携したすべての方法で同一アカウントにログインできます。</p>
-                        <div id="settings-auth-providers-list" class="settings-auth-providers-list nui-list" aria-live="polite"></div>
+                        <div id="settings-auth-providers-list" class="settings-auth-providers-list nui-list nui-list--flush" aria-live="polite"></div>
                     </section>
                     `}
                     <section class="nui-section settings-verification-application" aria-labelledby="settings-verification-title">
@@ -547,12 +547,12 @@ export async function showSettingsScreen(
                     <section class="nui-section settings-sessions" aria-labelledby="settings-sessions-title">
                         <h4 class="nui-section-title" id="settings-sessions-title">セッション</h4>
                         <p class="settings-help-text nui-help-text">有効なログイン端末を管理できます。IPアドレスは安全のため一部のみ表示されます。</p>
-                        <div id="settings-sessions-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
+                        <div id="settings-sessions-list" class="settings-sessions-list nui-list nui-list--flush" aria-live="polite"></div>
                     </section>
                     <section class="nui-section settings-blocked-ips" aria-labelledby="settings-blocked-ips-title">
                         <h4 class="nui-section-title" id="settings-blocked-ips-title">ブロックしたIPアドレス</h4>
                         <p class="settings-help-text nui-help-text">アカウントアクセスの復旧でブロックしたIPです。ブロックしたIPからのログインは恒久的に拒否されます。</p>
-                        <div id="settings-blocked-ips-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
+                        <div id="settings-blocked-ips-list" class="settings-sessions-list nui-list nui-list--flush" aria-live="polite"></div>
                     </section>
                     `}
                     <div class="settings-danger-zone nui-card nui-danger-card" data-nui="card"></div>
@@ -640,7 +640,7 @@ export async function showSettingsScreen(
                             </div>
                             <p id="settings-imposter-limit" class="settings-help-text nui-help-text" role="status">インポスターを読み込んでいます</p>
                         </div>
-                        <div id="settings-imposter-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
+                        <div id="settings-imposter-list" class="settings-sessions-list nui-list nui-list--flush" aria-live="polite"></div>
                     </section>
                 </section>
                 <section class="nui-section settings-group-panel" data-settings-panel="storage" hidden>
@@ -653,7 +653,7 @@ export async function showSettingsScreen(
                             <button type="button" id="settings-storage-refresh-btn" class="settings-bot-secondary-button nui-button-secondary">更新</button>
                         </div>
                         <div class="settings-storage-progress" aria-hidden="true"><div id="settings-storage-progress-value" class="settings-storage-progress-value"></div></div>
-                        <div id="settings-storage-files" class="settings-sessions-list nui-list" aria-live="polite"></div>
+                        <div id="settings-storage-files" class="settings-sessions-list nui-list nui-list--flush" aria-live="polite"></div>
                     </section>
                 </section>
                 <section class="nui-section settings-group-panel" data-settings-panel="api" hidden>
@@ -682,7 +682,7 @@ export async function showSettingsScreen(
                         </div>
                         <div class="settings-bot-list-section">
                             <h4 style="margin-top: 1.5rem; font-size: 1rem;">生成済みのAPIキー</h4>
-                            <div id="settings-bot-tokens-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
+                            <div id="settings-bot-tokens-list" class="settings-sessions-list nui-list nui-list--flush" aria-live="polite"></div>
                         </div>
                     </div>
                 </section>
@@ -690,13 +690,13 @@ export async function showSettingsScreen(
                     <section class="nui-section settings-authorized-apps" aria-labelledby="settings-authorized-apps-title">
                         <h4 class="nui-section-title" id="settings-authorized-apps-title">連携中のアプリケーション</h4>
                         <p class="settings-help-text nui-help-text">NyaitterAuthでアクセスを許可したアプリケーションの一覧です。権限の変更や連携の解除が行えます。</p>
-                        <div id="settings-authorized-apps-list" class="settings-sessions-list nui-list" aria-live="polite"></div>
+                        <div id="settings-authorized-apps-list" class="settings-sessions-list nui-list nui-list--flush" aria-live="polite"></div>
                     </section>
                 </section>
                 <section class="nui-section settings-group-panel" data-settings-panel="resources" hidden>
                     <section class="nui-section settings-resource-links" aria-labelledby="settings-resource-links-title">
                         <h4 class="nui-section-title" id="settings-resource-links-title">リンク</h4>
-                        <div id="settings-resource-links" class="settings-sessions-list nui-list"></div>
+                        <div id="settings-resource-links" class="settings-sessions-list nui-list nui-list--flush"></div>
                     </section>
                 </section>
             </form>
@@ -1795,7 +1795,7 @@ export async function showSettingsScreen(
         item.dataset.zone = zone;
 
         item.innerHTML = `
-            <div class="home-tab-item-main nui-row">
+            <div class="home-tab-item-main">
                 <span class="home-tab-handle" title="ドラッグして並び替え">⠿</span>
                 <div class="home-tab-info">
                     <span class="home-tab-name nui-list-title">${escapeHTML(tabDef.name)}</span>
@@ -2009,7 +2009,7 @@ export async function showSettingsScreen(
 
         // バー側の下限は設けないので、全項目を「その他」に移せる
         item.innerHTML = `
-            <div class="side-menu-item-main nui-row">
+            <div class="side-menu-item-main">
                 <span class="side-menu-handle" title="ドラッグして並び替え">⠿</span>
                 <span class="side-menu-name nui-list-title">${escapeHTML(itemDef.name)}</span>
                 ${hashHint ? `<span class="side-menu-hash nui-list-meta">${escapeHTML(hashHint)}</span>` : ''}

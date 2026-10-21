@@ -1263,6 +1263,67 @@
     margin: 0.7rem 0;
 }
 
+.account-recovery-facts {
+    display: grid;
+    gap: 0.55rem;
+    margin: 1rem 0;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--widget-bg-color);
+}
+
+.account-recovery-facts > div {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0.75rem;
+}
+
+.account-recovery-facts dt {
+    color: var(--secondary-text-color);
+    font-size: 0.82rem;
+}
+
+.account-recovery-facts dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.85rem;
+}
+
+.account-recovery-warning {
+    margin: 1rem 0;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid color-mix(in srgb, #e5484d 35%, var(--border-color));
+    border-radius: 9px;
+    background: color-mix(in srgb, #e5484d 8%, var(--main-bg-color));
+    color: var(--text-color);
+    font-size: 0.85rem;
+}
+
+.account-recovery-more {
+    margin-top: 1rem;
+    color: var(--secondary-text-color);
+    font-size: 0.82rem;
+}
+
+.account-recovery-more summary {
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.account-recovery-more p {
+    margin: 0.5rem 0 0;
+    line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+    .account-recovery-facts > div {
+        grid-template-columns: 1fr;
+        gap: 0.15rem;
+    }
+}
+
 /* ── NyaitterUI ブリッジ ─────────────────────────────────────────────────
    admin / moderation / NyaitterAuth 画面は nui-* を併用する。nui 側の汎用値を
    画面固有の見た目へ戻すための上書き。 */
