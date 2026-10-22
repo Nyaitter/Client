@@ -836,6 +836,7 @@ body:has(#dm-screen:not(.hidden)) #content-area {
 .dm-conversation-view {
     flex-grow: 1;
     overflow-y: auto;
+    overscroll-behavior-y: contain;
     padding: 1rem;
     display: flex;
     flex-direction: column-reverse;

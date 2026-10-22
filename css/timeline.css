@@ -223,8 +223,20 @@
     flex-wrap: nowrap;
 }
 
+.post-tools-right-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    gap: 0.35rem;
+    min-width: 0;
+}
 .post-form-tools-row .post-tools-right-start {
     margin-left: auto;
+}
+/* 右寄せツール群が2行目へ折り返したら、その行の左端から描画する。 */
+.post-form-tools-row .post-tools-right-start.post-tools-right-wrap {
+    margin-left: 0;
 }
 .post-form-tools-row:not(:has(.post-tools-right-start)) .post-lock-button { margin-left: auto; }
 

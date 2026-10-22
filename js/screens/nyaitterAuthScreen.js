@@ -6,6 +6,21 @@ import { apiRequest } from '../api.js';
 import { escapeHTML, showLoading, getSafeHttpUrl, getUserIconUrl, formatNyaitterId } from '../utils/helpers.js';
 import { showScreenCompat } from '../screenManager.js';
 
+// 認証サーバーから返る遷移先をそのまま location に入れない。
+// javascript: や資格情報付き URL を弾き、http(s) だけを許可する。
+function getSafeRedirectUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    try {
+        const url = new URL(raw, window.location.origin);
+        if (!['http:', 'https:'].includes(url.protocol)) return '';
+        if (url.username || url.password) return '';
+        return url.href;
+    } catch (_) {
+        return '';
+    }
+}
+
 function getRequestIdFromLocation() {
     // Check search params in window.location.href or hash
     const fullUrl = new URL(window.location.href);
@@ -100,8 +115,9 @@ export async function showNyaitterAuthScreen(showScreenFn) {
                 method: 'POST',
                 body: { request_id: requestId },
             });
-            if (!autoPassRes.error && autoPassRes.data?.success && autoPassRes.data?.redirect_uri) {
-                window.location.href = autoPassRes.data.redirect_uri;
+            const safeRedirect = getSafeRedirectUrl(autoPassRes.data?.redirect_uri);
+            if (!autoPassRes.error && autoPassRes.data?.success && safeRedirect) {
+                window.location.href = safeRedirect;
                 return;
             }
         }
@@ -291,6 +307,8 @@ export async function showNyaitterAuthScreen(showScreenFn) {
                     throw new Error(appData.error || '認証の承認処理に失敗しました。');
                 }
 
+                const safeRedirect = getSafeRedirectUrl(appData.redirect_uri);
+                if (!safeRedirect) throw new Error('遷移先が不正です。');
                 // Redirect to app's callback URL with code/token
                 contentDiv.innerHTML = `
                     <div class="nyauth-container nui-page" data-nui="page">
@@ -301,7 +319,7 @@ export async function showNyaitterAuthScreen(showScreenFn) {
                         </div>
                     </div>
                 `;
-                window.location.href = appData.redirect_uri;
+                window.location.href = safeRedirect;
             } catch (err) {
                 showLoading(false);
                 approveBtn.disabled = false;
@@ -322,8 +340,9 @@ export async function showNyaitterAuthScreen(showScreenFn) {
             try {
                 const denRes = await globalThis.NyaitterClientInstance.nyaitterAuth.denyResponse({ request_id: requestId });
                 const denData = await denRes.json().catch(() => ({}));
-                if (denData.redirect_uri) {
-                    window.location.href = denData.redirect_uri;
+                const safeRedirect = getSafeRedirectUrl(denData.redirect_uri);
+                if (safeRedirect) {
+                    window.location.href = safeRedirect;
                 } else {
                     window.location.hash = '#';
                 }

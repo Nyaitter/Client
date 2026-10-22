@@ -7,9 +7,11 @@ import { createCallMedia } from './callMedia.js';
 import { createCallPeer, qualityProfile } from './callPeer.js';
 import {
     appendChat,
+    clearChatMessages,
     collectView,
     placeMedia,
     populateDeviceSelects,
+    removeChatMessage,
     renderCallShell,
     renderRoster,
     renderTranscripts,
@@ -268,6 +270,16 @@ class CallController {
         if (action === 'share') return this.toggleShare();
         if (action === 'transcribe') return this.toggleTranscription();
         if (action === 'toggle-chat') return this.setChatOpen(this.view.root.dataset.chatOpen !== 'true');
+        if (action === 'delete-chat') {
+            const messageId = button?.dataset.messageId;
+            if (messageId) this.send('call:chat-delete', { message_id: messageId });
+            return;
+        }
+        if (action === 'clear-chat') {
+            if (this.role !== 'host') return;
+            this.send('call:chat-clear', {});
+            return;
+        }
         if (action === 'settings') return this.openSettings();
         if (action === 'close-settings') return this.closeSettings();
         if (action === 'play') return this.playMedia();
@@ -584,6 +596,7 @@ class CallController {
 
     setChatOpen(open) {
         this.view.root.dataset.chatOpen = String(open);
+        if (open) this.view.root.classList.remove('call-chat-unread');
         const button = this.view.root.querySelector('[data-call-action="toggle-chat"]');
         button?.setAttribute('aria-pressed', String(open));
         const close = this.view.chat?.querySelector('[data-call-action="toggle-chat"]');
@@ -687,8 +700,19 @@ class CallController {
             return true;
         }
         if (event.type === 'call:chat') {
-            appendChat(this.view, event);
+            appendChat(this.view, event, {
+                localUserId: this.localUserId,
+                canModerate: this.role === 'host',
+            });
             if (this.view.root.dataset.chatOpen !== 'true') this.view.root.classList.add('call-chat-unread');
+            return true;
+        }
+        if (event.type === 'call:chat-delete') {
+            removeChatMessage(this.view, event.id);
+            return true;
+        }
+        if (event.type === 'call:chat-clear') {
+            clearChatMessages(this.view);
             return true;
         }
         if (event.type === 'call:transcript') {
@@ -770,7 +794,7 @@ class CallController {
 
     applyControlVisibility(mine) {
         const canPublish = this.canPublish();
-        for (const action of ['toggle-audio', 'toggle-video', 'share']) {
+        for (const action of ['toggle-audio', 'toggle-video', 'share', 'transcribe']) {
             for (const button of this.view.root.querySelectorAll(`[data-call-action="${action}"]`)) button.hidden = !canPublish;
         }
         const chatDisabled = Boolean(mine?.chat_disabled || this.guest);

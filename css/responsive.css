@@ -145,9 +145,12 @@
     /* アカウントアイコンを出さない画面は、ヘッダーを左端から使う。 */
     body[data-active-screen='main-screen'] #page-header,
     body[data-active-screen='profile-screen'] #page-header,
-    body[data-active-screen='post-detail-screen'] #page-header,
-    body[data-active-screen='dm-screen'] #page-header {
+    body[data-active-screen='post-detail-screen'] #page-header {
         padding-left: 1rem;
+    }
+    /* DMでも左上のアカウントボタンと重ならないよう、ヘッダーを右へずらす。 */
+    body[data-active-screen='dm-screen'] #page-header {
+        padding-left: 5rem;
     }
     /* 戻るボタンはモバイルでは基本非表示。ポスト詳細とプロフィールのみ表示する。 */
     .header-back-btn {

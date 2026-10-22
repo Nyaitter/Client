@@ -1,5 +1,5 @@
 import { ICONS } from '../../icons.js';
-import { escapeHTML, formatNyaitterId, getUserIconUrl } from '../../utils/helpers.js';
+import { escapeHTML, getUserIconUrl } from '../../utils/helpers.js';
 
 export const roleName = role => ({
     host: 'ホスト',
@@ -35,12 +35,12 @@ export function renderCallShell({ kind, info, user, canPublish, guest = false })
     const audience = info.role === 'audience';
     const waiting = isStage && audience && info.stage?.status === 'scheduled';
     return `
-        <section class="call-view nui-page" data-call-view data-kind="${kind}" data-chat-open="true">
+        <section class="call-view" data-call-view data-kind="${kind}" data-chat-open="true">
             <header class="call-header">
                 <a class="call-back nui-button-secondary" href="${escapeHTML(backHash)}" aria-label="戻る" title="戻る">${icon('back')}</a>
                 <div class="call-heading">
                     <h1 class="call-title nui-page-heading">${escapeHTML(title)}</h1>
-                    <p class="call-meta"><span class="call-kind nui-badge">${isStage ? 'ステージ' : '通話'}</span><span data-call-status role="status" aria-live="polite">準備中</span><span data-call-count></span></p>
+                    <p class="call-meta"><span data-call-status role="status" aria-live="polite"></span><span data-call-count></span></p>
                 </div>
                 <div class="call-header-actions">
                     ${isStage && info.role === 'host' ? tool('manage-stage', 'sliders', 'ステージ管理') : ''}
@@ -58,8 +58,8 @@ export function renderCallShell({ kind, info, user, canPublish, guest = false })
                         </div>
                         <div class="call-prejoin-body">
                             <div>
-                                <h2 class="call-prejoin-title">${canPublish ? '参加の準備' : 'ステージに参加'}</h2>
-                                <p class="call-prejoin-note nui-help-text">${guest ? 'ゲストは視聴のみできます。' : canPublish ? 'マイクとカメラを確認してから参加してください。' : '開始までこの画面で待機します。'}</p>
+                                <h2 class="call-prejoin-title">参加</h2>
+                                ${guest ? '<p class="call-prejoin-note nui-help-text">視聴のみできます。</p>' : ''}
                             </div>
                             <div class="call-devices" ${canPublish ? '' : 'hidden'}>
                                 <div class="call-device-buttons">
@@ -95,7 +95,10 @@ export function renderCallShell({ kind, info, user, canPublish, guest = false })
                 <aside class="call-chat nui-card" data-call-chat aria-label="${isStage ? 'コメント' : 'チャット'}">
                     <header class="call-chat-header">
                         <h2 class="nui-section-title">${isStage ? 'コメント' : 'チャット'}</h2>
-                        <button type="button" class="call-icon-button" data-call-action="toggle-chat" aria-label="チャットを閉じる" title="閉じる">${icon('close')}</button>
+                        <div class="call-chat-actions">
+                            ${isStage && info.role === 'host' ? `<button type="button" class="call-icon-button" data-call-action="clear-chat" aria-label="チャットをすべて消去" title="すべて消去">${icon('trash')}</button>` : ''}
+                            <button type="button" class="call-icon-button" data-call-action="toggle-chat" aria-label="チャットを閉じる" title="閉じる">${icon('close')}</button>
+                        </div>
                     </header>
                     <div class="call-messages" data-call-messages role="log" aria-live="polite"></div>
                     <form class="call-chat-form" data-call-chat-form>
@@ -110,7 +113,7 @@ export function renderCallShell({ kind, info, user, canPublish, guest = false })
                 <button type="button" class="call-control" data-call-action="toggle-audio" aria-pressed="false" title="マイク" ${canPublish ? '' : 'hidden'}>${icon('microphone')}<span>マイク</span></button>
                 <button type="button" class="call-control" data-call-action="toggle-video" aria-pressed="false" title="カメラ" ${canPublish ? '' : 'hidden'}>${icon('camera')}<span>カメラ</span></button>
                 <button type="button" class="call-control" data-call-action="share" aria-pressed="false" title="画面共有" ${canPublish ? '' : 'hidden'}>${icon('screenShare')}<span>共有</span></button>
-                <button type="button" class="call-control" data-call-action="transcribe" aria-pressed="false" title="文字起こし">${icon('captions')}<span>文字起こし</span></button>
+                <button type="button" class="call-control" data-call-action="transcribe" aria-pressed="false" title="文字起こし" ${canPublish ? '' : 'hidden'}>${icon('captions')}<span>文字起こし</span></button>
                 <button type="button" class="call-control" data-call-action="toggle-chat" aria-pressed="true" title="チャット">${icon('dm')}<span>${isStage ? 'コメント' : 'チャット'}</span></button>
                 <button type="button" class="call-control call-play" data-call-action="play" hidden title="音声を再生">${icon('phone')}<span>音声</span></button>
                 <button type="button" class="call-leave" data-call-action="leave" title="退出">${icon('phoneEnd')}<span>退出</span></button>
@@ -141,7 +144,9 @@ export function renderCallShell({ kind, info, user, canPublish, guest = false })
 
 export function collectView(root) {
     return {
-        root,
+        // data-chat-open やレイアウト状態は .call-view に持たせる。
+        // コンテナ (#call-content) を root にすると CSS セレクタと一致しない。
+        root: root.querySelector('[data-call-view]') || root,
         status: root.querySelector('[data-call-status]'),
         count: root.querySelector('[data-call-count]'),
         prejoin: root.querySelector('[data-call-prejoin]'),
@@ -169,24 +174,24 @@ export function collectView(root) {
 }
 
 function personLabel(person) {
-    const name = person.guest ? person.name : `@${String(person.name || '参加者').replace(/^@/, '')}${person.isScreen ? 'の画面' : ''}`;
-    const id = person.isScreen || person.guest ? '' : formatNyaitterId({ nyaitter_id: person.nyaitter_id || person.owner_user_id || person.user_id });
-    return { name, id };
+    return person.guest
+        ? String(person.name || 'ゲスト')
+        : `@${String(person.name || '参加者').replace(/^@/, '')}${person.isScreen ? 'の画面' : ''}`;
 }
 
 function tileMarkup(person, session, preferences) {
     const panelId = String(person.user_id);
     const ownerId = String(person.owner_user_id ?? person.user_id);
     const pref = preferences[ownerId] || {};
-    const { name, id } = personLabel(person);
-    const self = ownerId === String(session.localUserId);
+    const name = personLabel(person);
+    const own = ownerId === String(session.localUserId);
     const screen = Boolean(person.isScreen);
     const menu = session.joined ? `<button type="button" class="call-tile-more" data-call-menu="${escapeHTML(panelId)}" aria-label="参加者の操作" title="操作">${icon('more')}</button>` : '';
-    return `<li class="call-tile${screen ? ' call-tile-screen' : ''}" data-user-id="${escapeHTML(ownerId)}" data-panel-id="${escapeHTML(panelId)}" data-screen="${screen}" data-muted="${Boolean(person.muted)}" data-camera="${Boolean(person.camera)}" data-camera-hidden="${Boolean(pref.cameraHidden)}" data-pinned="${Boolean(pref.pinned)}" data-hidden="${Boolean(pref.hidden)}">
+    return `<li class="call-tile${screen ? ' call-tile-screen' : ''}${own ? ' call-tile-own' : ''}" data-user-id="${escapeHTML(ownerId)}" data-panel-id="${escapeHTML(panelId)}" data-screen="${screen}" data-muted="${Boolean(person.muted)}" data-camera="${Boolean(person.camera)}" data-camera-hidden="${Boolean(pref.cameraHidden)}" data-pinned="${Boolean(pref.pinned)}" data-hidden="${Boolean(pref.hidden)}">
         <div class="call-tile-media" data-media-slot="${escapeHTML(panelId)}"></div>
         <div class="call-tile-avatar" data-tile-avatar>${avatar({ ...person, user_id: ownerId })}</div>
         <div class="call-tile-transcript" data-transcript="${escapeHTML(panelId)}" hidden></div>
-        <div class="call-tile-caption"><span class="call-tile-name" title="${escapeHTML(`${name}${id}`)}">${escapeHTML(name)}${id ? `<span class="call-tile-id">${escapeHTML(id)}</span>` : ''}</span><span class="call-tile-state" title="${person.muted ? 'ミュート' : 'マイクオン'}">${screen ? icon('screenShare') : icon('microphone')}</span></div>
+        <div class="call-tile-caption"><span class="call-tile-name" title="${escapeHTML(name)}">${escapeHTML(name)}</span><span class="call-tile-state" title="${person.muted ? 'ミュート' : 'マイクオン'}">${screen ? icon('screenShare') : icon('microphone')}</span></div>
         ${menu}
     </li>`;
 }
@@ -224,8 +229,8 @@ export function renderRoster(view, session) {
         view.listeners.hidden = listeners.length === 0;
         if (view.listenerCount) view.listenerCount.textContent = String(listeners.length);
         view.listenerList.innerHTML = listeners.map(person => {
-            const { name, id } = personLabel(person);
-            return `<li class="call-listener" data-user-id="${escapeHTML(String(person.user_id))}" data-camera-hidden="${Boolean(session.preferences[String(person.user_id)]?.cameraHidden)}">${avatar(person)}<span class="call-listener-name" title="${escapeHTML(`${name}${id}`)}">${escapeHTML(name)}${id ? `<span class="call-tile-id">${escapeHTML(id)}</span>` : ''}</span></li>`;
+            const name = personLabel(person);
+            return `<li class="call-listener" data-user-id="${escapeHTML(String(person.user_id))}" data-camera-hidden="${Boolean(session.preferences[String(person.user_id)]?.cameraHidden)}">${avatar(person)}<span class="call-listener-name" title="${escapeHTML(name)}">${escapeHTML(name)}</span></li>`;
         }).join('');
     }
 }
@@ -270,19 +275,34 @@ export function placeMedia(view, session, mediaStreams) {
     }
 }
 
-export function appendChat(view, event) {
+export function appendChat(view, event, { localUserId = null, canModerate = false } = {}) {
     if (!view?.messages) return;
-    view.messages.querySelector('.call-chat-empty')?.remove();
+    const messageId = event.id == null ? '' : String(event.id);
+    const own = localUserId != null && String(event.user_id) === String(localUserId);
+    const canDelete = Boolean(messageId) && (own || canModerate);
     const line = document.createElement('div');
     line.className = 'call-message';
     line.dataset.userId = String(event.user_id);
+    line.dataset.messageId = messageId;
+    line.dataset.own = String(own);
     const name = String(event.name || '参加者');
     line.innerHTML = `<span class="call-message-avatar nui-avatar" aria-hidden="true">${event.user_id && !String(event.user_id).startsWith('guest:')
         ? `<img src="${escapeHTML(getUserIconUrl({ id: event.user_id }))}" alt="" loading="lazy">`
-        : initial(name)}</span><div class="call-message-content"><div class="call-message-author"><strong>${escapeHTML(name)}</strong>${event.guest ? '' : `<span>${escapeHTML(formatNyaitterId({ nyaitter_id: event.nyaitter_id || event.user_id }))}</span>`}</div><p>${escapeHTML(String(event.text || ''))}</p></div>`;
+        : initial(name)}</span><div class="call-message-content"><div class="call-message-author"><strong>${escapeHTML(name)}</strong></div><p>${escapeHTML(String(event.text || ''))}</p></div>${canDelete
+        ? `<button type="button" class="call-message-delete" data-call-action="delete-chat" data-message-id="${escapeHTML(messageId)}" aria-label="メッセージを削除" title="削除">${icon('trash')}</button>`
+        : ''}`;
     view.messages.append(line);
     while (view.messages.childElementCount > 300) view.messages.firstElementChild.remove();
     view.messages.scrollTop = view.messages.scrollHeight;
+}
+
+export function removeChatMessage(view, messageId) {
+    if (!view?.messages || messageId == null) return;
+    view.messages.querySelector(`.call-message[data-message-id="${CSS.escape(String(messageId))}"]`)?.remove();
+}
+
+export function clearChatMessages(view) {
+    if (view?.messages) view.messages.replaceChildren();
 }
 
 export function renderTranscripts(view, session) {

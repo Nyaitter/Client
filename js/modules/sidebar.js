@@ -24,6 +24,18 @@ import {
     scheduleNextFrame,
 } from '../utils/helpers.js';
 
+// html には zoom: var(--app-scale) が掛かっている。
+// getBoundingClientRect() は zoom 後の視覚座標を返す一方、position: fixed の
+// top/left は layout 座標として扱われ、描画時に再度 zoom される。
+// 視覚座標をそのまま入れないよう、座標を scale で割り戻す。
+function getAppScale() {
+    if (typeof document === 'undefined') return 1;
+    const scale = Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--app-scale'),
+    );
+    return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
 function getSafeWidgetUrl(value) {
     const raw = String(value || '').trim();
     if (!raw || /[\u0000-\u001F\u007F"'<>]/.test(raw)) return '#';
@@ -118,13 +130,16 @@ function setupMobileSidebarOverflow(overlay, signal) {
         if (!toggle || panel.classList.contains('hidden')) return;
         const edgeMargin = 8;
         const gap = 6;
+        const scale = getAppScale();
         const toggleRect = toggle.getBoundingClientRect();
         const panelWidth = Math.min(240, Math.max(0, window.innerWidth - edgeMargin * 2));
         panel.style.width = `${panelWidth}px`;
         panel.style.maxHeight = `${Math.max(0, window.innerHeight - edgeMargin * 2)}px`;
 
-        const panelHeight = panel.offsetHeight;
-        const panelWidthAfterLayout = panel.offsetWidth;
+        // rect / innerWidth は視覚座標、offsetHeight / offsetWidth は layout 座標。
+        // 判定は視覚座標に揃え、style.top/left へ入れるときに scale で割り戻す。
+        const panelHeight = panel.offsetHeight * scale;
+        const panelWidthAfterLayout = panel.offsetWidth * scale;
         let top = toggleRect.bottom + gap;
         if (top + panelHeight > window.innerHeight - edgeMargin) {
             top = toggleRect.top - panelHeight - gap;
@@ -134,8 +149,8 @@ function setupMobileSidebarOverflow(overlay, signal) {
             edgeMargin,
             Math.min(toggleRect.left, window.innerWidth - panelWidthAfterLayout - edgeMargin),
         );
-        panel.style.top = `${top}px`;
-        panel.style.left = `${left}px`;
+        panel.style.top = `${top / scale}px`;
+        panel.style.left = `${left / scale}px`;
     };
     const toggleOverflow = () => {
         const isOpen = overflow.classList.toggle('is-open');
@@ -509,6 +524,7 @@ export function setupSidebarOverflowMenu() {
         if (!toggle || panel.classList.contains('hidden')) return;
         const edgeMargin = 8;
         const gap = 6;
+        const scale = getAppScale();
         const toggleRect = toggle.getBoundingClientRect();
         const panelWidth = Math.min(
             240,
@@ -517,8 +533,10 @@ export function setupSidebarOverflowMenu() {
         panel.style.width = `${panelWidth}px`;
         panel.style.maxHeight = `${Math.max(0, window.innerHeight - edgeMargin * 2)}px`;
 
-        const panelHeight = panel.offsetHeight;
-        const panelWidthAfterLayout = panel.offsetWidth;
+        // rect / innerWidth は視覚座標、offsetHeight / offsetWidth は layout 座標。
+        // 判定は視覚座標に揃え、style.top/left へ入れるときに scale で割り戻す。
+        const panelHeight = panel.offsetHeight * scale;
+        const panelWidthAfterLayout = panel.offsetWidth * scale;
         let top = toggleRect.bottom + gap;
         if (top + panelHeight > window.innerHeight - edgeMargin) {
             top = toggleRect.top - panelHeight - gap;
@@ -534,8 +552,8 @@ export function setupSidebarOverflowMenu() {
                 window.innerWidth - panelWidthAfterLayout - edgeMargin,
             ),
         );
-        panel.style.top = `${top}px`;
-        panel.style.left = `${left}px`;
+        panel.style.top = `${top / scale}px`;
+        panel.style.left = `${left / scale}px`;
     };
 
     const toggleOverflow = () => {
@@ -730,21 +748,14 @@ export async function updateNavAndSidebars() {
         ?.addEventListener('click', () => openPostModal());
 
     const postButton = document.getElementsByClassName('nav-item-post')[0];
-    const accountButton = document.getElementById('account-button');
     if (postButton) {
-        if (matchesMedia('(max-width: 544px)') && location.hash.startsWith('#dm')) {
-            postButton.classList.add('hidden');
-        } else {
-            postButton.classList.remove('hidden');
-        }
-    }
-    if (accountButton) {
-        // メッセージ画面では操作領域を確保するため、入口アイコンを非表示にする。
-        accountButton.classList.toggle(
+        // DMでは送信フォームと重なるため、右下のポストボタンだけを隠す。
+        postButton.classList.toggle(
             'hidden',
             matchesMedia('(max-width: 544px)') && location.hash.startsWith('#dm'),
         );
     }
+    // アカウント切替はDMでも常に使えるようにする（以前はDMで隠していた）。
 
     scheduleNextFrame(setupSidebarOverflowMenu);
     await loadRightSidebar();
