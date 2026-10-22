@@ -33,16 +33,20 @@
 #profile-header .profile-banner {
     width: calc(100% + 2rem);
     margin: -1rem -1rem 0;
-    text-align: center;
+    aspect-ratio: 3 / 1;
+    overflow: hidden;
+    background: var(--main-bg-color);
 }
 
+/* 端末幅が変わっても同じ範囲を中央基準でクロップする。 */
 #profile-header .profile-banner img {
     display: block;
     width: 100%;
-    height: auto;
-    max-height: min(50vh, 360px);
-    object-fit: contain;
-    margin: 0 auto;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+    object-position: center;
+    margin: 0;
 }
 
 #profile-header.has-profile-banner .profile-actions {
@@ -346,6 +350,11 @@
 [data-nyaitter-ui='nui'] #profile-header .profile-banner {
     width: 100%;
     margin: 0;
+    /* nyaitter-ui の .nui-cover は固定の height を持つため、ここで auto に戻して
+       端末幅に関係なく 3:1 のクロップを適用する。 */
+    height: auto;
+    aspect-ratio: 3 / 1;
+    overflow: hidden;
     background: var(--nui-surface, var(--bg-color));
 }
 

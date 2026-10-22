@@ -321,12 +321,34 @@ export function setupTimelinePullToRefresh(onRefresh) {
     const MAX_PULL_DISTANCE = 104;
     const PULL_THRESHOLD = 66;
 
+    // 下方向のスワイプでまだスクロールできる内部スクロール領域があるか。
+    // DMの会話は column-reverse のため、scrollTop は 0（最新）から負（過去）へ動く。
+    const consumesPullScroll = (element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        const style = getComputedStyle(element);
+        if (!['auto', 'scroll', 'overlay'].includes(style.overflowY)) return false;
+        const maxScroll = element.scrollHeight - element.clientHeight;
+        if (maxScroll <= 1) return false;
+        const reverse = style.display.includes('flex') && style.flexDirection === 'column-reverse';
+        if (reverse) return element.scrollTop > -maxScroll + 1;
+        return element.scrollTop > 1;
+    };
+
+    const hasScrollableAncestor = (target) => {
+        for (let element = target; element && element !== document.documentElement; element = element.parentElement) {
+            if (consumesPullScroll(element)) return true;
+        }
+        return false;
+    };
+
     const canStartPull = (target) => {
         if (window.scrollY > 0) return false;
         if (!getActivePullToRefreshContext()) return false;
         if (target && target.closest('.modal-overlay:not(.hidden), textarea, input[type="text"], input[type="search"]')) {
             return false;
         }
+        // 会話・一覧などの内部スクロールをPTRより優先する。
+        if (target && hasScrollableAncestor(target)) return false;
         return true;
     };
 

@@ -107,8 +107,13 @@
         padding: 14px 18px 14px 76px;
     }
 
-    [data-nyaitter-ui='nui'] body:is([data-active-screen='main-screen'], [data-active-screen='post-detail-screen'], [data-active-screen='dm-screen']) #page-header {
+    [data-nyaitter-ui='nui'] body:is([data-active-screen='main-screen'], [data-active-screen='post-detail-screen']) #page-header {
         padding-left: 18px;
+    }
+
+    /* DMでも左上のアカウントボタンの右側からヘッダーを始める。 */
+    [data-nyaitter-ui='nui'] body[data-active-screen='dm-screen'] #page-header {
+        padding-left: 88px;
     }
 
     [data-nyaitter-ui='nui'] body[data-active-screen='main-screen'] #page-header {

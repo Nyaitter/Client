@@ -989,16 +989,18 @@ export function createPostFormHTML(isModal = false) {
                         <button type="button" class="emoji-pic-button" title="絵文字を選択">
                             ${ICONS.emoji}
                         </button>
-                        <button type="button" class="post-tool-btn post-announcement-button hidden" title="Nyaitterアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
-                        <button type="button" class="post-tool-btn post-lock-button" title="プライベート" aria-pressed="false">
-                            ${ICONS.lock}
-                        </button>
-                        <button type="button" class="post-tool-btn post-mask-button" title="ワンクッション">
-                            ${ICONS.mask}
-                        </button>
-                        <button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
-                        <button type="button" class="post-tool-btn post-schedule-button" title="予約投稿" aria-label="予約投稿" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 10h18"/><path d="M12 13v4l3 1"/></svg></button>
-                        <button type="button" class="post-tool-btn post-group-button" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
+                        <div class="post-tools-right-group post-tools-right-start">
+                            <button type="button" class="post-tool-btn post-announcement-button hidden" title="Nyaitterアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
+                            <button type="button" class="post-tool-btn post-lock-button" title="プライベート" aria-pressed="false">
+                                ${ICONS.lock}
+                            </button>
+                            <button type="button" class="post-tool-btn post-mask-button" title="ワンクッション">
+                                ${ICONS.mask}
+                            </button>
+                            <button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
+                            <button type="button" class="post-tool-btn post-schedule-button" title="予約投稿" aria-label="予約投稿" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 10h18"/><path d="M12 13v4l3 1"/></svg></button>
+                            <button type="button" class="post-tool-btn post-group-button" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
+                        </div>
                     </div>
                     <div class="post-form-submit-row">
                         <button id="post-submit-button" class="nui-button" data-nui="button">ポスト</button>
@@ -1176,6 +1178,15 @@ export function renderPostToolsOverflowMenu(_container) {}
 
 export function togglePostToolsOverflowMenu(_container) {}
 
+function syncPostToolsWrap(container) {
+    const row = container?.querySelector('.post-form-tools-row');
+    const group = row?.querySelector('.post-tools-right-group');
+    if (!row || !group) return;
+    const rowTop = row.getBoundingClientRect().top;
+    const wrapped = group.getBoundingClientRect().top > rowTop + 1;
+    group.classList.toggle('post-tools-right-wrap', wrapped);
+}
+
 export function updatePostToolsOverflow(container) {
     if (!container) return;
     const actions = container.querySelector('.post-form-actions');
@@ -1204,6 +1215,7 @@ export function updatePostToolsOverflow(container) {
             actions.classList.remove('post-form-stacked');
         }
     }
+    syncPostToolsWrap(container);
 }
 
 export function setupPostToolsOverflowObserver(container) {
@@ -1388,12 +1400,10 @@ function setPostingGroup(container, group = null, { locked = false } = {}) {
         announcementButton.setAttribute('aria-pressed', 'false');
     }
     const tools = container.querySelector('.post-form-tools-row');
-    if (tools) {
-        tools.querySelectorAll('.post-tools-right-start').forEach(button => button.classList.remove('post-tools-right-start'));
-        const firstRight = [announcementButton, lockButton, container.querySelector('.post-mask-button')]
-            .find(button => button && !button.hidden && !button.classList.contains('hidden'));
-        firstRight?.classList.add('post-tools-right-start');
-    }
+    const rightGroup = tools?.querySelector('.post-tools-right-group');
+    // 右寄せツール群は常にひとまとまりとして扱う。折り返した場合だけ
+    // updatePostToolsOverflow 側で左寄せに切り替える。
+    rightGroup?.classList.add('post-tools-right-start');
     updatePostToolsOverflow(container);
 }
 
@@ -2697,9 +2707,11 @@ export async function openEditPostModal(postId, onSaved = null) {
                         <div class="post-form-tools-row">
                             <button type="button" class="attachment-button" title="ファイルを追加">${ICONS.attachment}</button>
                             <button type="button" class="emoji-pic-button" title="絵文字を選択">${ICONS.emoji}</button>
-                            <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
-                            <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
-                            ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
+                            <div class="post-tools-right-group post-tools-right-start">
+                                <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
+                                <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
+                                ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
+                            </div>
                         </div>
                         <div class="post-form-submit-row">
                             <button id="update-post-button" class="nui-button" data-nui="button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700;">保存</button>
