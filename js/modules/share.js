@@ -3,7 +3,9 @@ import { copyTextToClipboard } from '../utils/helpers.js';
 const kindPath = { group: 'groups', stage: 'stages' };
 
 function shareBase() {
-    const configured = globalThis.NyaitterClientConfig?.postShareUrl;
+    const configured =
+        globalThis.NyaitterClientConfig?.shareUrl ||
+        globalThis.NyaitterClientConfig?.postShareUrl;
     if (configured) {
         const clean = String(configured).trim().replace(/#.*$/, '').replace(/\/+$/, '');
         if (clean) return clean;

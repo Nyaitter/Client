@@ -5,7 +5,7 @@ import { getNetworkUsage, subscribeNetworkUsage, resetNetworkUsage } from '../..
 const NAVIGATION = [
     ['あなたの情報', [['overview', 'settings'], ['profile', 'profile'], ['account', 'profile'], ['privacy', 'lock']]],
     ['使い心地', [['ui', 'stars'], ['editor', 'post'], ['home', 'home_outline'], ['menu', 'more'], ['filters', 'search'], ['notifications', 'notifications'], ['connection', 'explore']]],
-    ['管理と連携', [['storage', 'post'], ['apps', 'globe'], ['imposter', 'profile'], ['api', 'post'], ['resources', 'globe']]],
+    ['管理と連携', [['storage', 'post'], ['apps', 'globe'], ['imposter', 'profile'], ['api', 'post'], ['resources', 'globe'], ['client', 'settings']]],
 ];
 
 export function rebuildSettings(root) {
