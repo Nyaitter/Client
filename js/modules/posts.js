@@ -2905,7 +2905,9 @@ export async function handleUpdatePost(postId, originalAttachments, filesToAdd, 
 }
 
 export async function copyPost(postId, button) {
-    const customBase = globalThis.NyaitterClientConfig?.postShareUrl;
+    const customBase =
+        globalThis.NyaitterClientConfig?.shareUrl ||
+        globalThis.NyaitterClientConfig?.postShareUrl;
     let postUrl;
     if (customBase) {
         const cleanBase = String(customBase).trim().replace(/\/+$/, '');

@@ -48,6 +48,10 @@ export const SETTINGS_GROUP_DETAILS = Object.freeze({
         title: 'リソース',
         description: 'Nyaitterに関するリソースへのリンクを表示します。',
     }),
+    client: Object.freeze({
+        title: 'クライアント',
+        description: 'この端末に保存されたクライアントのバージョンを確認し、更新します。',
+    }),
 });
 
 export function getSettingsGroupFromHash(hash = window.location.hash) {

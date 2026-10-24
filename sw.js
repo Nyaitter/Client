@@ -45,7 +45,7 @@ function getSdkClient() {
   return sdkClientPromise;
 }
 
-const CACHE_NAME = 'nyaitter-client-v18';
+const CACHE_NAME = 'nyaitter-client';
 const REVALIDATE_INTERVAL = 30_000;
 let cachePromise;
 const pendingFetches = new Map();
@@ -187,15 +187,110 @@ function isCacheableStaticResponse(response) {
   return !/\bno-store\b/i.test(cacheControl) && !response.headers.has('Set-Cookie');
 }
 
+const CLIENT_MANIFEST_URL = new URL('manifest.json', self.location.href).href;
+
+async function readCachedClientVersion() {
+  try {
+    const cache = await openAssetCache();
+    const response = cache && await cache.match(CLIENT_MANIFEST_URL);
+    if (!response) return '';
+    const manifest = await response.json();
+    return String(manifest?.client_version || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+// SW 内からの fetch は自身の fetch ハンドラを通らないため、キャッシュに
+// 邪魔されずサーバー上のマニフェストを直接読める。
+async function readNetworkClientVersion() {
+  try {
+    const response = await fetch(CLIENT_MANIFEST_URL, { cache: 'no-store' });
+    if (!response.ok) return '';
+    const manifest = await response.json();
+    return String(manifest?.client_version || '').trim();
+  } catch (_) {
+    return '';
+  }
+}
+
+async function cacheAppShell() {
+  const cache = await openAssetCache();
+  if (!cache) return;
+  await Promise.allSettled(APP_SHELL.map(async (path) => {
+    const response = await fetch(path, { cache: 'reload' });
+    if (isCacheableStaticResponse(response)) await cache.put(path, response);
+  }));
+}
+
+self.addEventListener('message', (event) => {
+  const data = event.data || {};
+  const port = event.ports && event.ports[0];
+  if (data.type === 'nyaitter:client-version') {
+    event.waitUntil((async () => {
+      const version = await readCachedClientVersion();
+      port?.postMessage({ version });
+    })());
+    return;
+  }
+  if (data.type === 'nyaitter:client-latest') {
+    event.waitUntil((async () => {
+      const version = await readNetworkClientVersion();
+      port?.postMessage({ version });
+    })());
+    return;
+  }
+  if (data.type === 'nyaitter:client-update') {
+    event.waitUntil((async () => {
+      let ok = true;
+      try {
+        await caches.delete(CACHE_NAME);
+        cachePromise = null;
+        await cacheAppShell();
+        await self.skipWaiting();
+      } catch (_) {
+        ok = false;
+      }
+      port?.postMessage({ ok });
+    })());
+  }
+});
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    openAssetCache()
-      .then((cache) => cache && Promise.allSettled(APP_SHELL.map(async (path) => {
-        const response = await fetch(path);
-        if (isCacheableStaticResponse(response)) await cache.put(path, response);
-      })))
-      .then(() => self.skipWaiting()),
-  );
+  event.waitUntil((async () => {
+    // 版名ではなく、更新のたびにキャッシュを破棄して作り直す。
+    // 古いHTML/CSS/JSが混在して画面が崩れるのを防ぐ。
+    // CacheStorage が使えない/拒否/容量不足で delete が reject しても、
+    // 古い SW に固定されないよう install を失敗させてはならない。
+    try {
+      await caches.delete(CACHE_NAME);
+      // 破棄できたときだけハンドルを捨て、次回 openAssetCache で作り直す。
+      // (削除に失敗した場合は既存キャッシュが有効なためハンドルを保持する)
+      cachePromise = null;
+    } catch (_) {
+      // パージ失敗を握りつぶし、activation を妨げない。
+    }
+
+    // 再キャッシュは allSettled で個別失敗を吸収済み。想定外の throw もここで吸収する。
+    try {
+      const cache = await openAssetCache();
+      if (cache) {
+        await Promise.allSettled(APP_SHELL.map(async (path) => {
+          const response = await fetch(path);
+          if (isCacheableStaticResponse(response)) await cache.put(path, response);
+        }));
+      }
+    } catch (_) {
+      // 再キャッシュ失敗でも activation は妨げない。
+    }
+
+    // パージ/再キャッシュの成否に関わらず、必ず skipWaiting を試みる。
+    try {
+      await self.skipWaiting();
+    } catch (_) {
+      // skipWaiting 自体の失敗で install を reject させない。
+    }
+  })());
 });
 
 self.addEventListener('activate', (event) => {

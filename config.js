@@ -148,9 +148,11 @@
     };
     Object.defineProperties(clientConfig, {
         apiEndpoint: { get: () => getConfig('api_endpoint') },
+        clientVersion: { get: () => String(getConfig('client_version', '') || '').trim() },
         nyaitterJs: { get: () => getConfig('nyaitter_js', 'latest') },
         nyaitterUi: { get: () => getConfig('nyaitter_ui', '') },
         userFileEndpoint: { get: () => getUserFileEndpoint() },
+        shareUrl: { get: () => getConfig('share_url', null) },
         postShareUrl: { get: () => getConfig('post_share_url', null) },
         advertising: {
             get: () => {

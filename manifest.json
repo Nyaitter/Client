@@ -8,6 +8,7 @@
   "api_url": "/proxy/3000/server",
   "nyaitter_js": "latest",
   "nyaitter_ui": "latest",
+  "client_version": "2026.10.23",
   "advertising": {
     "enabled": false,
     "interval": 10,

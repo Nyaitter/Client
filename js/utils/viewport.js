@@ -48,6 +48,19 @@ export function createViewportObserver(callback, options = {}) {
     };
 }
 
+// html には zoom: var(--app-scale) が掛かっている (sidebar.js と同じ前提)。
+// getBoundingClientRect() や innerWidth は zoom 後の視覚座標を返す一方、
+// position: fixed/absolute の top/left は layout 座標として扱われ、描画時に
+// 再度 zoom される。視覚座標をそのまま入れないよう、書き込む直前に scale で
+// 割り戻す。
+function getAppScale() {
+    if (typeof document === 'undefined') return 1;
+    const scale = Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--app-scale'),
+    );
+    return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
 /**
  * トリガー要素に相対してメニューを画面内に配置する。
  * 上下左右の反転と画面外へのクランプを自動で行う。
@@ -64,6 +77,7 @@ export function positionElementRelativeToAnchor(
 ) {
     if (!element || !anchor) return;
 
+    const scale = getAppScale();
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 360;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 640;
     const scrollX = useFixed ? 0 : (window.scrollX || window.pageXOffset || 0);
@@ -72,8 +86,9 @@ export function positionElementRelativeToAnchor(
     const maxAllowedWidth = Math.max(120, viewportWidth - margin * 2);
     const maxAllowedHeight = Math.max(120, viewportHeight - margin * 2);
 
-    element.style.maxWidth = `${maxAllowedWidth}px`;
-    element.style.maxHeight = `${maxAllowedHeight}px`;
+    // maxWidth/maxHeight も layout 座標なので、視覚サイズの上限を scale で割る。
+    element.style.maxWidth = `${maxAllowedWidth / scale}px`;
+    element.style.maxHeight = `${maxAllowedHeight / scale}px`;
     element.style.position = useFixed ? 'fixed' : 'absolute';
 
     const anchorRect = anchor.getBoundingClientRect();
@@ -117,8 +132,9 @@ export function positionElementRelativeToAnchor(
     const clampedTop = Math.max(margin, Math.min(top, viewportHeight - menuHeight - margin));
     const clampedLeft = Math.max(margin, Math.min(left, viewportWidth - menuWidth - margin));
 
-    element.style.top = `${Math.round(scrollY + clampedTop)}px`;
-    element.style.left = `${Math.round(scrollX + clampedLeft)}px`;
+    // 視覚座標 (スクロール量を足したもの) を layout 座標へ戻してから書き込む。
+    element.style.top = `${Math.round((scrollY + clampedTop) / scale)}px`;
+    element.style.left = `${Math.round((scrollX + clampedLeft) / scale)}px`;
     element.style.right = 'auto';
     element.style.bottom = 'auto';
 }

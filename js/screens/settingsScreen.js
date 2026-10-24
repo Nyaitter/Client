@@ -78,6 +78,7 @@ import {
     showAppConfirm,
 } from '../utils/helpers.js';
 import { getUiMode, setUiMode, applyUserUiMode } from '../modules/uiMode.js';
+import { loadClientSettings } from '../modules/clientVersion.js';
 
 // login.js（クラシックスクリプト）からもアプリ共通ダイアログを利用できるように橋渡しする。
 if (typeof globalThis.showAppAlert !== 'function') {
@@ -697,6 +698,31 @@ export async function showSettingsScreen(
                     <section class="nui-section settings-resource-links" aria-labelledby="settings-resource-links-title">
                         <h4 class="nui-section-title" id="settings-resource-links-title">リンク</h4>
                         <div id="settings-resource-links" class="settings-sessions-list nui-list nui-list--flush"></div>
+                    </section>
+                </section>
+                <section class="nui-section settings-group-panel" data-settings-panel="client" hidden>
+                    <section class="nui-section settings-client" aria-labelledby="settings-client-title">
+                        <h4 class="nui-section-title" id="settings-client-title">クライアント</h4>
+                        <p class="settings-help-text nui-help-text">この端末に保存されているクライアントの状態です。更新するとキャッシュを保存し直して最新版を読み込みます。</p>
+                        <dl class="settings-client-versions settings-sessions-list nui-list nui-list--flush">
+                            <div class="settings-client-version-row nui-list-item" data-nui="list-item">
+                                <dt>実行中</dt>
+                                <dd id="settings-client-version">—</dd>
+                            </div>
+                            <div class="settings-client-version-row nui-list-item" data-nui="list-item">
+                                <dt>キャッシュ済み</dt>
+                                <dd id="settings-client-cached">—</dd>
+                            </div>
+                            <div class="settings-client-version-row nui-list-item" data-nui="list-item">
+                                <dt>サーバー</dt>
+                                <dd id="settings-client-latest">—</dd>
+                            </div>
+                        </dl>
+                        <p id="settings-client-status" class="settings-help-text nui-help-text" role="status" aria-live="polite"></p>
+                        <div class="settings-client-actions">
+                            <button type="button" id="settings-client-check" class="settings-secondary-button nui-button-secondary">更新を確認</button>
+                            <button type="button" id="settings-client-update" class="settings-primary-button nui-button hidden">今すぐ更新</button>
+                        </div>
                     </section>
                 </section>
             </form>
@@ -2201,6 +2227,7 @@ export async function showSettingsScreen(
         if (activeGroup === 'api') void loadUserBotTokens();
         if (activeGroup === 'imposter') void loadImposters();
         if (activeGroup === 'resources') renderResourceLinks();
+        if (activeGroup === 'client') void loadClientSettings();
     };
 
     const dangerZone = document.querySelector('.settings-danger-zone');
