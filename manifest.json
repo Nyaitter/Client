@@ -5,7 +5,7 @@
   "author": "NyaitterTeam",
   "creator": "NyaitterTeam",
   "repository": "https://github.com/Nyaitter/Client",
-  "api_url": "/proxy/3000/server",
+  "api_url": "/server",
   "nyaitter_js": "latest",
   "nyaitter_ui": "latest",
   "client_version": "2026.10.23",
