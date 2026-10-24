@@ -13,7 +13,7 @@
 import { DOM } from './dom.js';
 import { setupGlobalEventListeners } from './events.js';
 import { router } from './router.js';
-import { registerPwaServiceWorker, handlePendingPushNotificationOpen } from './modules/pwa.js';
+import { registerPwaServiceWorker } from './modules/pwa.js';
 import { checkSession } from './modules/auth.js';
 import { restorePageCaches } from './modules/cache.js';
 import { applyInterfaceTheme, applyColorTheme } from './modules/theme.js';
@@ -61,12 +61,11 @@ export function initApp() {
                 return;
             }
 
-            // 2. If app was opened via a push notification, handle deep-link first.
-            const handledPushOpen = await handlePendingPushNotificationOpen();
-            if (!handledPushOpen) {
-                // 3. Otherwise perform a normal session check → router().
-                await checkSession();
-            }
+            // 2. セッションを確認してルーティングする。
+            //    プッシュ通知からのディープリンク(push_open_type など)は router() 内で
+            //    セッション確定後に処理する。ここで先に処理すると getCurrentUser() が
+            //    まだ null のため、コール通知が通話参加前画面ではなくDMへ飛んでしまう。
+            await checkSession();
         } catch (err) {
             console.error('[startup] app initialization failed:', err);
             DOM.loadingOverlay?.classList.add('hidden');
