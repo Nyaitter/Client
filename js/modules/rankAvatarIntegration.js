@@ -11,8 +11,6 @@ let observer;
 let intersections;
 let resize;
 let frame = 0;
-let motionFrame = 0;
-const motions = new Set();
 let viewerId = null;
 let preference;
 
@@ -66,8 +64,14 @@ function syncImage(image, record) {
     }
     const current = getCurrentUser();
     const enabled = userId(current?.id) !== null && (preference ?? current?.settings?.show_ranks) === true;
-    const eligible = enabled && id !== null && id !== userId(current?.id) && record.visible &&
+    const eligible = enabled && id !== null && id !== userId(current?.id) &&
         !image.closest('.profile-morph-anchor');
+    // 画面外に出ても既存のリングは DOM 内に残す（スクロールで自然に隠れる）。
+    // 可視判定は生成の遅延だけに使い、破棄には使わない（IO の一時的な外れで付け外しが暴れるのを防ぐ）。
+    if (eligible && !record.visible) {
+        record.handle?.refresh();
+        return;
+    }
     const ranks = eligible ? ranksFromImage(image) : {};
     if (!eligible || !Object.keys(ranks).length) {
         record.handle?.destroy();
@@ -76,9 +80,7 @@ function syncImage(image, record) {
         return;
     }
     const signature = JSON.stringify([id, ranks]);
-    const occluder = image.classList.contains('dm-group-avatar-1')
-        ? image.parentElement.querySelector('.dm-group-avatar-2') : null;
-    if (!record.handle || record.signature !== signature || record.occluder !== occluder) {
+    if (!record.handle || record.signature !== signature) {
         const container = image.closest('.dm-message-container, .call-person, .call-message');
         const candidate = image.closest('a[href], button');
         const focusTarget = candidate && !candidate.closest('[aria-hidden="true"]')
@@ -86,13 +88,10 @@ function syncImage(image, record) {
         const options = {
             enabled: true, isSelf: false, ranks, focusTarget,
             label: `ユーザー #${id}の表示ランク`,
-            unclippedFrame: image.closest('.call-avatar, .call-message-avatar'),
-            occluders: occluder ? [occluder] : [],
         };
         if (record.handle) record.handle.update(options);
         else record.handle = attachRankAvatar(image, options);
         record.signature = signature;
-        record.occluder = occluder;
     } else record.handle.refresh();
 }
 
@@ -186,31 +185,8 @@ function start() {
     });
     document.addEventListener('current-user-change', () => syncRankAvatarSession({ resetPreference: true }));
     document.addEventListener('load', refreshRankAvatars, true);
-    document.addEventListener('transitionrun', trackMotion, true);
-    document.addEventListener('animationstart', trackMotion, true);
     discover(document.body);
     syncRankAvatarSession();
-}
-
-// 寸法が変わらない移動も、アニメーションが動いている間だけ追従する。
-function trackMotion(event) {
-    if (event.target.closest(PORTAL)) return;
-    if (![...records.keys()].some(image => event.target.contains(image))) return;
-    for (const animation of event.target.getAnimations?.({ subtree: true }) || []) motions.add(animation);
-    if (!motions.size || motionFrame) return;
-    const tick = () => {
-        motionFrame = 0;
-        if (![...records.values()].some(record => record.handle)) {
-            motions.clear();
-            return;
-        }
-        for (const animation of motions) {
-            if (animation.playState !== 'running' || !animation.effect?.target?.isConnected) motions.delete(animation);
-        }
-        flush();
-        if (motions.size) motionFrame = window.requestAnimationFrame(tick);
-    };
-    motionFrame = window.requestAnimationFrame(tick);
 }
 
 export function syncRankAvatarSession({ resetPreference = false } = {}) {
