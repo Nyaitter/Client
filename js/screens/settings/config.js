@@ -1,58 +1,35 @@
+import { t } from '../../modules/i18n.js';
+
+function groupDetails(key) {
+    return Object.freeze({
+        get title() {
+            return t(`settings.group.${key}.title`);
+        },
+        get description() {
+            return t(`settings.group.${key}.description`);
+        },
+    });
+}
+
 export const SETTINGS_GROUP_DETAILS = Object.freeze({
-    overview: Object.freeze({ title: '設定', description: 'Nyaitterを自分用にカスタマイズ' }),
-    account: Object.freeze({ title: 'アカウントとログイン', description: 'ログイン方法、利用中の端末、NyaitterIDを管理します。' }),
-    status: Object.freeze({ title: 'ステータス', description: 'ランクと利用できる機能を確認します。' }),
-    editor: Object.freeze({ title: '投稿とエディタ', description: '文字入力とポスト日時の表示を選びます。' }),
-    filters: Object.freeze({ title: 'ミュートとフィルター', description: '見たくない言葉を含むポストを検索から除外します。' }),
-    connection: Object.freeze({ title: '通信とデータ使用量', description: '画像とリアルタイム更新の通信量を調整します。' }),
-    profile: Object.freeze({
-        title: 'プロフィール',
-        description: 'プロフィールに表示される情報と画像を設定します。',
-    }),
-    home: Object.freeze({
-        title: 'ホームのカスタマイズ',
-        description: 'ホーム画面のタイムラインタブの追加・削除や並び順をカスタマイズします。',
-    }),
-    menu: Object.freeze({
-        title: 'サイドメニューのカスタマイズ',
-        description: 'メニューに表示する項目と並び順を、PCとモバイルで別々に設定します。隠した項目は「その他」から使えます。',
-    }),
-    privacy: Object.freeze({
-        title: '公開範囲とDM',
-        description: '他の人に見せる情報と、DMの招待を受け付ける範囲を設定します。',
-    }),
-    ui: Object.freeze({
-        title: '外観と絵文字',
-        description: '明るさ、アクセントカラー、絵文字の見た目を変更します。',
-    }),
-    notifications: Object.freeze({
-        title: '通知',
-        description: 'この端末でのプッシュ通知の状態を確認・変更します。',
-    }),
-    storage: Object.freeze({
-        title: 'ストレージ',
-        description: 'アップロード済みのファイルとストレージ使用量を管理します。',
-    }),
-    apps: Object.freeze({
-        title: '連携アプリ',
-        description: 'NyaitterAuthでアクセスを許可したアプリケーションを管理します。',
-    }),
-    api: Object.freeze({
-        title: 'API / Bot',
-        description: 'Bot用APIキーを生成・管理します。',
-    }),
-    imposter: Object.freeze({
-        title: 'インポスター',
-        description: 'インポスターの作成、共同運用者、権限を管理します。',
-    }),
-    resources: Object.freeze({
-        title: 'リソース',
-        description: 'Nyaitterに関するリソースへのリンクを表示します。',
-    }),
-    client: Object.freeze({
-        title: 'クライアント',
-        description: 'この端末に保存されたクライアントのバージョンを確認し、更新します。',
-    }),
+    overview: groupDetails('overview'),
+    account: groupDetails('account'),
+    status: groupDetails('status'),
+    editor: groupDetails('editor'),
+    filters: groupDetails('filters'),
+    connection: groupDetails('connection'),
+    profile: groupDetails('profile'),
+    home: groupDetails('home'),
+    menu: groupDetails('menu'),
+    privacy: groupDetails('privacy'),
+    ui: groupDetails('ui'),
+    notifications: groupDetails('notifications'),
+    storage: groupDetails('storage'),
+    apps: groupDetails('apps'),
+    api: groupDetails('api'),
+    imposter: groupDetails('imposter'),
+    resources: groupDetails('resources'),
+    client: groupDetails('client'),
 });
 
 export function getSettingsGroupFromHash(hash = window.location.hash) {

@@ -9,6 +9,11 @@
   "nyaitter_js": "latest",
   "nyaitter_ui": "latest",
   "client_version": "2026.11.01",
+  "default_language": "ja",
+  "language_packs": {
+    "ja": "/langs/ja.json",
+    "en": "/langs/en.json"
+  },
   "advertising": {
     "enabled": false,
     "interval": 10,

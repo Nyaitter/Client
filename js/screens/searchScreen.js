@@ -1,4 +1,5 @@
 import { bindAdvancedSearch } from './search/advancedSearch.js';
+import { t } from '../modules/i18n.js';
 import { apiRequest } from '../api.js';
 import { DOM } from '../dom.js';
 import {
@@ -171,7 +172,7 @@ export async function loadSearchTabContent(query, tab) {
             const tagPostButton = document.createElement('button');
             tagPostButton.className = 'tag-post-button nui-button-secondary';
             tagPostButton.setAttribute('data-nui', 'button-secondary');
-            tagPostButton.innerHTML = 'このタグでポストする';
+            tagPostButton.innerHTML = t('search.post_with_tag');
             tagPostButton.addEventListener('click', async () => {
                 if (!getCurrentUser()) return goToLoginPage();
                 openPostModal();

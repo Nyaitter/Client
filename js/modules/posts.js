@@ -1,4 +1,5 @@
 import { DOM, openImageModal } from '../dom.js';
+import { t } from './i18n.js';
 import { registerRankAvatar, rankAvatarAttributes } from './rankAvatarIntegration.js';
 import { ICONS, decorateMenuButtons } from '../icons.js';
 import { api, apiRequest, getCommunityNoteReasonLabel } from '../api.js';
@@ -258,12 +259,12 @@ export async function renderPost(post, author, options = {}) {
 
             const repostIndicator = document.createElement('div');
             repostIndicator.className = 'repost-indicator nui-help-text';
-            repostIndicator.innerHTML = `${ICONS.repost} <a href="#profile/${authorOfRepost.id}">${getEmoji(escapeHTML(authorOfRepost.name))}</a><span> さんがリポストしました</span>`;
+            repostIndicator.innerHTML = `${ICONS.repost} <a href="#profile/${authorOfRepost.id}">${getEmoji(escapeHTML(authorOfRepost.name))}</a><span>${t('post.reposted_by_suffix')}</span>`;
             deletedPostMain.appendChild(repostIndicator);
 
             const deletedContainer = document.createElement('div');
             deletedContainer.className = 'deleted-post-container nui-help-text';
-            deletedContainer.textContent = 'このポストは削除されました。';
+            deletedContainer.textContent = t('post.deleted');
             deletedPostMain.appendChild(deletedContainer);
 
             deletedPostWrapper.appendChild(deletedPostMain);
@@ -284,7 +285,7 @@ export async function renderPost(post, author, options = {}) {
         if (repostedPostMain) {
             const repostIndicator = document.createElement('div');
             repostIndicator.className = 'repost-indicator nui-help-text';
-            repostIndicator.innerHTML = `${ICONS.repost} <a href="#profile/${authorOfRepost.id}">${getEmoji(escapeHTML(authorOfRepost.name))}</a><span> さんがリポストしました</span>`;
+            repostIndicator.innerHTML = `${ICONS.repost} <a href="#profile/${authorOfRepost.id}">${getEmoji(escapeHTML(authorOfRepost.name))}</a><span>${t('post.reposted_by_suffix')}</span>`;
             repostedPostMain.prepend(repostIndicator);
 
             const postHeader = repostedPostMain.querySelector('.post-header');
@@ -303,7 +304,7 @@ export async function renderPost(post, author, options = {}) {
                     menuBtn.type = 'button';
                     menuBtn.className = 'post-menu-btn';
                     menuBtn.title = 'ポストメニュー';
-                    menuBtn.setAttribute('aria-label', 'ポストメニュー');
+                    menuBtn.setAttribute('aria-label', t('post.menu'));
                     menuBtn.innerHTML = ICONS.more;
                     const menu = document.createElement('div');
                     menu.className = 'post-menu';
@@ -319,7 +320,7 @@ export async function renderPost(post, author, options = {}) {
                     menu.appendChild(activityBtn);
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'delete-btn';
-                    deleteBtn.textContent = 'リポストを削除';
+                    deleteBtn.textContent = t('post.delete_repost');
                     menu.appendChild(deleteBtn);
                     postHeader.appendChild(menuBtn);
                     postHeader.appendChild(menu);
@@ -356,28 +357,28 @@ export async function renderPost(post, author, options = {}) {
     if (isPinned) {
         const pinnedDiv = document.createElement('div');
         pinnedDiv.className = 'pinned-indicator nui-help-text';
-        pinnedDiv.innerHTML = `${ICONS.pin} <span>ピン留めされたポスト</span>`;
+        pinnedDiv.innerHTML = `${ICONS.pin} <span>${t('post.pinned')}</span>`;
         postMain.appendChild(pinnedDiv);
     } else if (!isDirectReply) {
         if (post.reply_to_post && post.reply_to_post.author) {
             const replyDiv = document.createElement('div');
             replyDiv.className = 'replying-to nui-help-text';
-            replyDiv.innerHTML = `<a href="#profile/${post.reply_to_post.author.id}">@${getEmoji(escapeHTML(post.reply_to_post.author.name))}</a><span> さんに返信</span>`;
+            replyDiv.innerHTML = `<span>${t('post.replying_to_prefix')}</span><a href="#profile/${post.reply_to_post.author.id}">@${getEmoji(escapeHTML(post.reply_to_post.author.name))}</a><span>${t('post.replying_to_suffix')}</span>`;
             postMain.appendChild(replyDiv);
         } else if (post.reply_to_user_id && post.reply_to_user_name) {
             const replyDiv = document.createElement('div');
             replyDiv.className = 'replying-to nui-help-text';
-            replyDiv.innerHTML = `<a href="#profile/${post.reply_to_user_id}">@${getEmoji(escapeHTML(post.reply_to_user_name))}</a><span> さんに返信</span>`;
+            replyDiv.innerHTML = `<span>${t('post.replying_to_prefix')}</span><a href="#profile/${post.reply_to_user_id}">@${getEmoji(escapeHTML(post.reply_to_user_name))}</a><span>${t('post.replying_to_suffix')}</span>`;
             postMain.appendChild(replyDiv);
         } else if (post.reply_to_post?.unknown) {
             const replyDiv = document.createElement('div');
             replyDiv.className = 'replying-to nui-help-text';
-            replyDiv.innerHTML = `<span>不明なポストに返信</span>`;
+            replyDiv.innerHTML = `<span>${t('post.reply_unknown')}</span>`;
             postMain.appendChild(replyDiv);
         } else if (post.reply_to_post || post.reply_to || post.reply_id || post.replyTo) {
             const replyDiv = document.createElement('div');
             replyDiv.className = 'replying-to nui-help-text';
-            replyDiv.innerHTML = `<span>ポストに返信</span>`;
+            replyDiv.innerHTML = `<span>${t('post.reply_generic')}</span>`;
             postMain.appendChild(replyDiv);
         }
     }
@@ -439,7 +440,7 @@ export async function renderPost(post, author, options = {}) {
         const lockIndicator = document.createElement('span');
         lockIndicator.className = 'post-lock-indicator';
         lockIndicator.title = 'プライベート';
-        lockIndicator.setAttribute('aria-label', 'プライベート');
+        lockIndicator.setAttribute('aria-label', t('post.private'));
         lockIndicator.innerHTML = ICONS.lock;
         postHeader.appendChild(lockIndicator);
     }
@@ -477,7 +478,7 @@ export async function renderPost(post, author, options = {}) {
         menuBtn.type = 'button';
         menuBtn.className = 'post-menu-btn';
         menuBtn.title = 'ポストメニュー';
-        menuBtn.setAttribute('aria-label', 'ポストメニュー');
+        menuBtn.setAttribute('aria-label', t('post.menu'));
         menuBtn.innerHTML = ICONS.more;
         const menu = document.createElement('div');
         menu.className = 'post-menu';
@@ -529,24 +530,24 @@ export async function renderPost(post, author, options = {}) {
             const isFollowing = Array.isArray(currentUser.follow) && currentUser.follow.some((id) => Number(id) === Number(displayAuthor.id));
             const followBtn = document.createElement('button');
             followBtn.className = 'follow-menu-btn';
-            followBtn.title = isFollowing ? `@${authorRawName} のフォローを解除` : `@${authorRawName} をフォロー`;
+            followBtn.title = isFollowing ? t('post.unfollow', { name: authorRawName }) : t('post.follow', { name: authorRawName });
             followBtn.textContent = isFollowing
-                ? `@${authorShortName} のフォローを解除`
-                : `@${authorShortName} をフォロー`;
+                ? t('post.unfollow', { name: authorShortName })
+                : t('post.follow', { name: authorShortName });
             menu.appendChild(followBtn);
 
             const isBlocked = Array.isArray(currentUser.block) && currentUser.block.some((id) => Number(id) === Number(displayAuthor.id));
             const blockBtn = document.createElement('button');
             blockBtn.className = 'block-menu-btn';
-            blockBtn.title = isBlocked ? `@${authorRawName} のブロックを解除` : `@${authorRawName} をブロック`;
+            blockBtn.title = isBlocked ? t('post.unblock', { name: authorRawName }) : t('post.block', { name: authorRawName });
             blockBtn.textContent = isBlocked
-                ? `@${authorShortName} のブロックを解除`
-                : `@${authorShortName} をブロック`;
+                ? t('post.unblock', { name: authorShortName })
+                : t('post.block', { name: authorShortName });
             menu.appendChild(blockBtn);
 
             const reportBtn = document.createElement('button');
             reportBtn.className = 'report-btn';
-            reportBtn.textContent = '報告する';
+            reportBtn.textContent = t('report.title');
             reportBtn.onclick = (event) => {
                 event.stopPropagation();
                 if (typeof onReportClick === 'function') {
@@ -564,20 +565,20 @@ export async function renderPost(post, author, options = {}) {
         } else {
             const pinBtn = document.createElement('button');
             pinBtn.className = 'pin-btn';
-            pinBtn.textContent = isPinnedPost(post.id) ? 'ピン留めを解除' : 'ピン留め';
+            pinBtn.textContent = isPinnedPost(post.id) ? t('post.unpin') : t('post.pin');
             menu.appendChild(pinBtn);
 
             if (!post.repost_to || post.content) {
                 const editBtn = document.createElement('button');
                 editBtn.className = 'edit-btn';
-                editBtn.textContent = '編集';
+                editBtn.textContent = t('post.edit');
                 menu.appendChild(editBtn);
 
                 const isReply = Boolean(post.reply_id || post.replyTo || post.reply_to || post.reply_to_post);
                 if (!isReply) {
                     const replyControlBtn = document.createElement('button');
                     replyControlBtn.className = 'reply-control-menu-btn';
-                    replyControlBtn.textContent = '返信可能なユーザーの変更';
+                    replyControlBtn.textContent = t('post.reply_control_change');
                     menu.appendChild(replyControlBtn);
                 }
             }
@@ -586,7 +587,7 @@ export async function renderPost(post, author, options = {}) {
         if (isPostOwner || currentUser.admin) {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
-            deleteBtn.textContent = '削除';
+            deleteBtn.textContent = t('post.delete');
             menu.appendChild(deleteBtn);
         }
 
@@ -754,7 +755,7 @@ export async function renderPost(post, author, options = {}) {
         } else {
             const deletedContainer = document.createElement('div');
             deletedContainer.className = 'deleted-post-container nui-help-text';
-            deletedContainer.textContent = 'このポストは削除されました。';
+            deletedContainer.textContent = t('post.deleted');
             nestedContainer.appendChild(deletedContainer);
         }
         postBody.appendChild(nestedContainer);
@@ -797,7 +798,7 @@ export async function renderPost(post, author, options = {}) {
             if (!canReply) {
                 replyBtn.disabled = true;
                 replyBtn.classList.add('disabled');
-                replyBtn.title = 'このポストに返信できるユーザーが制限されています';
+                replyBtn.title = t('post.reply_limited');
                 replyBtn.setAttribute('aria-disabled', 'true');
             }
 
@@ -971,7 +972,7 @@ async function openPostAccountMenu(container) {
     }
 
     menu.classList.remove('hidden');
-    menu.innerHTML = '<div class="post-account-menu-loading"><span class="spinner" aria-label="アカウント一覧を読み込み中"></span></div>';
+    menu.innerHTML = '<div class="post-account-menu-loading"><span class="spinner" aria-label="' + t('composer.loading_accounts') + '"></span></div>';
     selector.setAttribute('aria-expanded', 'true');
     const outsideHandler = (event) => {
         if (!form.contains(event.target)) closePostAccountMenu(container);
@@ -1028,48 +1029,48 @@ export function createPostFormHTML(isModal = false) {
     const currentUser = getCurrentUser();
     return `
         <div class="post-form">
-            <button type="button" class="post-account-selector" title="投稿アカウント: ${escapeHTML(currentUser?.name || '不明なユーザー')}" aria-label="投稿アカウント: ${escapeHTML(currentUser?.name || '不明なユーザー')}" aria-haspopup="menu" aria-expanded="false">
-                <img ${rankAvatarAttributes(currentUser)} src="${getUserIconUrl(currentUser)}" class="user-icon nui-avatar" alt="${escapeHTML(currentUser?.name || 'アカウント')}のアイコン">
+            <button type="button" class="post-account-selector" title="${t('composer.account', { name: escapeHTML(currentUser?.name || t('composer.account_unknown')) })}" aria-label="${t('composer.account', { name: escapeHTML(currentUser?.name || t('composer.account_unknown')) })}" aria-haspopup="menu" aria-expanded="false">
+                <img ${rankAvatarAttributes(currentUser)} src="${getUserIconUrl(currentUser)}" class="user-icon nui-avatar" alt="${t('composer.account_icon_alt', { name: escapeHTML(currentUser?.name || t('composer.account_fallback')) })}">
             </button>
             <div class="post-account-menu hidden" role="menu"></div>
-            ${isModal ? '<button type="button" class="modal-close-btn" aria-label="閉じる">×</button>' : ''}
+            ${isModal ? '<button type="button" class="modal-close-btn" aria-label="' + t('common.close') + '">×</button>' : ''}
             <div class="form-content">
                 <div id="reply-info" class="hidden" style="margin-bottom: 0.5rem; color: var(--secondary-text-color);"></div>
-                <div class="markdown-textarea-editor post-content-editor"><textarea id="post-content" class="markdown-content-editor" rows="3" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length" placeholder="いまどうしてる？"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
+                <div class="markdown-textarea-editor post-content-editor"><textarea id="post-content" class="markdown-content-editor" rows="3" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length" placeholder="${t('composer.placeholder')}"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
                 <div class="file-preview-container"></div>
                 ${isModal ? '<div id="quoting-preview-container"></div>' : ''}
                 <div class="post-form-actions">
                     <div class="post-form-tools-row">
-                        <button type="button" class="attachment-button" title="ファイルを添付">
+                        <button type="button" class="attachment-button" title="${t('composer.attach')}">
                             ${ICONS.attachment}
                         </button>
-                        <button type="button" class="post-poll-button" title="投票を作成">
+                        <button type="button" class="post-poll-button" title="${t('composer.poll')}">
                             ${ICONS.poll}
                         </button>
-                        <button type="button" class="emoji-pic-button" title="絵文字を選択">
+                        <button type="button" class="emoji-pic-button" title="${t('composer.emoji')}">
                             ${ICONS.emoji}
                         </button>
                         <div class="post-tools-right-group post-tools-right-start">
-                            <button type="button" class="post-tool-btn post-announcement-button hidden" title="Nyaitterアナウンス" aria-pressed="false">${ICONS.megaphone}</button>
-                            <button type="button" class="post-tool-btn post-lock-button" title="プライベート" aria-pressed="false">
+                            <button type="button" class="post-tool-btn post-announcement-button hidden" title="${t('composer.announcement')}" aria-pressed="false">${ICONS.megaphone}</button>
+                            <button type="button" class="post-tool-btn post-lock-button" title="${t('composer.private')}" aria-pressed="false">
                                 ${ICONS.lock}
                             </button>
-                            <button type="button" class="post-tool-btn post-mask-button" title="ワンクッション">
+                            <button type="button" class="post-tool-btn post-mask-button" title="${t('composer.mask')}">
                                 ${ICONS.mask}
                             </button>
-                            <button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
-                            <button type="button" class="post-tool-btn post-schedule-button" title="予約投稿" aria-label="予約投稿" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 10h18"/><path d="M12 13v4l3 1"/></svg></button>
-                            <button type="button" class="post-tool-btn post-group-button" title="投稿先: Nyaitter" aria-label="投稿先: Nyaitter" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
+                            <button type="button" class="post-tool-btn post-reply-control-button" title="${t('composer.reply_control.everyone')}" aria-label="${t('composer.reply_control.everyone')}" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
+                            <button type="button" class="post-tool-btn post-schedule-button" title="${t('composer.schedule')}" aria-label="${t('composer.schedule')}" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 10h18"/><path d="M12 13v4l3 1"/></svg></button>
+                            <button type="button" class="post-tool-btn post-group-button" title="${t('composer.destination', { name: 'Nyaitter' })}" aria-label="${t('composer.destination', { name: 'Nyaitter' })}" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
                         </div>
                     </div>
                     <div class="post-form-submit-row">
-                        <button id="post-submit-button" class="nui-button" data-nui="button">ポスト</button>
+                        <button id="post-submit-button" class="nui-button" data-nui="button">${t('composer.submit')}</button>
                     </div>
                     <input type="file" id="file-input" class="hidden" multiple>
                     <div id="emoji-picker" class="hidden"></div>
                     <div class="post-group-menu hidden" role="menu"></div>
                     <div class="post-reply-control-menu hidden" role="menu"></div>
-                    <div class="post-schedule-menu hidden" role="dialog" aria-label="予約投稿日時"></div>
+                    <div class="post-schedule-menu hidden" role="dialog" aria-label="${t('composer.schedule.dialog')}"></div>
                 </div>
             </div>
         </div>`;
@@ -2365,7 +2366,7 @@ export function handlePostAnnouncement(container) {
 }
 
 export async function handlePostSubmit(container, onPostSuccess = null) {
-    if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
     const postingAccountId = getPostingAccountId(container);
     if (!postingAccountId) return showAppAlert('投稿アカウントを確認できません。');
     const contentEl = container.querySelector('#post-content');
@@ -2570,10 +2571,10 @@ export function openPostModal(replyTo = null, quotingPost = null) {
 
     const replyInfo = modalFormContainer.querySelector('#reply-info');
     if (replyTo && replyInfo) {
-        replyInfo.innerHTML = `返信先: <strong>@${escapeHTML(replyTo.username || replyTo.name || '')}</strong>`;
+        replyInfo.innerHTML = `${t('post.replying_to_label')}<strong>@${escapeHTML(replyTo.username || replyTo.name || '')}</strong>`;
         replyInfo.classList.remove('hidden');
     } else if (quotingPost && replyInfo) {
-        replyInfo.textContent = '注意: 引用を返信代わりに使用する行為は推奨されていません。';
+        replyInfo.textContent = t('post.quote_reply_warning');
         replyInfo.classList.remove('hidden');
         renderQuotingPostPreview(modalFormContainer, quotingPost);
     } else if (replyInfo) {
@@ -2619,7 +2620,7 @@ export function openRepostModal(post, triggerButton) {
     const simpleRepostBtn = document.createElement('button');
     simpleRepostBtn.className = 'repost-btn';
     simpleRepostBtn.setAttribute('role', 'menuitem');
-    simpleRepostBtn.textContent = 'リポスト';
+    simpleRepostBtn.textContent = t('post.repost');
     simpleRepostBtn.onclick = (e) => {
         e.stopPropagation();
         handleSimpleRepost(post.id);
@@ -2629,7 +2630,7 @@ export function openRepostModal(post, triggerButton) {
     const quotePostBtn = document.createElement('button');
     quotePostBtn.className = 'quote-btn';
     quotePostBtn.setAttribute('role', 'menuitem');
-    quotePostBtn.textContent = '引用ポスト';
+    quotePostBtn.textContent = t('post.quote');
     quotePostBtn.onclick = (e) => {
         e.stopPropagation();
         openPostModal(null, post);
@@ -2655,7 +2656,7 @@ export function openRepostModal(post, triggerButton) {
 }
 
 export async function handleSimpleRepost(postId, onComplete = null) {
-    if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
     showLoading(true);
     try {
         const { error: rpcError } = await api.rpc('create_post_new', {
@@ -2679,7 +2680,7 @@ export async function handleSimpleRepost(postId, onComplete = null) {
     } catch (e) {
         console.error(e);
         const friendlyMessage = e.message.replace(/^Error: /, '');
-        showAppAlert(`リポストに失敗しました: ${friendlyMessage}`);
+        showAppAlert(t('post.repost_failed', { message: friendlyMessage }));
     } finally {
         showLoading(false);
     }
@@ -2782,11 +2783,11 @@ export async function openEditPostModal(postId, onSaved = null) {
                     <div class="post-form-actions" style="padding-top: 1rem;">
                         <div class="post-form-tools-row">
                             <button type="button" class="attachment-button" title="ファイルを追加">${ICONS.attachment}</button>
-                            <button type="button" class="emoji-pic-button" title="絵文字を選択">${ICONS.emoji}</button>
+                            <button type="button" class="emoji-pic-button" title="${t('composer.emoji')}">${ICONS.emoji}</button>
                             <div class="post-tools-right-group post-tools-right-start">
                                 <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
                                 <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
-                                ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="返信可能なユーザー: 誰でも" aria-label="返信可能なユーザー: 誰でも" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
+                                ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="${t('composer.reply_control.everyone')}" aria-label="${t('composer.reply_control.everyone')}" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
                             </div>
                         </div>
                         <div class="post-form-submit-row">
@@ -3002,7 +3003,7 @@ export async function copyPost(postId, button) {
 export async function pinPost(postId) {
     let cmessage, emessage;
 
-    if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
     if (!isPinnedPost(postId)) {
         cmessage = 'このポストをピン留めしますか?';
         emessage = 'ポストのピン留め';
@@ -3042,8 +3043,8 @@ export function removePostFromTimeline(postId) {
 }
 
 export async function deletePost(postId) {
-    if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
-    if (!(await showAppConfirm('このポストを削除しますか?'))) return;
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
+    if (!(await showAppConfirm(t('post.delete_confirm')))) return;
     showLoading(true);
     try {
         const currentUser = getCurrentUser();
@@ -3066,14 +3067,14 @@ export async function deletePost(postId) {
         removePostFromTimeline(postId);
     } catch (e) {
         console.error(e);
-        showAppAlert('削除に失敗しました。');
+        showAppAlert(t('post.delete_failed'));
     } finally {
         showLoading(false);
     }
 }
 
 export function handleReplyClick(postId, username, isPrivate = false) {
-    if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
     openPostModal({ id: postId, name: username, isPrivate });
 }
 
@@ -3120,7 +3121,7 @@ export async function handleLike(button, postId) {
             p.likes = restoredCount;
         });
         console.error('いいね更新エラー:', e);
-        showAppAlert('いいねの更新に失敗しました。');
+        showAppAlert(t('post.like_failed'));
     } finally {
         button.disabled = false;
     }
@@ -3169,7 +3170,7 @@ export async function handleStar(button, postId) {
             p.stars = restoredCount;
         });
         console.error('お気に入り更新エラー:', e);
-        showAppAlert('お気に入りの更新に失敗しました。');
+        showAppAlert(t('post.star_failed'));
     } finally {
         button.disabled = false;
     }
@@ -3237,7 +3238,7 @@ export async function handleFollowToggle(targetUserId, button, isLock = false) {
 }
 
 export async function handleDislikePost(postId, menu = null) {
-    if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
     menu?.classList.remove('is-visible');
     try {
         const { error } = await apiRequest(`/server/api/posts/${encodeURIComponent(String(postId))}/dislike`, {
@@ -3260,7 +3261,7 @@ export async function handleDislikePost(postId, menu = null) {
 
 export async function handleFollowMenuToggle(author, menu = null) {
     const currentUser = getCurrentUser();
-    if (!currentUser || !author?.id) return showAppAlert('ログインが必要です。');
+    if (!currentUser || !author?.id) return showAppAlert(t('common.login_required'));
     menu?.classList.remove('is-visible');
     const targetUserId = Number(author.id);
     const isFollowing = Array.isArray(currentUser.follow) && currentUser.follow.some((id) => Number(id) === targetUserId);
@@ -3287,13 +3288,13 @@ export async function handleFollowMenuToggle(author, menu = null) {
 
 export async function handleBlockMenuToggle(author, menu = null) {
     const currentUser = getCurrentUser();
-    if (!currentUser || !author?.id) return showAppAlert('ログインが必要です。');
+    if (!currentUser || !author?.id) return showAppAlert(t('common.login_required'));
     menu?.classList.remove('is-visible');
     const targetUserId = Number(author.id);
     const isBlocked = Array.isArray(currentUser.block) && currentUser.block.some((id) => Number(id) === targetUserId);
 
     if (!isBlocked) {
-        if (!(await showAppConfirm(`@${author.name || 'ユーザー'} をブロックしますか？\nブロックすると、このユーザーのポストは表示されなくなります。`))) {
+        if (!(await showAppConfirm(t('post.block_confirm', { name: `@${author.name || t('post.user_fallback')}` })))) {
             return;
         }
     }
@@ -3308,7 +3309,7 @@ export async function handleBlockMenuToggle(author, menu = null) {
                 ? [...(currentUser.block || []).filter((id) => Number(id) !== targetUserId), targetUserId]
                 : (currentUser.block || []).filter((id) => Number(id) !== targetUserId));
         invalidateTimelinePageCache();
-        showAppAlert(nowBlocked ? `@${author.name || 'ユーザー'} をブロックしました。` : `@${author.name || 'ユーザー'} のブロックを解除しました。`);
+        showAppAlert(nowBlocked ? t('post.blocked', { name: author.name || t('post.user_fallback') }) : t('post.unblocked', { name: author.name || t('post.user_fallback') }));
         if (nowBlocked) {
             document.querySelectorAll('.post[data-action-target-id]').forEach((el) => {
                 if (Number(el._nyaitterPost?.userid || el._nyaitterPost?.userId) === targetUserId) {
@@ -3318,7 +3319,7 @@ export async function handleBlockMenuToggle(author, menu = null) {
         }
     } catch (e) {
         console.error('ブロック切り替えエラー:', e);
-        showAppAlert('ブロック状態の更新に失敗しました。');
+        showAppAlert(t('post.block_failed'));
     }
 }
 
@@ -3334,7 +3335,7 @@ export function openReplyControlModal(post, onUpdated = null) {
     modal.setAttribute('aria-modal', 'true');
     modal.innerHTML = `
         <div class="modal-content nui-modal" style="max-width: 440px; padding: 1.25rem;">
-            <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+            <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
             <div style="margin-bottom: 1rem;">
                 <h3 style="margin: 0 0 0.4rem 0; font-size: 1.15rem;">返信可能なユーザーの変更</h3>
                 <p class="nui-help-text" style="margin: 0; font-size: 0.85rem; color: var(--secondary-text-color);">
@@ -3962,7 +3963,7 @@ export function openCommunityNoteModal(postId, post, postBody) {
 
     modal.innerHTML = `
         <div class="community-note-modal-content">
-            <button type="button" class="modal-close-btn" id="community-note-modal-close" aria-label="閉じる">×</button>
+            <button type="button" class="modal-close-btn" id="community-note-modal-close" aria-label="${t('common.close')}">×</button>
             <div class="community-note-modal-title">コミュニティノートを作成</div>
 
             <div class="community-note-modal-field">

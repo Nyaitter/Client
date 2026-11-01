@@ -1,4 +1,5 @@
 import { DOM } from '../dom.js';
+import { t } from '../modules/i18n.js';
 import { ICONS } from '../icons.js';
 import {
     getCurrentUser,
@@ -68,9 +69,9 @@ function openGroupTimelineMenu(button, groupId) {
     menu.className = 'group-timeline-mode-menu';
     const mode = getGroupTimelineMode(groupId);
     const options = [
-        { value: 'all', label: 'すべて', icon: 'home_outline' },
-        { value: 'recommended', label: 'おすすめ', icon: 'stars' },
-        { value: 'announcements', label: 'アナウンス', icon: 'megaphone' },
+        { value: 'all', label: t('timeline.tab.all'), icon: 'home_outline' },
+        { value: 'recommended', label: t('timeline.tab.recommended'), icon: 'stars' },
+        { value: 'announcements', label: t('timeline.tab.announcements'), icon: 'megaphone' },
     ];
     menu.innerHTML = options.map((option) => `<button type="button" class="${option.value === mode ? 'active' : ''}" data-group-mode="${option.value}"><span class="menu-item-icon" aria-hidden="true">${ICONS[option.icon]}</span><span class="menu-item-label">${option.label}</span></button>`).join('');
     document.body.appendChild(menu);
