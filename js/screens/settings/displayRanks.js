@@ -1,10 +1,8 @@
 import { api } from '../../api.js';
 
-const RANK_TYPES = Object.freeze(['trust', 'writer', 'reviewer']);
-const TYPE_LABELS = Object.freeze({ trust: 'Trust', writer: 'Writer', reviewer: 'Reviewer' });
-const CONTRIBUTION_NAMES = Object.freeze(['New', 'Junior', 'Regular', 'Senior', 'Expert', 'Veteran']);
-
-const rankIdLabel = (type, rank) => type === 'trust' ? String(rank) : CONTRIBUTION_NAMES[rank];
+const RANK_TYPES = Object.freeze(['trust']);
+const TYPE_LABELS = Object.freeze({ trust: 'Trust' });
+const rankIdLabel = (type, rank) => String(rank);
 
 export function bindSettingsDisplayRanks(root, context, requestSave) {
     const container = root.querySelector('#settings-display-ranks');

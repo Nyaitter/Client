@@ -2,8 +2,6 @@ import { api } from '../../api.js';
 
 const STATUS_TABS = [
     ['trust', 'Trust'],
-    ['writer', 'Writer'],
-    ['reviewer', 'Reviewer'],
 ];
 
 const TRUST_COLORS = {
@@ -16,10 +14,6 @@ const TRUST_COLORS = {
     Banned: '#660000',
     Unknown: '#808080',
 };
-
-const CONTRIBUTION_COLORS = [
-    '#89929b', '#86b65c', '#28a390', '#538bdf', '#a16cdb', '#d0a329',
-];
 
 export function bindSettingsStatus(root, context) {
     const group = root.querySelector('[data-settings-panel="status"]');
@@ -67,13 +61,7 @@ export function bindSettingsStatus(root, context) {
         });
     });
 
-    const rankColor = (key, item) => {
-        if (key !== 'trust') {
-            const color = CONTRIBUTION_COLORS[item.rank];
-            return color ? `color-mix(in srgb, ${color} 60%, var(--text-color))` : 'var(--text-color)';
-        }
-        return TRUST_COLORS[String(item?.rank ?? item)] || TRUST_COLORS.Unknown;
-    };
+    const rankColor = (key, item) => TRUST_COLORS[String(item?.rank ?? item)] || TRUST_COLORS.Unknown;
 
     const renderDetails = (detail, status, key) => {
         const selectedLabel = document.createElement('p');
@@ -176,7 +164,7 @@ export function bindSettingsStatus(root, context) {
     };
 
     const validRank = (status, key) => status &&
-        (key === 'trust' ? typeof status.rank === 'string' : Number.isInteger(status.rank) && status.rank >= 0) &&
+        typeof status.rank === 'string' &&
         typeof status.label === 'string' && typeof status.description === 'string' &&
         (status.requirements === undefined || (Array.isArray(status.requirements) && status.requirements.every(item => typeof item === 'string'))) &&
         ['benefits', 'restrictions'].every(field => Array.isArray(status[field]) && status[field].every(item => typeof item === 'string'));
