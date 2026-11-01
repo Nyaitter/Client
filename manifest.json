@@ -8,7 +8,7 @@
   "api_url": "/server",
   "nyaitter_js": "latest",
   "nyaitter_ui": "latest",
-  "client_version": "2026.11.01",
+  "client_version": "1.0.0",
   "default_language": "ja",
   "language_packs": {
     "ja": "/langs/ja.json",
