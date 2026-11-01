@@ -7,6 +7,27 @@ export const SCROLL_STORAGE_KEY = 'nyaitter_scroll_positions';
 let activeScrollRouteKey = null;
 let pendingScrollSaveTimer = null;
 let savedScrollMemory = new Map();
+let scrollRestoreInProgress = false;
+let lastObservedScrollY = null;
+let activeScrollHash = null;
+
+// scrollY is the persisted visual coordinate. Calibrate scrollTo's input
+// coordinate against the browser's measured result instead of assuming they match.
+export function scrollWindowTo(visualY) {
+    const targetY = Math.max(0, Number(visualY) || 0);
+    let inputY = targetY;
+    let lastActualY = null;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+        window.scrollTo({ top: inputY, left: 0, behavior: 'instant' });
+        const actualY = window.scrollY || 0;
+        if (Math.abs(actualY - targetY) <= 2) return actualY;
+        if (actualY <= 0 || actualY === lastActualY) return actualY;
+        lastActualY = actualY;
+        inputY *= targetY / actualY;
+        if (!Number.isFinite(inputY) || inputY <= 0) return actualY;
+    }
+    return window.scrollY || 0;
+}
 
 export function getScrollRouteKey(hash = window.location.hash || '#', tab = null) {
     const userScope = getCurrentUser()?.id ?? 'guest';
@@ -90,10 +111,7 @@ export async function restoreCachedPagesUntilScrollPosition(
 
     let pageNumber = 0;
     while (pageNumber < maxPages) {
-        const currentDocHeight = Math.max(
-            document.documentElement.scrollHeight || 0,
-            document.body.scrollHeight || 0,
-        );
+        const currentDocHeight = document.documentElement.scrollHeight || 0;
         const viewportHeight = window.innerHeight || 0;
         if (currentDocHeight >= targetY + viewportHeight * 0.5) {
             break;
@@ -127,6 +145,7 @@ export function clearSavedScrollPosition(routeKey = getScrollRouteKey()) {
 }
 
 export function saveScrollPosition(targetRouteKey = null) {
+    if (scrollRestoreInProgress) return;
     const routeKey = targetRouteKey || activeScrollRouteKey;
     if (!routeKey) return;
     const currentY = Math.max(0, Math.floor(window.scrollY || 0));
@@ -156,6 +175,7 @@ export function saveScrollPosition(targetRouteKey = null) {
 }
 
 export function scheduleScrollPositionSave() {
+    if (scrollRestoreInProgress) return;
     if (pendingScrollSaveTimer) return;
     pendingScrollSaveTimer = setTimeout(() => {
         pendingScrollSaveTimer = null;
@@ -164,10 +184,18 @@ export function scheduleScrollPositionSave() {
 }
 
 export function beginScrollRouteTransition() {
+    scrollRestoreVersion += 1;
+    scrollRestoreInProgress = false;
+    // hashchange runs after the browser may reset scrollY to 0. Do not let
+    // that navigation reset erase the outgoing route's previously saved position.
     if (activeScrollRouteKey) {
-        saveScrollPosition(activeScrollRouteKey);
+        const currentY = window.scrollY || 0;
+        if (currentY > 0 || (currentY === 0 && lastObservedScrollY === 0)) {
+            saveScrollPosition(activeScrollRouteKey);
+        }
     }
     activeScrollRouteKey = null;
+    activeScrollHash = null;
     if (pendingScrollSaveTimer) {
         clearTimeout(pendingScrollSaveTimer);
         pendingScrollSaveTimer = null;
@@ -193,10 +221,17 @@ let scrollRestoreVersion = 0;
 export function restoreScrollPosition(targetRouteKey = null) {
     const routeKey = targetRouteKey || getScrollRouteKey();
     activeScrollRouteKey = routeKey;
+    activeScrollHash = window.location.hash;
+    lastObservedScrollY = null;
     const positions = getSavedScrollPositions();
     const hasSavedValue = positions.has(routeKey);
     const targetY = getSavedScrollTargetY(routeKey);
     const version = ++scrollRestoreVersion;
+    scrollRestoreInProgress = targetY > 0;
+    if (pendingScrollSaveTimer) {
+        clearTimeout(pendingScrollSaveTimer);
+        pendingScrollSaveTimer = null;
+    }
 
     if (!hasSavedValue || targetY <= 0) {
         if (!hasSavedValue) {
@@ -210,37 +245,43 @@ export function restoreScrollPosition(targetRouteKey = null) {
                 );
             } catch (_) {}
         }
-        window.scrollTo({
-            top: 0,
-            left: 0,
-            behavior: 'instant',
-        });
+        scrollRestoreInProgress = false;
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         return;
     }
 
     // まず同期で即時適用を試行
-    window.scrollTo({
-        top: targetY,
-        left: 0,
-        behavior: 'instant',
-    });
+    try {
+        scrollWindowTo(targetY);
+    } catch (error) {
+        if (version === scrollRestoreVersion) scrollRestoreInProgress = false;
+        throw error;
+    }
 
     // 描画遅延や画像の読み込み・高さ変動に備えて追従
     const tryScroll = (attemptsLeft = 8) => {
-        scheduleNextFrame(() => {
-            if (version !== scrollRestoreVersion || activeScrollRouteKey !== routeKey) return;
-            const currentY = window.scrollY || 0;
-            if (Math.abs(currentY - targetY) > 2) {
-                window.scrollTo({
-                    top: targetY,
-                    left: 0,
-                    behavior: 'instant',
-                });
-            }
-            if (attemptsLeft > 1 && Math.abs((window.scrollY || 0) - targetY) > 2) {
-                setTimeout(() => tryScroll(attemptsLeft - 1), 30);
-            }
-        });
+        try {
+            scheduleNextFrame(() => {
+                if (version !== scrollRestoreVersion || activeScrollRouteKey !== routeKey) return;
+                try {
+                    const currentY = window.scrollY || 0;
+                    if (Math.abs(currentY - targetY) > 2) {
+                        scrollWindowTo(targetY);
+                    }
+                    if (attemptsLeft > 1 && Math.abs((window.scrollY || 0) - targetY) > 2) {
+                        setTimeout(() => tryScroll(attemptsLeft - 1), 30);
+                    } else {
+                        scrollRestoreInProgress = false;
+                    }
+                } catch (error) {
+                    if (version === scrollRestoreVersion) scrollRestoreInProgress = false;
+                    throw error;
+                }
+            });
+        } catch (error) {
+            if (version === scrollRestoreVersion) scrollRestoreInProgress = false;
+            throw error;
+        }
     };
 
     tryScroll();
@@ -251,6 +292,10 @@ if (typeof window !== 'undefined') {
     window.addEventListener(
         'scroll',
         () => {
+            // A hash navigation can reset scroll before the router runs.
+            // That event belongs to neither the outgoing route nor its save timer.
+            if (!activeScrollRouteKey || window.location.hash !== activeScrollHash) return;
+            lastObservedScrollY = window.scrollY || 0;
             scheduleScrollPositionSave();
         },
         { passive: true },

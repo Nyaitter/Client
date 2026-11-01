@@ -4,6 +4,7 @@ import { apiRequest } from '../../api.js';
 import { initTabGroup } from '../../modules/tabSwipe.js';
 import { getActiveScreenContext } from '../../screenManager.js';
 import { renderError, renderHeader, renderInitial, renderTrends } from './view.js';
+import { trackSearchComposition } from '../../utils/searchIme.js';
 
 let activeExploreTab = 'tags';
 let trendsCache = null;
@@ -43,8 +44,9 @@ export async function mountExploreScreen(showScreenFn) {
     const signal = context?.signal;
     bindAdvancedSearch(DOM.pageHeader, context);
     const searchInput = document.getElementById('search-input');
+    const isComposing = searchInput && trackSearchComposition(searchInput);
     searchInput?.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter') return;
+        if (event.key !== 'Enter' || isComposing(event)) return;
         const query = searchInput.value.trim();
         if (query) window.location.hash = `#search/${encodeURIComponent(query)}`;
     });

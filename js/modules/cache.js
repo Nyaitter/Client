@@ -1,3 +1,4 @@
+import { updateRankAvatarUser, syncRankAvatarSession } from './rankAvatarIntegration.js';
 import {
     getAllUsersCache,
     getCurrentUser,
@@ -253,6 +254,8 @@ export function cacheUser(user) {
     };
     cache.set(userId, cachedUser);
     cache.delete(String(userId));
+    updateRankAvatarUser(user);
+    if (Number(getCurrentUser()?.id) === userId) syncRankAvatarSession();
 
     // Bounded LRU cache eviction to prevent unbounded memory growth
     if (cache.size > MAX_USER_CACHE_LIMIT) {
@@ -303,8 +306,20 @@ export function getTimelinePageCache(tab, { forceRefresh = false } = {}) {
     return tabCaches.get(tab);
 }
 
+const MAX_CACHED_PAGES_PER_CACHE = 50;
+
 export function savePostPageCache(pageCache, pageNumber, payload) {
     pageCache.pages.set(pageNumber, payload);
+    // Bound per-cache depth: scroll restoration replays at most 30 pages,
+    // so keeping the first 50 pages preserves restore behavior while long
+    // scroll sessions no longer grow this map (and the sessionStorage
+    // snapshot written by persistPageCaches) without limit.
+    if (pageCache.pages.size > MAX_CACHED_PAGES_PER_CACHE) {
+        const keys = [...pageCache.pages.keys()].sort((a, b) => a - b);
+        for (const key of keys.slice(MAX_CACHED_PAGES_PER_CACHE)) {
+            pageCache.pages.delete(key);
+        }
+    }
     persistPageCaches();
 }
 
@@ -651,6 +666,7 @@ export function updateCachedUser(userId, updater) {
             Object.assign(existing, updater);
         }
         changed = true;
+        updateRankAvatarUser(existing);
     }
 
     const applyUserUpdate = (post) => {
@@ -728,6 +744,10 @@ export function queueRealtimeTimelineUpdate(post) {
         const queue = pendingRealtimeTimelineUpdates[tab];
         if (!queue.some((p) => p.id === post.id)) {
             queue.unshift(post);
+            // Keep the newest posts; anything older is one manual refresh
+            // away, and an unattended tab must not accumulate post objects
+            // for every realtime event forever.
+            if (queue.length > 300) queue.length = 300;
         }
     });
     updateRealtimeTimelineIndicator(currentTab);

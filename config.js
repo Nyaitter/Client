@@ -34,7 +34,13 @@
         const manifestName = name === 'api_endpoint' ? 'api_url' : name;
         if (name === 'api_endpoint') {
             const manifestApiUrl = String(manifestConfig?.[manifestName] ?? '').trim();
-            if (manifestApiUrl) return manifestApiUrl;
+            if (manifestApiUrl) {
+                // ルート相対の api_url は配信ベース配下として解決し、接頭辞付き配信でも API を失わない。
+                if (manifestApiUrl.startsWith('/') && !manifestApiUrl.startsWith('//') && pageBaseUrl) {
+                    return new URL(manifestApiUrl.replace(/^\/+/, ''), pageBaseUrl).href;
+                }
+                return manifestApiUrl;
+            }
             return status?.api_endpoint ?? fallback ?? defaultApiEndpoint;
         }
         return status?.[name] ?? manifestConfig?.[manifestName] ?? fallback;

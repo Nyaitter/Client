@@ -1,6 +1,7 @@
 import { DOM, openImageModal } from '../dom.js';
+import { registerRankAvatar, rankAvatarAttributes } from './rankAvatarIntegration.js';
 import { ICONS, decorateMenuButtons } from '../icons.js';
-import { api, apiRequest } from '../api.js';
+import { api, apiRequest, getCommunityNoteReasonLabel } from '../api.js';
 import {
     getCurrentUser,
     getCurrentTimelineTab,
@@ -35,7 +36,9 @@ import {
 } from './editor.js';
 import { isDataSaverEnabled } from './theme.js';
 import { router } from '../router.js';
-import { openReportModal } from '../screens/adminScreen.js';
+// The report modal lives in the admin screen bundle, which is loaded on
+// navigation; import it on first use so the timeline does not pay for it.
+const openReportModal = async (...args) => (await import('../screens/adminScreen.js')).openReportModal(...args);
 import { getAccountList, refreshAccountList } from './auth.js';
 import {
     escapeHTML,
@@ -57,6 +60,30 @@ import {
 import { positionElementRelativeToAnchor } from '../utils/viewport.js';
 
 export const METRICS_FALLBACK = '?';
+let postModalReturnFocus = null;
+
+function handlePostModalKeydown(event) {
+    const modal = DOM.postModal;
+    if (!modal || modal.classList.contains('hidden')) return;
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closePostModal();
+        return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = [...modal.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')]
+        .filter(element => !element.closest('[hidden], .hidden'));
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+    }
+}
 
 export async function uploadFileViaEdgeFunction(file, { asUserId = null, replaceId = null } = {}) {
     const normalizedAsUserId = Number(asUserId);
@@ -123,16 +150,19 @@ export function filterBlockedPosts(posts) {
 
 export async function ensureMentionedUsersCached(contents = []) {
     const mentionRegex = /@(\d+)/g;
+    const numericHashtagRegex = /#(\d+)(?=$|[<>\/@#\s])/g;
     const missingUserIds = new Set();
 
     contents.forEach((content) => {
         if (!content || typeof content !== 'string') return;
-        let match;
-        mentionRegex.lastIndex = 0;
-        while ((match = mentionRegex.exec(content)) !== null) {
-            const userId = parseInt(match[1], 10);
-            if (Number.isInteger(userId) && !getCachedUser(userId)) {
-                missingUserIds.add(userId);
+        for (const regex of [mentionRegex, numericHashtagRegex]) {
+            regex.lastIndex = 0;
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                const userId = parseInt(match[1], 10);
+                if (Number.isInteger(userId) && !getCachedUser(userId)) {
+                    missingUserIds.add(userId);
+                }
             }
         }
     });
@@ -314,6 +344,7 @@ export async function renderPost(post, author, options = {}) {
     userIconLink.className = 'user-icon-link';
     const userIcon = document.createElement('img');
     userIcon.src = getUserIconUrl(displayAuthor);
+    registerRankAvatar(userIcon, displayAuthor);
     userIcon.className = 'user-icon nui-avatar';
     userIcon.alt = `${displayAuthor.name}'s icon`;
     userIconLink.appendChild(userIcon);
@@ -342,6 +373,11 @@ export async function renderPost(post, author, options = {}) {
             const replyDiv = document.createElement('div');
             replyDiv.className = 'replying-to nui-help-text';
             replyDiv.innerHTML = `<span>不明なポストに返信</span>`;
+            postMain.appendChild(replyDiv);
+        } else if (post.reply_to_post || post.reply_to || post.reply_id || post.replyTo) {
+            const replyDiv = document.createElement('div');
+            replyDiv.className = 'replying-to nui-help-text';
+            replyDiv.innerHTML = `<span>ポストに返信</span>`;
             postMain.appendChild(replyDiv);
         }
     }
@@ -463,6 +499,23 @@ export async function renderPost(post, author, options = {}) {
             }
         };
         menu.appendChild(activityBtn);
+
+        const communityNoteMenuBtn = document.createElement('button');
+        communityNoteMenuBtn.type = 'button';
+        communityNoteMenuBtn.className = 'community-note-menu-btn';
+        communityNoteMenuBtn.textContent = 'コミュニティノートを追加';
+        communityNoteMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.classList.remove('is-visible');
+            const target = isSimpleRepost && post.reposted_post ? post.reposted_post : post;
+            const targetBody = postEl.querySelector('.post-body');
+            openCommunityNoteModal(
+                Number(target?.id ?? target?.postId ?? target?.post_id ?? post?.id),
+                target || post,
+                targetBody,
+            );
+        });
+        menu.appendChild(communityNoteMenuBtn);
 
         if (!isPostOwner) {
             const dislikeBtn = document.createElement('button');
@@ -674,7 +727,13 @@ export async function renderPost(post, author, options = {}) {
             e.stopPropagation();
         });
         postBody.appendChild(attachmentsContainer);
+    } else {
+        const attachmentsContainer = document.createElement('div');
+        attachmentsContainer.className = 'attachments-container';
+        postBody.appendChild(attachmentsContainer);
     }
+
+    renderCommunityNoteCard(post, postBody);
 
     if (post.poll) {
         renderPostPoll(postBody, post.poll, post);
@@ -880,6 +939,7 @@ function setPostingAccount(container, account) {
     const icon = selector?.querySelector('.user-icon');
     if (icon) {
         icon.src = getUserIconUrl(account);
+        registerRankAvatar(icon, account);
         icon.alt = `${account.name || 'アカウント'}のアイコン`;
     }
     if (selector) {
@@ -944,7 +1004,7 @@ async function openPostAccountMenu(container) {
             item.classList.toggle('active', accountId === selectedId);
             item.setAttribute('aria-pressed', String(accountId === selectedId));
             item.innerHTML = `
-                <img src="${escapeHTML(getUserIconUrl(account))}" alt="" class="post-account-menu-icon">
+                <img ${rankAvatarAttributes(account)} src="${escapeHTML(getUserIconUrl(account))}" alt="" class="post-account-menu-icon">
                 <span class="post-account-menu-user">
                     <strong>${getEmoji(escapeHTML(account.name || '不明なユーザー'))}</strong>
                     <small>${escapeHTML(getNyaitterId(account))}</small>
@@ -969,10 +1029,10 @@ export function createPostFormHTML(isModal = false) {
     return `
         <div class="post-form">
             <button type="button" class="post-account-selector" title="投稿アカウント: ${escapeHTML(currentUser?.name || '不明なユーザー')}" aria-label="投稿アカウント: ${escapeHTML(currentUser?.name || '不明なユーザー')}" aria-haspopup="menu" aria-expanded="false">
-                <img src="${getUserIconUrl(currentUser)}" class="user-icon nui-avatar" alt="${escapeHTML(currentUser?.name || 'アカウント')}のアイコン">
+                <img ${rankAvatarAttributes(currentUser)} src="${getUserIconUrl(currentUser)}" class="user-icon nui-avatar" alt="${escapeHTML(currentUser?.name || 'アカウント')}のアイコン">
             </button>
             <div class="post-account-menu hidden" role="menu"></div>
-            ${isModal ? '<button class="modal-close-btn">×</button>' : ''}
+            ${isModal ? '<button type="button" class="modal-close-btn" aria-label="閉じる">×</button>' : ''}
             <div class="form-content">
                 <div id="reply-info" class="hidden" style="margin-bottom: 0.5rem; color: var(--secondary-text-color);"></div>
                 <div class="markdown-textarea-editor post-content-editor"><textarea id="post-content" class="markdown-content-editor" rows="3" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length" placeholder="いまどうしてる？"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
@@ -2446,6 +2506,7 @@ function renderQuotingPostPreview(container, quotingPost) {
     const icon = document.createElement('img');
     icon.className = 'user-icon nui-avatar';
     icon.src = getUserIconUrl(author);
+    registerRankAvatar(icon, author);
     icon.alt = `${author.name || '不明なユーザー'}のアイコン`;
     header.appendChild(icon);
 
@@ -2481,6 +2542,7 @@ export function openPostModal(replyTo = null, quotingPost = null) {
     const postModal = DOM.postModal;
     const modalFormContainer = postModal?.querySelector('.post-form-container-modal');
     if (!postModal || !modalFormContainer) return;
+    postModalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     modalFormContainer.innerHTML = createPostFormHTML(true);
     attachPostFormListeners(modalFormContainer);
@@ -2520,6 +2582,10 @@ export function openPostModal(replyTo = null, quotingPost = null) {
 
     modalFormContainer.querySelector('.modal-close-btn')?.addEventListener('click', closePostModal);
     postModal.classList.remove('hidden');
+    document.addEventListener('keydown', handlePostModalKeydown);
+    postModal.onclick = event => {
+        if (event.target === postModal) closePostModal();
+    };
     updatePostToolsOverflow(modalFormContainer);
     const postEditor = modalFormContainer.querySelector('#post-content');
     if (postEditor) {
@@ -2529,9 +2595,15 @@ export function openPostModal(replyTo = null, quotingPost = null) {
 }
 
 export function closePostModal() {
-    DOM.postModal?.classList.add('hidden');
+    const postModal = DOM.postModal;
+    if (!postModal || postModal.classList.contains('hidden')) return;
+    postModal.classList.add('hidden');
+    postModal.onclick = null;
+    document.removeEventListener('keydown', handlePostModalKeydown);
     setReplyingTo(null);
     setQuotingPost(null);
+    if (postModalReturnFocus?.isConnected) postModalReturnFocus.focus();
+    postModalReturnFocus = null;
 }
 
 export function openRepostModal(post, triggerButton) {
@@ -2542,9 +2614,11 @@ export function openRepostModal(post, triggerButton) {
     const menu = document.createElement('div');
     menu.id = modalId;
     menu.className = 'post-menu is-visible';
+    menu.setAttribute('role', 'menu');
 
     const simpleRepostBtn = document.createElement('button');
     simpleRepostBtn.className = 'repost-btn';
+    simpleRepostBtn.setAttribute('role', 'menuitem');
     simpleRepostBtn.textContent = 'リポスト';
     simpleRepostBtn.onclick = (e) => {
         e.stopPropagation();
@@ -2554,6 +2628,7 @@ export function openRepostModal(post, triggerButton) {
 
     const quotePostBtn = document.createElement('button');
     quotePostBtn.className = 'quote-btn';
+    quotePostBtn.setAttribute('role', 'menuitem');
     quotePostBtn.textContent = '引用ポスト';
     quotePostBtn.onclick = (e) => {
         e.stopPropagation();
@@ -2570,6 +2645,7 @@ export function openRepostModal(post, triggerButton) {
         positionElementRelativeToAnchor(menu, triggerButton, {
             placement: 'top-start',
             gap: 6,
+            useFixed: true,
         });
     }
 
@@ -2698,7 +2774,7 @@ export async function openEditPostModal(postId, onSaved = null) {
 
         DOM.editPostModalContent.innerHTML = `
             <div class="post-form" style="padding: 1rem;">
-                <img src="${getUserIconUrl(getCurrentUser())}" class="user-icon nui-avatar" alt="your icon">
+                <img ${rankAvatarAttributes(getCurrentUser())} src="${getUserIconUrl(getCurrentUser())}" class="user-icon nui-avatar" alt="your icon">
                 <button class="modal-close-btn">×</button>
                 <div class="form-content">
                     <div class="markdown-textarea-editor post-form-textarea"><textarea id="edit-post-textarea" class="markdown-content-editor" rows="5" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length">${escapeHTML(String(post.content || ''))}</textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
@@ -3326,3 +3402,685 @@ export function openReplyControlModal(post, onUpdated = null) {
 
 // サイドバー/プロフィールが動的ハンドラから window 経由で参照する。
 window.handleFollowToggle = handleFollowToggle;
+
+const communityNoteCache = new Map();
+const communityNoteRequests = new Map();
+const COMMUNITY_NOTE_CACHE_TTL_MS = 60_000;
+const communityNoteLazyPending = new Map();
+let communityNoteLazyObserver = null;
+
+function fetchCommunityNotes(postId, { force = false } = {}) {
+    if (!force) {
+        const hit = communityNoteCache.get(postId);
+        if (hit && hit.expiresAt > Date.now()) {
+            return Promise.resolve({ data: hit.data, error: null });
+        }
+        const pending = communityNoteRequests.get(postId);
+        if (pending) return pending;
+    }
+    const request = Promise.resolve(api.notes.get(postId)).then((result) => {
+        if (!result?.error && result?.data) {
+            if (communityNoteCache.size >= 500 && !communityNoteCache.has(postId)) {
+                communityNoteCache.delete(communityNoteCache.keys().next().value);
+            }
+            communityNoteCache.set(postId, {
+                data: result.data,
+                expiresAt: Date.now() + COMMUNITY_NOTE_CACHE_TTL_MS,
+            });
+        }
+        return result;
+    });
+    communityNoteRequests.set(postId, request);
+    request.then(
+        () => { if (communityNoteRequests.get(postId) === request) communityNoteRequests.delete(postId); },
+        () => { if (communityNoteRequests.get(postId) === request) communityNoteRequests.delete(postId); },
+    );
+    return request;
+}
+
+function deferCommunityNoteCard(post, postBody, postId) {
+    if (postBody.querySelector?.('.community-note-card')) return;
+    const pending = communityNoteLazyPending.get(postBody);
+    if (pending && pending.postId === postId) return;
+    communityNoteLazyPending.set(postBody, { post, postId });
+    if (!communityNoteLazyObserver) {
+        communityNoteLazyObserver = new IntersectionObserver((entries) => {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                const item = communityNoteLazyPending.get(entry.target);
+                communityNoteLazyPending.delete(entry.target);
+                communityNoteLazyObserver.unobserve(entry.target);
+                if (item) void renderCommunityNoteCard(item.post, entry.target, { immediate: true });
+            }
+        }, { rootMargin: '200px' });
+    }
+    communityNoteLazyObserver.observe(postBody);
+}
+
+export async function renderCommunityNoteCard(post, postBody, { immediate = false, force = false } = {}) {
+    if (!post || !postBody) return;
+    const postId = Number(post?.id);
+    if (!Number.isFinite(postId)) return;
+    // 設定でコミュニティノートを非表示にしている場合は、
+    // API 呼び出しもカード描画も行わない。
+    if (getCurrentUser()?.settings?.show_community_notes === false) return;
+
+    // 一覧では表示領域に入るまで取得を遅らせ、投稿ごとの即時取得 (N+1) を避ける。
+    if (!immediate && typeof IntersectionObserver === 'function' && postBody instanceof Element) {
+        deferCommunityNoteCard(post, postBody, postId);
+        return;
+    }
+
+    let container = null;
+    try {
+        container =
+            (typeof postBody.querySelector === 'function' &&
+                postBody.querySelector('.attachments-container')) ||
+            null;
+    } catch (e) {
+        container = null;
+    }
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'attachments-container';
+        if (typeof postBody.prepend === 'function') {
+            postBody.prepend(container);
+        } else {
+            postBody.appendChild(container);
+        }
+    }
+
+    try {
+        const { data, error } = await fetchCommunityNotes(postId, { force });
+        if (error || !data) return;
+        const notes = Array.isArray(data?.notes) ? data.notes : [];
+        const note =
+            notes.find((n) => String(n?.status) === 'public') || notes[0];
+        if (!note) return;
+
+        // 既存のノートカードを除去
+        container
+            .querySelectorAll('.community-note-card')
+            .forEach((el) => el.remove());
+
+        const card = document.createElement('div');
+        card.className = 'community-note-card';
+        card.dataset.noteId = String(note.id);
+
+        const header = document.createElement('div');
+        header.className = 'community-note-header';
+
+        const title = document.createElement('strong');
+        title.className = 'community-note-title';
+        const currentUser = getCurrentUser();
+        const noteAuthorId = Number(note.userId);
+        const isOwnNote = Boolean(currentUser) && Number.isFinite(noteAuthorId) &&
+            Number(currentUser.id) === noteAuthorId;
+        const noteStatus = String(note.status || '');
+        title.textContent = isOwnNote
+            ? 'あなたが追加した背景情報'
+            : noteStatus === 'public'
+                ? '他の閲覧者によって追加された背景情報'
+                : '他の閲覧者によって提案された背景情報';
+
+        header.append(title);
+
+        const contentWrap = document.createElement('div');
+        contentWrap.className = 'community-note-content';
+        const contentText = document.createElement('blockquote');
+        contentText.className = 'community-note-text';
+        const fullContent = String(note.content || '');
+        const CONTENT_LIMIT = 500;
+        let textExpanded = false;
+
+        const updateContentText = () => {
+            if (textExpanded || fullContent.length <= CONTENT_LIMIT) {
+                contentText.textContent = fullContent;
+            } else {
+                contentText.textContent = fullContent.slice(0, CONTENT_LIMIT) + '…';
+            }
+        };
+        updateContentText();
+        contentWrap.appendChild(contentText);
+
+        const readMoreWrap = document.createElement('div');
+        readMoreWrap.className = 'community-note-readmore-wrap';
+        if (fullContent.length > CONTENT_LIMIT) {
+            const readMoreBtn = document.createElement('button');
+            readMoreBtn.type = 'button';
+            readMoreBtn.className = 'community-note-readmore';
+            readMoreBtn.textContent = '続きを読む';
+            readMoreBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                textExpanded = !textExpanded;
+                updateContentText();
+                readMoreBtn.textContent = textExpanded
+                    ? '閉じる'
+                    : '続きを読む';
+            });
+            readMoreWrap.appendChild(readMoreBtn);
+        }
+
+        const reasons = Array.isArray(note.reasons) ? note.reasons : [];
+        const tagsWrap = document.createElement('div');
+        tagsWrap.className = 'community-note-tags';
+        const tagCodes = reasons.map((reason) => String(
+            (reason && (reason.code || reason.label || reason.side)) || reason || '',
+        ));
+        const tagLabels = new Map(tagCodes.map((code) => [code, code]));
+        const renderTags = () => {
+            tagsWrap.textContent = [...tagLabels.values()].join(' / ');
+            tagsWrap.hidden = tagLabels.size === 0;
+        };
+        renderTags();
+        // 定義テーブルの表示ラベルに置き換える（取得できない場合はコードのまま）。
+        if (reasons.length > 0) {
+            void Promise.all(
+                reasons.map(async (reason) => {
+                    const code = String(
+                        (reason && (reason.code || reason.label || reason.side)) ||
+                            reason ||
+                            '',
+                    );
+                    const label = await getCommunityNoteReasonLabel(code);
+                    if (label) tagLabels.set(code, label);
+                }),
+            ).then(renderTags).catch(() => {});
+        }
+
+        const ratingWrap = document.createElement('div');
+        ratingWrap.className = 'community-note-rating';
+
+        const ratingQuestion = document.createElement('span');
+        ratingQuestion.className = 'community-note-rating-question';
+        ratingQuestion.textContent = '参考になりましたか?';
+
+        const evaluateBtn = document.createElement('button');
+        evaluateBtn.type = 'button';
+        evaluateBtn.className = 'community-note-evaluate-btn';
+        evaluateBtn.textContent = 'ノートを評価';
+        let ratingChoicesVisible = false;
+
+        const helpfulBtn = document.createElement('button');
+        helpfulBtn.type = 'button';
+        helpfulBtn.className = 'community-note-rating-btn';
+        helpfulBtn.textContent = '参考になった';
+
+        const unhelpfulBtn = document.createElement('button');
+        unhelpfulBtn.type = 'button';
+        unhelpfulBtn.className = 'community-note-rating-btn';
+        unhelpfulBtn.textContent = '参考にならなかった';
+
+        const countLabel = document.createElement('span');
+        countLabel.className = 'community-note-rating-count';
+
+        const ratedLabel = document.createElement('span');
+        ratedLabel.className = 'community-note-rated-label';
+        ratedLabel.textContent = '評価済み ✓';
+        ratedLabel.hidden = true;
+
+        const canRate =
+            Boolean(currentUser) &&
+            (!Number.isFinite(noteAuthorId) ||
+                Number(currentUser.id) !== noteAuthorId);
+
+        const reasonPanel = document.createElement('div');
+        reasonPanel.className = 'community-note-reason-panel';
+        reasonPanel.hidden = true;
+        let reasonPanelSide = null;
+        const selectedReasonCodes = new Set();
+
+        const syncRating = () => {
+            const myRating = note.myRating;
+            const rated = myRating === true || myRating === false;
+            helpfulBtn.classList.toggle(
+                'is-active',
+                myRating === true,
+            );
+            unhelpfulBtn.classList.toggle(
+                'is-active',
+                myRating === false,
+            );
+            helpfulBtn.hidden = rated || !ratingChoicesVisible;
+            unhelpfulBtn.hidden = rated || !ratingChoicesVisible;
+            evaluateBtn.hidden = rated || ratingChoicesVisible;
+            ratingQuestion.hidden = rated;
+            ratedLabel.hidden = !rated;
+            if (rated) {
+                ratingChoicesVisible = false;
+                reasonPanel.hidden = true;
+                reasonPanel.innerHTML = '';
+                reasonPanelSide = null;
+                selectedReasonCodes.clear();
+            }
+            if (!canRate) {
+                evaluateBtn.disabled = true;
+                helpfulBtn.disabled = true;
+                unhelpfulBtn.disabled = true;
+                const reason = currentUser ? '自分のノートは評価できません' : '評価するにはログインしてください';
+                evaluateBtn.title = reason;
+                helpfulBtn.title = reason;
+                unhelpfulBtn.title = reason;
+            }
+            if (note.helpfulCount != null) {
+                countLabel.textContent =
+                    note.helpfulCount > 0
+                        ? '参考になった ' + String(note.helpfulCount)
+                        : '';
+            }
+        };
+        syncRating();
+
+        evaluateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!canRate) return;
+            ratingChoicesVisible = true;
+            syncRating();
+        });
+
+        const handleRate = async (helpful, reasons = []) => {
+            try {
+                const { data: rateData, error: rateError } =
+                    await api.notes.rate(note.id, { helpful, reasons });
+                if (rateError || !rateData) return false;
+                if (typeof rateData.helpfulCount !== 'undefined') {
+                    note.helpfulCount = rateData.helpfulCount;
+                }
+                if (typeof rateData.totalRatingCount !== 'undefined') {
+                    note.totalRatingCount = rateData.totalRatingCount;
+                }
+                if (typeof rateData.myRating !== 'undefined') {
+                    note.myRating = rateData.myRating;
+                } else {
+                    note.myRating = Boolean(helpful);
+                }
+                syncRating();
+                return true;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        };
+
+        const renderReasonPanel = async (helpful) => {
+            if (!canRate) return;
+            const side = helpful ? 'positive' : 'negative';
+            if (reasonPanelSide === side && !reasonPanel.hidden) {
+                reasonPanel.hidden = true;
+                reasonPanel.innerHTML = '';
+                reasonPanelSide = null;
+                selectedReasonCodes.clear();
+                return;
+            }
+            reasonPanelSide = side;
+            selectedReasonCodes.clear();
+            reasonPanel.hidden = false;
+            reasonPanel.innerHTML = '';
+
+            const loading = document.createElement('span');
+            loading.className = 'community-note-reason-loading';
+            loading.textContent = '理由を読み込み中…';
+            reasonPanel.appendChild(loading);
+
+            const { data, error } = await api.notes.reasonTags();
+            if (reasonPanelSide !== side) return;
+
+            reasonPanel.innerHTML = '';
+            const tags =
+                !error && Array.isArray(data?.tags)
+                    ? data.tags
+                          .filter((tag) => String(tag?.side) === side)
+                          .slice()
+                          .sort(
+                              (a, b) =>
+                                  (Number(a?.sortOrder) || 0) -
+                                  (Number(b?.sortOrder) || 0),
+                          )
+                    : [];
+
+            const chipWrap = document.createElement('div');
+            chipWrap.className = 'community-note-reason-chips';
+
+            const chipButtons = [];
+            // 理由の確定ボタン。syncChips から参照するため chips 生成前に宣言する。
+            const confirmBtn = document.createElement('button');
+            const syncChips = () => {
+                const atLimit = selectedReasonCodes.size >= 3;
+                chipButtons.forEach((btn) => {
+                    const code = btn.dataset.reasonCode;
+                    const selected = selectedReasonCodes.has(code);
+                    btn.classList.toggle('is-selected', selected);
+                    btn.setAttribute(
+                        'aria-pressed',
+                        selected ? 'true' : 'false',
+                    );
+                    btn.disabled = !selected && atLimit;
+                });
+                if (confirmBtn) {
+                    confirmBtn.disabled = selectedReasonCodes.size === 0;
+                }
+            };
+
+            tags.forEach((tag) => {
+                const code = String(tag?.code || '').trim();
+                if (!code) return;
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'community-note-reason-chip';
+                chip.dataset.reasonCode = code;
+                chip.textContent = String(tag?.label || code);
+                if (tag?.description) chip.title = String(tag.description);
+                chip.setAttribute('aria-pressed', 'false');
+                chip.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (selectedReasonCodes.has(code)) {
+                        selectedReasonCodes.delete(code);
+                    } else if (selectedReasonCodes.size < 3) {
+                        selectedReasonCodes.add(code);
+                    } else {
+                        showToast('理由は3つまで選択できます。');
+                    }
+                    syncChips();
+                });
+                chipButtons.push(chip);
+                chipWrap.appendChild(chip);
+            });
+
+            if (chipButtons.length > 0) {
+                reasonPanel.appendChild(chipWrap);
+            } else {
+                const empty = document.createElement('span');
+                empty.className = 'community-note-reason-loading';
+                empty.textContent =
+                    '理由を取得できませんでした。理由なしで評価できます。';
+                reasonPanel.appendChild(empty);
+            }
+
+            const actions = document.createElement('div');
+            actions.className = 'community-note-reason-actions';
+
+            confirmBtn.type = 'button';
+            confirmBtn.className =
+                'community-note-reason-confirm nui-button';
+            confirmBtn.textContent = 'この理由で評価';
+            confirmBtn.disabled = true;
+
+            const noReasonBtn = document.createElement('button');
+            noReasonBtn.type = 'button';
+            noReasonBtn.className = 'community-note-reason-skip';
+            noReasonBtn.textContent = '理由なしで評価';
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'community-note-reason-cancel';
+            cancelBtn.textContent = 'キャンセル';
+
+            const setBusy = (busy) => {
+                confirmBtn.disabled = busy || selectedReasonCodes.size === 0;
+                noReasonBtn.disabled = busy;
+                cancelBtn.disabled = busy;
+                chipButtons.forEach((btn) => {
+                    btn.disabled =
+                        busy ||
+                        (!selectedReasonCodes.has(btn.dataset.reasonCode) &&
+                            selectedReasonCodes.size >= 3);
+                });
+            };
+
+            confirmBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (selectedReasonCodes.size === 0) return;
+                setBusy(true);
+                const ok = await handleRate(helpful, [
+                    ...selectedReasonCodes,
+                ]);
+                if (!ok) {
+                    setBusy(false);
+                    showAppAlert('評価に失敗しました。');
+                }
+            });
+            noReasonBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                setBusy(true);
+                const ok = await handleRate(helpful, []);
+                if (!ok) {
+                    setBusy(false);
+                    showAppAlert('評価に失敗しました。');
+                }
+            });
+            cancelBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                reasonPanel.hidden = true;
+                reasonPanel.innerHTML = '';
+                reasonPanelSide = null;
+                selectedReasonCodes.clear();
+            });
+
+            actions.append(confirmBtn, noReasonBtn, cancelBtn);
+            reasonPanel.appendChild(actions);
+            syncChips();
+        };
+
+        helpfulBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (helpfulBtn.disabled) return;
+            renderReasonPanel(true);
+        });
+        unhelpfulBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (unhelpfulBtn.disabled) return;
+            renderReasonPanel(false);
+        });
+
+        ratingWrap.append(
+            ratingQuestion,
+            evaluateBtn,
+            helpfulBtn,
+            unhelpfulBtn,
+            ratedLabel,
+            countLabel,
+            reasonPanel,
+        );
+
+        const sources = Array.isArray(note.sources) ? note.sources : [];
+        const sourceLinks = [];
+        for (const source of sources) {
+            const rawUrl = String((source && (source.url || source)) || '').trim();
+            if (!rawUrl || sourceLinks.some((item) => item.url === rawUrl)) continue;
+            let parsed;
+            try {
+                parsed = new URL(rawUrl);
+            } catch (_) {
+                continue;
+            }
+            if (parsed.protocol !== 'https:') continue;
+            sourceLinks.push({ url: parsed.href, title: String(source?.title || '').trim() });
+        }
+        let sourcesWrap = null;
+        if (sourceLinks.length > 0) {
+            sourcesWrap = document.createElement('div');
+            sourcesWrap.className = 'community-note-sources';
+            const sourcesLabel = document.createElement('span');
+            sourcesLabel.className = 'community-note-sources-label';
+            sourcesLabel.textContent = '出典: ';
+            sourcesWrap.appendChild(sourcesLabel);
+            sourceLinks.forEach(({ url, title }, index) => {
+                if (index > 0) sourcesWrap.appendChild(document.createTextNode(' / '));
+                const link = document.createElement('a');
+                link.className = 'community-note-source-link';
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = title || url;
+                link.addEventListener('click', (e) => e.stopPropagation());
+                sourcesWrap.appendChild(link);
+            });
+        }
+
+        card.append(
+            header,
+            contentWrap,
+            readMoreWrap,
+            tagsWrap,
+            ...(sourcesWrap ? [sourcesWrap] : []),
+            ratingWrap,
+        );
+
+        if (container.firstChild) {
+            container.insertBefore(card, container.firstChild);
+        } else {
+            container.appendChild(card);
+        }
+    } catch (e) {
+        console.error('renderCommunityNoteCard error:', e);
+    }
+}
+
+export function openCommunityNoteModal(postId, post, postBody) {
+    const numericPostId = Number(postId);
+    if (!Number.isFinite(numericPostId)) return;
+
+    let existingModal = document.getElementById('community-note-create-modal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'community-note-create-modal';
+    modal.className = 'modal-overlay community-note-create-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+
+    modal.innerHTML = `
+        <div class="community-note-modal-content">
+            <button type="button" class="modal-close-btn" id="community-note-modal-close" aria-label="閉じる">×</button>
+            <div class="community-note-modal-title">コミュニティノートを作成</div>
+
+            <div class="community-note-modal-field">
+                <label class="community-note-modal-label" for="community-note-content">内容・ソース</label>
+                <textarea id="community-note-content" class="community-note-modal-textarea" rows="6" maxlength="1000" placeholder="補足情報とソースを入力してください"></textarea>
+                <div class="community-note-modal-count" id="community-note-content-count">0 / 1000</div>
+            </div>
+
+            <div class="community-note-modal-field" id="community-note-reasons-field">
+                <label class="community-note-modal-label">理由</label>
+                <div class="community-note-modal-reasons" id="community-note-reasons-list">
+                    <div class="community-note-modal-reasons-loading">読み込み中…</div>
+                </div>
+            </div>
+
+            <div class="community-note-modal-actions">
+                <button type="button" class="community-note-modal-cancel" id="community-note-cancel">キャンセル</button>
+                <button type="button" class="community-note-modal-submit nui-button" id="community-note-submit">送信</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const contentTextarea = modal.querySelector('#community-note-content');
+    const contentCount = modal.querySelector('#community-note-content-count');
+    const reasonsList = modal.querySelector('#community-note-reasons-list');
+    const reasonsField = modal.querySelector('#community-note-reasons-field');
+    const closeBtn = modal.querySelector('#community-note-modal-close');
+    const cancelBtn = modal.querySelector('#community-note-cancel');
+    const submitBtn = modal.querySelector('#community-note-submit');
+
+    let createReasonTags = [];
+
+    const syncContentCount = () => {
+        const len = [...String(contentTextarea.value || '')].length;
+        contentCount.textContent = `${len} / 1000`;
+    };
+    contentTextarea.addEventListener('input', syncContentCount);
+    syncContentCount();
+
+    const renderCreateReasons = async () => {
+        const { data, error } = await api.notes.reasonTags();
+        if (!modal.isConnected) return;
+        const tags =
+            !error && Array.isArray(data?.tags)
+                ? data.tags
+                      .filter((tag) => String(tag?.side) === 'create')
+                      .slice()
+                      .sort(
+                          (a, b) =>
+                              (Number(a?.sortOrder) || 0) -
+                              (Number(b?.sortOrder) || 0),
+                      )
+                : [];
+        if (tags.length === 0) {
+            // 取得できない場合は理由欄自体を出さず、理由なしで送信できる。
+            reasonsField.style.display = 'none';
+            return;
+        }
+        createReasonTags = tags;
+        reasonsList.innerHTML = '';
+        tags.forEach((tag) => {
+            const code = String(tag?.code || '').trim();
+            if (!code) return;
+            const label = document.createElement('label');
+            label.className = 'community-note-modal-reason';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = code;
+            checkbox.dataset.reasonCode = code;
+            label.appendChild(checkbox);
+            const span = document.createElement('span');
+            span.textContent = String(tag?.label || code);
+            if (tag?.description) label.title = String(tag.description);
+            label.appendChild(span);
+            reasonsList.appendChild(label);
+        });
+        if (reasonsList.childElementCount === 0) {
+            reasonsField.style.display = 'none';
+        }
+    };
+    renderCreateReasons();
+
+    const closeModal = () => modal.remove();
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    submitBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const content = String(contentTextarea.value || '').trim();
+        const contentLen = [...content].length;
+        if (contentLen < 1 || contentLen > 1000) {
+            showAppAlert('内容は1〜1000文字で入力してください。');
+            return;
+        }
+
+        const selectedReasons = [];
+        reasonsList.querySelectorAll('input[type="checkbox"]:checked').forEach((cb) => {
+            const code = String(cb.dataset.reasonCode || '');
+            const tag = createReasonTags.find(
+                (item) => String(item?.code || '') === code,
+            );
+            if (!tag || !code) return;
+            selectedReasons.push(code);
+        });
+
+        submitBtn.disabled = true;
+        showLoading(true);
+        try {
+            const { error } = await api.notes.create(numericPostId, {
+                content,
+                reasons: selectedReasons,
+            });
+            if (error) {
+                showAppAlert(error.message || 'ノートの作成に失敗しました。');
+                return;
+            }
+            closeModal();
+            await renderCommunityNoteCard(post, postBody, { immediate: true, force: true });
+        } catch (err) {
+            console.error('create community note error:', err);
+            showAppAlert(err?.message || 'ノートの作成に失敗しました。');
+        } finally {
+            submitBtn.disabled = false;
+            showLoading(false);
+        }
+    });
+}

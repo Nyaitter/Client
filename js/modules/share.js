@@ -1,6 +1,7 @@
 import { copyTextToClipboard } from '../utils/helpers.js';
 
 const kindPath = { group: 'groups', stage: 'stages' };
+const copyFeedback = new WeakMap();
 
 function shareBase() {
     const configured =
@@ -25,14 +26,19 @@ export async function copyEntityUrl(kind, id, button = null) {
     await copyTextToClipboard(url);
     if (button) {
         const label = button.querySelector('span');
-        const previous = label ? label.textContent : button.textContent;
+        const existing = copyFeedback.get(button);
+        if (existing) clearTimeout(existing.timer);
+        const previous = existing?.previous ?? (label ? label.textContent : button.textContent);
         if (label) label.textContent = 'コピーしました';
         else button.textContent = 'コピーしました';
-        setTimeout(() => {
-            if (!button.isConnected) return;
-            if (label) label.textContent = previous;
-            else button.textContent = previous;
+        const timer = setTimeout(() => {
+            copyFeedback.delete(button);
+            if (button.isConnected) {
+                if (label) label.textContent = previous;
+                else button.textContent = previous;
+            }
         }, 1800);
+        copyFeedback.set(button, { previous, timer });
     }
     return url;
 }

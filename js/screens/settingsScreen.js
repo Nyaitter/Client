@@ -1,4 +1,5 @@
 import { DOM } from '../dom.js';
+import { ICONS } from '../icons.js';
 import { api, apiRequest } from '../api.js';
 import {
     getCurrentUser,
@@ -43,7 +44,7 @@ import {
     checkSession,
 } from '../modules/auth.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
-import { applyDataSaverRealtimePreference, unsubscribeFromChanges } from '../modules/realtime.js';
+import { applyDataSaverRealtimePreference, applyDataSaverButtonState, unsubscribeFromChanges } from '../modules/realtime.js';
 import { refreshMarkdownContentEditors } from '../modules/editor.js';
 import { router } from '../router.js';
 import {
@@ -53,6 +54,8 @@ import {
 } from './settings/config.js';
 import { readSettingsForm } from './settings/formModel.js';
 import { rebuildSettings, bindSettingsDiscovery, showSettingsSaveStatus, bindSettingsNetworkUsage } from './settings/redesign.js';
+import { bindSettingsStatus } from './settings/status.js';
+import { bindSettingsDisplayRanks } from './settings/displayRanks.js';
 import { ALL_HOME_TABS, DEFAULT_HOME_TABS, getSavedHomeTabs } from './settings/homeTabs.js';
 import {
     ALL_SIDEBAR_ITEMS,
@@ -273,8 +276,10 @@ export async function saveSettings(form, context = getActiveScreenContext()) {
     setSettingsSaveInFlight(true);
     showSettingsSaveStatus(form, 'saving');
 
+    let submittedSettings;
     try {
         const updatedData = readSettingsForm(form, getCurrentUser().settings || {});
+        submittedSettings = updatedData.settings;
         if (!updatedData.name) throw new Error('ユーザー名は必須です。');
 
         const previousStoredFileIds = new Set();
@@ -348,6 +353,7 @@ export async function saveSettings(form, context = getActiveScreenContext()) {
             },
         };
         setCurrentUser(updatedUser);
+        reconcileRankDisplaySettings(form, updatedUser.settings, submittedSettings);
         cacheUser(updatedUser);
         getPublicProfileCache().delete(Number(updatedUser.id));
         updateAccountData(updatedUser);
@@ -355,6 +361,7 @@ export async function saveSettings(form, context = getActiveScreenContext()) {
         applyColorTheme(updatedUser.settings || {});
         applyUserUiMode(updatedUser.settings?.ui_mode);
         applyDataSaverRealtimePreference();
+        applyDataSaverButtonState();
         refreshMarkdownContentEditors();
         await updateNavAndSidebars();
         setNewIconDataUrl(null);
@@ -365,6 +372,7 @@ export async function saveSettings(form, context = getActiveScreenContext()) {
     } catch (error) {
         if (context?.signal?.aborted) return;
         console.error('設定の自動保存に失敗:', error);
+        if (submittedSettings) reconcileRankDisplaySettings(form, getCurrentUser()?.settings || {}, submittedSettings, true);
         showSettingsSaveStatus(form, 'error');
     } finally {
         setSettingsSaveInFlight(false);
@@ -375,6 +383,19 @@ export async function saveSettings(form, context = getActiveScreenContext()) {
             setSettingsSaveQueued(false);
         }
     }
+}
+
+function reconcileRankDisplaySettings(form, settings, submitted, failed = false) {
+    const checkbox = form.querySelector('#setting-show-ranks');
+    if (checkbox && checkbox.checked === submitted.show_ranks) {
+        checkbox.checked = settings.show_ranks === true;
+        document.dispatchEvent(new CustomEvent('rank-display-preference-change', {
+            detail: { enabled: checkbox.checked },
+        }));
+    }
+    form.dispatchEvent(new CustomEvent('settings-rank-display-save', {
+        detail: { settings, submitted, failed },
+    }));
 }
 
 export async function showSettingsScreen(
@@ -512,6 +533,7 @@ export async function showSettingsScreen(
                         <label><input type="checkbox" id="setting-show-star" ${getCurrentUser().settings?.show_star ? 'checked' : ''}> お気に入りを公開する</label>
                         <label><input type="checkbox" id="setting-show-scid" ${getCurrentUser().settings?.show_scid ? 'checked' : ''}> Scratchアカウント名を公開する</label>
                         <label><input type="checkbox" id="setting-lock" ${getCurrentUser().settings?.lock ? 'checked' : ''}> ポストを非公開にする</label>
+                        <div id="settings-display-ranks" hidden></div>
                     </fieldset>
                     <fieldset class="nui-card settings-ng-words"><legend>ミュート・フィルター</legend>
                         <label for="setting-ng-words">NGワード</label>
@@ -582,6 +604,14 @@ export async function showSettingsScreen(
                     <fieldset class="nui-card settings-data-saver"><legend>通信量</legend>
                         <label><input type="checkbox" id="setting-data-saver" ${getCurrentUser().settings?.data_saver ? 'checked' : ''}> データセーバーを有効にする</label>
                         <p class="settings-help-text nui-help-text">画像は低画質プレビューで表示し、開いた時だけ元の画質を取得します。リアルタイム接続を停止し、一覧の一度の取得件数も減らします。</p>
+                    </fieldset>
+                    <fieldset class="nui-card settings-community-notes"><legend>コミュニティノート</legend>
+                        <label><input type="checkbox" id="setting-show-community-notes" ${getCurrentUser().settings?.show_community_notes !== false ? 'checked' : ''}> コミュニティノートを表示する</label>
+                        <p class="settings-help-text nui-help-text">オフにすると、投稿に付いたコミュニティノートの取得と表示を行いません。</p>
+                    </fieldset>
+                    <fieldset class="nui-card settings-rank-display"><legend>ランク</legend>
+                        <label><input type="checkbox" id="setting-show-ranks" ${getCurrentUser().settings?.show_ranks === true ? 'checked' : ''}> ランクを表示する</label>
+                        <p class="settings-help-text nui-help-text">他のユーザーのアイコンにランクの色を表示します。自分の表示ランクはステータスで変更できます。</p>
                     </fieldset>
                     <label for="setting-theme">テーマ</label>
                     <select id="setting-theme" class="settings-select nui-input">
@@ -2196,10 +2226,20 @@ export async function showSettingsScreen(
         const details = SETTINGS_GROUP_DETAILS[activeGroup];
         const title = document.getElementById('settings-group-title');
         const description = document.getElementById('settings-group-description');
-        if (title) title.textContent = details.title;
+        if (title) {
+            title.textContent = details.title;
+            if (activeGroup === 'status' || activeGroup === 'client') {
+                const icon = document.createElement('span');
+                icon.className = 'settings-category-icon settings-heading-icon nui-icon';
+                icon.setAttribute('aria-hidden', 'true');
+                icon.innerHTML = ICONS[activeGroup];
+                title.prepend(icon);
+            }
+        }
         if (description) description.textContent = details.description;
         const mobileCategory = document.getElementById('settings-mobile-category');
         if (mobileCategory) mobileCategory.value = activeGroup;
+        document.querySelector('.settings-save-bar').hidden = activeGroup === 'status';
 
         document.querySelectorAll('.settings-group-button').forEach((button) => {
             const active = button.dataset.settingsGroup === activeGroup;
@@ -2228,6 +2268,8 @@ export async function showSettingsScreen(
         if (activeGroup === 'imposter') void loadImposters();
         if (activeGroup === 'resources') renderResourceLinks();
         if (activeGroup === 'client') void loadClientSettings();
+        if (activeGroup === 'status') void loadSettingsStatus();
+        if (activeGroup === 'privacy') void loadSettingsDisplayRanks();
     };
 
     const dangerZone = document.querySelector('.settings-danger-zone');
@@ -2257,6 +2299,8 @@ export async function showSettingsScreen(
 
     const settingsRoot = document.getElementById('settings-screen');
     rebuildSettings(settingsRoot);
+    const loadSettingsStatus = bindSettingsStatus(settingsRoot, settingsScreenContext);
+    const loadSettingsDisplayRanks = bindSettingsDisplayRanks(settingsRoot, settingsScreenContext, () => requestSettingsSave(document.getElementById('settings-form')));
     const stopUsageUpdates = bindSettingsNetworkUsage(settingsRoot);
     settingsScreenContext?.addCleanup(stopUsageUpdates);
     bindSettingsDiscovery(settingsRoot, selectSettingsGroup, () => requestSettingsSave(document.getElementById('settings-form')));
@@ -2366,6 +2410,12 @@ export async function showSettingsScreen(
             if (control.dataset.imposterControl === 'true') return;
             if (control.id === 'setting-theme') applyInterfaceTheme(control.value);
             if (control.id === 'setting-ui-mode') setUiMode(control.value);
+            if (control.id === 'setting-data-saver') applyDataSaverButtonState(control.checked);
+            if (control.id === 'setting-show-ranks') {
+                document.dispatchEvent(new CustomEvent('rank-display-preference-change', {
+                    detail: { enabled: control.checked },
+                }));
+            }
             if (control.id === 'setting-ip-trust-enabled' && control.checked) {
                 const { error } = await apiRequest('/server/auth/trust-current-ip', { method: 'POST' });
                 if (error) {
@@ -2464,5 +2514,6 @@ export async function showSettingsScreen(
         await router();
     });
 
+    applyDataSaverButtonState();
     showLoading(false);
 }

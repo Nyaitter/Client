@@ -1,4 +1,6 @@
-import { openCall } from './modules/calls.js';
+// The call stack (callsCore) is only needed when a call is actually started,
+// so it is imported on first use instead of during initial page load.
+const openCall = async (...args) => (await import('./modules/calls.js')).openCall(...args);
 /**
  * events.js
  * Global delegated event handlers for click, keydown, submit, hashchange, etc.
@@ -12,8 +14,10 @@ import { getCurrentUser, getCurrentTimelineTab, getActiveDmId } from './state.js
 import { router } from './router.js';
 import { clearRealtimeTimelineUpdate } from './modules/cache.js';
 import { switchTimelineTab } from './screens/timelineScreen.js';
-import { openCreateDmModal } from './screens/dmScreen.js';
-import { openReportModal, closeReportModal } from './screens/adminScreen.js';
+// DM/admin screens load on navigation (see screenRegistry.js); the modal
+// entry points used here follow the same on-demand loading.
+const openCreateDmModal = async (...args) => (await import('./screens/dmScreen.js')).openCreateDmModal(...args);
+const openReportModal = async (...args) => (await import('./screens/adminScreen.js')).openReportModal(...args);
 import {
     openEditPostModal,
     openRepostModal,
@@ -145,6 +149,18 @@ export function setupGlobalEventListeners() {
 
     // ---- Click handler ----
     document.addEventListener('click', handleGlobalClick);
+    document.addEventListener('scroll', (event) => {
+        document.querySelectorAll('.dm-message-menu-popover.is-visible').forEach((menu) => {
+            if (event.target instanceof Node && menu.contains(event.target)) return;
+            menu.classList.remove('is-visible');
+        });
+    }, true);
+    document.addEventListener('dblclick', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element) || target.closest('a, button, input, textarea, select, video, audio, [contenteditable], [data-action]')) return;
+        const bubble = target.closest('.dm-message-container.sent .dm-message-content');
+        bubble?.closest('.dm-message-container')?.querySelector('.edit-dm-msg-btn')?.click();
+    });
 
     // ---- Touch swipe for tabs navigation (Home & Profile) ----
     setupTabSwipeNavigation();
@@ -413,8 +429,9 @@ function handleGlobalClick(e) {
         const dmId = activeHash.startsWith('#dm/') ? decodeURIComponent(activeHash.substring(4)) : getActiveDmId();
         if (dmId && container?.dataset.messageId) {
             import('./screens/dmScreen.js').then(({ showDmConversation }) => {
+                if (!container.isConnected || window.location.hash !== activeHash) return;
                 openDmEditModal(dmId, container.dataset.messageId, async () => {
-                    await showDmConversation(dmId);
+                    if (window.location.hash === activeHash) await showDmConversation(dmId);
                 });
             });
         }

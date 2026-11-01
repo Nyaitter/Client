@@ -5,7 +5,9 @@ import {
     setPwaRegistrationPromise,
 } from '../state.js';
 import { showAppAlert } from '../utils/helpers.js';
-import { openCall } from './calls.js';
+// Calls are started from user actions / notification clicks only, so the
+// call stack is imported on first use instead of during initial page load.
+const openCall = async (...args) => (await import('./calls.js')).openCall(...args);
 
 export function supportsWebPush() {
     return (

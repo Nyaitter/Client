@@ -5,12 +5,15 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<meta name="robots" content="noindex, nofollow, noarchive" />
 		<meta name="referrer" content="strict-origin-when-cross-origin" />
-		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; manifest-src 'self'; worker-src 'self'; script-src 'self' https:; frame-src 'self' https://challenges.cloudflare.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https: wss:;" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com https://pagead2.googlesyndication.com; frame-src 'self' https://challenges.cloudflare.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: https:; media-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; worker-src 'self'; manifest-src 'self'" />
 		<title>Nyaitter</title>
 		<meta name="theme-color" content="#1d9bf0" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link rel="manifest" href="./manifest.webmanifest" />
 		<link rel="icon" href="favicon.png" type="image/png" />
 		<link rel="apple-touch-icon" sizes="180x180" href="pwa-icon-192.png" />
@@ -20,7 +23,30 @@
 			integrity="sha384-+JoywCPFwbtS2KrNLFu8EJHK+r5KPfqww25+fIBceLuhRk4muZy4TZR/4gXrk3qX"
 			crossorigin="anonymous"
 		/>
-		<link rel="stylesheet" href="./style.css" />
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Sans+JP:wght@400;500;700&display=swap" />
+		<link rel="stylesheet" href="./css/variables.css" />
+		<link rel="stylesheet" href="./css/base.css" />
+		<link rel="stylesheet" href="./css/layout.css" />
+		<link rel="stylesheet" href="./css/components.css" />
+		<link rel="stylesheet" href="./css/timeline.css" />
+		<link rel="stylesheet" href="./css/markdown.css" />
+		<link rel="stylesheet" href="./css/dm.css" />
+		<link rel="stylesheet" href="./css/notifications.css" />
+		<link rel="stylesheet" href="./css/profile.css" />
+		<link rel="stylesheet" href="./css/search.css" />
+		<link rel="stylesheet" href="./css/groups.css" />
+		<link rel="stylesheet" href="./css/calls.css" />
+		<link rel="stylesheet" href="./css/callView.css" />
+		<link rel="stylesheet" href="./css/callTabHost.css" />
+		<link rel="stylesheet" href="./css/call.css" />
+		<link rel="stylesheet" href="./css/settings.css" />
+		<link rel="stylesheet" href="./css/auth.css" />
+		<link rel="stylesheet" href="./css/docs.css" />
+		<link rel="stylesheet" href="./css/responsive.css" />
+		<link rel="stylesheet" href="./css/scale.css" />
+		<link rel="stylesheet" href="./css/header.css" />
+		<link rel="stylesheet" href="./css/rankAvatar.css" />
+		<link rel="stylesheet" href="./css/communityNotes.css" />
 		<style>
 			#loading-overlay {
 				position: fixed;
@@ -50,7 +76,6 @@
 			}
 		</style>
 		<script src="https://cdn.jsdelivr.net/npm/@twemoji/api@15.1.0/dist/twemoji.min.js" integrity="sha384-o28+zJO3/45GHIy+9TFKGaYnbt0KQcFRzyBrb0WSSrz7bPGwGI1d64worBiXPgXw" crossorigin="anonymous"></script>
-		<script src="https://cdn.jsdelivr.net/npm/emoji-mart@5.6.0/dist/browser.js" integrity="sha384-lONtvEeik96slH87Kr9CY74xGakohuxbgkyhwbPDOM9ZzVfW7Twaltwp+WrerZ9k" crossorigin="anonymous"></script>
 		<script src="./config.js"></script>
 		<script src="./bootstrap.js"></script>
 	</head>

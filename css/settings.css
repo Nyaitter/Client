@@ -2,13 +2,6 @@
    Nyaitter - settings.css
    ========================================================================== */
 
-.settings-redesigned .settings-layout {
-    display: grid;
-    grid-template-columns: minmax(145px, 190px) minmax(0, 1fr);
-    gap: 20px;
-    padding: 20px;
-    align-items: start;
-}
 .settings-redesigned .settings-group-list {
     display: flex;
     flex-direction: column;
@@ -39,6 +32,7 @@
 }
 .settings-category-icon { display: inline-flex; width: 20px; height: 20px; flex-shrink: 0; color: var(--primary-color); }
 .settings-category-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.settings-heading-icon { margin-right: 10px; vertical-align: -.12em; }
 .settings-search { position: relative; }
 .settings-mobile-category { display: none; }
 .settings-search label { display: block; font-size: .8rem; margin-bottom: 8px; font-weight: 700; }
@@ -56,15 +50,17 @@
 }
 #settings-search-results a { display: block; padding: 10px; border-radius: 8px; color: var(--text-color); text-decoration: none; }
 #settings-search-results a:hover { background: var(--bg-color); }
-.settings-redesigned #settings-form.settings-detail { overflow: visible; border: 0; box-shadow: none; background: transparent; min-width: 0; }
+.settings-redesigned #settings-form.settings-detail { border: 0; box-shadow: none; background: transparent; min-width: 0; }
 .settings-redesigned .settings-detail-heading { background: transparent; padding: 0 0 22px; }
 .settings-redesigned .settings-detail-heading h3 { font-size: 1.45rem; letter-spacing: -.035em; margin: 0 0 8px; }
 .settings-redesigned .settings-group-description { line-height: 1.7; color: var(--secondary-text-color); font-size: .85rem; margin: 0; }
 .settings-save-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 14px; font-size: .75rem; color: var(--secondary-text-color); }
+.settings-save-bar[hidden] { display: none; }
+#settings-save-retry[hidden] { display: none !important; }
 #settings-save-status[data-state="saved"] { color: var(--primary-color); }
 #settings-save-status[data-state="error"] { color: var(--error-color, #c73535); }
 .settings-redesigned .settings-group-panel { padding: 0; gap: 16px; }
-.settings-redesigned .settings-group-panel:not([hidden]) { display: grid; }
+.settings-redesigned .settings-group-panel:not([hidden]) { display: grid; grid-auto-rows: min-content; }
 .settings-danger-details { margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 16px; }
 .settings-danger-details summary { cursor: pointer; color: var(--secondary-text-color); font-size: .85rem; }
 .settings-danger-details[open] summary { margin-bottom: 18px; }
@@ -87,6 +83,8 @@
 }
 .settings-field-card { display: grid; gap: 10px; }
 .settings-field-card > label { font-size: .9rem; }
+.settings-redesigned .settings-group-panel[data-settings-panel="editor"] { gap: 12px; }
+.settings-redesigned .settings-group-panel[data-settings-panel="editor"] .settings-field-card > .settings-help-text { margin-top: 0; }
 .settings-redesigned .settings-select { width: 100%; min-height: 44px; border-radius: 9px; }
 .settings-redesigned .settings-help-text { line-height: 1.7; font-size: .8rem; }
 .settings-redesigned #settings-form .settings-switch-row {
@@ -103,11 +101,20 @@
 .settings-switch-row input:disabled + .settings-toggle-track { opacity: .45; }
 .settings-redesigned .settings-danger-zone { padding: 20px; border: 1px solid var(--border-color); border-radius: 14px; }
 
-body[data-active-screen="settings-screen"] #main-content { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-body[data-active-screen="settings-screen"] .app-container { height: 100dvh; min-height: 0; box-sizing: border-box; overflow: hidden; }
+body[data-active-screen="settings-screen"] #main-content {
+    display: flex;
+    flex-direction: column;
+    height: var(--app-dvh, 100dvh);
+    overflow: hidden;
+}
+body[data-active-screen="settings-screen"] .app-container {
+    height: var(--app-dvh, 100dvh);
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
 @media (max-width: 544px) {
     body[data-active-screen="settings-screen"] .app-container {
-        height: var(--app-dvh, 100dvh);
         padding-bottom: 0;
     }
     body[data-active-screen="settings-screen"] #main-content {
@@ -117,12 +124,58 @@ body[data-active-screen="settings-screen"] .app-container { height: 100dvh; min-
     }
 }
 body[data-active-screen="settings-screen"] #page-header { flex-shrink: 0; }
-body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 0; overflow: hidden; }
-#settings-screen.settings-redesigned { height: 100%; min-height: 0; }
-.settings-redesigned .settings-layout { height: 100%; box-sizing: border-box; min-height: 0; grid-template-rows: minmax(0, 1fr); }
-.settings-redesigned .settings-group-list { height: 100%; max-height: 100%; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; position: static; scrollbar-width: thin; padding-right: 6px; }
+body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+#settings-screen.settings-redesigned { display: flex; flex-direction: column; flex: 1 1 auto; height: auto; min-height: 0; }
+.settings-redesigned .settings-layout {
+    display: grid;
+    grid-template-columns: minmax(145px, 190px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 20px;
+    padding: 20px;
+    flex: 1 1 auto;
+    min-height: 0;
+    box-sizing: border-box;
+    align-items: stretch;
+}
+.settings-redesigned .settings-group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0 6px 0 0;
+    position: static;
+    border: 0;
+    background: transparent;
+    flex: 0 0 190px;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+.settings-redesigned #settings-form.settings-detail {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 0;
+    flex: 1 1 0;
+    align-self: stretch;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0 4px 0 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-top: 150px;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}
+.settings-redesigned .settings-group-panel { min-height: 0; }
+.settings-redesigned .settings-group-panel:not([hidden]) { display: flex; flex-direction: column; overflow: visible; }
 .settings-redesigned #settings-search-results { position: static; width: auto; max-height: 220px; }
-.settings-redesigned #settings-form.settings-detail { height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; scroll-padding-top: 150px; }
 .settings-redesigned .settings-detail-heading { position: sticky; top: 0; z-index: 2; padding: 8px 0 16px; background: var(--main-bg-color); border-bottom: 1px solid var(--border-color); margin-bottom: 16px; flex-shrink: 0; }
 .settings-usage-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
 .settings-usage-totals > div { padding: 16px; border-radius: 12px; background: var(--bg-color); display: grid; gap: 8px; }
@@ -131,6 +184,52 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 .settings-usage-breakdown { margin: 16px 0; }
 .settings-usage-breakdown > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-color); font-size: .8rem; }
 .settings-usage-breakdown dd { margin: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.settings-status-tabs.nui-tabs {
+    display: flex; flex-wrap: nowrap; gap: 4px; border-bottom: 1px solid var(--border-color);
+}
+.settings-status-tab {
+    flex: 1; min-width: 0; min-height: 44px; padding: 10px 4px;
+    border: 0; border-bottom: 3px solid transparent; background: transparent;
+    color: var(--secondary-text-color); font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer;
+}
+.settings-status-tab[aria-selected='true'] { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+.settings-redesigned .settings-group-panel > .settings-status-category { padding: 0; border: 0; background: transparent; }
+.settings-status-category { padding-top: 16px; }
+.settings-redesigned .settings-group-panel[data-settings-panel="status"]:not([hidden]) { display: flex; flex-direction: column; overflow: hidden; flex: 1 1 auto; height: auto; min-height: 0; }
+.settings-redesigned .settings-group-panel[data-settings-panel="status"]:not([hidden]) > .settings-status-category:not([hidden]) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.settings-redesigned .settings-status-layout { display: grid; flex: 1 1 auto; box-sizing: border-box; min-height: 0; grid-template-columns: minmax(150px, .8fr) minmax(0, 1.2fr); grid-template-rows: minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.settings-status-tabs-container { position: sticky; top: 0; z-index: 1; margin: 0 -20px; padding: 8px 20px 0; background: var(--main-bg-color); }
+.settings-status-category[hidden] { display: none; }
+.settings-status-current { margin: 0 0 16px; font-size: .85rem; font-weight: 700; }
+.settings-status-layout { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(0, 1.2fr); gap: 16px; align-items: start; min-height: 0; }
+.settings-status-list { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 20px; border: 1px solid var(--border-color); border-radius: 14px; background: var(--main-bg-color); }
+.settings-status-card { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 20px; border: 1px solid var(--border-color); border-radius: 14px; background: var(--main-bg-color); }
+.settings-status-card > p:first-child { margin-top: 0; }
+.settings-status-ranks { display: grid; gap: 6px; margin: 16px 0 0; padding: 0; list-style: none; }
+.settings-status-rank-button {
+    display: flex; gap: 8px; align-items: center; width: 100%; min-height: 44px; padding: 10px 8px;
+    border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text-color);
+    font: inherit; font-size: .8rem; text-align: left; cursor: pointer; overflow-wrap: anywhere;
+}
+.settings-status-rank-button[aria-pressed='true'] { border-color: var(--primary-color); background: color-mix(in srgb, var(--primary-color) 10%, transparent); }
+.settings-status-indicator { display: block; flex-shrink: 0; width: 16px; height: 16px; }
+.settings-status-current-badge { margin-left: auto; white-space: nowrap; color: var(--secondary-text-color); font-size: .7rem; }
+.settings-group-panel h4.settings-status-rank { display: block; font-size: clamp(1.5rem, 4vw, 2.5rem); line-height: 1.25; color: var(--primary-color); overflow-wrap: anywhere; margin: 0 0 8px; }
+.settings-status-details { display: flex; flex-direction: column; flex: 1 1 auto; height: 0; min-height: 0; overflow: hidden; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; }
+.settings-status-details h5 { margin: 0 0 8px; font-size: .9rem; }
+.settings-status-details-scroll {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin; padding-right: 4px;
+}
+.settings-status-details-scroll:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; border-radius: 6px; }
+.settings-status-details ul { margin: 0; padding-left: 20px; font-size: .85rem; line-height: 1.7; overflow-wrap: anywhere; }
+.settings-status-details-scroll h6 { margin: 16px 0 8px; font-size: .85rem; }
+.settings-status-details-scroll h6:first-child { margin-top: 0; }
+#settings-status-message { margin: 0; }
+@media (max-width: 760px) {
+    .settings-status-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+    .settings-status-list { max-height: 40%; }
+}
 @media (max-width: 608px) {
     .settings-redesigned .settings-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); padding: 16px; gap: 12px; }
     .settings-redesigned .settings-group-list { position: static; display: grid; grid-template-columns: 1fr; gap: 8px; }
@@ -172,6 +271,7 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    min-width: 0;
 }
 
 #settings-form label {

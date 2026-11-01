@@ -1,6 +1,8 @@
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { apiRequest } from '../api.js';
+import { trackSearchComposition } from '../utils/searchIme.js';
+import { rankAvatarAttributes } from './rankAvatarIntegration.js';
 import {
     getCurrentUser,
     getRecommendedUsersCache,
@@ -326,16 +328,16 @@ window.addEventListener('popstate', () => {
 export async function loadRightSidebar() {
     if (DOM.rightSidebar.searchWidget) {
         DOM.rightSidebar.searchWidget.innerHTML = `<div class="sidebar-search-widget">${ICONS.explore}<input type="search" id="sidebar-search-input" placeholder="検索"></div>`;
-        document
-            .getElementById('sidebar-search-input')
-            ?.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    const query = e.target.value.trim();
-                    if (query) {
-                        window.location.hash = `#search/${encodeURIComponent(query)}`;
-                    }
+        const searchInput = document.getElementById('sidebar-search-input');
+        const isComposing = searchInput && trackSearchComposition(searchInput);
+        searchInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !isComposing(e)) {
+                const query = e.target.value.trim();
+                if (query) {
+                    window.location.hash = `#search/${encodeURIComponent(query)}`;
                 }
-            });
+            }
+        });
     }
 
     let error = null;
@@ -389,7 +391,7 @@ export async function loadRightSidebar() {
     recHTML += recommendedUsers
         .map((user) => `<div class="widget-item recommend-user">
                 <a href="#profile/${user.id}" class="profile-link" style="text-decoration:none; color:inherit; display:flex; align-items:center; gap:0.5rem;">
-                    <img src="${getUserIconUrl(user)}" class="user-icon" style="width:40px;height:40px;" alt="${escapeHTML(user.name)}'s icon">
+                    <img ${rankAvatarAttributes(user)} src="${getUserIconUrl(user)}" class="user-icon" style="width:40px;height:40px;" alt="${escapeHTML(user.name)}'s icon">
                     <div>
                         <span>${getEmoji(escapeHTML(user.name))}</span>
                         <small style="color:var(--secondary-text-color); display:block;">${getNyaitterId(user)}</small>
@@ -695,7 +697,9 @@ export async function updateNavAndSidebars() {
                 ? ` style="--mord:${entry.mobileOrder}"`
                 : '';
             return `
-                <a href="${href}" class="nav-item nui-nav-item ${href === '#admin/reports' ? 'nav-item-request' : ''} ${isActive ? 'active' : ''}"${
+                <a href="${href}" class="nav-item nui-nav-item ${href === '#admin/reports' ? 'nav-item-request' : ''} ${isActive ? 'active' : ''}" aria-label="${escapeHTML(item.name)}"${
+                    isActive ? ' aria-current="page"' : ''
+                }${
                     entry.overflow ? ' data-menu-overflow="1"' : ''
                 }${mobileOrderStyle}${entry.mobileHidden ? ' data-mobile-hidden="1"' : ''}>
                     <div class="nav-item-icon-container">
@@ -727,7 +731,7 @@ export async function updateNavAndSidebars() {
 
     DOM.navMenuBottom.innerHTML = getCurrentUser()
         ? `<button id="account-button" class="nav-item account-button nui-nav-item">
-            <img src="${getUserIconUrl(getCurrentUser())}" class="user-icon" alt="${escapeHTML(getCurrentUser().name)}'s icon">
+            <img ${rankAvatarAttributes(getCurrentUser())} src="${getUserIconUrl(getCurrentUser())}" class="user-icon" alt="${escapeHTML(getCurrentUser().name)}'s icon">
             <div class="account-info">
                 <span class="name">${getEmoji(escapeHTML(getCurrentUser().name))}</span>
                 <span class="id">${formatNyaitterId(getCurrentUser())}</span>

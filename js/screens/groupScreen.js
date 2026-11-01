@@ -4,8 +4,12 @@ import { getCurrentUser } from '../state.js';
 import { loadPostsWithPagination } from '../modules/pagination.js';
 import { uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
 import { initTabGroup } from '../modules/tabSwipe.js';
+
+let groupPostsTabGroupController = null;
+let groupManageTabGroupController = null;
 import { createUserInvitePicker } from '../modules/userInvite.js';
 import { escapeHTML, getNyaitterId, getSafeConfiguredFileUrl, getUserIconUrl, showAppAlert, showAppConfirm, showLoading } from '../utils/helpers.js';
+import { rankAvatarAttributes } from '../modules/rankAvatarIntegration.js';
 import { showScreenCompat } from '../screenManager.js';
 import { copyEntityUrl } from '../modules/share.js';
 
@@ -488,7 +492,8 @@ function renderGroupOverview(content, group, pendingJoinRequest = null) {
             void loadPostsWithPagination(postContainer, 'group_posts', { groupId: group.id, mode });
         };
         if (tabsEl) {
-            initTabGroup({
+            groupPostsTabGroupController?.destroy();
+            groupPostsTabGroupController = initTabGroup({
                 container: tabsEl,
                 tabSelector: '[data-group-post-mode]',
                 contentContainer: postContainer,
@@ -827,7 +832,7 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                         const avatarUrl = getUserIconUrl(user);
                         return `<article class="nui-list-item nui-row group-member-item" data-nui="list-item" data-member-id="${Number(member.user_id)}" data-member-search-text="${escapeHTML((user.name || '').toLowerCase())} ${String(member.user_id)}">
                             <div class="group-member-info">
-                                <img src="${escapeHTML(avatarUrl)}" class="nui-avatar group-member-avatar" alt="">
+                                <img ${rankAvatarAttributes(user)} src="${escapeHTML(avatarUrl)}" class="nui-avatar group-member-avatar" alt="">
                                 <div class="group-member-details">
                                     <div class="group-member-name-row">
                                         <span class="group-member-name">${memberName}</span>
@@ -862,7 +867,7 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                             const reqAvatar = getUserIconUrl(reqUser);
                             return `<article class="nui-list-item nui-row group-request-card" data-nui="list-item">
                                 <div class="group-member-info">
-                                    <img src="${escapeHTML(reqAvatar)}" class="nui-avatar group-member-avatar" alt="">
+                                    <img ${rankAvatarAttributes(reqUser)} src="${escapeHTML(reqAvatar)}" class="nui-avatar group-member-avatar" alt="">
                                     <div class="group-member-details">
                                         <span class="group-member-name">${reqName}</span>
                                         <span class="group-member-handle">${escapeHTML(getNyaitterId(reqUser) || `#${reqUserId}`)}</span>
@@ -1097,7 +1102,8 @@ function bindGroupManageEvents(group) {
     const manageDetail = document.querySelector('.group-ui-manage-detail');
 
     if (tabsContainer) {
-        initTabGroup({
+        groupManageTabGroupController?.destroy();
+        groupManageTabGroupController = initTabGroup({
             container: tabsContainer,
             tabSelector: '[data-group-manage-tab]',
             contentContainer: manageDetail,

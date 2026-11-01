@@ -4,11 +4,17 @@ import { normalizeDmInvitation } from './config.js';
 
 export function readSettingsForm(form, currentSettings = {}) {
     const ngWordsInput = form.querySelector('#setting-ng-words');
+    const displayRanks = { ...(currentSettings.display_ranks || {}) };
+    form.querySelectorAll('[data-display-rank-setting]').forEach(control => {
+        displayRanks[control.dataset.displayRankSetting] = JSON.parse(control.value);
+    });
     return {
         name: form.querySelector('#setting-username')?.value.trim(),
         me: form.querySelector('#setting-me')?.value.trim(),
         settings: {
             ...currentSettings,
+            show_ranks: form.querySelector('#setting-show-ranks')?.checked ?? (currentSettings.show_ranks === true),
+            display_ranks: displayRanks,
             lock: form.querySelector('#setting-lock')?.checked || false,
             show_like: form.querySelector('#setting-show-like')?.checked || false,
             show_follow: form.querySelector('#setting-show-follow')?.checked || false,
@@ -21,6 +27,9 @@ export function readSettingsForm(form, currentSettings = {}) {
             emoji: form.querySelector('#setting-emoji-kind')?.value || 'twemoji',
             content_editor: form.querySelector('#setting-content-editor')?.value === 'nyaitter' ? 'nyaitter' : 'textarea',
             data_saver: form.querySelector('#setting-data-saver')?.checked || false,
+            show_community_notes:
+                form.querySelector('#setting-show-community-notes')?.checked ??
+                (currentSettings.show_community_notes !== false),
             ui_mode: form.querySelector('#setting-ui-mode')?.value === 'legacy' ? 'legacy' : 'nui',
             theme: form.querySelector('#setting-theme')?.value || 'light',
             color_theme: normalizeColorTheme(form.querySelector('#setting-color-theme')?.value),

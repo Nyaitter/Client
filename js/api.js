@@ -1,4 +1,5 @@
 import { getAllUsersCache } from './state.js';
+import { cacheUser } from './modules/cache.js';
 
 const { apiUrl, userFileUrl } = globalThis.NyaitterClientConfig;
 
@@ -8,6 +9,7 @@ const NO_STORE_AUTH_PATHS = [
     '/server/auth/me',
     '/server/auth/providers',
     '/server/auth/linked-providers',
+    '/server/api/users/me/status',
 ];
 
 export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
@@ -39,6 +41,22 @@ export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
     } catch (error) {
         return { data: null, error };
     }
+}
+
+// コミュニティノートの理由タグは全画面で共通のマスタデータなので、
+// モジュール内で一度だけ取得して使い回す。
+let communityNoteReasonTagsCache = null;
+let communityNoteReasonTagsRequest = null;
+
+// 理由コードから表示ラベルを引くための索引。マスタ未取得でもコードをそのまま
+// 表示できるよう、取得できた分だけをキャッシュする。
+export async function getCommunityNoteReasonLabel(code) {
+    const key = String(code || '').trim();
+    if (!key) return '';
+    const { data } = await api.notes.reasonTags();
+    const tags = Array.isArray(data?.tags) ? data.tags : [];
+    const hit = tags.find((tag) => String(tag?.code) === key);
+    return String(hit?.label || key);
 }
 
 export const api = (() => {
@@ -161,7 +179,7 @@ export const api = (() => {
                     if (res?.data) {
                         const user = res.data.user || res.data;
                         if (user && Number.isInteger(Number(user.id))) {
-                            getAllUsersCache().set(Number(user.id), { ...getAllUsersCache().get(Number(user.id)), ...user, id: Number(user.id) });
+                            cacheUser(user);
                         }
                     }
                     return res;
@@ -175,7 +193,7 @@ export const api = (() => {
                     for (const reqId of requestedIds) {
                         if (!Number.isInteger(reqId) || reqId < 0) continue;
                         const cached = userCache.get(reqId);
-                        if (cached && (cached.name || cached.handle)) {
+                        if (cached && (cached.name || cached.handle) && Object.hasOwn(cached, 'display_ranks')) {
                             cachedUsers.push(cached);
                         } else {
                             missingIds.push(reqId);
@@ -192,7 +210,7 @@ export const api = (() => {
                     const fetched = Array.isArray(res?.data) ? res.data : [];
                     for (const u of fetched) {
                         if (u && Number.isInteger(Number(u.id))) {
-                            userCache.set(Number(u.id), { ...userCache.get(Number(u.id)), ...u, id: Number(u.id) });
+                            cacheUser(u);
                         }
                     }
                     return {
@@ -204,7 +222,7 @@ export const api = (() => {
                     const numericId = Number(id);
                     if (Number.isInteger(numericId) && numericId >= 0) {
                         const cached = getAllUsersCache().get(numericId);
-                        if (cached && (cached.name || cached.handle)) {
+                        if (cached && (cached.name || cached.handle) && Object.hasOwn(cached, 'display_ranks')) {
                             return { data: cached, error: null };
                         }
                     }
@@ -212,7 +230,7 @@ export const api = (() => {
                     if (res?.data) {
                         const user = res.data.user || res.data;
                         if (user && Number.isInteger(Number(user.id))) {
-                            getAllUsersCache().set(Number(user.id), { ...getAllUsersCache().get(Number(user.id)), ...user, id: Number(user.id) });
+                            cacheUser(user);
                         }
                     }
                     return res;
@@ -250,10 +268,9 @@ export const api = (() => {
                     : 'recommended';
                 const res = await queryRequest(`/server/api/users/${path}`, {}, 'users');
                 if (Array.isArray(res?.data)) {
-                    const userCache = getAllUsersCache();
                     for (const u of res.data) {
                         if (u && Number.isInteger(Number(u.id))) {
-                            userCache.set(Number(u.id), { ...userCache.get(Number(u.id)), ...u, id: Number(u.id) });
+                            cacheUser(u);
                         }
                     }
                 }
@@ -351,6 +368,11 @@ export const api = (() => {
         );
     return {
         from: query,
+        users: {
+            status({ signal } = {}) {
+                return request('/server/api/users/me/status', { signal });
+            },
+        },
         rpc(name, params = {}) {
             if (name === 'get_hydrated_posts')
                 return withSingle(
@@ -512,7 +534,10 @@ export const api = (() => {
                         `/server/api/dm/${params.dm_id_in}/messages`,
                         {
                             method: 'POST',
-                            body: { message: params.new_message_in },
+                            body: {
+                                message: params.new_message_in,
+                                ...(params.request_id ? { request_id: params.request_id } : {}),
+                            },
                         },
                         'dm',
                     ),
@@ -607,6 +632,64 @@ export const api = (() => {
                     key,
                 ),
             );
+        },
+        notes: {
+            get(postId) {
+                return request(`/server/api/posts/${encodeURIComponent(postId)}/notes`);
+            },
+            async reasonTags() {
+                if (communityNoteReasonTagsCache) {
+                    return {
+                        data: { tags: communityNoteReasonTagsCache },
+                        error: null,
+                    };
+                }
+                if (!communityNoteReasonTagsRequest) {
+                    communityNoteReasonTagsRequest = request(
+                        '/server/api/notes/reason-tags',
+                    );
+                }
+                const result = await communityNoteReasonTagsRequest;
+                if (result.error) {
+                    // 失敗時は次回呼び出しで再取得できるようにする。
+                    communityNoteReasonTagsRequest = null;
+                    return { data: null, error: result.error };
+                }
+                const tags = Array.isArray(result.data?.tags)
+                    ? result.data.tags
+                    : [];
+                communityNoteReasonTagsCache = tags;
+                return { data: { tags }, error: null };
+            },
+            rate(noteId, { helpful, reasons } = {}) {
+                const body = { helpful: Boolean(helpful) };
+                if (Array.isArray(reasons) && reasons.length > 0) {
+                    body.reasons = reasons.slice(0, 3).map(String);
+                }
+                return request(`/server/api/notes/${encodeURIComponent(noteId)}/ratings`, {
+                    method: 'POST',
+                    body,
+                });
+            },
+            remove(noteId) {
+                return request(`/server/api/notes/${encodeURIComponent(noteId)}`, {
+                    method: 'DELETE',
+                });
+            },
+            create(postId, { content, sources, reasons } = {}) {
+                const body = { content, sources };
+                if (Array.isArray(reasons)) {
+                    // Server は文字列コードとして照合するため、評価側と同じくコード文字列へ正規化する。
+                    body.reasons = reasons
+                        .slice(0, 3)
+                        .map((item) => String((item && (item.code || item.label)) || item || '').trim())
+                        .filter(Boolean);
+                }
+                return request(`/server/api/posts/${encodeURIComponent(postId)}/notes`, {
+                    method: 'POST',
+                    body,
+                });
+            },
         },
         storage: {
             from: () => ({

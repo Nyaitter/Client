@@ -144,6 +144,7 @@ export async function setupTabbedListView(container, options = {}) {
         currentActiveTab = tabs[0]?.key;
     }
 
+    let tabGroupController = null;
     let tabsContainer = existingContainer?.querySelector('.tabbed-view-tabs');
     let bodyContainer = existingContainer?.querySelector('.tabbed-view-body');
 
@@ -239,7 +240,7 @@ export async function setupTabbedListView(container, options = {}) {
     });
 
     // Initialize swipe navigation and tabs
-    initTabGroup({
+    tabGroupController = initTabGroup({
         container: tabsContainer,
         tabSelector: '.tab-button',
         contentContainer: bodyContainer,
@@ -291,6 +292,7 @@ export async function setupTabbedListView(container, options = {}) {
         switchTab: (tabKey) => renderTabContent(tabKey),
         destroy: () => {
             unregisterDynamicPtrHandler(dynamicPtrKey);
+            tabGroupController?.destroy();
         },
     };
 }

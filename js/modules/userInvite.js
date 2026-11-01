@@ -1,6 +1,7 @@
 import { api } from '../api.js';
 import { getCurrentUser } from '../state.js';
 import { escapeHTML, getNyaitterId, getUserIconUrl } from '../utils/helpers.js';
+import { rankAvatarAttributes } from './rankAvatarIntegration.js';
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -9,7 +10,7 @@ function renderChip(user) {
 }
 
 function renderOption(user) {
-    return `<button type="button" class="user-invite-option" role="option" data-invite-user="${Number(user.id)}"><img src="${escapeHTML(getUserIconUrl(user))}" alt=""><span><strong>${escapeHTML(user.name || `#${user.id}`)}</strong><small>${escapeHTML(getNyaitterId(user))}${user.scid ? ` · @${escapeHTML(user.scid)}` : ''}</small></span></button>`;
+    return `<button type="button" class="user-invite-option" role="option" data-invite-user="${Number(user.id)}"><img ${rankAvatarAttributes(user)} src="${escapeHTML(getUserIconUrl(user))}" alt=""><span><strong>${escapeHTML(user.name || `#${user.id}`)}</strong><small>${escapeHTML(getNyaitterId(user))}${user.scid ? ` · @${escapeHTML(user.scid)}` : ''}</small></span></button>`;
 }
 
 export function createUserInvitePicker({ input, suggestions, selected, signal, excludeIds = [], initialUsers = [], emptyText = '招待するユーザーを検索してください。', onChange } = {}) {

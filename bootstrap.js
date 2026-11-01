@@ -16,16 +16,14 @@
         return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(version)}/dist/nyaitter.js`;
     }
 
-    // NyaitterUI は npm パッケージを CDN から読む。CDN に到達できない場合のみ、
-    // 開発用に配信ベース配下 (nyaitter-ui/) のビルドへフォールバックする。
     function getNyaitterUiUrls(value) {
         const source = String(value || '').trim();
         if (/^(?:https?:)?\/\//i.test(source)) return [source, localNyaitterUiUrl];
         const version = source || 'latest';
-        return [
-            `https://cdn.jsdelivr.net/npm/nyaitter-ui@${encodeURIComponent(version)}/dist/nyaitter-ui.js`,
-            localNyaitterUiUrl,
-        ];
+        const cdnUrl = `https://cdn.jsdelivr.net/npm/nyaitter-ui@${encodeURIComponent(version)}/dist/nyaitter-ui.js`;
+        // 版を固定した場合は CDN の固定版を優先し、ローカルは予備にする。
+        if (source && source !== 'latest') return [cdnUrl, localNyaitterUiUrl];
+        return [localNyaitterUiUrl, cdnUrl];
     }
 
     function loadScript(src) {
@@ -49,20 +47,30 @@
         return attempt();
     }
 
-    // NyaitterUI は無くてもページは動かす (スタイルが当たらないだけ)。
+    function getNyaitterUiCssUrls(scriptUrls) {
+        return scriptUrls.map((url) => url.replace(/\.js(?=$|[?#])/, '.css'));
+    }
+
+    function loadStylesheet(url) {
+        return new Promise((resolve, reject) => {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = url;
+            link.setAttribute('data-nui-styles', '');
+            link.onload = () => resolve();
+            link.onerror = () => {
+                link.remove();
+                reject(new Error(`${link.href} の読み込みに失敗しました。`));
+            };
+            document.head.appendChild(link);
+        });
+    }
+
+    // CSS は実際に読み込めた JS と同じ配布元/版から選ぶ。CSS失敗はアプリ起動を妨げない。
     function loadNyaitterUi() {
-        return loadFirst(getNyaitterUiUrls(config.nyaitterUi))
-            .then((url) => {
-                const cssUrl = url.replace(/\.js(?=$|[?#])/, '.css');
-                if (globalThis.NyaitterUI?.injectStyles) {
-                    globalThis.NyaitterUI.injectStyles(cssUrl);
-                    return;
-                }
-                const link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = cssUrl;
-                document.head.appendChild(link);
-            })
+        const scriptUrls = getNyaitterUiUrls(config.nyaitterUi);
+        return loadFirst(scriptUrls)
+            .then((scriptUrl) => loadStylesheet(getNyaitterUiCssUrls([scriptUrl])[0]))
             .catch((error) => {
                 console.warn('[nyaitter-ui]', error.message);
             });

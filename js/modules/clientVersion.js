@@ -191,6 +191,11 @@ export function bindClientSettings() {
         void checkClientVersion();
     });
     document.getElementById('settings-client-update')?.addEventListener('click', async (event) => {
+        // Event.currentTarget is cleared after the synchronous event dispatch ends;
+        // capture it before the first await so it remains available below.
+        const button = event.currentTarget;
+        if (!button) return;
+
         if (!(await isClientUpdateSupported())) {
             // 非対応環境では再読み込みしても更新されないため、何もしない。
             setStatus('この環境ではクライアントの更新に対応していません。');
@@ -198,7 +203,6 @@ export function bindClientSettings() {
             return;
         }
 
-        const button = event.currentTarget;
         button.disabled = true;
         const checkButton = document.getElementById('settings-client-check');
         if (checkButton) checkButton.disabled = true;

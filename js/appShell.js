@@ -218,7 +218,7 @@ export function renderAppShellHTML() {
             </section>
         </div>
 
-        <div id="post-modal" class="modal-overlay hidden">
+        <div id="post-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="投稿を作成">
             <div class="modal-content">
                 <div class="post-form-container-modal"></div>
             </div>

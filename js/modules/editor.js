@@ -510,7 +510,9 @@ function replaceMarkdownEditorRange(editor, replacement, start, end, selectionMo
 }
 
 function enforceDirectEditorMaxLength(editor) {
-    const maxLength = Number(editor.getAttribute('maxlength'));
+    const limit = editor.getAttribute('maxlength');
+    if (limit === null) return;
+    const maxLength = Number(limit);
     if (!Number.isInteger(maxLength) || maxLength < 0) return;
     const value = getMarkdownEditorValue(editor);
     if (value.length <= maxLength) return;
@@ -1139,7 +1141,10 @@ export function setupMarkdownEditorPreviewButton(container, editor) {
         editor.focus();
     });
     previewButton.insertAdjacentElement('afterend', imeButton);
-    if (editor._nyaitterImeEnabled && !nyaitterIme) void loadImeAssets();
+    // The IME engine (~830KB plus its dictionary) is intentionally not
+    // preloaded when an editor is built: it loads on demand when the user
+    // toggles the IME button or starts a conversion (the composition path
+    // replays the in-progress composition once the engine is ready).
 }
 
 export function updateMarkdownEditorPreview(
