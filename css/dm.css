@@ -1061,6 +1061,155 @@ body:has(#dm-screen:not(.hidden)) #content-area {
     border-bottom-left-radius: 4px;
 }
 
+/* 返信先リファレンス（バブル内の引用表示） */
+.dm-reply-reference {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 0.35rem;
+    padding: 0.3rem 0.5rem;
+    border: 0;
+    border-left: 3px solid var(--primary-color);
+    border-radius: 6px;
+    background: rgba(127, 127, 127, 0.14);
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    color: inherit;
+    font: inherit;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    text-align: left;
+}
+
+.dm-message-container.sent .dm-reply-reference {
+    border-left-color: rgba(255, 255, 255, 0.75);
+}
+
+button.dm-reply-reference {
+    cursor: pointer;
+}
+
+button.dm-reply-reference:hover {
+    background: rgba(127, 127, 127, 0.22);
+    background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+button.dm-reply-reference:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+}
+
+.dm-reply-reference-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    opacity: 0.75;
+}
+
+.dm-reply-reference-icon svg {
+    width: 12px;
+    height: 12px;
+}
+
+.dm-reply-reference-name {
+    flex: 0 0 auto;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dm-reply-reference-text {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    opacity: 0.85;
+}
+
+/* 返信先へジャンプしたときのハイライト */
+.dm-message-container.dm-message-highlight .dm-message {
+    animation: dm-message-highlight-flash 2s ease-out;
+}
+
+@keyframes dm-message-highlight-flash {
+    0%,
+    55% {
+        box-shadow: 0 0 0 3px var(--primary-color);
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+/* コンポーザーの返信中バー */
+.dm-reply-mode {
+    align-items: center;
+    min-width: 0;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-left: 3px solid var(--primary-color);
+    border-radius: 8px;
+    background-color: var(--bg-color);
+    cursor: pointer;
+}
+
+.dm-reply-mode:not([hidden]) {
+    display: flex;
+}
+
+.dm-reply-mode-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--primary-color);
+}
+
+.dm-reply-mode-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.dm-reply-mode-main {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dm-reply-mode-heading {
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--primary-color);
+}
+
+.dm-reply-mode-target {
+    overflow: hidden;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.dm-message-form .dm-reply-cancel {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    background: none;
+    color: var(--secondary-text-color);
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.dm-message-form .dm-reply-cancel:hover {
+    background-color: var(--hover-bg-color, rgba(0, 0, 0, 0.05));
+    color: var(--text-color);
+}
+
+.dm-message-container.received .reply-dm-msg-btn:hover {
+    color: var(--primary-color);
+}
+
 .dm-message-form {
     flex-shrink: 0;
     position: sticky;
@@ -1075,6 +1224,7 @@ body:has(#dm-screen:not(.hidden)) #content-area {
 
 .dm-form-content {
     flex-grow: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
 }
