@@ -44,6 +44,8 @@
 .stage-host-link:hover { color: var(--primary-color); }
 .stage-join-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 .stage-join-row > span { color: var(--secondary-text-color); font-size: .8rem; }
+.stage-join-row [data-stage-share] { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 8px; min-width: 13em; white-space: nowrap; }
+.stage-join-row [data-stage-share] svg { flex: 0 0 18px; width: 18px; height: 18px; }
 .stage-detail-main .stage-feedback { margin-top: 12px; }
 .stage-host-section { border-top: 1px solid var(--border-color); padding: 0 20px; }
 .stage-manage-open { display: inline-flex; align-items: center; gap: 8px; margin: 16px 0; min-height: 42px; padding: 0 14px; border: 1px solid var(--border-color); border-radius: 12px; background: transparent; color: var(--text-color); font-size: .85rem; cursor: pointer; }

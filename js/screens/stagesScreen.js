@@ -3,11 +3,13 @@ import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { getCurrentUser } from '../state.js';
 import { escapeHTML, getUserIconUrl } from '../utils/helpers.js';
+import { rankAvatarAttributes } from '../modules/rankAvatarIntegration.js';
 import { showScreenCompat, getActiveScreenContext } from '../screenManager.js';
 import { openCall } from '../modules/calls.js';
 import { copyEntityUrl } from '../modules/share.js';
 import { openStageManageModal } from '../modules/stageManage.js';
 import { createUserInvitePicker } from '../modules/userInvite.js';
+import { guardSearchFormComposition } from '../utils/searchIme.js';
 
 async function request(path, options = {}) {
     const { data, error } = await apiRequest(`/server/api/calls${path}`, options);
@@ -102,8 +104,11 @@ function createStageDialog(context) {
             groupSelect.innerHTML = groups.length
                 ? groups.map(group => `<option value="${escapeHTML(String(group.id))}">${escapeHTML(group.name || 'グループ')}</option>`).join('')
                 : '<option value="">参加中のグループがありません</option>';
-        } catch {
-            if (!context.signal.aborted) groupSelect.innerHTML = '<option value="">読み込みに失敗しました</option>';
+        } catch (error) {
+            if (!context.signal.aborted) {
+                groupsLoaded = false;
+                groupSelect.innerHTML = '<option value="">読み込みに失敗しました</option>';
+            }
         }
     };
     const syncVisibility = () => {
@@ -208,7 +213,9 @@ async function showList(container, context) {
         for (const tab of container.querySelectorAll('[data-stage-filter]')) { tab.classList.toggle('active', tab === button); tab.setAttribute('aria-pressed', String(tab === button)); }
         renderList();
     };
-    container.querySelector('[data-stage-search]').addEventListener('submit', event => { event.preventDefault(); void search(); }, { signal: context.signal });
+    const searchForm = container.querySelector('[data-stage-search]');
+    guardSearchFormComposition(searchForm);
+    searchForm.addEventListener('submit', event => { event.preventDefault(); void search(); }, { signal: context.signal });
     more.addEventListener('click', () => { void search(true); }, { signal: context.signal });
     await search();
 }
@@ -221,14 +228,22 @@ async function showDetail(id, container, context) {
     container.innerHTML = `<div class="nui-page stage-ui-page stage-detail">
         <section class="stage-detail-main nui-card" data-nui="card"><div class="stage-list-meta"><span class="${stage.status === 'live' ? 'stage-live-label' : ''}">${escapeHTML(stageTime(stage))}</span><span class="nui-badge">${escapeHTML(visibilityLabel(stage))}</span>${stage.allow_guest_join ? '<span class="nui-badge nui-badge-accent">ゲスト参加可</span>' : ''}</div>
             <h3>${escapeHTML(stage.name)}</h3>${stage.description ? `<p class="stage-description">${escapeHTML(stage.description)}</p>` : ''}
-            <a class="stage-host-link" href="#profile/${stage.owner_id}"><span class="stage-host-avatar" aria-hidden="true"><img src="${escapeHTML(getUserIconUrl({ id: stage.owner_id }))}" alt=""></span><span><strong>${escapeHTML(data.host?.name || 'ホスト')}</strong><small>ホスト</small></span></a>
+            <a class="stage-host-link" href="#profile/${stage.owner_id}"><span class="stage-host-avatar" aria-hidden="true"><img ${rankAvatarAttributes(data.host)} src="${escapeHTML(getUserIconUrl({ id: stage.owner_id }))}" alt=""></span><span><strong>${escapeHTML(data.host?.name || 'ホスト')}</strong><small>ホスト</small></span></a>
             <div class="stage-join-row"><button type="button" class="settings-primary-button nui-button" data-nui="button" data-stage-join ${stage.status === 'ended' ? 'disabled' : ''}>${stage.status === 'ended' ? '終了しました' : stage.status === 'scheduled' && data.role === 'audience' ? '開始を待つ' : stage.status === 'scheduled' ? 'ステージを開く' : '参加する'}</button><button type="button" class="settings-secondary-button nui-button-secondary" data-stage-share title="共有URLをコピー">${ICONS.share}<span>共有</span></button><span class="nui-badge">${data.guest ? 'ゲスト' : data.role === 'host' ? 'ホスト' : data.role === 'speaker' ? 'スピーカー' : 'リスナー'}</span></div>
             <p data-stage-error class="stage-feedback" role="status" aria-live="polite"></p>
         </section>
         ${isHost && stage.status !== 'ended' ? `<section class="stage-host-section"><button type="button" class="stage-manage-open" data-stage-manage-open>${ICONS.sliders}<span>ステージを管理</span></button></section>` : ''}
     </div>`;
     const report = error => { if (!context.signal.aborted) container.querySelector('[data-stage-error]').textContent = error.message; };
-    container.querySelector('[data-stage-join]').onclick = () => { void openCall('stage', id).catch(report); };
+    const stageJoinButton = container.querySelector('[data-stage-join]');
+    if (stageJoinButton) {
+        stageJoinButton.onclick = async () => {
+            stageJoinButton.disabled = true;
+            try { await openCall('stage', id); }
+            catch (error) { report(error); }
+            finally { if (stageJoinButton.isConnected) stageJoinButton.disabled = false; }
+        };
+    }
     const shareButton = container.querySelector('[data-stage-share]');
     if (shareButton) shareButton.onclick = () => {
         void copyEntityUrl('stage', id, shareButton).catch(error => {

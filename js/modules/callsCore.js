@@ -1,10 +1,11 @@
-import { callMarkup, renderParticipants } from './callView.js';
+import { callMarkup, renderParticipants, releaseCallView } from './callView.js';
 import { AppWindow } from './appWindow.js';
 import { apiRequest } from '../api.js';
 import { getCurrentUser, getRealtimeChannel } from '../state.js';
 import { escapeHTML, formatNyaitterId, getUserIconUrl, showAppAlert } from '../utils/helpers.js';
+import { registerRankAvatar } from './rankAvatarIntegration.js';
 import { connectGuestRealtime, stopGuestRealtime, waitForRealtimeOpen } from './realtime.js';
-import { openStageManageModal } from './stageManage.js';
+import { endStage, openStageManageModal } from './stageManage.js';
 
 // 複数の通話/ステージへ同時参加できるよう、状態はルームキー単位の record で持つ。
 // record = { key, session, panel, window, pending, activePersonTools, personToolsCloseTimer }
@@ -355,6 +356,8 @@ function createPanel(record) {
                 panel.querySelectorAll(`[data-panel-id="${CSS.escape(panelId)}"] [data-person-action="mute"]`).forEach(button => button.classList.toggle('is-active', prefs.muted));
                 rerenderRoster(record);
             } else if (action === 'camera') {
+                const self = panelId === String(session.localUserId) && !panelId.startsWith('screen:');
+                if (self && session.forceCameraOff) { prefs.cameraHidden = true; rerenderRoster(record); return; }
                 prefs.cameraHidden = !prefs.cameraHidden;
                 panel.querySelectorAll(`.call-person[data-panel-id="${CSS.escape(panelId)}"]`).forEach(node => node.dataset.personCameraHidden = String(prefs.cameraHidden));
                 panel.querySelectorAll(`[data-panel-id="${CSS.escape(panelId)}"] [data-person-action="camera"]`).forEach(button => button.classList.toggle('is-active', prefs.cameraHidden));
@@ -592,19 +595,24 @@ async function switchInputDevice(record, kind, deviceId) {
     const previous = localTracks(current, kind).find(track => track.readyState === 'live');
     if (!previous || !captureSupported()) return;
     const version = ++current.captureVersion;
+    let replacement = null;
     try {
         const constraints = kind === 'audio'
             ? { audio: audioCaptureConstraints(deviceId) }
             : { video: videoCaptureConstraints(deviceId) };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        replacement = stream;
         if (record.session !== current || current.captureVersion !== version) { stream.getTracks().forEach(track => track.stop()); return; }
         const next = stream.getTracks().find(track => track.kind === kind);
         if (!next) { stream.getTracks().forEach(track => track.stop()); return; }
         next.contentHint = kind === 'audio' ? 'speech' : 'motion';
+        next.enabled = previous.enabled;
         for (const peer of current.peers.values()) {
             const sender = peer.pc.getSenders().find(item => item.track === previous);
             if (sender) await sender.replaceTrack(next);
         }
+        if (record.session !== current || current.captureVersion !== version) { stream.getTracks().forEach(track => track.stop()); return; }
+        next.enabled = previous.enabled;
         current.local.removeTrack(previous);
         previous.stop();
         current.local.addTrack(next);
@@ -614,6 +622,7 @@ async function switchInputDevice(record, kind, deviceId) {
         if (current.joined) sendState(record);
         status('');
     } catch (error) {
+        for (const track of replacement?.getTracks() || []) if (!localTracks(current).includes(track)) track.stop();
         status(`機器を変更できません: ${error.message}`);
     }
     if (record.session === current) {
@@ -944,6 +953,7 @@ function createPeer(record, userId) {
     video.muted = Boolean(pref.muted);
     video.volume = Number.isFinite(pref.volume) ? pref.volume : 1;
         const updateVideo = () => {
+            if (record.session !== current || current.streams.get(streamKey) !== remote) return;
             const isScreen = current.screenShares.get(String(userId))?.streamId === remote.streamId;
             // 受信側でも種別を contentHint に反映し、ステージのホストが転送する
             // 際のビットレート／劣化方針を画面共有向けに最適化する。
@@ -1083,6 +1093,8 @@ function closePeer(record, userId) {
     const peer = current?.peers.get(userId);
     if (!peer) return;
     peer.pc.onnegotiationneeded = null;
+    peer.pc.ontrack = null;
+    peer.pc.onicecandidate = null;
     clearTimeout(peer.restartTimer);
     peer.restartTimer = null;
     clearInterval(peer.statsTimer);
@@ -1096,6 +1108,8 @@ function closePeer(record, userId) {
                 if (sender) other.pc.removeTrack(sender);
             }
         }
+        const video = remote.tile.querySelector('video');
+        if (video) { video.pause(); video.srcObject = null; }
         remote.tile.remove(); current.streams.delete(key);
     }
 }
@@ -1220,6 +1234,7 @@ function appendMessage(record, event) {
         image.alt = '';
         image.loading = 'lazy';
         image.src = getUserIconUrl({ id: userId });
+        registerRankAvatar(image, { id: userId, display_ranks: event.display_ranks });
         image.addEventListener('error', () => {
             avatar.textContent = Array.from(name)[0] || '?';
         }, { once: true });
@@ -1320,22 +1335,42 @@ export function handleCallEvent(event) {
     } else if (event.type === 'call:roster') applyRoster(record, event.roster);
     else if (event.type === 'call:moderated') {
         if (event.action === 'mute') {
-            session.forceMuted = true;
-            ++session.captureVersion;
-            for (const track of localTracks(session, 'audio')) track.enabled = false;
-            const input = panel.querySelector('[data-call-device="audio"]'); if (input) { input.checked = false; input.disabled = true; }
-            stopLocalTranscription(session); sendState(record);
+            const forced = event.value === undefined ? true : Boolean(event.value);
+            session.forceMuted = forced;
+            if (forced) {
+                ++session.captureVersion;
+                for (const track of localTracks(session, 'audio')) track.enabled = false;
+                const input = panel.querySelector('[data-call-device="audio"]'); if (input) { input.checked = false; input.disabled = true; }
+                stopLocalTranscription(session);
+            } else {
+                const input = panel.querySelector('[data-call-device="audio"]'); if (input) { input.disabled = session.role === 'audience' || !captureSupported(); }
+                syncDeviceInputs(record, session);
+            }
+            sendState(record);
         } else if (event.action === 'camera') {
-            session.forceCameraOff = true;
-            ++session.captureVersion;
-            for (const track of localTracks(session, 'video')) { for (const peer of session.peers.values()) { const sender = peer.pc.getSenders().find(item => item.track === track); if (sender) peer.pc.removeTrack(sender); } track.stop(); session.local.removeTrack(track); }
-            const input = panel.querySelector('[data-call-device="video"]'); if (input) { input.checked = false; input.disabled = true; }
-            session.localFrameReady = false;
-            session.refreshLocalPreview?.();
-            placeLocalTiles(record, session); sendState(record);
+            const forced = event.value === undefined ? true : Boolean(event.value);
+            session.forceCameraOff = forced;
+            if (forced) {
+                ++session.captureVersion;
+                for (const track of localTracks(session, 'video')) { for (const peer of session.peers.values()) { const sender = peer.pc.getSenders().find(item => item.track === track); if (sender) peer.pc.removeTrack(sender); } track.stop(); session.local.removeTrack(track); }
+                const input = panel.querySelector('[data-call-device="video"]'); if (input) { input.checked = false; input.disabled = true; }
+                session.localFrameReady = false;
+                session.refreshLocalPreview?.();
+                placeLocalTiles(record, session);
+            } else {
+                const input = panel.querySelector('[data-call-device="video"]'); if (input) { input.disabled = session.role === 'audience' || !captureSupported(); }
+                syncDeviceInputs(record, session);
+                session.refreshLocalPreview?.();
+                placeLocalTiles(record, session);
+            }
+            sendState(record);
+        } else if (event.action === 'chat') {
+            const disabled = event.value === undefined ? true : Boolean(event.value);
+            for (const input of panel.querySelectorAll('[data-call-chat] input, [data-call-chat] button')) input.disabled = disabled || Boolean(session.guest);
         }
         const messages = { chat: 'ホストによりチャットが無効になりました。', mute: 'ホストによりマイクがミュートされました。', camera: 'ホストによりカメラがオフになりました。', pin: 'ホストによりパネルが固定されました。', promote: 'ホストによりスピーカーに昇格しました。', demote: 'ホストによりリスナーに降格しました。' };
-        status(messages[event.action] || 'ホストにより設定が変更されました。');
+        const released = { chat: 'ホストによりチャットの制限が解除されました。', mute: 'ホストによりマイクの制限が解除されました。', camera: 'ホストによりカメラの制限が解除されました。' };
+        status((event.value === false && released[event.action]) || messages[event.action] || 'ホストにより設定が変更されました。');
     }
     else if (event.type === 'call:kicked') { const message = event.message; leaveCall(record); void showAppAlert(message); }
     else if (event.type === 'call:screen') handleScreenShare(record, event);
@@ -1346,13 +1381,13 @@ export function handleCallEvent(event) {
     return true;
 }
 
-function stopSharing(record) {
+function stopSharing(record, notify = true) {
     const session = record.session;
     const panel = record.panel;
     if (!session?.screen || !panel) return;
     const current = session;
     const stream = current.screen; current.screen = null;
-    try { send(record, 'call:screen', { active: false, stream_id: stream.id }); } catch (_) {}
+    try { if (notify) send(record, 'call:screen', { active: false, stream_id: stream.id }); } catch (_) {}
     current.screenShares.delete(String(current.localUserId));
     current.screenPreview?.remove(); current.screenPreview = null;
     renderParticipants(panel, current.roster, current.kind, current.localUserId, current.screenShares, current.role === 'host', current.preferences);
@@ -1378,7 +1413,35 @@ async function perform(record, action) {
     if (action === 'close-settings') { setSettingsOpen(record, false); return; }
     if (action === 'manage-stage') {
         if (!session || session.kind !== 'stage' || session.role !== 'host') return;
-        void openStageManageModal(session.id);
+        if (record.managingStage) return;
+        record.managingStage = true;
+        try {
+            record.stageManage?.close();
+            const modal = await openStageManageModal(session.id, { onUpdated: stage => {
+                if (stage?.status === 'ended' && record.session === session) leaveCall(record);
+            } });
+            if (record.session === session) record.stageManage = modal;
+            else modal.close();
+        } finally { record.managingStage = false; }
+        return;
+    }
+    if (action === 'end-stage') {
+        if (!session?.joined || session.kind !== 'stage' || session.role !== 'host' || session.guest || record.endingStage) return;
+        record.endingStage = true;
+        const controller = new AbortController();
+        record.stageEndController = controller;
+        const button = panel.querySelector('[data-call-action="end-stage"]');
+        if (button) button.disabled = true;
+        try {
+            const result = await endStage(session.id, { signal: controller.signal });
+            if (result && record.session === session) leaveCall(record);
+        } catch (error) {
+            if (record.session === session) await showAppAlert(error.message || 'ステージを終了できませんでした。');
+        } finally {
+            record.endingStage = false;
+            if (record.stageEndController === controller) record.stageEndController = null;
+            if (button?.isConnected) button.disabled = false;
+        }
         return;
     }
     if (action === 'chat') {
@@ -1420,7 +1483,7 @@ async function perform(record, action) {
         current.screen = stream;
         const user = getCurrentUser();
         const screenLabel = `@${String(user?.handle || user?.nyaitter_id || user?.name || 'ユーザー').replace(/^@/, '')}のスクリーン`;
-        try { send(record, 'call:screen', { active: true, stream_id: stream.id }); }
+        try { send(record, 'call:screen', { active: true, stream_id: stream.id, track_id: stream.getVideoTracks()[0]?.id }); }
         catch (error) { current.screen = null; stream.getTracks().forEach(track => track.stop()); throw error; }
         current.screenShares.set(String(current.localUserId), { streamId: stream.id, label: screenLabel });
         const preview = document.createElement('div');
@@ -1458,7 +1521,15 @@ async function perform(record, action) {
 
 function closeRecord(record) {
     const session = record.session;
+    if (!session) return;
+    const leavingKind = session?.kind;
+    const leavingId = session?.id;
+    const leavingCallHash = leavingId
+        ? `#call/${leavingKind === 'stage' ? 'stage' : 'dm'}/${encodeURIComponent(String(leavingId))}`
+        : null;
     closePersonTools(record);
+    record.stageEndController?.abort(); record.stageEndController = null;
+    record.stageManage?.close(); record.stageManage = null;
     const wasJoining = Boolean(record.pending);
     if (record.pending) { record.pending.reject(new Error('参加を取り消しました。')); record.pending = null; }
     try { if (session && (session.joined || wasJoining || session.watching)) send(record, 'call:leave'); } catch (_) { /* 切断時も機器を解放する。 */ }
@@ -1466,12 +1537,14 @@ function closeRecord(record) {
         clearTimeout(session.localPreviewTimer);
         ++session.captureVersion;
         stopLocalTranscription(session);
-        stopSharing(record);
+        stopSharing(record, false);
         localTracks(session).forEach(track => track.stop());
         for (const id of [...session.peers.keys()]) closePeer(record, id);
+        for (const video of record.panel?.querySelectorAll('video') || []) { video.pause(); video.srcObject = null; }
     }
     calls.delete(record.key);
     record.window?.destroy(); record.window = null;
+    if (record.panel) releaseCallView(record.panel);
     record.panel?.remove(); record.panel = null;
     const wasGuest = session?.guest;
     const otherGuest = [...calls.values()].some(other => other.session?.guest);
@@ -1480,6 +1553,13 @@ function closeRecord(record) {
         void request('/server/api/calls/stages/guest-session', { method: 'DELETE' }).catch(() => {});
         // 共有リアルタイム接続は他に開いている通話がある間は止めない。
         if (calls.size === 0) stopGuestRealtime();
+    }
+    // タブUIでは通話は画面全体を占有しているため、退出後に同じ通話ルートへ
+    // 留まると #call-content が空のまま空白画面になる。対応する詳細画面へ戻す。
+    if (leavingCallHash && window.location.hash === leavingCallHash) {
+        window.location.hash = leavingKind === 'stage'
+            ? `#stage/${encodeURIComponent(String(leavingId))}`
+            : `#dm/${encodeURIComponent(String(leavingId))}`;
     }
 }
 
