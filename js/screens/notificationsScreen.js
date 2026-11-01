@@ -1,4 +1,5 @@
 import { DOM } from '../dom.js';
+import { t } from '../modules/i18n.js';
 import { api, apiRequest } from '../api.js';
 import {
     getCurrentUser,
@@ -25,7 +26,7 @@ import {
 
 export async function showNotificationsScreen(showScreenFn = null) {
     if (!getCurrentUser()) {
-        DOM.pageHeader.innerHTML = `<h2 id="page-title">通知</h2>`;
+        DOM.pageHeader.innerHTML = `<h2 id="page-title">${t('notifications.title')}</h2>`;
         showScreenCompat('notifications-screen', showScreenFn);
         renderLoggedOut();
         showLoading(false);
@@ -57,7 +58,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
     document
         .getElementById('mark-all-read-btn')
         ?.addEventListener('click', async () => {
-            if (!(await showAppConfirm('すべての通知を既読にしますか？'))) return;
+            if (!(await showAppConfirm(t('notifications.mark_all_confirm')))) return;
 
             showLoading(true);
             try {
@@ -80,7 +81,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
                 await updateNavAndSidebars();
             } catch (e) {
                 console.error('すべて既読処理でエラー:', e);
-                showAppAlert('処理中にエラーが発生しました。');
+                showAppAlert(t('notifications.error'));
             } finally {
                 showLoading(false);
             }

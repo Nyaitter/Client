@@ -175,7 +175,7 @@ function start() {
     });
     observer.observe(document.body, {
         childList: true, subtree: true, attributes: true, characterData: true,
-        attributeFilter: ['data-rank-avatar', 'data-rank-user-id', 'data-rank-trust', 'data-rank-writer', 'data-rank-reviewer', 'class', 'style', 'hidden', 'aria-hidden', 'src'],
+        attributeFilter: ['data-rank-avatar', 'data-rank-user-id', 'data-rank-trust', 'class', 'style', 'hidden', 'aria-hidden', 'src'],
     });
     resize = new ResizeObserver(refreshRankAvatars);
     resize.observe(document.body);

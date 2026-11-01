@@ -21,9 +21,11 @@
         if (/^(?:https?:)?\/\//i.test(source)) return [source, localNyaitterUiUrl];
         const version = source || 'latest';
         const cdnUrl = `https://cdn.jsdelivr.net/npm/nyaitter-ui@${encodeURIComponent(version)}/dist/nyaitter-ui.js`;
-        // 版を固定した場合は CDN の固定版を優先し、ローカルは予備にする。
-        if (source && source !== 'latest') return [cdnUrl, localNyaitterUiUrl];
-        return [localNyaitterUiUrl, cdnUrl];
+        // 方針 (Tasks.md / HANDOFF.md): NyaitterUI は npm CDN を優先し、CDN に
+        // 到達できない場合だけ開発用のローカルビルドへフォールバックする。
+        // 版指定 (latest を含む) によらずこの順序を変えない。ローカル配信が
+        // 存在しない環境で毎回 404 を踏むのを避けるため。
+        return [cdnUrl, localNyaitterUiUrl];
     }
 
     function loadScript(src) {

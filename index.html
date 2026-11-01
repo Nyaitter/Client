@@ -77,11 +77,12 @@
 		</style>
 		<script src="https://cdn.jsdelivr.net/npm/@twemoji/api@15.1.0/dist/twemoji.min.js" integrity="sha384-o28+zJO3/45GHIy+9TFKGaYnbt0KQcFRzyBrb0WSSrz7bPGwGI1d64worBiXPgXw" crossorigin="anonymous"></script>
 		<script src="./config.js"></script>
+		<script src="./i18n.js"></script>
 		<script src="./bootstrap.js"></script>
 	</head>
 	<body>
 		<!-- 初期ロード表示 -->
-		<div id="loading-overlay" role="status" aria-live="polite" aria-label="読み込み中" aria-hidden="false" aria-busy="true"><div class="spinner"></div></div>
+		<div id="loading-overlay" role="status" aria-live="polite" aria-label="読み込み中" data-i18n-aria-label="common.loading" aria-hidden="false" aria-busy="true"><div class="spinner"></div></div>
 
 		<!-- 接続失敗エラーオーバーレイ -->
 		<div
@@ -99,8 +100,8 @@
 					text-align: center;
 				"
 			>
-				<h2 style="margin-top: 0">Nyaitterへの接続に失敗しました</h2>
-				<p>ネットワーク接続を確認して、もう一度お試しください。</p>
+				<h2 style="margin-top: 0" data-i18n="error.connection.title">Nyaitterへの接続に失敗しました</h2>
+				<p data-i18n="error.connection.body">ネットワーク接続を確認して、もう一度お試しください。</p>
 				<button
 					id="retry-connection-btn"
 					class="nui-button"
@@ -113,7 +114,7 @@
 						font-weight: 700;
 					"
 				>
-					再試行
+					<span data-i18n="common.retry">再試行</span>
 				</button>
 			</div>
 		</div>
@@ -136,12 +137,12 @@
 					margin: 2rem auto;
 				"
 			>
-				<h2 style="margin-top: 0; color: var(--nui-danger)">エラー</h2>
+				<h2 style="margin-top: 0; color: var(--nui-danger)" data-i18n="common.error">エラー</h2>
 				<div
 					id="mainjs-error-text"
 					style="color: var(--nui-danger); margin: 1em 0; word-break: break-all"
 				></div>
-				<p style="color: var(--nui-muted); font-size: 0.96em">
+				<p style="color: var(--nui-muted); font-size: 0.96em" data-i18n="error.app.body">
 					Nyaitterに問題が発生しました
 				</p>
 				<ul
@@ -152,8 +153,8 @@
 						font-size: 0.98em;
 					"
 				>
-					<li>キャッシュや拡張機能の影響の可能性があります</li>
-					<li>
+					<li data-i18n="error.app.hint_cache">キャッシュや拡張機能の影響の可能性があります</li>
+					<li data-i18n="error.app.hint_contact">
 						キャッシュの削除や拡張機能の無効化をしても直らない場合は管理者へご連絡ください
 					</li>
 				</ul>
@@ -170,7 +171,7 @@
 						font-weight: 700;
 					"
 				>
-					再読み込み
+					<span data-i18n="common.reload">再読み込み</span>
 				</button>
 			</div>
 		</div>

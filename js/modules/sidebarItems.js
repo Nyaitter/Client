@@ -6,6 +6,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'home',
         name: 'ホーム',
+        labelKey: 'nav.home',
         hash: '#',
         icon: ICONS.home,
         auth: false,
@@ -15,6 +16,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'explore',
         name: '検索',
+        labelKey: 'nav.explore',
         hash: '#explore',
         icon: ICONS.explore,
         auth: false,
@@ -24,6 +26,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'notifications',
         name: '通知',
+        labelKey: 'nav.notifications',
         hash: '#notifications',
         icon: ICONS.notifications,
         auth: true,
@@ -33,6 +36,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'likes',
         name: 'いいね',
+        labelKey: 'nav.likes',
         hash: '#likes',
         icon: ICONS.likes,
         auth: true,
@@ -42,6 +46,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'stars',
         name: 'お気に入り',
+        labelKey: 'nav.stars',
         hash: '#stars',
         icon: ICONS.stars,
         auth: true,
@@ -51,6 +56,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'dm',
         name: 'メッセージ',
+        labelKey: 'nav.dm',
         hash: '#dm',
         icon: ICONS.dm,
         auth: true,
@@ -61,6 +67,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
         // 実際のhrefはログインユーザーIDが必要なので sidebar.js 側で解決する。
         key: 'profile',
         name: 'プロフィール',
+        labelKey: 'nav.profile',
         hash: '#profile/',
         dynamicHash: true,
         icon: ICONS.profile,
@@ -71,6 +78,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'settings',
         name: '設定',
+        labelKey: 'nav.settings',
         hash: '#settings',
         icon: ICONS.settings,
         auth: true,
@@ -80,6 +88,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'spaces',
         name: 'ステージ',
+        labelKey: 'nav.spaces',
         hash: '#stages',
         icon: ICONS.megaphone,
         auth: true,
@@ -89,6 +98,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'groups',
         name: 'グループ',
+        labelKey: 'nav.groups',
         hash: '#groups',
         icon: ICONS.group,
         auth: true,
@@ -98,6 +108,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'admin_reports',
         name: 'リクエスト',
+        labelKey: 'nav.admin_reports',
         hash: '#admin/reports',
         icon: ICONS.mask,
         auth: true,

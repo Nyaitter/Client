@@ -14,6 +14,7 @@ import {
 } from './cache.js';
 import { getEmoji } from './format.js';
 import { getSavedSideMenu, applySideMenuZones } from './sidebarItems.js';
+import { t } from './i18n.js';
 import { openPostModal } from './posts.js';
 import { openAccountSwitcherModal } from './auth.js';
 import {
@@ -114,7 +115,7 @@ function setupMobileSidebarOverflow(overlay, signal) {
     overflow.innerHTML = `
         <button type="button" class="nav-item nav-overflow-toggle nui-nav-item" aria-expanded="false" aria-controls="mobile-nav-overflow-panel">
             <span class="nav-item-icon-container">${ICONS.more}</span>
-            <span class="nav-item-text">その他</span>
+            <span class="nav-item-text">${t('nav.more')}</span>
         </button>
         <div id="mobile-nav-overflow-panel" class="nav-overflow-panel hidden" role="menu"></div>`;
     const toggle = overflow.querySelector('.nav-overflow-toggle');
@@ -208,7 +209,7 @@ export function openMobileSidebar() {
             'class="nav-item account-button nui-nav-item mobile-sidebar-account-button"',
         );
     overlay.innerHTML = `
-        <aside class="mobile-sidebar-panel" aria-label="サイドメニュー" role="dialog" aria-modal="true">
+        <aside class="mobile-sidebar-panel" aria-label="${t('nav.menu')}" role="dialog" aria-modal="true">
             <div class="mobile-sidebar-content">
                 <div class="mobile-sidebar-logo">${DOM.navLogo.innerHTML}</div>
                 <nav class="mobile-sidebar-menu">${DOM.navMenuTop.dataset.mobileMenuMarkup || DOM.navMenuTop.innerHTML}</nav>
@@ -327,7 +328,7 @@ window.addEventListener('popstate', () => {
 
 export async function loadRightSidebar() {
     if (DOM.rightSidebar.searchWidget) {
-        DOM.rightSidebar.searchWidget.innerHTML = `<div class="sidebar-search-widget">${ICONS.explore}<input type="search" id="sidebar-search-input" placeholder="検索"></div>`;
+        DOM.rightSidebar.searchWidget.innerHTML = `<div class="sidebar-search-widget">${ICONS.explore}<input type="search" id="sidebar-search-input" placeholder="${t('nav.search_placeholder')}"></div>`;
         const searchInput = document.getElementById('sidebar-search-input');
         const isComposing = searchInput && trackSearchComposition(searchInput);
         searchInput?.addEventListener('keydown', (e) => {
@@ -366,7 +367,7 @@ export async function loadRightSidebar() {
     if (DOM.rightSidebar.links) {
         DOM.rightSidebar.links.innerHTML = linkItems
             .map((item) => {
-                const name = escapeHTML(String(item?.name || 'リンク'));
+                const name = escapeHTML(String(item?.name || t('nav.link')));
                 const rawUrl = String(item?.url || item?.link || '#');
                 const url = escapeHTML(getSafeWidgetUrl(rawUrl));
                 const external = /^https:\/\//i.test(rawUrl);
@@ -387,7 +388,7 @@ export async function loadRightSidebar() {
         return;
     }
 
-    let recHTML = '<div class="widget-title">おすすめユーザー</div>';
+    let recHTML = `<div class="widget-title">${t('nav.recommended_users')}</div>`;
     recHTML += recommendedUsers
         .map((user) => `<div class="widget-item recommend-user">
                 <a href="#profile/${user.id}" class="profile-link" style="text-decoration:none; color:inherit; display:flex; align-items:center; gap:0.5rem;">
@@ -397,7 +398,7 @@ export async function loadRightSidebar() {
                         <small style="color:var(--secondary-text-color); display:block;">${getNyaitterId(user)}</small>
                     </div>
                 </a>
-                ${currentUser ? `<button class="follow-button-not-following" data-user-id="${user.id}">フォロー</button>` : ''}
+                ${currentUser ? `<button class="follow-button-not-following" data-user-id="${user.id}">${t('nav.follow')}</button>` : ''}
             </div>`)
         .join('');
 
@@ -490,7 +491,7 @@ export function setupSidebarOverflowMenu() {
     overflow.innerHTML = `
         <button type="button" class="nav-item nav-overflow-toggle nui-nav-item" aria-expanded="false" aria-controls="nav-overflow-panel">
             <span class="nav-item-icon-container">${ICONS.more}</span>
-            <span class="nav-item-text">その他</span>
+            <span class="nav-item-text">${t('nav.more')}</span>
         </button>
         <div id="nav-overflow-panel" class="nav-overflow-panel hidden" role="menu"></div>`;
     const toggle = overflow.querySelector('.nav-overflow-toggle');
@@ -583,8 +584,8 @@ export function setupSidebarOverflowMenu() {
 export async function updateNavAndSidebars() {
     const hash = window.location.hash || '#';
     const menuItems = [
-        { key: 'home', name: 'ホーム', hash: '#', icon: ICONS.home },
-        { key: 'explore', name: '検索', hash: '#explore', icon: ICONS.explore },
+        { key: 'home', name: t('nav.home'), hash: '#', icon: ICONS.home },
+        { key: 'explore', name: t('nav.explore'), hash: '#explore', icon: ICONS.explore },
     ];
     let totalUnreadDmCount = 0;
     if (getCurrentUser()) {
@@ -597,52 +598,52 @@ export async function updateNavAndSidebars() {
         menuItems.push(
             {
                 key: 'notifications',
-                name: '通知',
+                name: t('nav.notifications'),
                 hash: '#notifications',
                 icon: ICONS.notifications,
                 badge: getCurrentUser().notification_unread_count,
             },
             {
                 key: 'likes',
-                name: 'いいね',
+                name: t('nav.likes'),
                 hash: '#likes',
                 icon: ICONS.likes,
             },
             {
                 key: 'stars',
-                name: 'お気に入り',
+                name: t('nav.stars'),
                 hash: '#stars',
                 icon: ICONS.stars,
             },
             {
                 key: 'dm',
-                name: 'メッセージ',
+                name: t('nav.dm'),
                 hash: '#dm',
                 icon: ICONS.dm,
                 badge: totalUnreadDmCount,
             },
             {
                 key: 'profile',
-                name: 'プロフィール',
+                name: t('nav.profile'),
                 hash: '#profile/',
                 dynamicHash: true,
                 icon: ICONS.profile,
             },
             {
                 key: 'settings',
-                name: '設定',
+                name: t('nav.settings'),
                 hash: '#settings',
                 icon: ICONS.settings,
             },
             {
                 key: 'spaces',
-                name: 'ステージ',
+                name: t('nav.spaces'),
                 hash: '#stages',
                 icon: ICONS.megaphone,
             },
             {
                 key: 'groups',
-                name: 'グループ',
+                name: t('nav.groups'),
                 hash: '#groups',
                 icon: ICONS.group,
             },
@@ -650,7 +651,7 @@ export async function updateNavAndSidebars() {
         if (getCurrentUser().admin) {
             menuItems.push({
                 key: 'admin_reports',
-                name: 'リクエスト',
+                name: t('nav.admin_reports'),
                 hash: '#admin/reports',
                 icon: ICONS.mask,
             });
@@ -711,7 +712,7 @@ export async function updateNavAndSidebars() {
         })
         .join('')}${
             getCurrentUser()
-                ? `<button class="nav-item nav-item-post"><span class="nav-item-text">ポスト</span><span class="nav-item-icon">${ICONS.send}</span></button>`
+                ? `<button class="nav-item nav-item-post"><span class="nav-item-text">${t('composer.submit')}</span><span class="nav-item-icon">${ICONS.send}</span></button>`
                 : ''
         }`;
 

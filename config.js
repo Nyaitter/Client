@@ -166,6 +166,15 @@
                 return config && typeof config === 'object' ? config : null;
             },
         },
+        defaultLanguage: { get: () => String(getConfig('default_language', 'ja') || 'ja').trim() || 'ja' },
+        languagePacks: {
+            get: () => {
+                const packs = manifestConfig?.language_packs;
+                return packs && typeof packs === 'object' && !Array.isArray(packs)
+                    ? Object.freeze({ ...packs })
+                    : Object.freeze({});
+            },
+        },
         turnstileSiteKey: { get: () => String(getConfig('turnstile_site_key', '') || '').trim() },
         resourceLinks: { get: () => Object.freeze([...(getConfig('resource_links', []) || [])]) },
         widgetLinks: { get: () => Object.freeze([...(getConfig('widget_links', []) || [])]) },

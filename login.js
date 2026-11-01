@@ -1,3 +1,7 @@
+function lt(key, params) {
+  return globalThis.NyaitterI18n?.t(key, params) ?? String(key || '');
+}
+
 function setupLoginModal() {
   const { apiUrl } = globalThis.NyaitterClientConfig || {};
   if (!apiUrl) return;
@@ -370,9 +374,9 @@ function setupLoginModal() {
 
   function updateRecoveryStatus(waitUntil) {
     if (!accountRecoveryWaitStatus) return;
-    accountRecoveryWaitStatus.textContent = `復旧の待機期間中です（残り${formatRecoveryRemaining(waitUntil)}）。待機期間が終わると、この場所は自動的に信頼されログインできます。心当たりがない場合は、届いた通知からブロックしてください。`;
+    accountRecoveryWaitStatus.textContent = lt('login.recovery.remaining', { remaining: formatRecoveryRemaining(waitUntil) });
     accountRecoveryWaitStatus.classList.remove('hidden');
-    if (loginApprovalWaitStatus) loginApprovalWaitStatus.textContent = '復旧の待機期間中です';
+    if (loginApprovalWaitStatus) loginApprovalWaitStatus.textContent = lt('login.recovery.status_short');
   }
 
   async function postAuthJson(path, payload) {
@@ -423,11 +427,11 @@ function setupLoginModal() {
     activeApprovalWait = state;
     loginModal?.classList.add('hidden');
     showLoading(false);
-    if (loginApprovalWaitTitle) loginApprovalWaitTitle.textContent = 'ログインの許可を待っています';
-    if (loginApprovalWaitDescription) loginApprovalWaitDescription.textContent = 'ログイン済みの端末に許可リクエストを送信しました。そちらで許可されると、自動的にログインします。';
-    if (loginApprovalWaitProgressLabel) loginApprovalWaitProgressLabel.textContent = '確認中';
+    if (loginApprovalWaitTitle) loginApprovalWaitTitle.textContent = lt('login.approval.title');
+    if (loginApprovalWaitDescription) loginApprovalWaitDescription.textContent = lt('login.approval.description');
+    if (loginApprovalWaitProgressLabel) loginApprovalWaitProgressLabel.textContent = lt('login.approval.checking');
     if (loginApprovalWaitStatus) {
-      loginApprovalWaitStatus.textContent = '許可を待機しています';
+      loginApprovalWaitStatus.textContent = lt('login.approval.waiting');
       loginApprovalWaitStatus.classList.remove('hidden');
     }
     if (accountRecoveryWaitStatus) {
@@ -440,7 +444,7 @@ function setupLoginModal() {
     }
     if (accountRecoveryStartBtn) {
       accountRecoveryStartBtn.disabled = false;
-      accountRecoveryStartBtn.textContent = 'アカウントアクセスの復旧を開始';
+      accountRecoveryStartBtn.textContent = lt('login.recovery.start');
     }
     loginApprovalWaitModal?.classList.remove('hidden');
     return state;
@@ -460,9 +464,9 @@ function setupLoginModal() {
     activeApprovalWait = state;
     loginModal?.classList.add('hidden');
     showLoading(false);
-    if (loginApprovalWaitTitle) loginApprovalWaitTitle.textContent = '復旧の待機期間中です';
-    if (loginApprovalWaitDescription) loginApprovalWaitDescription.textContent = 'この場所からのログインは、待機期間が終わるまで保留されています。';
-    if (loginApprovalWaitProgressLabel) loginApprovalWaitProgressLabel.textContent = '待機中';
+    if (loginApprovalWaitTitle) loginApprovalWaitTitle.textContent = lt('login.recovery.title');
+    if (loginApprovalWaitDescription) loginApprovalWaitDescription.textContent = lt('login.recovery.description');
+    if (loginApprovalWaitProgressLabel) loginApprovalWaitProgressLabel.textContent = lt('login.recovery.waiting');
     if (loginApprovalWaitStatus) loginApprovalWaitStatus.classList.add('hidden');
     if (loginApprovalRecoverySection) loginApprovalRecoverySection.classList.add('hidden');
     updateRecoveryStatus(data.wait_until);
@@ -544,7 +548,7 @@ function setupLoginModal() {
         const response = await globalThis.NyaitterClientInstance.auth.pollLoginApprovalResponse(approvalId, approvalToken);
         const data = await response.json().catch(() => ({}));
         if (response.status === 202 && data.pending) {
-          if (loginApprovalWaitStatus) loginApprovalWaitStatus.textContent = 'ログイン済み端末での許可を待っています';
+          if (loginApprovalWaitStatus) loginApprovalWaitStatus.textContent = lt('login.approval.waiting_device');
           continue;
         }
         if (!response.ok || data.error || !data.success) {
@@ -582,7 +586,7 @@ function setupLoginModal() {
     hideTurnstile();
     authProviderSelect?.classList.remove('hidden');
     loginBackBtn?.classList.add('hidden');
-    if (loginTitle) loginTitle.textContent = 'ログイン方法を選択';
+    if (loginTitle) loginTitle.textContent = lt('login.title.select');
     hideMessages();
   }
 
@@ -590,7 +594,7 @@ function setupLoginModal() {
     hideAllPanels();
     hideTurnstile();
     loginBackBtn?.classList.add('hidden');
-    if (loginTitle) loginTitle.textContent = '認証チャレンジ';
+    if (loginTitle) loginTitle.textContent = lt('login.title.challenge');
     hideMessages();
     mountTurnstile(authProviderSelect); // mount inside the provider select area
   }
@@ -636,37 +640,37 @@ function setupLoginModal() {
 
     const name = String(provider?.name || '').toLowerCase();
     if (name === 'scratch') {
-      if (loginTitle) loginTitle.textContent = 'Scratchでログイン';
+      if (loginTitle) loginTitle.textContent = lt('login.title.scratch');
       authScratchPanel?.classList.remove('hidden');
       authStep1?.classList.remove('hidden');
       authStep2?.classList.add('hidden');
       window.setTimeout(() => usernameInput?.focus(), 0);
     } else if (name === 'email') {
-      if (loginTitle) loginTitle.textContent = 'メールアドレスでログイン';
+      if (loginTitle) loginTitle.textContent = lt('login.title.email');
       authEmailPanel?.classList.remove('hidden');
       authEmailStep1?.classList.remove('hidden');
       authEmailStep2?.classList.add('hidden');
       authEmailStep3?.classList.add('hidden');
       window.setTimeout(() => loginEmailInput?.focus(), 0);
     } else if (name === 'passkey') {
-      if (loginTitle) loginTitle.textContent = 'パスキーでログイン';
+      if (loginTitle) loginTitle.textContent = lt('login.title.passkey');
       authPasskeyPanel?.classList.remove('hidden');
     } else if (name === 'nyaitter' || name === 'nyaitterauth' || name === 'nyaitter-auth') {
-      if (loginTitle) loginTitle.textContent = 'Nyaitterでログイン';
+      if (loginTitle) loginTitle.textContent = lt('login.title.nyaitter');
       authNyaitterPanel?.classList.remove('hidden');
       window.setTimeout(() => loginNyaitterServerInput?.focus(), 0);
     } else if (name === 'google' || name === 'microsoft') {
-      if (loginTitle) loginTitle.textContent = `${provider?.displayName || name}でログイン`;
+      if (loginTitle) loginTitle.textContent = lt('login.title.provider', { name: provider?.displayName || name });
       void startOAuthRedirect(provider);
     } else {
-      if (loginTitle) loginTitle.textContent = `${provider?.displayName || name}でログイン`;
+      if (loginTitle) loginTitle.textContent = lt('login.title.provider', { name: provider?.displayName || name });
     }
 
     if (loginModalMode === 'link') {
       const displayName = provider?.displayName || resolveProviderDisplayName(name) || name;
-      if (loginTitle) loginTitle.textContent = `${displayName}を連携`;
+      if (loginTitle) loginTitle.textContent = lt('login.title.link', { name: displayName });
       loginBackBtn?.classList.remove('hidden');
-      loginBackBtn?.setAttribute('aria-label', '連携をやめて閉じる');
+      loginBackBtn?.setAttribute('aria-label', lt('login.link_cancel'));
     }
   }
 
@@ -745,7 +749,7 @@ function setupLoginModal() {
       btn.className = 'login-provider-btn';
 
       const labelSpan = document.createElement('span');
-      labelSpan.textContent = `${provider.displayName || provider.name}でログイン`;
+      labelSpan.textContent = lt('login.provider_button', { name: provider.displayName || provider.name });
 
       btn.appendChild(labelSpan);
       btn.addEventListener('click', () => selectProvider(provider));
@@ -808,14 +812,14 @@ function setupLoginModal() {
     const waitState = activeApprovalWait;
     if (!waitState || waitState.recovery || accountRecoveryStartBtn.disabled) return;
     accountRecoveryStartBtn.disabled = true;
-    accountRecoveryStartBtn.textContent = '復旧を開始しています…';
+    accountRecoveryStartBtn.textContent = lt('login.recovery.starting');
     try {
       await startAccountRecoveryForWait(waitState.pendingLogin, waitState);
     } catch (error) {
       accountRecoveryStartBtn.disabled = false;
-      accountRecoveryStartBtn.textContent = 'アカウントアクセスの復旧を開始';
+      accountRecoveryStartBtn.textContent = lt('login.recovery.start');
       if (accountRecoveryWaitStatus) {
-        accountRecoveryWaitStatus.textContent = error.message || '復旧を開始できませんでした。';
+        accountRecoveryWaitStatus.textContent = error.message || lt('login.recovery.failed');
         accountRecoveryWaitStatus.classList.remove('hidden');
       }
     }
@@ -1093,7 +1097,7 @@ function setupLoginModal() {
           }
           if (data.code === 'username_required') {
             hideMessages();
-            if (loginTitle) loginTitle.textContent = 'ユーザー名の設定';
+            if (loginTitle) loginTitle.textContent = lt('login.title.username');
             authEmailStep2?.classList.add('hidden');
             authEmailStep3?.classList.remove('hidden');
             hideTurnstile();

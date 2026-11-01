@@ -121,8 +121,12 @@ export async function renderDmMessage(msg, dmId = null, visibleMessages = []) {
         && !getCurrentUser()?.block?.includes(Number(target.userid));
     const targetName = canDescribeTarget ? (getAllUsersCache().get(target.userid)?.name || '不明') : '';
     const targetContent = canDescribeTarget ? String(target.content || target.message || '').replace(/\s+/g, ' ').trim().slice(0, 80) : '';
-    const replyLabel = canDescribeTarget ? `${targetName}: ${targetContent || 'メッセージ'}` : 'メッセージへの返信';
-    const replyHtml = msg.reply_to ? `<div class="dm-reply-reference">${escapeHTML(replyLabel)}</div>` : '';
+    const replyInner = canDescribeTarget
+        ? `<span class="dm-reply-reference-icon" aria-hidden="true">${ICONS.reply}</span><span class="dm-reply-reference-name">${escapeHTML(targetName)}</span><span class="dm-reply-reference-text">${escapeHTML(targetContent || 'メッセージ')}</span>`
+        : `<span class="dm-reply-reference-icon" aria-hidden="true">${ICONS.reply}</span><span class="dm-reply-reference-text">メッセージへの返信</span>`;
+    const replyHtml = msg.reply_to
+        ? `<button type="button" class="dm-reply-reference" data-reply-target-id="${escapeHTML(String(msg.reply_to))}" title="返信先のメッセージへ移動">${replyInner}</button>`
+        : '';
 
     if (sent) {
         const readCount = Number(msg.read_count || 0);

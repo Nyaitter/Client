@@ -53,6 +53,7 @@ import {
     SETTINGS_GROUP_DETAILS,
 } from './settings/config.js';
 import { readSettingsForm } from './settings/formModel.js';
+import { t, getLanguage, getAvailableLanguages, languageName, setLanguage } from '../modules/i18n.js';
 import { rebuildSettings, bindSettingsDiscovery, showSettingsSaveStatus, bindSettingsNetworkUsage } from './settings/redesign.js';
 import { bindSettingsStatus } from './settings/status.js';
 import { bindSettingsDisplayRanks } from './settings/displayRanks.js';
@@ -411,7 +412,7 @@ export async function showSettingsScreen(
         window.location.hash = '#';
         return;
     }
-    DOM.pageHeader.innerHTML = `<h2 id="page-title">設定</h2>`;
+    DOM.pageHeader.innerHTML = `<h2 id="page-title">${t('settings.group.overview.title')}</h2>`;
     showScreenCompat('settings-screen', showScreenFn);
     const settingsScreenContext = getActiveScreenContext();
 
@@ -581,71 +582,74 @@ export async function showSettingsScreen(
                     <div class="settings-danger-zone nui-card nui-danger-card" data-nui="card"></div>
                 </section>
                 <section class="nui-section settings-group-panel" data-settings-panel="ui" hidden>
-                    <label for="setting-post-timestamp-format">ポスト日時の表示</label>
+                    <label for="setting-post-timestamp-format">${t('settings.post_timestamp')}</label>
                     <select id="setting-post-timestamp-format" class="settings-select nui-input">
-                        <option value="relative">相対</option>
-                        <option value="relative_detailed">相対</option>
-                        <option value="absolute_24">絶対</option>
-                        <option value="absolute_12">絶対</option>
+                        <option value="relative">${t('settings.timestamp.relative')}</option>
+                        <option value="relative_detailed">${t('settings.timestamp.relative')}</option>
+                        <option value="absolute_24">${t('settings.timestamp.absolute')}</option>
+                        <option value="absolute_12">${t('settings.timestamp.absolute')}</option>
                     </select>
-                    <p class="settings-help-text nui-help-text">プロフィールの参加日時には適用されません。</p>
-                    <label for="setting-emoji-kind">絵文字のフォント</label>
+                    <p class="settings-help-text nui-help-text">${t('settings.timestamp.help')}</p>
+                    <label for="setting-emoji-kind">${t('settings.emoji_font')}</label>
                     <select id="setting-emoji-kind" class="settings-select nui-input">
                         <option value="twemoji">Twemoji</option>
                         <option value="emojione">Emoji One</option>
-                        <option value="default">デフォルト</option>
+                        <option value="default">${t('settings.emoji.default')}</option>
                     </select>
-                    <label for="setting-content-editor">コンテンツエディタ</label>
+                    <label for="setting-content-editor">${t('settings.content_editor')}</label>
                     <select id="setting-content-editor" class="settings-select nui-input">
                         <option value="textarea">Textarea</option>
-                        <option value="nyaitter">Nyaitterエディタ</option>
+                        <option value="nyaitter">${t('settings.content_editor.nyaitter')}</option>
                     </select>
-                    <p class="settings-help-text nui-help-text">Textareaはブラウザ標準の入力欄です。NyaitterエディタはMarkdownとカスタム絵文字を入力中に表示します。</p>
-                    <fieldset class="nui-card settings-data-saver"><legend>通信量</legend>
-                        <label><input type="checkbox" id="setting-data-saver" ${getCurrentUser().settings?.data_saver ? 'checked' : ''}> データセーバーを有効にする</label>
-                        <p class="settings-help-text nui-help-text">画像は低画質プレビューで表示し、開いた時だけ元の画質を取得します。リアルタイム接続を停止し、一覧の一度の取得件数も減らします。</p>
+                    <p class="settings-help-text nui-help-text">${t('settings.content_editor.help')}</p>
+                    <fieldset class="nui-card settings-data-saver"><legend>${t('settings.data_usage')}</legend>
+                        <label><input type="checkbox" id="setting-data-saver" ${getCurrentUser().settings?.data_saver ? 'checked' : ''}> ${t('settings.data_saver')}</label>
+                        <p class="settings-help-text nui-help-text">${t('settings.data_saver.help')}</p>
                     </fieldset>
-                    <fieldset class="nui-card settings-community-notes"><legend>コミュニティノート</legend>
-                        <label><input type="checkbox" id="setting-show-community-notes" ${getCurrentUser().settings?.show_community_notes !== false ? 'checked' : ''}> コミュニティノートを表示する</label>
-                        <p class="settings-help-text nui-help-text">オフにすると、投稿に付いたコミュニティノートの取得と表示を行いません。</p>
+                    <fieldset class="nui-card settings-community-notes"><legend>${t('settings.community_notes')}</legend>
+                        <label><input type="checkbox" id="setting-show-community-notes" ${getCurrentUser().settings?.show_community_notes !== false ? 'checked' : ''}> ${t('settings.show_community_notes')}</label>
+                        <p class="settings-help-text nui-help-text">${t('settings.community_notes.help')}</p>
                     </fieldset>
-                    <fieldset class="nui-card settings-rank-display"><legend>ランク</legend>
-                        <label><input type="checkbox" id="setting-show-ranks" ${getCurrentUser().settings?.show_ranks === true ? 'checked' : ''}> ランクを表示する</label>
-                        <p class="settings-help-text nui-help-text">他のユーザーのアイコンにランクの色を表示します。自分の表示ランクはステータスで変更できます。</p>
+                    <fieldset class="nui-card settings-rank-display"><legend>${t('settings.rank')}</legend>
+                        <label><input type="checkbox" id="setting-show-ranks" ${getCurrentUser().settings?.show_ranks === true ? 'checked' : ''}> ${t('settings.show_ranks')}</label>
+                        <p class="settings-help-text nui-help-text">${t('settings.show_ranks.help')}</p>
                     </fieldset>
-                    <label for="setting-theme">テーマ</label>
+                    <label for="setting-theme">${t('settings.theme')}</label>
                     <select id="setting-theme" class="settings-select nui-input">
-                        <option value="auto">端末設定</option>
-                        <option value="light">ライト</option>
-                        <option value="dark">ダーク</option>
+                        <option value="auto">${t('settings.theme.auto')}</option>
+                        <option value="light">${t('settings.theme.light')}</option>
+                        <option value="dark">${t('settings.theme.dark')}</option>
                     </select>
-                    <label for="setting-ui-mode">表示UI</label>
+                    <label for="setting-ui-mode">${t('settings.ui_mode')}</label>
                     <select id="setting-ui-mode" class="settings-select nui-input">
                         <option value="nui">NyaitterUI</option>
                         <option value="legacy">LegacyUI</option>
                     </select>
-                    <p class="settings-help-text nui-help-text">画面のデザインを選びます。変更するとすぐに反映されます。</p>
-                    <label for="setting-color-theme">カラーテーマ</label>
+                    <p class="settings-help-text nui-help-text">${t('settings.ui_mode.help')}</p>
+                    <label for="setting-language">${t('settings.language')}</label>
+                    <select id="setting-language" class="settings-select nui-input"></select>
+                    <p class="settings-help-text nui-help-text">${t('settings.language_help')}</p>
+                    <label for="setting-color-theme">${t('settings.color_theme')}</label>
                     <select id="setting-color-theme" class="settings-select nui-input">
                         <option value="nyaitter">Nyaitter</option>
                         <option value="nyax">NyaX</option>
-                        <option value="custom">カスタム</option>
+                        <option value="custom">${t('settings.color_theme.custom')}</option>
                     </select>
-                    <p class="settings-help-text nui-help-text">アクセントカラーと選択状態の配色を変更します。</p>
+                    <p class="settings-help-text nui-help-text">${t('settings.color_theme.help')}</p>
                     <section id="settings-custom-colors" class="settings-custom-colors" hidden aria-labelledby="settings-custom-colors-title">
-                        <h4 class="nui-section-title" id="settings-custom-colors-title">カスタムカラー</h4>
-                        <p class="settings-help-text nui-help-text">各色はカラーピッカーまたは16進数カラーコードで指定できます。</p>
+                        <h4 class="nui-section-title" id="settings-custom-colors-title">${t('settings.custom_colors')}</h4>
+                        <p class="settings-help-text nui-help-text">${t('settings.custom_colors.help')}</p>
                         <div class="settings-color-grid">
-                            <label class="settings-color-field">メインカラー
+                            <label class="settings-color-field">${t('settings.color.primary')}
                                 <span class="settings-color-control"><input type="color" id="setting-color-primary-picker" data-color-key="primary_color"><input type="text" id="setting-color-primary" data-color-key="primary_color" class="settings-color-code" maxlength="7"></span>
                             </label>
-                            <label class="settings-color-field">ホバー時のメインカラー
+                            <label class="settings-color-field">${t('settings.color.primary_hover')}
                                 <span class="settings-color-control"><input type="color" id="setting-color-primary-hover-picker" data-color-key="primary_hover_color"><input type="text" id="setting-color-primary-hover" data-color-key="primary_hover_color" class="settings-color-code" maxlength="7"></span>
                             </label>
-                            <label class="settings-color-field">ライトモードの淡色
+                            <label class="settings-color-field">${t('settings.color.light_primary')}
                                 <span class="settings-color-control"><input type="color" id="setting-color-light-primary-picker" data-color-key="light_primary_color"><input type="text" id="setting-color-light-primary" data-color-key="light_primary_color" class="settings-color-code" maxlength="7"></span>
                             </label>
-                            <label class="settings-color-field">ダークモードの淡色
+                            <label class="settings-color-field">${t('settings.color.dark_light_primary')}
                                 <span class="settings-color-control"><input type="color" id="setting-color-dark-light-primary-picker" data-color-key="dark_light_primary_color"><input type="text" id="setting-color-dark-light-primary" data-color-key="dark_light_primary_color" class="settings-color-code" maxlength="7"></span>
                             </label>
                         </div>
@@ -796,6 +800,19 @@ export async function showSettingsScreen(
         getCurrentUser().settings?.theme || 'light';
     const uiModeSelect = document.getElementById('setting-ui-mode');
     if (uiModeSelect) uiModeSelect.value = getUiMode();
+
+    const languageSelect = document.getElementById('setting-language');
+    if (languageSelect) {
+        languageSelect.replaceChildren(
+            ...getAvailableLanguages().map((code) => {
+                const option = document.createElement('option');
+                option.value = code;
+                option.textContent = languageName(code);
+                return option;
+            }),
+        );
+        languageSelect.value = getLanguage();
+    }
 
     const colorThemeSelect = document.getElementById('setting-color-theme');
     const customColorsSection = document.getElementById('settings-custom-colors');
@@ -1862,8 +1879,8 @@ export async function showSettingsScreen(
                 ${zone === 'available' ? `
                     <button type="button" class="home-tab-action-btn home-tab-add-btn nui-button-secondary" data-action="add-tab" title="有効なタブに追加">＋ 追加</button>
                 ` : `
-                    <button type="button" class="home-tab-action-btn nui-button-secondary" data-action="move-up" title="上へ移動">↑</button>
-                    <button type="button" class="home-tab-action-btn nui-button-secondary" data-action="move-down" title="下へ移動">↓</button>
+                    <button type="button" class="home-tab-action-btn nui-button-secondary" data-action="move-up" title="${t('settings.menu.up')}">↑</button>
+                    <button type="button" class="home-tab-action-btn nui-button-secondary" data-action="move-down" title="${t('settings.menu.down')}">↓</button>
                     <button type="button" class="home-tab-action-btn home-tab-remove-btn nui-button-secondary" data-action="remove-tab" title="無効化" ${isOnlyActive ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : ''}>✕</button>
                 `}
             </div>
@@ -2060,19 +2077,19 @@ export async function showSettingsScreen(
         const rawHash = String(itemDef.hash || '');
         const hashHint = rawHash ? (rawHash.startsWith('#') ? rawHash : `#${rawHash}`) : '';
         const zoneAction = zone === 'more'
-            ? '<button type="button" class="side-menu-action-btn side-menu-to-bar-btn nui-button-secondary" data-action="to-bar" title="バーに表示し直す">バーへ</button>'
-            : '<button type="button" class="side-menu-action-btn side-menu-to-more-btn nui-button-secondary" data-action="to-more" title="その他にまとめる">その他へ</button>';
+            ? `<button type="button" class="side-menu-action-btn side-menu-to-bar-btn nui-button-secondary" data-action="to-bar" title="${t('settings.menu.to_bar_title')}">${t('settings.menu.to_bar')}</button>`
+            : `<button type="button" class="side-menu-action-btn side-menu-to-more-btn nui-button-secondary" data-action="to-more" title="${t('settings.menu.to_more_title')}">${t('settings.menu.to_more')}</button>`;
 
         // バー側の下限は設けないので、全項目を「その他」に移せる
         item.innerHTML = `
             <div class="side-menu-item-main">
-                <span class="side-menu-handle" title="ドラッグして並び替え">⠿</span>
-                <span class="side-menu-name nui-list-title">${escapeHTML(itemDef.name)}</span>
+                <span class="side-menu-handle" title="${t('settings.menu.drag')}">⠿</span>
+                <span class="side-menu-name nui-list-title">${escapeHTML(itemDef.labelKey ? t(itemDef.labelKey) : itemDef.name)}</span>
                 ${hashHint ? `<span class="side-menu-hash nui-list-meta">${escapeHTML(hashHint)}</span>` : ''}
             </div>
             <div class="side-menu-actions nui-actions">
-                <button type="button" class="side-menu-action-btn nui-button-secondary" data-action="move-up" title="上へ移動">↑</button>
-                <button type="button" class="side-menu-action-btn nui-button-secondary" data-action="move-down" title="下へ移動">↓</button>
+                <button type="button" class="side-menu-action-btn nui-button-secondary" data-action="move-up" title="${t('settings.menu.up')}">↑</button>
+                <button type="button" class="side-menu-action-btn nui-button-secondary" data-action="move-down" title="${t('settings.menu.down')}">↓</button>
                 ${zoneAction}
             </div>
         `;
@@ -2408,6 +2425,11 @@ export async function showSettingsScreen(
     settingsForm?.querySelectorAll('select, input[type="checkbox"]').forEach((control) => {
         control.addEventListener('change', async () => {
             if (control.dataset.imposterControl === 'true') return;
+            if (control.id === 'setting-language') {
+                if (await setLanguage(control.value)) window.location.reload();
+                else control.value = getLanguage();
+                return;
+            }
             if (control.id === 'setting-theme') applyInterfaceTheme(control.value);
             if (control.id === 'setting-ui-mode') setUiMode(control.value);
             if (control.id === 'setting-data-saver') applyDataSaverButtonState(control.checked);
