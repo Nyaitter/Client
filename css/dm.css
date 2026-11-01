@@ -1019,6 +1019,15 @@ body:has(#dm-screen:not(.hidden)) #content-area {
     height: 16px;
 }
 
+.dm-message-container.received .reply-dm-msg-btn {
+    border: 0;
+    padding: 0 0.25rem;
+    background: none;
+    color: var(--secondary-text-color);
+    font: inherit;
+    cursor: pointer;
+}
+
 .dm-message {
     padding: 0.5rem 0.7rem;
     border-radius: 18px;
