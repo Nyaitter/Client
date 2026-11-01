@@ -1,18 +1,19 @@
 import { SETTINGS_GROUP_DETAILS } from './config.js';
 import { ICONS } from '../../icons.js';
 import { getNetworkUsage, subscribeNetworkUsage, resetNetworkUsage } from '../../modules/networkUsage.js';
+import { isDataSaverEnabled } from '../../modules/theme.js';
 
 const NAVIGATION = [
-    ['あなたの情報', [['overview', 'settings'], ['profile', 'profile'], ['account', 'profile'], ['privacy', 'lock']]],
+    ['あなたの情報', [['overview', 'settings'], ['profile', 'profile'], ['status', 'status'], ['account', 'profile'], ['privacy', 'lock']]],
     ['使い心地', [['ui', 'stars'], ['editor', 'post'], ['home', 'home_outline'], ['menu', 'more'], ['filters', 'search'], ['notifications', 'notifications'], ['connection', 'explore']]],
-    ['管理と連携', [['storage', 'post'], ['apps', 'globe'], ['imposter', 'profile'], ['api', 'post'], ['resources', 'globe'], ['client', 'settings']]],
+    ['管理と連携', [['storage', 'post'], ['apps', 'globe'], ['imposter', 'profile'], ['api', 'post'], ['resources', 'globe'], ['client', 'client']]],
 ];
 
 export function rebuildSettings(root) {
     root.classList.add('settings-redesigned');
     const form = root.querySelector('#settings-form');
     const panel = key => form.querySelector(`[data-settings-panel="${key}"]`);
-    for (const key of ['overview', 'account', 'editor', 'filters', 'connection']) {
+    for (const key of ['overview', 'account', 'status', 'editor', 'filters', 'connection']) {
         const section = document.createElement('section');
         section.className = 'settings-group-panel';
         section.dataset.settingsPanel = key;
@@ -36,7 +37,7 @@ export function rebuildSettings(root) {
         <dl class="settings-usage-breakdown"><div><dt>ページ・画像・APIの受信（今月）</dt><dd data-usage="httpReceived"></dd></div><div><dt>投稿・ファイルなどの送信（今月）</dt><dd data-usage="httpSent"></dd></div><div><dt>Realtimeの受信（今月）</dt><dd data-usage="realtimeReceived"></dd></div><div><dt>Realtimeの送信（今月）</dt><dd data-usage="realtimeSent"></dd></div></dl>
         <p data-usage="coverage" class="settings-help-text nui-help-text" role="status"></p>
         <p class="settings-help-text nui-help-text">ブラウザーが取得できる受信転送サイズと送信本文を集計しています。送信ヘッダー、ファイル送信の区切り、Realtimeの通信ヘッダーは含みません。サイズを取得できない外部リソースなどもあり、通信会社の請求量とは一致しません。</p>
-        <button type="button" class="settings-secondary-button nui-button-secondary" id="settings-reset-network-usage">計測履歴をリセット</button>`;
+        <button type="button" class="settings-secondary-button nui-button-secondary" id="settings-reset-network-usage" ${isDataSaverEnabled() ? 'disabled aria-disabled="true" style="opacity:0.5;cursor:not-allowed;"' : ''}>計測履歴をリセット</button>`;
     panel('connection').prepend(usage);
     const dangerZone = form.querySelector('.settings-danger-zone');
     if (dangerZone) {

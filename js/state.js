@@ -44,7 +44,11 @@ export const getSelectedFiles = () => state.selectedFiles;
 export const setSelectedFiles = (val) => { state.selectedFiles = val; return val; };
 
 export const getCurrentUser = () => state.currentUser;
-export const setCurrentUser = (val) => { state.currentUser = val; return val; };
+export const setCurrentUser = (val) => {
+    state.currentUser = val;
+    if (typeof document !== 'undefined') document.dispatchEvent(new CustomEvent('current-user-change'));
+    return val;
+};
 
 export const getRealtimeChannel = () => state.realtimeChannel;
 export const setRealtimeChannel = (val) => { state.realtimeChannel = val; return val; };
@@ -147,4 +151,3 @@ export const setDmUnreadCounts = (val) => { state.dmUnreadCounts = val; return v
 
 export const getServerClientLimits = () => state.serverClientLimits;
 export const setServerClientLimits = (val) => { state.serverClientLimits = val; return val; };
-

@@ -1,29 +1,36 @@
-import { showStagesScreen } from './screens/stagesScreen.js';
-import { showCallScreen } from './screens/callScreen.js';
 import { showMainScreen } from './screens/timelineScreen.js';
-import { showExploreScreen } from './screens/exploreScreen.js';
-import { showSearchResults } from './screens/searchScreen.js';
-import { showNotificationsScreen } from './screens/notificationsScreen.js';
-import { showLikesScreen, showStarsScreen } from './screens/likesStarsScreen.js';
-import { showPostDetail } from './screens/postDetailScreen.js';
-import { showPostActivityScreen } from './screens/postActivityScreen.js';
-import { showDmScreen } from './screens/dmScreen.js';
-import { showProfileScreen } from './screens/profileScreen.js';
-import { getSettingsGroupFromHash } from './screens/settings/config.js';
-import { mountSettingsScreen } from './screens/settings/controller.js';
-import { showGroupsScreen, showGroupDetailScreen } from './screens/groupScreen.js';
 import {
-    showAdminReportsScreen,
-    showAdminReportDetailScreen,
-    showAdminLogsScreen,
-} from './screens/adminScreen.js';
-import { showRuleScreen } from './screens/ruleScreen.js';
-import { showNyaitterAuthScreen } from './screens/nyaitterAuthScreen.js';
-import { showDocsPortalScreen } from './screens/docsPortalScreen.js';
-import { showDocsApiScreen } from './screens/docsApiScreen.js';
-import { showDocDetailScreen } from './screens/docDetailScreen.js';
-import { openLoginApprovalModal } from './modules/auth.js';
-import { openAccountRecoveryModal } from './modules/auth.js';
+    openLoginApprovalModal,
+    openAccountRecoveryModal,
+} from './modules/auth.js';
+
+// Screens other than the main timeline are loaded on first navigation so the
+// initial page load only pays for the first screen. The router already awaits
+// handler results, so lazy handlers keep the exact same behavior apart from
+// a one-time module fetch when a screen is first opened.
+const lazyScreen = (importer, exportName) => async (...args) => (await importer())[exportName](...args);
+
+const showStagesScreen = lazyScreen(() => import('./screens/stagesScreen.js'), 'showStagesScreen');
+const showCallScreen = lazyScreen(() => import('./screens/callScreen.js'), 'showCallScreen');
+const showExploreScreen = lazyScreen(() => import('./screens/exploreScreen.js'), 'showExploreScreen');
+const showSearchResults = lazyScreen(() => import('./screens/searchScreen.js'), 'showSearchResults');
+const showNotificationsScreen = lazyScreen(() => import('./screens/notificationsScreen.js'), 'showNotificationsScreen');
+const showLikesScreen = lazyScreen(() => import('./screens/likesStarsScreen.js'), 'showLikesScreen');
+const showStarsScreen = lazyScreen(() => import('./screens/likesStarsScreen.js'), 'showStarsScreen');
+const showPostDetail = lazyScreen(() => import('./screens/postDetailScreen.js'), 'showPostDetail');
+const showPostActivityScreen = lazyScreen(() => import('./screens/postActivityScreen.js'), 'showPostActivityScreen');
+const showDmScreen = lazyScreen(() => import('./screens/dmScreen.js'), 'showDmScreen');
+const showProfileScreen = lazyScreen(() => import('./screens/profileScreen.js'), 'showProfileScreen');
+const showGroupsScreen = lazyScreen(() => import('./screens/groupScreen.js'), 'showGroupsScreen');
+const showGroupDetailScreen = lazyScreen(() => import('./screens/groupScreen.js'), 'showGroupDetailScreen');
+const showAdminReportsScreen = lazyScreen(() => import('./screens/adminScreen.js'), 'showAdminReportsScreen');
+const showAdminReportDetailScreen = lazyScreen(() => import('./screens/adminScreen.js'), 'showAdminReportDetailScreen');
+const showAdminLogsScreen = lazyScreen(() => import('./screens/adminScreen.js'), 'showAdminLogsScreen');
+const showRuleScreen = lazyScreen(() => import('./screens/ruleScreen.js'), 'showRuleScreen');
+const showNyaitterAuthScreen = lazyScreen(() => import('./screens/nyaitterAuthScreen.js'), 'showNyaitterAuthScreen');
+const showDocsPortalScreen = lazyScreen(() => import('./screens/docsPortalScreen.js'), 'showDocsPortalScreen');
+const showDocsApiScreen = lazyScreen(() => import('./screens/docsApiScreen.js'), 'showDocsApiScreen');
+const showDocDetailScreen = lazyScreen(() => import('./screens/docDetailScreen.js'), 'showDocDetailScreen');
 
 const screenHandlers = {
     stages: (_, showScreenFn) => showStagesScreen(null, showScreenFn),
@@ -58,10 +65,16 @@ const screenHandlers = {
         return showGroupDetailScreen(params.groupId, params.section, showScreenFn);
     },
     dm: (params, showScreenFn) => showDmScreen(params.dmId, showScreenFn),
-    settings: (params, showScreenFn) => mountSettingsScreen(
-        showScreenFn,
-        { group: getSettingsGroupFromHash(params.hash) },
-    ),
+    settings: async (params, showScreenFn) => {
+        const [{ mountSettingsScreen }, { getSettingsGroupFromHash }] = await Promise.all([
+            import('./screens/settings/controller.js'),
+            import('./screens/settings/config.js'),
+        ]);
+        return mountSettingsScreen(
+            showScreenFn,
+            { group: getSettingsGroupFromHash(params.hash) },
+        );
+    },
     'login-approval': async (params, showScreenFn) => {
         await showNotificationsScreen(showScreenFn);
         return openLoginApprovalModal(params.approvalId);

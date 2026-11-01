@@ -1,6 +1,7 @@
 import { DOM } from '../dom.js';
 import { ICONS, decorateMenuButtons } from '../icons.js';
 import { api, apiRequest } from '../api.js';
+import { rankAvatarAttributes, refreshRankAvatars } from '../modules/rankAvatarIntegration.js';
 import {
     getCurrentUser,
     setCurrentUser,
@@ -96,6 +97,7 @@ function restoreProfileIdentity() {
     }
     profileMorph = null;
     document.body.classList.remove('profile-morph-active');
+    refreshRankAvatars();
 }
 
 function updateProfileScrollProgress() {
@@ -182,6 +184,7 @@ function updateProfileScrollProgress() {
     id.style.width = `${Math.max(0, identityWidth - idLeft)}px`;
     profileMorph.count.textContent = document.getElementById('page-title-sub')?.textContent || '';
     profileMorph.count.style.top = `${nameHeight + 4}px`;
+    refreshRankAvatars();
     profileMorph.count.style.opacity = progress.toFixed(3);
     profileMorph.count.setAttribute('aria-hidden', progress === 0 ? 'true' : 'false');
     root.style.setProperty('--profile-collapse', progress.toFixed(3));
@@ -354,7 +357,11 @@ export async function getPublicProfile(userId, { forceRefresh = false } = {}) {
         `/server/api/users/${encodeURIComponent(normalizedId)}`,
     );
     if (!result.error && result.data?.user) {
-        getPublicProfileCache().set(normalizedId, result.data.user);
+        const publicProfileCache = getPublicProfileCache();
+        if (publicProfileCache.size >= 200 && !publicProfileCache.has(normalizedId)) {
+            publicProfileCache.delete(publicProfileCache.keys().next().value);
+        }
+        publicProfileCache.set(normalizedId, result.data.user);
         cacheUser(result.data.user);
     }
     return { data: result.data?.user || null, error: result.error };
@@ -472,7 +479,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
             profileHeader.setAttribute('data-nui', 'card');
             profileHeader.innerHTML = `
                 <div class="profile-hero-main">
-                    <img src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar profile-hero-avatar" alt="${escapeHTML(user.name)}'s icon">
+                    <img ${rankAvatarAttributes(user)} src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar profile-hero-avatar" alt="${escapeHTML(user.name)}'s icon">
                     <div class="profile-info profile-hero-copy">
                         <div class="profile-identity"><h2>${getEmoji(escapeHTML(user.name))}</h2>
                         <div class="user-id" title="Nyaitter ID">${getNyaitterId(user)}</div></div>
@@ -537,7 +544,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         profileHeader.innerHTML = `
             ${profileBannerHtml}
             <div class="profile-hero-main">
-                <img src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar profile-hero-avatar" alt="${escapeHTML(user.name)}'s icon">
+                <img ${rankAvatarAttributes(user)} src="${getUserIconUrl(user)}" class="user-icon-large nui-avatar profile-hero-avatar" alt="${escapeHTML(user.name)}'s icon">
                 <div class="profile-info profile-hero-copy">
                     <div class="profile-identity"><h2>
                         ${getEmoji(escapeHTML(user.name))}

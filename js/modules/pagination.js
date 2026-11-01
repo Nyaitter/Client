@@ -20,7 +20,7 @@ import {
     filterBlockedPosts,
     ensureMentionedUsersCached,
 } from './posts.js';
-import { getSavedScrollTargetY } from './scroll.js';
+import { getSavedScrollTargetY, scrollWindowTo } from './scroll.js';
 import { createViewportObserver } from '../utils/viewport.js';
 import { getPostsPerPage, isDataSaverEnabled } from './theme.js';
 import { getEmoji } from './format.js';
@@ -307,7 +307,10 @@ function createAdvertisingPost(config) {
             console.error('[advertising] ad slot initialization failed:', error);
             post.remove();
         }
-    }).catch(() => post.remove());
+    }).catch(() => {
+        console.error('[advertising] 広告枠を表示できませんでした。manifest の広告設定と CSP の許可オリジンが一致しているか確認してください。');
+        post.remove();
+    });
     return post;
 }
 
@@ -587,11 +590,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
             if (!postPageCache.pages.has(nextPageNum)) {
                 break;
             }
-            const currentDocHeight = Math.max(
-                document.documentElement.scrollHeight || 0,
-                document.body.scrollHeight || 0,
-                container.scrollHeight || 0,
-            );
+            const currentDocHeight = document.documentElement.scrollHeight || 0;
             if (currentDocHeight >= targetScrollY + window.innerHeight) {
                 break;
             }
@@ -610,7 +609,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
         }
 
         // キャッシュ復元完了直後に即座にスクロール位置を適用
-        window.scrollTo({ top: targetScrollY, left: 0, behavior: 'instant' });
+        scrollWindowTo(targetScrollY);
     }
 
     return {
@@ -883,11 +882,7 @@ export async function loadUsersWithPagination(container, type, options = {}) {
             if (!userPageCache.pages.has(nextPageNum)) {
                 break;
             }
-            const currentDocHeight = Math.max(
-                document.documentElement.scrollHeight || 0,
-                document.body.scrollHeight || 0,
-                container.scrollHeight || 0,
-            );
+            const currentDocHeight = document.documentElement.scrollHeight || 0;
             const viewportHeight = window.innerHeight || 0;
             if (currentDocHeight >= targetScrollY + viewportHeight * 0.5) {
                 break;

@@ -5,7 +5,9 @@ import {
     setPwaRegistrationPromise,
 } from '../state.js';
 import { showAppAlert } from '../utils/helpers.js';
-import { openCall } from './calls.js';
+// Calls are started from user actions / notification clicks only, so the
+// call stack is imported on first use instead of during initial page load.
+const openCall = async (...args) => (await import('./calls.js')).openCall(...args);
 
 export function supportsWebPush() {
     return (
@@ -235,10 +237,16 @@ export async function handlePendingPushNotificationOpen() {
     if (openType === 'dm_call') {
         const dmId = String(openTarget || '').trim();
         if (dmId) {
-            currentUrl.hash = `#dm/${encodeURIComponent(dmId)}`;
-            // 未ログイン時はハッシュ遷移だけでログインへ誘導し、通話参加はログイン後に任せる
             if (getCurrentUser()) {
+                // コール通知を開いたら、DM画面ではなく通話の参加前画面へ直接移動する。
+                // openCall はハッシュを #call/dm/:id に切り替えるため、後段の
+                // replaceState も同じハッシュに合わせる。ここで #dm/:id のまま
+                // 上書きすると参加前画面に到達できない。
+                currentUrl.hash = `#call/dm/${encodeURIComponent(dmId)}`;
                 void openCall('dm', dmId, { requireActive: true }).catch(error => showAppAlert(error.message));
+            } else {
+                // 未ログイン時はDMへハッシュ遷移してログインへ誘導し、通話参加はログイン後に任せる
+                currentUrl.hash = `#dm/${encodeURIComponent(dmId)}`;
             }
         }
         replaceCurrentLocation(currentUrl);

@@ -1,3 +1,5 @@
+import { guardSearchFormComposition } from '../../utils/searchIme.js';
+
 const quote = value => `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
 export function readAdvancedSearch(query = '') {
@@ -86,6 +88,7 @@ export function bindAdvancedSearch(header, context) {
         </section>`;
         const previousOverflow = document.body.style.overflow;
         const form = modal.querySelector('form');
+        guardSearchFormComposition(form);
         for (const [name, value] of Object.entries(initial)) {
             const input = form.elements.namedItem(name);
             if (input.type === 'checkbox') input.checked = value;

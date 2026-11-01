@@ -8,7 +8,7 @@ import {
     setScreenDataCache,
 } from '../modules/cache.js';
 import { renderPost } from '../modules/posts.js';
-import { getScrollRouteKey, getSavedScrollPositions } from '../modules/scroll.js';
+import { getScrollRouteKey, getSavedScrollPositions, scrollWindowTo } from '../modules/scroll.js';
 import { createViewportObserver } from '../utils/viewport.js';
 import { showLoading } from '../utils/helpers.js';
 import { showScreenCompat } from '../screenManager.js';
@@ -371,8 +371,8 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         );
 
         const savedDetailPosition =
-            getSavedScrollPositions()[getScrollRouteKey()];
-        const savedDetailY = Number(savedDetailPosition?.y);
+            getSavedScrollPositions().get(getScrollRouteKey());
+        const savedDetailY = Number(savedDetailPosition);
         const hasSavedScroll = Number.isFinite(savedDetailY) && savedDetailY > 0;
         const restoreTargetY = hasSavedScroll ? savedDetailY : 0;
 
@@ -399,7 +399,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                 const rect = immediateParentEl.getBoundingClientRect();
                 const targetTop = window.scrollY + rect.top - headerOffset;
                 if (targetTop > 0) {
-                    window.scrollTo({ top: Math.max(0, targetTop), behavior: 'instant' });
+                    scrollWindowTo(Math.max(0, targetTop));
                 }
             });
         }

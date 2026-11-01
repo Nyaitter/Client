@@ -16,6 +16,30 @@ export {
 // ルート直下絶対パスではなく、このモジュール (js/modules/) からの相対で解決する。
 // 配信ベース配下 (任意のリバースプロキシ接頭辞) でも壊れない。
 const EMOJI_BASE_URL = new URL('../../emoji/', import.meta.url);
+
+// emoji-mart is only needed when the picker is opened, so load it on first
+// use instead of blocking the initial page load with a synchronous script.
+const EMOJI_MART_SRC = 'https://cdn.jsdelivr.net/npm/emoji-mart@5.6.0/dist/browser.js';
+const EMOJI_MART_INTEGRITY = 'sha384-lONtvEeik96slH87Kr9CY74xGakohuxbgkyhwbPDOM9ZzVfW7Twaltwp+WrerZ9k';
+let emojiMartPromise = null;
+function ensureEmojiMart() {
+    if (window.EmojiMart) return Promise.resolve();
+    if (!emojiMartPromise) {
+        emojiMartPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = EMOJI_MART_SRC;
+            script.integrity = EMOJI_MART_INTEGRITY;
+            script.crossOrigin = 'anonymous';
+            script.onload = () => resolve();
+            script.onerror = (error) => {
+                emojiMartPromise = null;
+                reject(error);
+            };
+            document.head.appendChild(script);
+        });
+    }
+    return emojiMartPromise;
+}
 const LOGO_URL = new URL('../../logo.png', import.meta.url).href;
 
 export async function emoji_picker_create({
@@ -23,7 +47,7 @@ export async function emoji_picker_create({
     onClickOutside = () => {},
     triggerButton = null,
 } = {}) {
-    await customEmojiPromise;
+    await Promise.all([customEmojiPromise, ensureEmojiMart()]);
     const custom = customEmojiIds.map((item) => ({
         id: item,
         name: item,

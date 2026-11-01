@@ -9,6 +9,20 @@ async function request(path, options = {}) {
     return data;
 }
 
+const endingStages = new Map();
+export function endStage(stageId, { signal } = {}) {
+    const id = String(stageId);
+    if (endingStages.has(id)) return endingStages.get(id);
+    const ending = (async () => {
+        if (!await showAppConfirm('ステージを終了しますか？ 参加者全員が退出します。')) return null;
+        if (signal?.aborted) return null;
+        return request(`/stages/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status: 'ended' }, signal });
+    })();
+    endingStages.set(id, ending);
+    void ending.finally(() => { if (endingStages.get(id) === ending) endingStages.delete(id); }).catch(() => {});
+    return ending;
+}
+
 const inviteFields = (prefix, { buttonLabel = '招待する', note = '候補を選んでから招待します。' } = {}) => `
     <label for="${prefix}-search">ユーザーIDまたはハンドル</label>
     <input id="${prefix}-search" class="nui-input" type="search" autocomplete="off" placeholder="#1234 または @handle" data-invite-input>
@@ -43,14 +57,25 @@ function bindStageManage(root, stage, stageId, { signal, onUpdated } = {}) {
         const target = root.querySelector('[data-stage-manage-error]');
         if (target) target.textContent = error.message;
     };
+    let busy = false;
     const update = async payload => {
-        await request(`/stages/${encodeURIComponent(stageId)}`, { method: 'PATCH', body: payload, signal });
-        if (!signal?.aborted) await onUpdated?.();
+        if (busy) throw new Error('処理中です。');
+        busy = true;
+        try {
+            const data = payload.status === 'ended'
+                ? await endStage(stageId, { signal })
+                : await request(`/stages/${encodeURIComponent(stageId)}`, { method: 'PATCH', body: payload, signal });
+            if (!data) return false;
+            if (!signal?.aborted) await onUpdated?.(data.stage);
+            return true;
+        } finally {
+            busy = false;
+        }
     };
     for (const button of root.querySelectorAll('[data-stage-status]')) button.onclick = async () => {
-        if (button.dataset.stageStatus === 'ended' && !await showAppConfirm('ステージを終了しますか？ 参加者全員が退出します。')) return;
+        if (busy || button.disabled) return;
         button.disabled = true;
-        try { await update({ status: button.dataset.stageStatus }); }
+        try { if (!await update({ status: button.dataset.stageStatus })) button.disabled = false; }
         catch (error) { report(error); button.disabled = false; }
     };
     const guestToggle = root.querySelector('[data-stage-guest-toggle]');
@@ -89,13 +114,21 @@ function bindStageManage(root, stage, stageId, { signal, onUpdated } = {}) {
             emptyText: 'スピーカーにするユーザーを検索してください。',
         });
         const ids = (stage.speaker_ids || []).map(Number);
+        if (submit) submit.disabled = true;
+        const finishSpeakerPreload = () => {
+            if (!signal?.aborted && submit) submit.disabled = false;
+        };
         if (ids.length) {
             void api.from('user').select('id, name, scid, me, nyaitter_id, icon_data').in('id', ids).signal(signal)
                 .then(({ data: users, error }) => {
-                    if (signal?.aborted || error) return;
+                    if (signal?.aborted) return;
+                    if (error) throw error;
                     for (const user of Array.isArray(users) ? users : []) picker.add(user);
+                    finishSpeakerPreload();
                 })
-                .catch(() => {});
+                .catch(report);
+        } else {
+            finishSpeakerPreload();
         }
         speakerForm.onsubmit = async event => {
             event.preventDefault();
@@ -146,7 +179,11 @@ export async function openStageManageModal(stageId, { onUpdated } = {}) {
         body.innerHTML = stageManageMarkup(data.stage);
         bindStageManage(body, data.stage, stageId, {
             signal: controller.signal,
-            onUpdated: async () => { onUpdated?.(); await render(); },
+            onUpdated: async stage => {
+                onUpdated?.(stage);
+                if (stage?.status === 'ended') close();
+                else await render();
+            },
         });
     };
     dialog.showModal();

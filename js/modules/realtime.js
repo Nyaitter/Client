@@ -1,4 +1,26 @@
-import { handleCallEvent, callConnectionClosed } from './calls.js';
+// The call stack (callsCore) is only needed while a call is active. Call
+// events are always consumed by the call handler (events for rooms without
+// an open call panel are dropped there), so dispatch can safely go through
+// a lazy import: the first call event loads the stack, later events reuse
+// the same promise and therefore stay in arrival order.
+let callsModulePromise = null;
+function loadCallsModule() {
+    if (!callsModulePromise) {
+        callsModulePromise = import('./calls.js');
+    }
+    return callsModulePromise;
+}
+function dispatchCallEvent(event) {
+    void loadCallsModule()
+        .then((module) => module.handleCallEvent(event))
+        .catch(() => {});
+}
+function notifyCallConnectionClosed() {
+    if (!callsModulePromise) return;
+    void callsModulePromise
+        .then((module) => module.callConnectionClosed())
+        .catch(() => {});
+}
 import { apiRequest } from '../api.js';
 import { trackRealtimeUsage } from './networkUsage.js';
 import {
@@ -26,7 +48,7 @@ import {
     invalidateDmCaches,
     queueRealtimeTimelineUpdate,
 } from './cache.js';
-import { appendRealtimeDmMessage } from './dm.js';
+import { appendRealtimeDmMessage, updateRealtimeDmMessage } from './dm.js';
 import { updateNavAndSidebars } from './sidebar.js';
 
 const { apiWebSocketUrl } = globalThis.NyaitterClientConfig || {};
@@ -74,7 +96,7 @@ export function clearRealtimeTimers() {
 
 export function stopRealtimeConnection() {
     guestRealtime = false;
-    callConnectionClosed();
+    notifyCallConnectionClosed();
     setRealtimeShouldReconnect(false);
     clearRealtimeTimers();
     const socket = getRealtimeChannel();
@@ -113,7 +135,10 @@ export function scheduleRealtimeReconnect() {
 export function handleRealtimeEvent(event) {
     const user = getCurrentUser();
     if (!event || typeof event.type !== 'string') return;
-    if (handleCallEvent(event)) return;
+    if (event.type.startsWith('call:')) {
+        dispatchCallEvent(event);
+        return;
+    }
     if (!user) return;
 
     if (event.type === 'notification_new') {
@@ -167,6 +192,12 @@ export function handleRealtimeEvent(event) {
             event.message,
             event.sender || null,
         );
+        return;
+    }
+
+    if (event.type === 'dm_message_edited') {
+        invalidateDmCaches(event.dm_id);
+        void updateRealtimeDmMessage(event.dm_id, event.message);
         return;
     }
 
@@ -295,7 +326,7 @@ export function connectRealtimeSocket(guestMode = guestRealtime) {
 
     socket.onclose = () => {
         if (getRealtimeChannel() !== socket) return;
-        callConnectionClosed();
+        notifyCallConnectionClosed();
         setRealtimeChannel(null);
         setRealtimeAuthKey(null);
         if (getRealtimePingTimer()) clearInterval(getRealtimePingTimer());
@@ -372,4 +403,21 @@ export function applyDataSaverRealtimePreference() {
     if (!getCurrentUser()) return;
     if (isDataSaverEnabled()) unsubscribeFromChanges();
     else subscribeToChanges();
+}
+
+export function applyDataSaverButtonState(enabled = isDataSaverEnabled()) {
+    const isDisabled = Boolean(enabled);
+    const targets = [
+        document.getElementById('settings-reset-network-usage'),
+        document.querySelector('[data-action="refresh-realtime-timeline"]'),
+    ];
+    for (const target of targets) {
+        if (!target) continue;
+        target.disabled = isDisabled;
+        target.toggleAttribute('disabled', isDisabled);
+        target.setAttribute('aria-disabled', String(isDisabled));
+        target.style.opacity = isDisabled ? '0.5' : '';
+        target.style.cursor = isDisabled ? 'not-allowed' : '';
+        target.classList.toggle('is-disabled-by-data-saver', isDisabled);
+    }
 }

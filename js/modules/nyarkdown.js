@@ -143,7 +143,7 @@ const DECORATION_DIRECTIVE_PATTERN =
     /\[(?:\/([a-z]{0,6})|([a-z]{1,6})=([^\]\r\n]{1,32}))\]/gi;
 const URL_REGEX =
     /(https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=;]*))/g;
-const HASHTAG_REGEX = /#([^<>\/@#\s]+)/g;
+const HASHTAG_REGEX = /(?<!&)#([^<>\/@#&\s]+)/g;
 const MENTION_REGEX = /@(\d+)/g;
 /**
  * NyarkDown本文を安全なHTMLへ変換します。
@@ -238,9 +238,16 @@ export function renderNyarkDown(
         processed = replaceCustomEmoji(processed);
         processed = getEmoji(processed);
 
-        processed = processed.replace(HASHTAG_REGEX, (_, tagName) =>
-            `<a href="#search/${encodeURIComponent(tagName)}">#${getEmoji(tagName)}</a>`,
-        );
+        processed = processed.replace(HASHTAG_REGEX, (_, tagName) => {
+            if (/^\d+$/.test(tagName)) {
+                const numericId = parseInt(tagName, 10);
+                const user = getCachedUser(numericId, userCache);
+                if (user) {
+                    return `<a href="#profile/${numericId}" class="hashtag-mention">#${getEmoji(tagName)}</a>`;
+                }
+            }
+            return `<a href="#search/${encodeURIComponent(tagName)}">#${getEmoji(tagName)}</a>`;
+        });
         processed = processed.replace(MENTION_REGEX, (match, userId) => {
             const numericId = parseInt(userId, 10);
             const user = getCachedUser(numericId, userCache);

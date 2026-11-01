@@ -1,4 +1,5 @@
 import { ICONS } from '../icons.js';
+import { rankAvatarAttributes } from './rankAvatarIntegration.js';
 import { escapeHTML, formatNyaitterId, getUserIconUrl } from '../utils/helpers.js';
 
 export const roleName = role => ({ host: 'ホスト', speaker: 'スピーカー', audience: 'リスナー', member: '参加者' })[role] || '参加者';
@@ -6,7 +7,7 @@ const initial = name => escapeHTML(Array.from(name || '?')[0]);
 const avatar = (person, extra = '') => {
     const name = typeof person === 'string' ? person : person?.name;
     const id = person?.id ?? person?.user_id;
-    const image = id && !String(id).startsWith('guest:') ? `<img src="${escapeHTML(getUserIconUrl({ ...person, id }))}" alt="" loading="lazy">` : initial(name);
+    const image = id && !String(id).startsWith('guest:') ? `<img ${rankAvatarAttributes({ ...person, id })} src="${escapeHTML(getUserIconUrl({ ...person, id }))}" alt="" loading="lazy">` : initial(name);
     return `<span class="call-avatar nui-avatar ${extra}" aria-hidden="true">${image}</span>`;
 };
 const tool = (action, icon, label, attributes = '') => `<button type="button" class="call-tool-button" data-call-action="${action}" title="${label}" aria-label="${label}" ${attributes}>${icon}<span>${label}</span></button>`;
@@ -67,6 +68,11 @@ function observePanelAspect(panel) {
     }
 }
 
+export function releaseCallView(panel) {
+    aspectObservers.get(panel)?.disconnect();
+    aspectObservers.delete(panel);
+}
+
 export function callMarkup(kind, info, user, canCapture, uid = '') {
     const suffix = uid === '' ? '' : `-${uid}`;
     const isStage = kind === 'stage';
@@ -101,7 +107,7 @@ export function callMarkup(kind, info, user, canCapture, uid = '') {
                 </section>
             </div>
         </div>
-        <footer class="call-panel-footer" data-call-in-session hidden><div class="call-footer-devices" data-call-device-target></div><div class="call-tools" data-call-publisher-tools hidden>${tool('share', ICONS.screenShare, '画面共有', 'aria-pressed="false" hidden')}</div><div class="call-footer-actions">${tool('transcribe', ICONS.captions, '文字起こしを表示', 'aria-pressed="false"')}${tool('play', ICONS.phone, '音声を再生', 'hidden')}${tool('chat', ICONS.dm, isStage ? 'コメント' : 'チャット', 'aria-pressed="true"')}<button type="button" class="call-leave-button" data-call-action="leave" title="退出">${ICONS.phoneEnd}<span>退出</span></button></div><div class="call-footer-utility">${isStage && info.role === 'host' ? tool('manage-stage', ICONS.sliders, 'ステージ管理') : ''}${tool('settings', ICONS.settings, '設定')}</div></footer>
+        <footer class="call-panel-footer" data-call-in-session hidden><div class="call-footer-devices" data-call-device-target></div><div class="call-tools" data-call-publisher-tools hidden>${tool('share', ICONS.screenShare, '画面共有', 'aria-pressed="false" hidden')}</div><div class="call-footer-actions">${tool('transcribe', ICONS.captions, '文字起こしを表示', 'aria-pressed="false"')}${tool('play', ICONS.phone, '音声を再生', 'hidden')}${tool('chat', ICONS.dm, isStage ? 'コメント' : 'チャット', 'aria-pressed="true"')}<button type="button" class="call-leave-button" data-call-action="leave" title="退出">${ICONS.phoneEnd}<span>退出</span></button>${isStage && info.role === 'host' && !info.guest ? `<button type="button" class="call-leave-button call-end-stage-button" data-call-action="end-stage" title="ステージ終了" aria-label="ステージ終了">${ICONS.phoneEnd}<span>ステージ終了</span></button>` : ''}</div><div class="call-footer-utility">${isStage && info.role === 'host' ? tool('manage-stage', ICONS.sliders, 'ステージ管理') : ''}${tool('settings', ICONS.settings, '設定')}</div></footer>
         ${settingsModal(canCapture, audience, suffix)}`;
 }
 

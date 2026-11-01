@@ -1,6 +1,7 @@
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { api, apiRequest } from '../api.js';
+import { rankAvatarAttributes } from '../modules/rankAvatarIntegration.js';
 import {
     getCurrentUser,
     getAllUsersCache,
@@ -23,6 +24,10 @@ import {
     attachDmMessageClamp,
     initializeDmMessageClamps,
     flushRealtimeDmMessages,
+    beginDmEditLoad,
+    isCurrentDmEditLoad,
+    setDmEditLoadPosts,
+    flushDmEdits,
     handleDmButtonClick,
     handleUpdateDmTitle,
     handleRemoveDmMember,
@@ -32,13 +37,38 @@ import {
     handleDisbandDm,
     handleAcceptDmRequest,
     handleDeclineDmRequest,
-    sendSystemDmMessage,
+    createDmRequestId,
 } from '../modules/dm.js';
 import { filterBlockedPosts, uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
 import { getEmoji } from '../modules/format.js';
 import { attachMarkdownContentEditor, getMarkdownEditorValue, setMarkdownEditorValue, setupMarkdownEditorPreviewButton } from '../modules/editor.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { initTabGroup } from '../modules/tabSwipe.js';
+
+let dmListTabGroupController = null;
+let activeDmReplySetter = null;
+
+// The conversation container is a persistent shell element whose contents
+// are re-rendered per conversation. Bind the reply delegates once and
+// dispatch to the current conversation's setReply, so opening a
+// conversation no longer stacks another anonymous handler pair on the
+// container every time.
+function ensureDmConversationDelegates(container) {
+    if (container.dataset.dmReplyDelegatesBound === '1') return;
+    container.dataset.dmReplyDelegatesBound = '1';
+    container.addEventListener('click', (event) => {
+        const button = event.target.closest('.reply-dm-msg-btn');
+        const message = button?.closest('.dm-message-container.received');
+        if (!message?.dataset.messageId) return;
+        button.closest('.post-menu')?.classList.remove('is-visible');
+        activeDmReplySetter?.(message);
+    });
+    container.addEventListener('dblclick', (event) => {
+        if (event.target.closest('button, a, video, audio, .post-menu')) return;
+        const message = event.target.closest('.dm-message')?.closest('.dm-message-container.received');
+        if (message?.querySelector('.reply-dm-msg-btn')) activeDmReplySetter?.(message);
+    });
+}
 import { sendNotification } from '../modules/notifications.js';
 import { createViewportObserver } from '../utils/viewport.js';
 import {
@@ -104,7 +134,7 @@ function renderDmListItem(dm, unreadCount, currentUserId) {
         const otherUser = otherUsers[0];
         if (!title) title = otherUser.name || `ユーザー #${otherUser.id}`;
         subtitle = getNyaitterId(otherUser);
-        avatarHtml = `<img src="${getUserIconUrl(otherUser)}" class="dm-list-item-avatar nui-avatar" alt="">`;
+        avatarHtml = `<img ${rankAvatarAttributes(otherUser)} src="${getUserIconUrl(otherUser)}" class="dm-list-item-avatar nui-avatar" alt="">`;
     } else if (otherUsers.length > 1) {
         if (!title) {
             title = otherUsers.map((u) => u.name || `#${u.id}`).join(', ');
@@ -113,13 +143,13 @@ function renderDmListItem(dm, unreadCount, currentUserId) {
         const firstAvatar = otherUsers[0] ? getUserIconUrl(otherUsers[0]) : getUserIconUrl({});
         const secondAvatar = otherUsers[1] ? getUserIconUrl(otherUsers[1]) : getUserIconUrl({});
         avatarHtml = `<div class="dm-group-avatar-stack">
-            <img src="${firstAvatar}" class="dm-list-item-avatar nui-avatar dm-group-avatar-1" alt="">
-            <img src="${secondAvatar}" class="dm-list-item-avatar nui-avatar dm-group-avatar-2" alt="">
+            <img ${rankAvatarAttributes(otherUsers[0])} src="${firstAvatar}" class="dm-list-item-avatar nui-avatar dm-group-avatar-1" alt="">
+            <img ${rankAvatarAttributes(otherUsers[1])} src="${secondAvatar}" class="dm-list-item-avatar nui-avatar dm-group-avatar-2" alt="">
         </div>`;
     } else {
         if (!title) title = '自分のみのメッセージ';
         subtitle = 'プライベートメモ';
-        avatarHtml = `<img src="${getUserIconUrl(getCurrentUser())}" class="dm-list-item-avatar nui-avatar" alt="">`;
+        avatarHtml = `<img ${rankAvatarAttributes(getCurrentUser())} src="${getUserIconUrl(getCurrentUser())}" class="dm-list-item-avatar nui-avatar" alt="">`;
     }
 
     if (isDmPending(dm)) {
@@ -269,7 +299,8 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
                 restoreScrollPosition(getScrollRouteKey('#dm', tab));
             };
 
-            initTabGroup({
+            dmListTabGroupController?.destroy();
+            dmListTabGroupController = initTabGroup({
                 container: tabsContainer,
                 tabSelector: '.dm-tab-button',
                 contentContainer: listItemsWrapper,
@@ -297,30 +328,88 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
     }
 }
 
-export async function showDmConversation(dmId) {
+export async function showDmConversation(dmId, { unreadBefore = null, refreshAttempt = 0 } = {}) {
     const container = document.getElementById('dm-conversation-container');
     if (!container) return;
+    const dmConversationCacheKey = getDmCacheKey('conversation', String(dmId));
+    const editLoad = beginDmEditLoad(dmId, {
+        useCached: Boolean(getScreenDataCache(dmConversationCacheKey)),
+    });
     container.innerHTML = '<div class="spinner"></div>';
 
     let dmSelectedFiles = [];
+    let carriedUnreadBefore = unreadBefore;
+    let refreshPromise = null;
+
+    const reloadConversation = () => {
+        if (refreshPromise) return refreshPromise;
+        deleteScreenDataCache(dmConversationCacheKey);
+        if (refreshAttempt < 1) {
+            refreshPromise = showDmConversation(dmId, {
+                unreadBefore: carriedUnreadBefore,
+                refreshAttempt: refreshAttempt + 1,
+            });
+            return refreshPromise;
+        }
+        if (isCurrentDmEditLoad(editLoad)) {
+            container.innerHTML = `
+                <div class="error-message" role="alert" style="margin:2rem;">
+                    最新のメッセージを取得できませんでした。
+                    <button type="button" class="dm-refresh-retry-btn">再試行</button>
+                </div>`;
+            container.querySelector('.dm-refresh-retry-btn')?.addEventListener('click', () => {
+                void showDmConversation(dmId, { unreadBefore: carriedUnreadBefore });
+            }, { once: true });
+        }
+        return Promise.resolve();
+    };
+    editLoad.onStale = () => {
+        queueMicrotask(() => {
+            if (isCurrentDmEditLoad(editLoad) && editLoad.awaitingFresh) void reloadConversation();
+        });
+    };
 
     try {
-        const dmConversationCacheKey = getDmCacheKey('conversation', String(dmId));
-        let dmPayload = getScreenDataCache(dmConversationCacheKey);
+        let dmPayload = editLoad.useCache ? getScreenDataCache(dmConversationCacheKey) : null;
+        // 編集を捨てた会話はキャッシュに戻さず、サーバーの最新内容で作り直す。
+        // 描画後に保留中の編集を反映する。作り直しが必要なら false、表示が切り替わっていれば null。
+        const applyPendingEdits = async (load) => {
+            const applied = await flushDmEdits(load, {
+                discardIfStale: true,
+                isRenderActive: () => isCurrentDmEditLoad(load),
+            });
+            if (!isCurrentDmEditLoad(load)) return null;
+            if (!applied && load.awaitingFresh) {
+                await reloadConversation();
+                return null;
+            }
+            await flushRealtimeDmMessages(dm.id);
+            if (!isCurrentDmEditLoad(load)) return null;
+            if (!applied && load.awaitingFresh) {
+                await reloadConversation();
+                return null;
+            }
+            return true;
+        };
         let error = null;
         const usedCachedPayload = Boolean(dmPayload);
-        let cachedUnreadBefore = 0;
+        let cachedUnreadBefore = carriedUnreadBefore ?? 0;
         let readSucceeded = !usedCachedPayload;
 
         if (!dmPayload) {
             const result = await apiRequest(`/server/api/dm/${encodeURIComponent(dmId)}?mark_read=1`);
             dmPayload = result.data || {};
             error = result.error;
-            if (!error) setScreenDataCache(dmConversationCacheKey, dmPayload);
+            // 再取得待ちの初回レスポンスを、古い内容のままキャッシュへ戻さない。
+            if (!error && !editLoad.awaitingFresh && !editLoad.refreshing) {
+                setScreenDataCache(dmConversationCacheKey, dmPayload);
+            }
         } else {
             const key = String(dmId);
-            cachedUnreadBefore = Number(getDmUnreadCounts().get(key) || 0);
-            if (cachedUnreadBefore > 0) {
+            cachedUnreadBefore = Number(getDmUnreadCounts().get(key) || carriedUnreadBefore || 0);
+            // 再取得前のキャッシュは編集を破棄している可能性があるため既読扱いにしない。
+            const keepUnread = editLoad.refreshing;
+            if (cachedUnreadBefore > 0 && !keepUnread) {
                 getDmUnreadCounts().set(key, 0);
                 getCurrentUser().unreadDmTotal = Math.max(
                     0,
@@ -329,16 +418,21 @@ export async function showDmConversation(dmId) {
                 deleteScreenDataCache(getDmCacheKey('list'));
                 void updateNavAndSidebars();
             }
-            // /read の完了を待たずにバックグラウンドで非同期送信
-            void apiRequest(
-                `/server/api/dm/${encodeURIComponent(dmId)}/read`,
-                { method: 'POST' },
-            ).catch((readErr) => {
-                console.warn('DM既読化バックグラウンド送信失敗:', readErr);
-            });
+            if (cachedUnreadBefore > 0) {
+                // /read の完了を待たずにバックグラウンドで非同期送信
+                void apiRequest(
+                    `/server/api/dm/${encodeURIComponent(dmId)}/read`,
+                    { method: 'POST' },
+                ).catch((readErr) => {
+                    console.warn('DM既読化バックグラウンド送信失敗:', readErr);
+                });
+            }
         }
 
+        if (!isCurrentDmEditLoad(editLoad)) return;
         const dm = Array.isArray(dmPayload?.dm) ? dmPayload.dm[0] : null;
+        // 再取得ではキャッシュ経由の既読処理が無いため、前回の未読数を引き継ぐ。
+        carriedUnreadBefore = cachedUnreadBefore;
         for (const member of dmPayload?.members || []) {
             cacheUser(member);
         }
@@ -348,9 +442,13 @@ export async function showDmConversation(dmId) {
             getCurrentUser().unreadDmTotal = Number(dmPayload?.unread_total || 0);
         }
         if (dm) {
-            getDmUnreadCounts().set(String(dm.id), 0);
+            if (!editLoad.refreshing) getDmUnreadCounts().set(String(dm.id), 0);
             deleteScreenDataCache(getDmCacheKey('list'));
             if (!error) void updateNavAndSidebars();
+        }
+        if (error && (editLoad.awaitingFresh || editLoad.refreshing)) {
+            await reloadConversation();
+            return;
         }
         if (error || !dm || !dm.member.includes(getCurrentUser().id)) {
             DOM.pageHeader.innerHTML = `
@@ -395,6 +493,16 @@ export async function showDmConversation(dmId) {
         setActiveDmId(String(dm.id));
         let posts = dm.post || [];
         posts = filterBlockedPosts(posts);
+        setDmEditLoadPosts(editLoad, posts, {
+            fromCache: usedCachedPayload,
+            mergeErrors: Boolean(error),
+        });
+        // 再取得は同じ表示を継続できるよう、読み込み用の変数ではなく記録した状態で判定する。
+        if (editLoad.awaitingFresh || editLoad.refreshing) {
+            await reloadConversation();
+            return;
+        }
+        if (!error && !usedCachedPayload) setScreenDataCache(dmConversationCacheKey, dmPayload);
         const allUserIdsInDm = new Set(dm.member);
 
         posts.forEach((msg) => {
@@ -416,15 +524,17 @@ export async function showDmConversation(dmId) {
                 .in('id', newIdsToFetch);
             if (users) cacheUsers(users);
         }
+        if (!isCurrentDmEditLoad(editLoad)) return;
 
         const DM_CONVERSATION_PAGE_SIZE = 30;
         const initialSlice = posts.slice(Math.max(0, posts.length - DM_CONVERSATION_PAGE_SIZE));
         let loadedCount = initialSlice.length;
 
         const messagesHTMLArray = await Promise.all(
-            initialSlice.slice().reverse().map((msg) => renderDmMessage(msg, dm.id)),
+            initialSlice.slice().reverse().map((msg) => renderDmMessage(msg, dm.id, posts)),
         );
         const messagesHTML = messagesHTMLArray.join('');
+        if (!isCurrentDmEditLoad(editLoad)) return;
 
         const isPending = isDmPending(dm);
 
@@ -444,7 +554,7 @@ export async function showDmConversation(dmId) {
             `;
 
             void updateNavAndSidebars();
-            await flushRealtimeDmMessages(dm.id);
+            if (await applyPendingEdits(editLoad) === null) return;
             initializeDmMessageClamps(container);
 
             document.getElementById('dm-accept-request-btn')?.addEventListener('click', async () => {
@@ -467,6 +577,7 @@ export async function showDmConversation(dmId) {
                 <div class="dm-conversation-view">${messagesHTML}</div>
                 <div class="dm-message-form">
                     <div class="dm-form-content">
+                        <div class="dm-reply-mode" hidden><span>メッセージに返信中</span> <button type="button" class="dm-reply-cancel" aria-label="返信をキャンセル">×</button></div>
                         <div class="file-preview-container dm-file-preview"></div>
                         <div class="markdown-textarea-editor dm-content-editor">
                             <textarea id="dm-message-input" class="markdown-content-editor" rows="1" spellcheck="true" data-markdown-content-editor data-server-input-limit="dm_content_length" placeholder="メッセージを入力 (Ctrl+Enterで送信)"></textarea>
@@ -488,7 +599,7 @@ export async function showDmConversation(dmId) {
             `;
 
             void updateNavAndSidebars();
-            await flushRealtimeDmMessages(dm.id);
+            if (await applyPendingEdits(editLoad) === null) return;
             initializeDmMessageClamps(container);
 
             let messageInput = document.getElementById('dm-message-input');
@@ -496,6 +607,24 @@ export async function showDmConversation(dmId) {
             setupMarkdownEditorPreviewButton(container, messageInput);
             const fileInput = document.getElementById('dm-file-input');
             const previewContainer = container.querySelector('.file-preview-container');
+            const replyMode = container.querySelector('.dm-reply-mode');
+            let replyTo = null;
+            const setReply = (message) => {
+                replyTo = message?.dataset.messageId || null;
+                replyMode.hidden = !replyTo;
+                const label = replyMode.querySelector('span');
+                if (replyTo && message.dataset.replyPreviewSafe === 'true') {
+                    const name = message.querySelector('.dm-user-name')?.textContent?.trim() || '不明';
+                    const content = message.querySelector('.dm-message-content')?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 80) || 'メッセージ';
+                    label.textContent = `${name}: ${content} に返信中`;
+                } else {
+                    label.textContent = 'メッセージに返信中';
+                }
+                messageInput?.focus();
+            };
+            replyMode.querySelector('.dm-reply-cancel').addEventListener('click', () => setReply(null));
+            activeDmReplySetter = setReply;
+            ensureDmConversationDelegates(container);
 
             document.getElementById('dm-attachment-btn')?.addEventListener('click', () => {
                 fileInput?.click();
@@ -562,16 +691,27 @@ export async function showDmConversation(dmId) {
                 if (removeBtn) {
                     const index = parseInt(removeBtn.dataset.index, 10);
                     dmSelectedFiles.splice(index, 1);
-                    removeBtn.parentElement.remove();
+                    renderSelectedFiles();
                 }
             });
 
             const sendMessageAction = async () => {
+                if (document.getElementById('send-dm-btn')?.disabled) return;
                 const filesToSend = [...dmSelectedFiles];
+                const content = getMarkdownEditorValue(messageInput).trim();
+                if ((!content && filesToSend.length === 0) || content.length > 2000) {
+                    if (content.length > 2000) showAppAlert('DMの内容は2000文字以下にしてください。');
+                    return;
+                }
                 dmSelectedFiles = [];
                 if (fileInput) fileInput.value = '';
                 if (previewContainer) previewContainer.innerHTML = '';
-                await sendDirectMessage(dmId, filesToSend);
+                const result = await sendDirectMessage(dmId, headerTitle, filesToSend, replyTo);
+                if (result === 'sent') setReply(null);
+                if (result === 'not-sent' && messageInput?.isConnected) {
+                    dmSelectedFiles.unshift(...filesToSend);
+                    renderSelectedFiles();
+                }
             };
 
             messageInput?.addEventListener('keydown', (e) => {
@@ -611,9 +751,17 @@ export async function showDmConversation(dmId) {
                         );
                         if (nextSlice.length > 0) {
                             const nextHtmlArray = await Promise.all(
-                                nextSlice.slice().reverse().map((msg) => renderDmMessage(msg, dm.id)),
+                                nextSlice.slice().reverse().map((msg) => renderDmMessage(msg, dm.id, posts)),
                             );
+                            if (!isCurrentDmEditLoad(editLoad) || !loadMoreContainer.isConnected) return;
                             loadMoreContainer.insertAdjacentHTML('beforebegin', nextHtmlArray.join(''));
+                            if (await applyPendingEdits(editLoad) === null) return;
+                            if (editLoad.awaitingFresh) {
+                                // 追加ぶんに古い内容が含まれるため、取得し直して表示する。
+                                invalidateDmCaches(dmId);
+                                await reloadConversation();
+                                return;
+                            }
                             loadedCount += nextSlice.length;
                             initializeDmMessageClamps(conversationView);
                         }
@@ -623,6 +771,12 @@ export async function showDmConversation(dmId) {
                             loadMoreBtn.textContent = '過去のメッセージを読み込む';
                         }
                     } catch (err) {
+                        if (!isCurrentDmEditLoad(editLoad)) return;
+                        if (editLoad.awaitingFresh) {
+                            invalidateDmCaches(dmId);
+                            await reloadConversation();
+                            return;
+                        }
                         console.error('過去メッセージの読み込みエラー:', err);
                         loadMoreBtn.textContent = '読み込みに失敗しました (再試行)';
                     } finally {
@@ -632,12 +786,14 @@ export async function showDmConversation(dmId) {
 
                 loadMoreBtn.addEventListener('click', () => void loadMoreHistory());
 
+                container._dmHistoryObserver?.disconnect();
                 const historyObserver = createViewportObserver((entries) => {
                     if (entries[0].isIntersecting) {
                         void loadMoreHistory();
                     }
                 });
                 historyObserver.observe(loadMoreContainer);
+                container._dmHistoryObserver = historyObserver;
             }
 
             // スクロール位置の保存と復元
@@ -659,14 +815,27 @@ export async function showDmConversation(dmId) {
 
         setLastRenderedMessageId(posts.length > 0 ? posts[posts.length - 1].id : null);
     } catch (e) {
+        if (!isCurrentDmEditLoad(editLoad)) return;
         console.error('DM会話の読み込みに失敗:', e);
+        if (editLoad.awaitingFresh || editLoad.refreshing) {
+            deleteScreenDataCache(getDmCacheKey('conversation', String(dmId)));
+            container.innerHTML = `
+                <div class="error-message" role="alert" style="margin:2rem;">
+                    最新のメッセージを取得できませんでした。
+                    <button type="button" class="dm-refresh-retry-btn">再試行</button>
+                </div>`;
+            container.querySelector('.dm-refresh-retry-btn')?.addEventListener('click', () => {
+                void showDmConversation(dmId, { unreadBefore: carriedUnreadBefore });
+            }, { once: true });
+            return;
+        }
         container.innerHTML = '<p class="error-message">メッセージの読み込みに失敗しました。</p>';
     } finally {
-        showLoading(false);
+        if (isCurrentDmEditLoad(editLoad)) showLoading(false);
     }
 }
 
-async function sendDirectMessage(dmId, files = []) {
+async function sendDirectMessage(dmId, conversationTitle, files = [], replyTo = null) {
     const input = document.getElementById('dm-message-input');
     const content = getMarkdownEditorValue(input).trim();
     if (!content && files.length === 0) return;
@@ -685,6 +854,7 @@ async function sendDirectMessage(dmId, files = []) {
     let uploadedFileIds = [];
     let attachmentsData = [];
     let optimisticEl = null;
+    let sendStarted = false;
 
     try {
         for (const file of files) {
@@ -712,18 +882,21 @@ async function sendDirectMessage(dmId, files = []) {
             message: content,
             attachments: attachmentsData,
             created_at: new Date().toISOString(),
+            ...(replyTo ? { reply_to: replyTo } : {}),
         };
 
         // 楽観的にDOMへメッセージを追加
         const view = document.querySelector('.dm-conversation-view');
-        if (view) {
+        if (view && input?.isConnected) {
             const messageHtml = await renderDmMessage(messageObject, dmId);
-            view.insertAdjacentHTML('afterbegin', messageHtml);
-            initializeDmMessageClamps(view);
-            optimisticEl = view.querySelector(`[data-message-id="${messageObject.id}"]`);
+            if (input.isConnected && view.isConnected) {
+                view.insertAdjacentHTML('afterbegin', messageHtml);
+                initializeDmMessageClamps(view);
+                optimisticEl = view.querySelector(`[data-message-id="${messageObject.id}"]`);
+            }
         }
 
-        setLastRenderedMessageId(messageObject.id);
+        if (input?.isConnected) setLastRenderedMessageId(messageObject.id);
 
         // キャッシュ内のdm会話データにも追加
         const dmConversationCacheKey = getDmCacheKey('conversation', String(dmId));
@@ -736,29 +909,53 @@ async function sendDirectMessage(dmId, files = []) {
             setScreenDataCache(dmConversationCacheKey, cachedPayload);
         }
 
-        const { error } = await api.rpc('append_to_dm_post', {
-            dm_id_in: dmId,
-            new_message_in: messageObject,
+        sendStarted = true;
+        const { data, error } = await apiRequest(`/server/api/dm/${encodeURIComponent(String(dmId))}/messages`, {
+            method: 'POST',
+            body: { message: messageObject, request_id: createDmRequestId() },
         });
 
         if (error) throw error;
 
+        if (data?.message?.id != null) {
+            if (optimisticEl?.isConnected) optimisticEl.dataset.messageId = String(data.message.id);
+            const currentPayload = getScreenDataCache(dmConversationCacheKey);
+            const posts = currentPayload?.dm?.[0]?.post;
+            const index = Array.isArray(posts) ? posts.findIndex((post) => post.id === messageObject.id) : -1;
+            if (index !== -1) {
+                posts[index] = data.message;
+                setScreenDataCache(dmConversationCacheKey, currentPayload);
+            }
+        } else {
+            deleteScreenDataCache(dmConversationCacheKey);
+        }
+
         // リストキャッシュを破棄
         deleteScreenDataCache(getDmCacheKey('list'));
+        return 'sent';
     } catch (e) {
         console.error('DM送信エラー:', e);
         if (optimisticEl) {
             optimisticEl.classList.add('dm-message-send-error');
-            optimisticEl.title = '送信に失敗しました';
+            optimisticEl.title = sendStarted ? '送信結果を確認できませんでした' : '送信できませんでした';
         }
-        if (uploadedFileIds.length > 0) {
+        deleteScreenDataCache(getDmCacheKey('conversation', String(dmId)));
+        deleteScreenDataCache(getDmCacheKey('list'));
+        if (!sendStarted && uploadedFileIds.length > 0) {
             deleteFilesViaEdgeFunction(uploadedFileIds).catch(() => {});
         }
-        showAppAlert(`DMの送信に失敗しました: ${e.message || '不明なエラー'}`);
+        if (!sendStarted && input?.isConnected && !getMarkdownEditorValue(input)) {
+            setMarkdownEditorValue(input, content);
+        }
+        const conversation = `「${conversationTitle}」（会話ID: ${dmId}）`;
+        showAppAlert(sendStarted
+            ? `${conversation}へのDMの送信結果を確認できませんでした。この会話を更新して確認してください。再送すると重複する場合があります。`
+            : `${conversation}へのDMを送信できませんでした: ${e.message || '不明なエラー'}`);
+        return sendStarted ? 'unknown' : 'not-sent';
     } finally {
         if (input) input.disabled = false;
         if (sendButton) sendButton.disabled = false;
-        if (input) input.focus();
+        if (input?.isConnected) input.focus();
     }
 }
 
@@ -806,7 +1003,7 @@ export function openCreateDmModal() {
                         .map(
                             (u) => `
                         <div class="dm-search-user-item nui-list-item" data-nui="list-item" data-user-id="${escapeHTML(String(u.id))}">
-                            <img src="${getUserIconUrl(u)}" class="user-icon dm-search-user-icon nui-avatar" alt="">
+                            <img ${rankAvatarAttributes(u)} src="${getUserIconUrl(u)}" class="user-icon dm-search-user-icon nui-avatar" alt="">
                             <div class="dm-search-user-info nui-list-copy">
                                 <span class="dm-search-user-name nui-list-title">${getEmoji(escapeHTML(u.name))}</span>
                                 <span class="dm-search-user-handle nui-list-meta">${getNyaitterId(u)}</span>

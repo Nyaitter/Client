@@ -21,22 +21,25 @@ import {
 import { handlePendingPushNotificationOpen } from './modules/pwa.js';
 
 import { switchTimelineTab } from './screens/timelineScreen.js';
-import { showExploreScreen } from './screens/exploreScreen.js';
-import { showSearchResults } from './screens/searchScreen.js';
-import { showNotificationsScreen } from './screens/notificationsScreen.js';
-import { showLikesScreen, showStarsScreen } from './screens/likesStarsScreen.js';
-import { showPostDetail } from './screens/postDetailScreen.js';
-import { showPostActivityScreen } from './screens/postActivityScreen.js';
-import { showDmScreen } from './screens/dmScreen.js';
-import {
-    refreshActiveProfileTab,
-} from './screens/profileScreen.js';
-import { showGroupsScreen, showGroupDetailScreen } from './screens/groupScreen.js';
-import {
-    showAdminReportsScreen,
-    showAdminReportDetailScreen,
-    showAdminLogsScreen,
-} from './screens/adminScreen.js';
+
+// Non-timeline screens are loaded on demand (see screenRegistry.js). These
+// wrappers keep the pull-to-refresh call sites below unchanged; every call
+// site already awaits the result.
+const lazyScreen = (importer, exportName) => async (...args) => (await importer())[exportName](...args);
+const showExploreScreen = lazyScreen(() => import('./screens/exploreScreen.js'), 'showExploreScreen');
+const showSearchResults = lazyScreen(() => import('./screens/searchScreen.js'), 'showSearchResults');
+const showNotificationsScreen = lazyScreen(() => import('./screens/notificationsScreen.js'), 'showNotificationsScreen');
+const showLikesScreen = lazyScreen(() => import('./screens/likesStarsScreen.js'), 'showLikesScreen');
+const showStarsScreen = lazyScreen(() => import('./screens/likesStarsScreen.js'), 'showStarsScreen');
+const showPostDetail = lazyScreen(() => import('./screens/postDetailScreen.js'), 'showPostDetail');
+const showPostActivityScreen = lazyScreen(() => import('./screens/postActivityScreen.js'), 'showPostActivityScreen');
+const showDmScreen = lazyScreen(() => import('./screens/dmScreen.js'), 'showDmScreen');
+const refreshActiveProfileTab = lazyScreen(() => import('./screens/profileScreen.js'), 'refreshActiveProfileTab');
+const showGroupsScreen = lazyScreen(() => import('./screens/groupScreen.js'), 'showGroupsScreen');
+const showGroupDetailScreen = lazyScreen(() => import('./screens/groupScreen.js'), 'showGroupDetailScreen');
+const showAdminReportsScreen = lazyScreen(() => import('./screens/adminScreen.js'), 'showAdminReportsScreen');
+const showAdminReportDetailScreen = lazyScreen(() => import('./screens/adminScreen.js'), 'showAdminReportDetailScreen');
+const showAdminLogsScreen = lazyScreen(() => import('./screens/adminScreen.js'), 'showAdminLogsScreen');
 import { showLoading } from './utils/helpers.js';
 import { resolveRoute } from './routeTable.js';
 import { activateScreen } from './screenManager.js';

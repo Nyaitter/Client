@@ -131,7 +131,16 @@ export function renderLimitedMarkdown(
         allowBlockquotes = true,
     } = {},
 ) {
-    const source = typeof input === 'string' ? input : '';
+    const original = typeof input === 'string' ? input : '';
+    let prefix = '\uE000';
+    while (original.includes(prefix)) prefix += '\uE000';
+    const escaped = [];
+    const source = original.replace(/^```[^`\r\n]*\r?\n[\s\S]*?^```\s*$|`[^`\r\n]{1,500}`|\\([\\`*_[\]{}()#+\-.!~^=|>\/])/gm, (match, character) => {
+        if (character === undefined) return match;
+        const token = `${prefix}${escaped.length}\uE001`;
+        escaped.push(character);
+        return token;
+    });
     const inlineOptions = {
         renderText,
         renderLinkLabel,
@@ -316,5 +325,9 @@ export function renderLimitedMarkdown(
     }
 
     flushParagraph();
-    return output.join('');
+    let result = output.join('');
+    escaped.forEach((character, index) => {
+        result = result.replaceAll(`${prefix}${index}\uE001`, `${renderSyntax('\\')}${escapeHtml(character)}`);
+    });
+    return result;
 }

@@ -1,6 +1,7 @@
 export const SETTINGS_GROUP_DETAILS = Object.freeze({
     overview: Object.freeze({ title: '設定', description: 'Nyaitterを自分用にカスタマイズ' }),
     account: Object.freeze({ title: 'アカウントとログイン', description: 'ログイン方法、利用中の端末、NyaitterIDを管理します。' }),
+    status: Object.freeze({ title: 'ステータス', description: 'ランクと利用できる機能を確認します。' }),
     editor: Object.freeze({ title: '投稿とエディタ', description: '文字入力とポスト日時の表示を選びます。' }),
     filters: Object.freeze({ title: 'ミュートとフィルター', description: '見たくない言葉を含むポストを検索から除外します。' }),
     connection: Object.freeze({ title: '通信とデータ使用量', description: '画像とリアルタイム更新の通信量を調整します。' }),

@@ -12,6 +12,7 @@ import {
     updateRealtimeTimelineIndicator,
     clearRealtimeTimelineUpdate,
 } from '../modules/cache.js';
+import { applyDataSaverButtonState } from '../modules/realtime.js';
 import {
     createPostFormHTML,
     attachPostFormListeners,
@@ -169,6 +170,7 @@ export async function showMainScreen(showScreenFn) {
         await switchTimelineTab(getCurrentTimelineTab(), { forceRefresh: true });
     });
     updateRealtimeTimelineIndicator();
+    applyDataSaverButtonState();
 
     const tabsContainer = document.querySelector('.timeline-tabs');
     if (tabsContainer) {

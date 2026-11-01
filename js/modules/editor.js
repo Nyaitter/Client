@@ -6,6 +6,16 @@ import { ICONS } from '../icons.js';
 let nyaitterImeReadyPromise = null;
 let nyaitterIme = null;
 const NYAITTER_IME_STORAGE_KEY = 'nyaitter-ime-enabled';
+// Vendored build of NyaitterIME with the long-vowel/loanword fixes. Keeping the
+// 18MB generated dictionary on the pinned CDN avoids shipping it with the page.
+const NYAITTER_IME_SCRIPT_URL = new URL(
+    '../../vendor/nyaitter-ime/nyaitter-ime.min.js',
+    import.meta.url,
+).href;
+const NYAITTER_IME_CDN_SCRIPT_URL =
+    'https://cdn.jsdelivr.net/gh/nyaitter/NyaitterIME@5578455f5acb6d0a580d0dfc56e1346671e8f698/dist/nyaitter-ime.min.js';
+const NYAITTER_IME_DICTIONARY_URL =
+    'https://cdn.jsdelivr.net/gh/nyaitter/NyaitterIME@5578455f5acb6d0a580d0dfc56e1346671e8f698/data/nyaitter-ime-core.bin.gz';
 
 function readNyaitterImePreference() {
     try { return localStorage.getItem(NYAITTER_IME_STORAGE_KEY) === 'true'; }
@@ -21,8 +31,9 @@ function ensureNyaitterImeReady() {
     if (nyaitterIme) return Promise.resolve(nyaitterIme);
     if (nyaitterImeReadyPromise) return nyaitterImeReadyPromise;
     nyaitterImeReadyPromise = new Promise((resolve, reject) => {
+        globalThis.NYAITTER_IME_DICTIONARY_URL = NYAITTER_IME_DICTIONARY_URL;
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/gh/nyaitter/NyaitterIME@5578455f5acb6d0a580d0dfc56e1346671e8f698/dist/nyaitter-ime.min.js';
+        script.src = NYAITTER_IME_SCRIPT_URL;
         script.onload = () => {
             const ime = globalThis.NyaitterIME;
             if (!ime?.ready) {
@@ -34,7 +45,14 @@ function ensureNyaitterImeReady() {
                 resolve(ime);
             }, reject);
         };
-        script.onerror = () => reject(new Error('NyaitterIMEを読み込めませんでした'));
+        script.onerror = () => {
+            // A deploy without the vendored file still works with the pinned CDN build.
+            const fallback = document.createElement('script');
+            fallback.src = NYAITTER_IME_CDN_SCRIPT_URL;
+            fallback.onload = script.onload;
+            fallback.onerror = () => reject(new Error('NyaitterIMEを読み込めませんでした'));
+            document.head.append(fallback);
+        };
         document.head.append(script);
     }).catch((error) => {
         nyaitterImeReadyPromise = null;
@@ -492,7 +510,9 @@ function replaceMarkdownEditorRange(editor, replacement, start, end, selectionMo
 }
 
 function enforceDirectEditorMaxLength(editor) {
-    const maxLength = Number(editor.getAttribute('maxlength'));
+    const limit = editor.getAttribute('maxlength');
+    if (limit === null) return;
+    const maxLength = Number(limit);
     if (!Number.isInteger(maxLength) || maxLength < 0) return;
     const value = getMarkdownEditorValue(editor);
     if (value.length <= maxLength) return;
@@ -1121,7 +1141,10 @@ export function setupMarkdownEditorPreviewButton(container, editor) {
         editor.focus();
     });
     previewButton.insertAdjacentElement('afterend', imeButton);
-    if (editor._nyaitterImeEnabled && !nyaitterIme) void loadImeAssets();
+    // The IME engine (~830KB plus its dictionary) is intentionally not
+    // preloaded when an editor is built: it loads on demand when the user
+    // toggles the IME button or starts a conversion (the composition path
+    // replays the in-progress composition once the engine is ready).
 }
 
 export function updateMarkdownEditorPreview(
