@@ -488,6 +488,20 @@
         box-sizing: border-box;
         background: var(--pg-bg-color);
     }
+    body[data-active-screen=profile-screen] > .rank-avatar-wrap.profile-morph-avatar {
+        position: fixed;
+        z-index: 8;
+    }
+    body[data-active-screen=profile-screen] > .rank-avatar-wrap.profile-morph-avatar > img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 4px solid var(--pg-bg-color);
+        box-sizing: border-box;
+        background: var(--pg-bg-color);
+    }
     .profile-identity h2,
     #page-header .profile-morph-identity h2 {
         margin: 0;

@@ -1,13 +1,16 @@
-.rank-avatar-layer {
-    position: fixed;
-    left: 0;
-    top: 0;
-    display: block;
-    pointer-events: none;
-    z-index: 30;
+.rank-avatar-wrap {
+    position: relative;
+    display: inline-flex;
+    line-height: 0;
 }
 
-.rank-avatar-layer[hidden],
+.rank-avatar-layer {
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+}
+
 .rank-avatar-tooltip[hidden] {
     display: none;
 }

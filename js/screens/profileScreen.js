@@ -100,6 +100,37 @@ function restoreProfileIdentity() {
     refreshRankAvatars();
 }
 
+// スクロール中にレイアウトを読まないよう、アンカーとヘッダーの形状はここで測って保持する。
+function measureProfileMorph() {
+    const header = document.getElementById("page-header");
+    if (!header || !profileMorph) return;
+    const [avatarAnchorPart, identityAnchorPart] = profileMorph.parts;
+    const headerRect = header.getBoundingClientRect();
+    const scale = headerRect.width / header.offsetWidth || 1;
+    const backRect = header.querySelector(".header-back-btn").getBoundingClientRect();
+    const avatarRect = avatarAnchorPart[1].getBoundingClientRect();
+    const identityRect = identityAnchorPart[1].getBoundingClientRect();
+    const scroll = window.scrollY || 0;
+    const targetX = backRect.right - headerRect.left + 12 * scale;
+    profileMorph.metrics = {
+        scale,
+        distance: Math.max(180 * scale, identityRect.top + scroll - headerRect.top),
+        headerLeft: headerRect.left,
+        headerDocTop: headerRect.top + scroll,
+        targetX,
+        targetIdentityY: (headerRect.height - identityRect.height * 0.75) / 2,
+        availableWidth: headerRect.width - targetX - 16 * scale,
+        avatarLeft: avatarRect.left,
+        avatarDocTop: avatarRect.top + scroll,
+        avatarWidth: avatarRect.width,
+        avatarHeight: avatarRect.height,
+        identityLeft: identityRect.left,
+        identityDocTop: identityRect.top + scroll,
+        identityWidth: identityRect.width,
+        identityHeight: identityRect.height,
+    };
+    profileMorph.stale = false;
+}
 function updateProfileScrollProgress() {
     const root = document.documentElement;
     const card = document.getElementById('profile-header');
@@ -115,7 +146,8 @@ function updateProfileScrollProgress() {
         const avatar = card.querySelector('.user-icon-large');
         const identity = card.querySelector('.profile-identity');
         if (!avatar || !identity) return;
-        const parts = [avatar, identity].map((element, index) => {
+        const avatarElement = avatar.closest(".rank-avatar-wrap") || avatar;
+        const parts = [avatarElement, identity].map((element, index) => {
             // 元の配置を残すことで、変形中も本文とスクロール位置を動かさない。
             const anchor = element.cloneNode(true);
             anchor.setAttribute('aria-hidden', 'true');
@@ -129,48 +161,66 @@ function updateProfileScrollProgress() {
         const count = document.createElement('div');
         count.className = 'profile-morph-count';
         identity.appendChild(count);
-        profileMorph = { parts, count };
+        profileMorph = { parts, count, metrics: null, stale: false, avatarTarget: null };
         document.body.classList.add('profile-morph-active');
     }
 
-    const headerRect = header.getBoundingClientRect();
-    const scale = headerRect.width / header.offsetWidth || 1;
-    const backRect = header.querySelector('.header-back-btn').getBoundingClientRect();
-    const [avatarPart, identityPart] = profileMorph.parts;
-    const avatarRect = avatarPart[1].getBoundingClientRect();
-    const identityRect = identityPart[1].getBoundingClientRect();
+    if (!profileMorph.metrics || profileMorph.stale) measureProfileMorph();
+    // ランク用ラッパーがある間はラッパーを変形させ、リングも一緒に動かす。
+    const rawAvatar = profileMorph.parts[0][0];
+    let avatarEl = rawAvatar;
+    if (rawAvatar.tagName === "IMG") {
+        const wrap = rawAvatar.closest(".rank-avatar-wrap");
+        if (wrap) {
+            wrap.classList.add("profile-morph-avatar");
+            avatarEl = wrap;
+        }
+    }
+    if (profileMorph.avatarTarget !== avatarEl) {
+        if (avatarEl !== rawAvatar) {
+            rawAvatar.style.width = "";
+            rawAvatar.style.height = "";
+            rawAvatar.style.transform = "";
+        }
+        profileMorph.avatarTarget = avatarEl;
+    }
+
+    const metrics = profileMorph.metrics;
+    const scale = metrics.scale;
     const scroll = window.scrollY || 0;
-    const distance = Math.max(180 * scale, identityRect.top + scroll - headerRect.top);
-    const progress = clampProgress(scroll / distance);
+    const headerLeft = metrics.headerLeft;
+    const headerTop = Math.max(metrics.headerDocTop - scroll, 0);
+    const [avatarPart, identityPart] = profileMorph.parts;
+    const avatarRect = { left: metrics.avatarLeft, top: metrics.avatarDocTop - scroll, width: metrics.avatarWidth, height: metrics.avatarHeight };
+    const identityRect = { left: metrics.identityLeft, top: metrics.identityDocTop - scroll, width: metrics.identityWidth, height: metrics.identityHeight };
+    const progress = clampProgress(scroll / metrics.distance);
     const avatarScale = 1 - progress * 0.5;
     const identityScale = 1 - progress * 0.25;
-    const targetX = backRect.right - headerRect.left + 12 * scale;
-    const targetIdentityX = targetX;
-    const targetIdentityY = (headerRect.height - identityRect.height * 0.75) / 2;
+    const targetIdentityX = metrics.targetX;
+    const targetIdentityY = metrics.targetIdentityY;
 
     for (const [part, rect, targetLeft, targetTop, shrink] of [
         [avatarPart, avatarRect, 0, 0, avatarScale],
         [identityPart, identityRect, targetIdentityX, targetIdentityY, identityScale],
     ]) {
-        const [element] = part;
+        const element = part === avatarPart ? avatarEl : part[0];
         const isAvatar = part === avatarPart;
         const left = isAvatar
-            ? rect.left - headerRect.left + rect.width * (1 - shrink) / 2
-            : (rect.left - headerRect.left) * (1 - progress) + targetLeft * progress;
+            ? rect.left - headerLeft + rect.width * (1 - shrink) / 2
+            : (rect.left - headerLeft) * (1 - progress) + targetLeft * progress;
         const top = isAvatar
-            ? rect.top - headerRect.top + rect.height * (1 - shrink) / 2
-            : (rect.top + scroll - headerRect.top) * (1 - progress) + targetTop * progress;
-        const availableWidth = headerRect.width - targetIdentityX - 16 * scale;
+            ? rect.top - headerTop + rect.height * (1 - shrink) / 2
+            : (rect.top + scroll - headerTop) * (1 - progress) + targetTop * progress;
         const width = part === identityPart
-            ? rect.width * (1 - progress) + Math.max(0, availableWidth / shrink) * progress
+            ? rect.width * (1 - progress) + Math.max(0, metrics.availableWidth / shrink) * progress
             : rect.width;
-        element.style.width = `${width / scale}px`;
-        element.style.height = `${rect.height / scale}px`;
-        element.style.transform = `translate(${left / scale}px, ${top / scale}px) scale(${shrink})`;
+        element.style.width = (width / scale) + "px";
+        element.style.height = (rect.height / scale) + "px";
+        element.style.transform = "translate(" + (left / scale) + "px, " + (top / scale) + "px) scale(" + shrink + ")";
     }
     const identity = identityPart[0];
-    const name = identity.querySelector('h2');
-    const id = identity.querySelector('.user-id');
+    const name = identity.querySelector("h2");
+    const id = identity.querySelector(".user-id");
     const identityWidth = parseFloat(identity.style.width);
     name.style.maxWidth = `${identityWidth * (1 - progress * 0.45)}px`;
     const nameRect = name.getBoundingClientRect();
@@ -205,6 +255,7 @@ function setupProfileScrollTracking() {
     teardownProfileScrollTracking();
     let frame = null;
     const scheduleUpdate = () => {
+        if (profileMorph) profileMorph.stale = true;
         if (frame !== null) return;
         frame = window.requestAnimationFrame(() => {
             frame = null;
@@ -219,6 +270,12 @@ function setupProfileScrollTracking() {
     observer.observe(document.getElementById('page-header'));
     const titleObserver = new MutationObserver(scheduleUpdate);
     titleObserver.observe(document.getElementById('page-title-sub'), { childList: true, characterData: true, subtree: true });
+    document.fonts?.ready.then(() => {
+        if (profileScrollCleanup && profileMorph) {
+            profileMorph.stale = true;
+            scheduleUpdate();
+        }
+    });
     profileScrollCleanup = () => {
         window.removeEventListener('scroll', handleScroll);
         window.removeEventListener('resize', scheduleUpdate);
