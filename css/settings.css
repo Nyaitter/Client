@@ -229,6 +229,7 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 @media (max-width: 760px) {
     .settings-status-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
     .settings-status-list { max-height: 40%; }
+    .settings-redesigned .settings-status-list { max-height: none; }
 }
 @media (max-width: 608px) {
     .settings-redesigned .settings-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); padding: 16px; gap: 12px; }

@@ -211,7 +211,8 @@ function setupProfileScrollTracking() {
             updateProfileScrollProgress();
         });
     };
-    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    const handleScroll = () => updateProfileScrollProgress();
+    window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', scheduleUpdate, { passive: true });
     const observer = new ResizeObserver(scheduleUpdate);
     observer.observe(document.getElementById('profile-header'));
@@ -219,7 +220,7 @@ function setupProfileScrollTracking() {
     const titleObserver = new MutationObserver(scheduleUpdate);
     titleObserver.observe(document.getElementById('page-title-sub'), { childList: true, characterData: true, subtree: true });
     profileScrollCleanup = () => {
-        window.removeEventListener('scroll', scheduleUpdate);
+        window.removeEventListener('scroll', handleScroll);
         window.removeEventListener('resize', scheduleUpdate);
         if (frame !== null) window.cancelAnimationFrame(frame);
         observer.disconnect();

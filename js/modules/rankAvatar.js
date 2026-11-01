@@ -128,20 +128,35 @@ export function attachRankAvatar(image, options = {}) {
         close.focus({ preventScroll: true });
     };
 
-    const refresh = () => {
+    const refresh = (positionOnly = false) => {
         if (!layer) return;
         const rect = image.getBoundingClientRect();
         const scale = portalScale(layer);
+        if (positionOnly) {
+            const rectVisible = image.isConnected && image.getClientRects().length > 0 && rect.width > 0 && rect.height > 0 &&
+                rect.bottom >= 0 && rect.right >= 0 && rect.top <= window.innerHeight && rect.left <= window.innerWidth;
+            if (!layer.hidden && rectVisible) {
+                Object.assign(layer.style, {
+                    width: `${rect.width / scale}px`, height: `${rect.height / scale}px`,
+                    transform: `translate(${rect.left / scale}px, ${rect.top / scale}px)`,
+                });
+                positionPopup(tooltip);
+                positionPopup(panel);
+                return;
+            }
+            if (layer.hidden && !rectVisible) return;
+            return refresh(false);
+        }
         const style = window.getComputedStyle(image);
         let outerZ = null;
         const clip = { left: rect.left - 8, top: rect.top - 8, right: rect.right + 8, bottom: rect.bottom + 8 };
         for (let parent = image.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
             const parentStyle = window.getComputedStyle(parent);
             const z = Number.parseInt(parentStyle.zIndex, 10);
-            if (Number.isFinite(z) || ['fixed', 'sticky'].includes(parentStyle.position) ||
+            if (outerZ === null && (Number.isFinite(z) || ['fixed', 'sticky'].includes(parentStyle.position) ||
                 parentStyle.transform !== 'none' || parentStyle.filter !== 'none' ||
                 parentStyle.isolation === 'isolate' || Number(parentStyle.opacity) < 1 ||
-                /paint|layout|strict|content/.test(parentStyle.contain)) outerZ = Number.isFinite(z) ? z : 0;
+                /paint|layout|strict|content/.test(parentStyle.contain))) outerZ = Number.isFinite(z) ? z : 0;
             if (parent === settings.unclippedFrame) continue;
             const clipsX = /hidden|clip|auto|scroll/.test(parentStyle.overflowX);
             const clipsY = /hidden|clip|auto|scroll/.test(parentStyle.overflowY);
@@ -182,19 +197,25 @@ export function attachRankAvatar(image, options = {}) {
             ? `path(evenodd, "M ${(clip.left - rect.left) / scale} ${(clip.top - rect.top) / scale} H ${(clip.right - rect.left) / scale} V ${(clip.bottom - rect.top) / scale} H ${(clip.left - rect.left) / scale} Z ${holes.join(' ')}")`
             : `inset(${(clip.top - rect.top) / scale}px ${(rect.right - clip.right) / scale}px ${(rect.bottom - clip.bottom) / scale}px ${(clip.left - rect.left) / scale}px)`;
         Object.assign(layer.style, {
-            left: `${rect.left / scale}px`, top: `${rect.top / scale}px`,
             width: `${rect.width / scale}px`, height: `${rect.height / scale}px`,
-            zIndex: String(outerZ === null ? 30 : outerZ + 1),
+            zIndex: String(outerZ === null ? 30 : outerZ),
             clipPath,
+            transform: `translate(${rect.left / scale}px, ${rect.top / scale}px)`,
         });
         positionPopup(tooltip);
         positionPopup(panel);
     };
 
-    const schedule = () => {
-        if (!frame) frame = window.requestAnimationFrame(() => {
+    let framePositionOnly = false;
+    const schedule = (positionOnly = false) => {
+        if (frame) {
+            if (!positionOnly) framePositionOnly = false;
+            return;
+        }
+        framePositionOnly = positionOnly;
+        frame = window.requestAnimationFrame(() => {
             frame = 0;
-            refresh();
+            refresh(framePositionOnly);
         });
     };
 
@@ -293,7 +314,7 @@ export function attachRankAvatar(image, options = {}) {
         observer = new window.ResizeObserver(schedule);
         observer.observe(image);
         listen(image, 'load', schedule);
-        listen(window, 'scroll', schedule, { capture: true, passive: true });
+        listen(window, 'scroll', event => schedule(event.target === document), { capture: true, passive: true });
         listen(window, 'resize', schedule, { passive: true });
         if (window.visualViewport) {
             listen(window.visualViewport, 'resize', schedule, { passive: true });
