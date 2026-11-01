@@ -3491,8 +3491,19 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
     }
 
     try {
-        const { data, error } = await fetchCommunityNotes(postId, { force });
-        if (error || !data) return;
+        // posts レスポンスに集約済みのノートがあれば個別取得しない。
+        // force 時 (ノート作成・評価直後の再描画) は最新を取り直す。
+        let data;
+        if (!force && Array.isArray(post.community_notes)) {
+            data = {
+                notes: post.community_notes,
+                eligible: Boolean(post.community_notes_eligible),
+            };
+        } else {
+            const result = await fetchCommunityNotes(postId, { force });
+            if (result.error || !result.data) return;
+            data = result.data;
+        }
         const notes = Array.isArray(data?.notes) ? data.notes : [];
         const note =
             notes.find((n) => String(n?.status) === 'public') || notes[0];
