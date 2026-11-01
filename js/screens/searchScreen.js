@@ -13,9 +13,7 @@ import {
     getAuxiliaryPostPageCache,
 } from '../modules/cache.js';
 import {
-    createPostFormHTML,
-    attachPostFormListeners,
-    closePostModal,
+    openPostModal,
 } from '../modules/posts.js';
 import { goToLoginPage } from '../modules/auth.js';
 import {
@@ -26,6 +24,7 @@ import { getEmoji } from '../modules/format.js';
 import { bindTabBar, setActiveTab } from '../modules/tabs.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
 import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
+import { trackSearchComposition } from '../utils/searchIme.js';
 import {
     renderGroupResults,
     renderSearchError,
@@ -41,7 +40,10 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
 
     const searchInput = document.getElementById('search-input');
     let searchDebounceTimer;
+    let isComposing = () => false;
+    const cancelSearch = () => clearTimeout(searchDebounceTimer);
     const performSearch = () => {
+        if (!searchInput?.isConnected || document.activeElement !== searchInput || isComposing({})) return;
         const newQuery = searchInput?.value.trim();
         if (newQuery) {
             window.location.hash = `#search/${encodeURIComponent(newQuery)}`;
@@ -49,15 +51,25 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
     };
     if (searchInput) {
         searchInput.value = query;
+        isComposing = trackSearchComposition(searchInput);
+        const scheduleSearch = () => {
+            cancelSearch();
+            searchDebounceTimer = setTimeout(performSearch, 400);
+        };
+        searchInput.addEventListener('compositionstart', cancelSearch);
+        searchInput.addEventListener('compositionend', () => {
+            if (document.activeElement === searchInput) scheduleSearch();
+        });
+        searchInput.addEventListener('blur', cancelSearch);
         searchInput.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                clearTimeout(searchDebounceTimer);
+            if (e.key === 'Enter' && !isComposing(e)) {
+                cancelSearch();
                 performSearch();
             }
         };
-        searchInput.oninput = () => {
-            clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(performSearch, 400);
+        searchInput.oninput = (event) => {
+            cancelSearch();
+            if (document.activeElement === searchInput && !isComposing(event)) scheduleSearch();
         };
     }
 
@@ -70,6 +82,8 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
     });
 
     showScreenCompat('search-results-screen', showScreenFn);
+
+    getActiveScreenContext()?.addCleanup(cancelSearch);
 
     bindAdvancedSearch(DOM.pageHeader, getActiveScreenContext());
     await loadSearchTabContent(query, tab);
@@ -160,16 +174,11 @@ export async function loadSearchTabContent(query, tab) {
             tagPostButton.innerHTML = 'このタグでポストする';
             tagPostButton.addEventListener('click', async () => {
                 if (!getCurrentUser()) return goToLoginPage();
-                DOM.postModal.classList.remove('hidden');
+                openPostModal();
                 const modalContainer = DOM.postModal.querySelector('.post-form-container-modal');
                 if (!modalContainer) return;
-                modalContainer.innerHTML =
-                    createPostFormHTML(true) + `<div id="quoting-preview-container"></div>`;
-                attachPostFormListeners(modalContainer);
                 const textarea = modalContainer.querySelector('textarea');
                 if (textarea) textarea.value = '#' + query;
-
-                DOM.postModal.querySelector('.modal-close-btn').onclick = closePostModal;
                 textarea?.focus();
             });
             contentDiv.appendChild(tagPostButton);
