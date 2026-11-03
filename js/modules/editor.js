@@ -6,12 +6,13 @@ import { ICONS } from '../icons.js';
 let nyaitterImeReadyPromise = null;
 let nyaitterIme = null;
 const NYAITTER_IME_STORAGE_KEY = 'nyaitter-ime-enabled';
-// Vendored build of NyaitterIME with the long-vowel/loanword fixes. Keeping the
-// 18MB generated dictionary on the pinned CDN avoids shipping it with the page.
-const NYAITTER_IME_SCRIPT_URL = new URL(
-    '../../vendor/nyaitter-ime/nyaitter-ime.min.js',
-    import.meta.url,
-).href;
+// NyaitterIME is not bundled with the client. The manifest key nyaitter_ime
+// picks the build: a URL is used as-is, a path resolves under the page base,
+// and a bare version loads the pinned official build from the jsDelivr GH
+// CDN. When the configured source fails, the build the server keeps outside
+// page/ is next, then the pinned upstream build as a last resort.
+// The 18MB generated dictionary stays on the CDN either way.
+const NYAITTER_IME_DEFAULT_PATH = 'nyaitter-ime/nyaitter-ime.min.js';
 const NYAITTER_IME_CDN_SCRIPT_URL =
     'https://cdn.jsdelivr.net/gh/nyaitter/NyaitterIME@5578455f5acb6d0a580d0dfc56e1346671e8f698/dist/nyaitter-ime.min.js';
 const NYAITTER_IME_DICTIONARY_URL =
@@ -27,34 +28,63 @@ function saveNyaitterImePreference(enabled) {
     catch (_) { /* Editing also works when storage is unavailable. */ }
 }
 
+function getNyaitterImeScriptUrls() {
+    const pageBaseUrl = new URL('../../', import.meta.url).href;
+    const defaultUrl = new URL(NYAITTER_IME_DEFAULT_PATH, pageBaseUrl).href;
+    const source = String(globalThis.NyaitterClientConfig?.nyaitterIme || '').trim();
+    let primary = defaultUrl;
+    if (/^(?:https?:)?\/\//i.test(source)) {
+        primary = source;
+    } else if (source.includes('/')) {
+        primary = new URL(source.replace(/^\/+/, ''), pageBaseUrl).href;
+    } else if (source) {
+        primary = `https://cdn.jsdelivr.net/gh/nyaitter/NyaitterIME@${encodeURIComponent(source)}/dist/nyaitter-ime.min.js`;
+    }
+    // The pinned upstream build is only a last resort, for when the configured
+    // source and the server-kept build are both unreachable.
+    return [...new Set([primary, defaultUrl, NYAITTER_IME_CDN_SCRIPT_URL])];
+}
+
+function loadNyaitterImeScript(urls) {
+    return new Promise((resolve, reject) => {
+        const attempt = (index) => {
+            if (index >= urls.length) {
+                reject(new Error('NyaitterIMEを読み込めませんでした'));
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = urls[index];
+            script.onload = () => {
+                const ime = globalThis.NyaitterIME;
+                if (!ime?.ready) {
+                    attempt(index + 1);
+                    return;
+                }
+                ime.ready.then(() => resolve(ime), reject);
+            };
+            script.onerror = () => attempt(index + 1);
+            document.head.append(script);
+        };
+        attempt(0);
+    });
+}
+
 function ensureNyaitterImeReady() {
     if (nyaitterIme) return Promise.resolve(nyaitterIme);
     if (nyaitterImeReadyPromise) return nyaitterImeReadyPromise;
-    nyaitterImeReadyPromise = new Promise((resolve, reject) => {
+    nyaitterImeReadyPromise = (async () => {
         globalThis.NYAITTER_IME_DICTIONARY_URL = NYAITTER_IME_DICTIONARY_URL;
-        const script = document.createElement('script');
-        script.src = NYAITTER_IME_SCRIPT_URL;
-        script.onload = () => {
-            const ime = globalThis.NyaitterIME;
-            if (!ime?.ready) {
-                reject(new Error('NyaitterIMEを初期化できませんでした'));
-                return;
-            }
-            ime.ready.then(() => {
-                nyaitterIme = ime;
-                resolve(ime);
-            }, reject);
-        };
-        script.onerror = () => {
-            // A deploy without the vendored file still works with the pinned CDN build.
-            const fallback = document.createElement('script');
-            fallback.src = NYAITTER_IME_CDN_SCRIPT_URL;
-            fallback.onload = script.onload;
-            fallback.onerror = () => reject(new Error('NyaitterIMEを読み込めませんでした'));
-            document.head.append(fallback);
-        };
-        document.head.append(script);
-    }).catch((error) => {
+        // Wait for the manifest so the nyaitter_ime choice is readable. A
+        // missing config helper just means the defaults apply.
+        try {
+            await globalThis.NyaitterClientConfig?.ready;
+        } catch (_) {
+            // Defaults apply when the manifest cannot be read.
+        }
+        const ime = await loadNyaitterImeScript(getNyaitterImeScriptUrls());
+        nyaitterIme = ime;
+        return ime;
+    })().catch((error) => {
         nyaitterImeReadyPromise = null;
         throw error;
     });
