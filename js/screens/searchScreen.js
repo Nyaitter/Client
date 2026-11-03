@@ -40,9 +40,7 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
     renderSearchHeader(query, tab, getEmoji(escapeHTML(query)));
 
     const searchInput = document.getElementById('search-input');
-    let searchDebounceTimer;
     let isComposing = () => false;
-    const cancelSearch = () => clearTimeout(searchDebounceTimer);
     const performSearch = () => {
         if (!searchInput?.isConnected || document.activeElement !== searchInput || isComposing({})) return;
         const newQuery = searchInput?.value.trim();
@@ -53,24 +51,11 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
     if (searchInput) {
         searchInput.value = query;
         isComposing = trackSearchComposition(searchInput);
-        const scheduleSearch = () => {
-            cancelSearch();
-            searchDebounceTimer = setTimeout(performSearch, 400);
-        };
-        searchInput.addEventListener('compositionstart', cancelSearch);
-        searchInput.addEventListener('compositionend', () => {
-            if (document.activeElement === searchInput) scheduleSearch();
-        });
-        searchInput.addEventListener('blur', cancelSearch);
+        // 入力や変換確定では検索しない。実行は Enter の明示操作のみ。
         searchInput.onkeydown = (e) => {
             if (e.key === 'Enter' && !isComposing(e)) {
-                cancelSearch();
                 performSearch();
             }
-        };
-        searchInput.oninput = (event) => {
-            cancelSearch();
-            if (document.activeElement === searchInput && !isComposing(event)) scheduleSearch();
         };
     }
 
@@ -84,7 +69,6 @@ export async function showSearchResults(query, tab = 'posts', showScreenFn = nul
 
     showScreenCompat('search-results-screen', showScreenFn);
 
-    getActiveScreenContext()?.addCleanup(cancelSearch);
 
     bindAdvancedSearch(DOM.pageHeader, getActiveScreenContext());
     await loadSearchTabContent(query, tab);
