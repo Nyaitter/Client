@@ -61,25 +61,25 @@ export function bindAdvancedSearch(header, context) {
         if (closeModal) return;
         const initial = readAdvancedSearch(header.querySelector('#search-input')?.value || '');
         const modal = document.createElement('div');
-        modal.className = 'modal-overlay advanced-search-overlay';
+        modal.className = 'modal-overlay nui-modal-backdrop advanced-search-overlay';
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.setAttribute('aria-labelledby', 'advanced-search-title');
-        modal.innerHTML = `<section class="modal-content nui-modal advanced-search-modal" data-nui="modal">
-            <header class="advanced-search-heading"><h2 id="advanced-search-title">高度な検索</h2><button type="button" class="advanced-search-close" aria-label="閉じる">×</button></header>
+        modal.innerHTML = `<section class="modal-content nui-modal advanced-search-modal" data-nui="modal" style="width: min(620px, calc(100vw - 2rem));">
+            <header class="advanced-search-heading"><h2 id="advanced-search-title" class="nui-modal-title">高度な検索</h2><button type="button" class="advanced-search-close" aria-label="閉じる">×</button></header>
             <form class="advanced-search-form nui-form">
                 <div class="advanced-search-fields">
-                    <label>キーワード・検索式<input name="keywords" type="text" placeholder="例：猫 写真" autocomplete="off"></label>
-                    <label>完全一致する語句<input name="phrase" type="text" placeholder="例：今日の猫" autocomplete="off"></label>
-                    <fieldset><legend>投稿者</legend><label>NyaitterID または Scratchユーザー名<input name="from" type="text" placeholder="#1234 またはユーザー名" autocomplete="off"></label><label class="advanced-search-checkbox"><input name="excludeFrom" type="checkbox"><span>この投稿者を除く</span></label></fieldset>
-                    <fieldset><legend>投稿日 <small>UTC</small></legend><label>期間<select name="dateMode"><option value="any">指定しない</option><option value="day">特定の日</option><option value="range">期間を指定</option></select></label>
-                        <label data-search-date="day" hidden>日付<input name="at" type="date"></label>
-                        <div class="advanced-search-date-range" data-search-date="range" hidden><label>開始日（含む）<input name="since" type="date"></label><label>終了日（含まない）<input name="until" type="date"></label></div>
+                    <label>キーワード・検索式<input name="keywords" type="text" class="nui-input" placeholder="例：猫 写真" autocomplete="off"></label>
+                    <label>完全一致する語句<input name="phrase" type="text" class="nui-input" placeholder="例：今日の猫" autocomplete="off"></label>
+                    <fieldset><legend>投稿者</legend><label>NyaitterID または Scratchユーザー名<input name="from" type="text" class="nui-input" placeholder="#1234 またはユーザー名" autocomplete="off"></label><label class="advanced-search-checkbox"><input name="excludeFrom" type="checkbox"><span>この投稿者を除く</span></label></fieldset>
+                    <fieldset><legend>投稿日 <small>UTC</small></legend><label>期間<select name="dateMode" class="nui-input"><option value="any">指定しない</option><option value="day">特定の日</option><option value="range">期間を指定</option></select></label>
+                        <label data-search-date="day" hidden>日付<input name="at" type="date" class="nui-input"></label>
+                        <div class="advanced-search-date-range" data-search-date="range" hidden><label>開始日（含む）<input name="since" type="date" class="nui-input"></label><label>終了日（含まない）<input name="until" type="date" class="nui-input"></label></div>
                     </fieldset>
                     <fieldset class="advanced-search-filters"><legend>投稿の内容</legend>
-                        <label>添付ファイル<select name="media"><option value="">指定しない</option><option value="include">添付あり</option><option value="exclude">添付なし</option></select></label>
-                        <label>リンク<select name="links"><option value="">指定しない</option><option value="include">リンクあり</option><option value="exclude">リンクなし</option></select></label>
-                        <label class="advanced-search-kind">投稿の種類<select name="kind"><option value="">すべて</option><option value="reply">返信</option><option value="quote">引用</option><option value="repost">リポスト</option><option value="-reply">返信を除く</option><option value="-quote">引用を除く</option><option value="-repost">リポストを除く</option></select></label>
+                        <label>添付ファイル<select name="media" class="nui-input"><option value="">指定しない</option><option value="include">添付あり</option><option value="exclude">添付なし</option></select></label>
+                        <label>リンク<select name="links" class="nui-input"><option value="">指定しない</option><option value="include">リンクあり</option><option value="exclude">リンクなし</option></select></label>
+                        <label class="advanced-search-kind">投稿の種類<select name="kind" class="nui-input"><option value="">すべて</option><option value="reply">返信</option><option value="quote">引用</option><option value="repost">リポスト</option><option value="-reply">返信を除く</option><option value="-quote">引用を除く</option><option value="-repost">リポストを除く</option></select></label>
                     </fieldset>
                     <p class="advanced-search-error" role="alert" hidden></p>
                 </div>

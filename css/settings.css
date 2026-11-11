@@ -387,27 +387,14 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     border-top: 1px solid var(--border-color);
 }
 
-.settings-account-identity,
 .settings-account-delete {
     margin-bottom: 1.25rem;
 }
 
-.settings-account-identity h4,
 .settings-account-delete h4 {
     margin: 0 0 0.35rem;
 }
 
-#settings-reassign-nyaitter-id-btn {
-    padding: 0.6rem 1.2rem;
-    border: 1px solid var(--primary-color);
-    border-radius: 9999px;
-    background: var(--main-bg-color);
-    color: var(--primary-color);
-    font-weight: 700;
-    cursor: pointer;
-}
-
-#settings-reassign-nyaitter-id-btn:disabled,
 #settings-delete-account-btn:disabled {
     cursor: not-allowed;
     opacity: 0.6;
@@ -1038,7 +1025,6 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 .settings-primary-button,
 .settings-secondary-button,
 .settings-danger-button,
-#settings-reassign-nyaitter-id-btn,
 #settings-logout-btn,
 #settings-showlog-btn,
 #settings-account-switcher-btn {

@@ -258,28 +258,61 @@ export function restoreScrollPosition(targetRouteKey = null) {
         throw error;
     }
 
-    // 描画遅延や画像の読み込み・高さ変動に備えて追従
-    const tryScroll = (attemptsLeft = 8) => {
+    // 描画遅延や画像の読み込み・高さ変動に備えて追従する。固定回数で打ち切ると、
+    // 高さが後から伸びた際にブラウザのスクロールアンカリングでずれた位置が
+    // そのまま保存されてしまうため、高さと位置が安定するまで適用し直す。
+    // 追従中は scrollRestoreInProgress が立ち、ずれた値の保存も抑止される。
+    const followDeadline = Date.now() + 3000;
+    let lastHeight = -1;
+    let stableChecks = 0;
+    let userInterrupted = false;
+    const markUserInterrupt = () => { userInterrupted = true; };
+    window.addEventListener('wheel', markUserInterrupt, { passive: true });
+    window.addEventListener('touchstart', markUserInterrupt, { passive: true });
+    const removeInterruptListeners = () => {
+        window.removeEventListener('wheel', markUserInterrupt);
+        window.removeEventListener('touchstart', markUserInterrupt);
+    };
+    const finishFollowUp = () => {
+        removeInterruptListeners();
+        if (version === scrollRestoreVersion) scrollRestoreInProgress = false;
+    };
+    const tryScroll = () => {
         try {
             scheduleNextFrame(() => {
-                if (version !== scrollRestoreVersion || activeScrollRouteKey !== routeKey) return;
+                if (version !== scrollRestoreVersion || activeScrollRouteKey !== routeKey) {
+                    removeInterruptListeners();
+                    return;
+                }
                 try {
+                    if (userInterrupted) {
+                        finishFollowUp();
+                        return;
+                    }
                     const currentY = window.scrollY || 0;
                     if (Math.abs(currentY - targetY) > 2) {
                         scrollWindowTo(targetY);
                     }
-                    if (attemptsLeft > 1 && Math.abs((window.scrollY || 0) - targetY) > 2) {
-                        setTimeout(() => tryScroll(attemptsLeft - 1), 30);
+                    const height = document.documentElement.scrollHeight || 0;
+                    const settled = Math.abs((window.scrollY || 0) - targetY) <= 2;
+                    if (settled && height === lastHeight) {
+                        stableChecks += 1;
                     } else {
-                        scrollRestoreInProgress = false;
+                        stableChecks = 0;
+                        lastHeight = height;
+                    }
+                    if (stableChecks >= 3 || Date.now() >= followDeadline) {
+                        finishFollowUp();
+                    } else {
+                        setTimeout(tryScroll, 30);
                     }
                 } catch (error) {
-                    if (version === scrollRestoreVersion) scrollRestoreInProgress = false;
+                    finishFollowUp();
                     throw error;
                 }
             });
         } catch (error) {
-            if (version === scrollRestoreVersion) scrollRestoreInProgress = false;
+            finishFollowUp();
             throw error;
         }
     };

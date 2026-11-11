@@ -63,6 +63,29 @@ import { positionElementRelativeToAnchor } from '../utils/viewport.js';
 export const METRICS_FALLBACK = '?';
 let postModalReturnFocus = null;
 
+/* モーダル表示中は背面（タイムライン）をスクロールさせないためのロック。
+   グレーアウト部分へのスワイプも含め、背面側へスクロールを伝播させない */
+let postModalScrollLock = null;
+
+function lockPostModalScroll() {
+    if (postModalScrollLock) return;
+    const root = document.documentElement;
+    const body = document.body;
+    postModalScrollLock = {
+        rootOverflow: root.style.overflow,
+        bodyOverflow: body ? body.style.overflow : '',
+    };
+    root.style.overflow = 'hidden';
+    if (body) body.style.overflow = 'hidden';
+}
+
+function unlockPostModalScroll() {
+    if (!postModalScrollLock) return;
+    document.documentElement.style.overflow = postModalScrollLock.rootOverflow;
+    if (document.body) document.body.style.overflow = postModalScrollLock.bodyOverflow;
+    postModalScrollLock = null;
+}
+
 function handlePostModalKeydown(event) {
     const modal = DOM.postModal;
     if (!modal || modal.classList.contains('hidden')) return;
@@ -606,7 +629,7 @@ export async function renderPost(post, author, options = {}) {
 
         if (post.mask) {
             postContent.classList.add('hidden');
-            if (post.content.startsWith('!')) {
+            if (post.mask && post.content.startsWith('!')) {
                 const masktitle = document.createElement('div');
                 masktitle.className = 'post-content post-mask-title';
                 masktitle.innerHTML = renderNyarkDown(
@@ -1712,7 +1735,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
                         <input type="${inputType}" name="${inputName}" value="-1" class="poll-option-input poll-other-radio">
                         <span>その他</span>
                     </label>
-                    <input type="text" class="post-poll-other-input hidden" placeholder="その他の回答を入力" maxlength="200">
+                    <input type="text" class="post-poll-other-input nui-input hidden" placeholder="その他の回答を入力" maxlength="200">
                 </div>
             `;
         }
@@ -1960,7 +1983,7 @@ export function openCreatePollModal(container) {
             
             <div class="poll-field-group">
                 <label class="poll-field-label" for="poll-title-input">質問 / タイトル</label>
-                <input type="text" id="poll-title-input" class="poll-text-input" placeholder="質問を入力してください" value="${escapeHTML(initialTitle)}">
+                <input type="text" id="poll-title-input" class="poll-text-input nui-input" placeholder="質問を入力してください" value="${escapeHTML(initialTitle)}">
             </div>
 
             <div class="poll-field-group">
@@ -1977,7 +2000,7 @@ export function openCreatePollModal(container) {
                     <button type="button" class="poll-duration-tab-btn" data-duration-tab="unlimited">無制限</button>
                 </div>
                 <div id="poll-duration-relative" class="poll-duration-content">
-                    <select id="poll-relative-select" class="poll-text-input">
+                    <select id="poll-relative-select" class="poll-text-input nui-input">
                         <option value="1h">1時間</option>
                         <option value="6h">6時間</option>
                         <option value="12h">12時間</option>
@@ -1987,7 +2010,7 @@ export function openCreatePollModal(container) {
                     </select>
                 </div>
                 <div id="poll-duration-absolute" class="poll-duration-content hidden">
-                    <input type="datetime-local" id="poll-datetime-input" class="poll-text-input">
+                    <input type="datetime-local" id="poll-datetime-input" class="poll-text-input nui-input">
                 </div>
                 <div id="poll-duration-unlimited" class="poll-duration-content hidden">
                     <p style="font-size: 0.85rem; color: var(--secondary-text-color); margin: 0.4rem 0;">期限なしで無制限に投票を受け付けます。</p>
@@ -2029,7 +2052,7 @@ export function openCreatePollModal(container) {
             const row = document.createElement('div');
             row.className = 'poll-option-input-row';
             row.innerHTML = `
-                <input type="text" class="poll-text-input poll-opt-input" placeholder="選択肢 ${index + 1}" value="${escapeHTML(optText)}">
+                <input type="text" class="poll-text-input poll-opt-input nui-input" placeholder="選択肢 ${index + 1}" value="${escapeHTML(optText)}">
                 ${initialOptions.length > 2 ? `<button type="button" class="poll-option-remove-btn" title="削除">×</button>` : ''}
             `;
             row.querySelector('.poll-opt-input').addEventListener('input', (e) => {
@@ -2582,6 +2605,7 @@ export function openPostModal(replyTo = null, quotingPost = null) {
     }
 
     modalFormContainer.querySelector('.modal-close-btn')?.addEventListener('click', closePostModal);
+    lockPostModalScroll();
     postModal.classList.remove('hidden');
     document.addEventListener('keydown', handlePostModalKeydown);
     postModal.onclick = event => {
@@ -2599,6 +2623,7 @@ export function closePostModal() {
     const postModal = DOM.postModal;
     if (!postModal || postModal.classList.contains('hidden')) return;
     postModal.classList.add('hidden');
+    unlockPostModalScroll();
     postModal.onclick = null;
     document.removeEventListener('keydown', handlePostModalKeydown);
     setReplyingTo(null);
@@ -3187,7 +3212,10 @@ export function handleShowMaskedPost(button) {
     const postContent = postMain.querySelector('.post-content');
     const postAttach = postMain.querySelector('.attachments-container');
 
-    if (postAttach) postAttach.classList.remove('hidden');
+    if (postAttach) {
+        postAttach.classList.remove('hidden');
+
+    }
     if (postContent) postContent.classList.remove('hidden');
 }
 
@@ -3957,18 +3985,18 @@ export function openCommunityNoteModal(postId, post, postBody) {
 
     const modal = document.createElement('div');
     modal.id = 'community-note-create-modal';
-    modal.className = 'modal-overlay community-note-create-modal';
+    modal.className = 'modal-overlay nui-modal-backdrop community-note-create-modal';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
 
     modal.innerHTML = `
-        <div class="community-note-modal-content">
+        <div class="community-note-modal-content nui-modal" style="width: min(560px, calc(100vw - 2rem)); padding: 1.5rem;">
             <button type="button" class="modal-close-btn" id="community-note-modal-close" aria-label="${t('common.close')}">×</button>
-            <div class="community-note-modal-title">コミュニティノートを作成</div>
+            <div class="community-note-modal-title nui-modal-title">コミュニティノートを作成</div>
 
             <div class="community-note-modal-field">
                 <label class="community-note-modal-label" for="community-note-content">内容・ソース</label>
-                <textarea id="community-note-content" class="community-note-modal-textarea" rows="6" maxlength="1000" placeholder="補足情報とソースを入力してください"></textarea>
+                <textarea id="community-note-content" class="community-note-modal-textarea nui-input" rows="6" maxlength="1000" placeholder="補足情報とソースを入力してください"></textarea>
                 <div class="community-note-modal-count" id="community-note-content-count">0 / 1000</div>
             </div>
 
@@ -3980,7 +4008,7 @@ export function openCommunityNoteModal(postId, post, postBody) {
             </div>
 
             <div class="community-note-modal-actions">
-                <button type="button" class="community-note-modal-cancel" id="community-note-cancel">キャンセル</button>
+                <button type="button" class="community-note-modal-cancel nui-button-secondary" id="community-note-cancel">キャンセル</button>
                 <button type="button" class="community-note-modal-submit nui-button" id="community-note-submit">送信</button>
             </div>
         </div>

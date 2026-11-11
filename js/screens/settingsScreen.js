@@ -23,7 +23,6 @@ import {
     cacheUser,
     invalidateTimelinePageCache,
     invalidateDmCaches,
-    invalidateCachesAfterUserIdReassignment,
 } from '../modules/cache.js';
 import {
     applyInterfaceTheme,
@@ -42,6 +41,7 @@ import {
     openAccountSwitcherModal,
     handleLogout,
     checkSession,
+    refreshAccountList,
 } from '../modules/auth.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { applyDataSaverRealtimePreference, applyDataSaverButtonState, unsubscribeFromChanges } from '../modules/realtime.js';
@@ -137,11 +137,11 @@ async function requestTurnstileTokenModal() {
 
     return new Promise((resolve) => {
         const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
+        modal.className = 'modal-overlay nui-modal-backdrop';
         modal.setAttribute('role', 'dialog');
         modal.setAttribute('aria-modal', 'true');
         modal.innerHTML = `
-            <div class="modal-content nui-modal" style="max-width: 360px; padding: 1.5rem; text-align: center;">
+            <div class="modal-content nui-modal" style="max-width: 360px; width: min(360px, calc(100vw - 2rem)); padding: 1.5rem; text-align: center;">
                 <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
                 <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.1rem;">セキュリティ確認</h3>
                 <p class="settings-help-text nui-help-text" style="margin-bottom: 1.25rem;">続行するには認証を完了してください。</p>
@@ -538,7 +538,7 @@ export async function showSettingsScreen(
                     </fieldset>
                     <fieldset class="nui-card settings-ng-words"><legend>ミュート・フィルター</legend>
                         <label for="setting-ng-words">NGワード</label>
-                        <textarea id="setting-ng-words" placeholder="改行またはカンマ区切りで入力">${escapeHTML(Array.isArray(getCurrentUser().settings?.ng_words) ? getCurrentUser().settings.ng_words.join('\n') : (getCurrentUser().settings?.ng_words || ''))}</textarea>
+                        <textarea id="setting-ng-words" class="nui-input" placeholder="改行またはカンマ区切りで入力">${escapeHTML(Array.isArray(getCurrentUser().settings?.ng_words) ? getCurrentUser().settings.ng_words.join('\n') : (getCurrentUser().settings?.ng_words || ''))}</textarea>
                         <p class="settings-help-text nui-help-text">設定したワードが含まれるポストを検索から除外します。</p>
                     </fieldset>
                     <fieldset class="nui-card settings-dm-privacy"><legend>ダイレクトメッセージ</legend>
@@ -565,7 +565,7 @@ export async function showSettingsScreen(
                         <h4 class="nui-section-title" id="settings-verification-title">認証</h4>
                         <p class="settings-help-text nui-help-text">認証済みアカウントにはプロフィール上で認証バッジが表示されます。申請は担当管理者が審査します。</p>
                         <button type="button" id="open-verification-application-btn" class="settings-bot-secondary-button nui-button-secondary" ${getCurrentUser().verify ? 'disabled' : ''}>${getCurrentUser().verify ? '認証済み' : '認証を申請する'}</button>
-                        <p id="verification-application-status" class="settings-help-text hidden" role="status"></p>
+                        <p id="verification-application-status" class="settings-help-text nui-help-text hidden" role="status"></p>
                     </section>
                     ${Boolean(getCurrentUser()?.is_imposter || getCurrentUser()?.auth_provider === 'imposter' || getCurrentUser()?.settings?.imposter?.parent_id) ? '' : `
                     <section class="nui-section settings-sessions" aria-labelledby="settings-sessions-title">
@@ -641,16 +641,16 @@ export async function showSettingsScreen(
                         <p class="settings-help-text nui-help-text">${t('settings.custom_colors.help')}</p>
                         <div class="settings-color-grid">
                             <label class="settings-color-field">${t('settings.color.primary')}
-                                <span class="settings-color-control"><input type="color" id="setting-color-primary-picker" data-color-key="primary_color"><input type="text" id="setting-color-primary" data-color-key="primary_color" class="settings-color-code" maxlength="7"></span>
+                                <span class="settings-color-control"><input type="color" id="setting-color-primary-picker" data-color-key="primary_color"><input type="text" id="setting-color-primary" data-color-key="primary_color" class="settings-color-code nui-input" maxlength="7"></span>
                             </label>
                             <label class="settings-color-field">${t('settings.color.primary_hover')}
-                                <span class="settings-color-control"><input type="color" id="setting-color-primary-hover-picker" data-color-key="primary_hover_color"><input type="text" id="setting-color-primary-hover" data-color-key="primary_hover_color" class="settings-color-code" maxlength="7"></span>
+                                <span class="settings-color-control"><input type="color" id="setting-color-primary-hover-picker" data-color-key="primary_hover_color"><input type="text" id="setting-color-primary-hover" data-color-key="primary_hover_color" class="settings-color-code nui-input" maxlength="7"></span>
                             </label>
                             <label class="settings-color-field">${t('settings.color.light_primary')}
-                                <span class="settings-color-control"><input type="color" id="setting-color-light-primary-picker" data-color-key="light_primary_color"><input type="text" id="setting-color-light-primary" data-color-key="light_primary_color" class="settings-color-code" maxlength="7"></span>
+                                <span class="settings-color-control"><input type="color" id="setting-color-light-primary-picker" data-color-key="light_primary_color"><input type="text" id="setting-color-light-primary" data-color-key="light_primary_color" class="settings-color-code nui-input" maxlength="7"></span>
                             </label>
                             <label class="settings-color-field">${t('settings.color.dark_light_primary')}
-                                <span class="settings-color-control"><input type="color" id="setting-color-dark-light-primary-picker" data-color-key="dark_light_primary_color"><input type="text" id="setting-color-dark-light-primary" data-color-key="dark_light_primary_color" class="settings-color-code" maxlength="7"></span>
+                                <span class="settings-color-control"><input type="color" id="setting-color-dark-light-primary-picker" data-color-key="dark_light_primary_color"><input type="text" id="setting-color-dark-light-primary" data-color-key="dark_light_primary_color" class="settings-color-code nui-input" maxlength="7"></span>
                             </label>
                         </div>
                     </section>
@@ -670,7 +670,7 @@ export async function showSettingsScreen(
                         <div id="settings-imposter-create" class="settings-bot-create-container">
                             <label for="settings-imposter-name" style="font-weight: 600; font-size: 0.9rem;">新しいインポスターの表示名</label>
                             <div class="settings-bot-create-form">
-                                <input type="search" id="settings-imposter-name" placeholder="表示名" maxlength="50" autocomplete="off">
+                                <input type="search" id="settings-imposter-name" class="nui-input" placeholder="表示名" maxlength="50" autocomplete="off">
                                 <button type="button" id="settings-imposter-create-btn" class="settings-primary-button nui-button">作成</button>
                             </div>
                             <p id="settings-imposter-limit" class="settings-help-text nui-help-text" role="status">インポスターを読み込んでいます</p>
@@ -698,7 +698,7 @@ export async function showSettingsScreen(
                         <div class="settings-bot-create-container">
                             <label for="setting-bot-token-name" style="font-weight: 600; font-size: 0.9rem;">新しいAPIキーの名前</label>
                             <div class="settings-bot-create-form">
-                                <input type="text" id="setting-bot-token-name" placeholder="例: 投稿Bot, 自動通知スクリプト" maxlength="50" autocomplete="off">
+                                <input type="text" id="setting-bot-token-name" class="nui-input" placeholder="例: 投稿Bot, 自動通知スクリプト" maxlength="50" autocomplete="off">
                                 <button type="button" id="setting-bot-token-create-btn" class="nui-button">APIキーを生成</button>
                             </div>
                         </div>
@@ -708,8 +708,8 @@ export async function showSettingsScreen(
                                 <p class="settings-bot-new-key-warning">このキーは一度しか表示されません。安全な場所にコピーして保存してください。</p>
                             </div>
                             <div class="settings-bot-new-key-display">
-                                <input type="text" id="settings-bot-new-key-value" readonly spellcheck="false" autocomplete="off">
-                                <button type="button" id="settings-bot-copy-key-btn" class="settings-bot-copy-button">コピー</button>
+                                <input type="text" id="settings-bot-new-key-value" class="nui-input" readonly spellcheck="false" autocomplete="off">
+                                <button type="button" id="settings-bot-copy-key-btn" class="settings-bot-copy-button nui-button">コピー</button>
                             </div>
                             <div style="margin-top: 0.5rem; text-align: right;">
                                 <button type="button" id="settings-bot-close-new-key-btn" class="settings-bot-secondary-button nui-button-secondary">完了</button>
@@ -760,7 +760,7 @@ export async function showSettingsScreen(
                     </section>
                 </section>
             </form>
-            <div id="verification-application-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+            <div id="verification-application-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true">
                 <section class="modal-content verification-application-modal-content nui-modal" data-nui="modal">
                     <button type="button" class="modal-close-btn" data-action="close-verification-application">×</button>
                     <h3 class="nui-modal-title">認証を申請する</h3>
@@ -771,8 +771,8 @@ export async function showSettingsScreen(
                     </div>
                 </section>
             </div>
-            <div id="edit-app-scopes-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
-                <section class="modal-content nui-modal" data-nui="modal" style="max-width: 520px;">
+            <div id="edit-app-scopes-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true">
+                <section class="modal-content nui-modal" data-nui="modal" style="max-width: 520px; width: min(480px, calc(100vw - 2rem));">
                     <button type="button" class="modal-close-btn">×</button>
                     <h3 id="edit-app-scopes-title" class="nui-modal-title">権限を変更</h3>
                     <p class="settings-help-text nui-help-text">このアプリケーションに許可する権限を選択してください。</p>
@@ -989,7 +989,7 @@ export async function showSettingsScreen(
             if (session.can_revoke_trust) {
                 const revokeButton = document.createElement('button');
                 revokeButton.type = 'button';
-                revokeButton.className = 'settings-session-revoke-button';
+                revokeButton.className = 'settings-session-revoke-button nui-button-danger';
                 revokeButton.textContent = '信頼を取り消す';
                 revokeButton.addEventListener('click', async () => {
                     if (!(await showAppConfirm('このIPアドレスの信頼を取り消し、同じIPアドレスの全セッションを無効化しますか？'))) return;
@@ -1165,7 +1165,7 @@ export async function showSettingsScreen(
             if (isLinked) {
                 const unlinkBtn = document.createElement('button');
                 unlinkBtn.type = 'button';
-                unlinkBtn.className = 'settings-session-revoke-button';
+                unlinkBtn.className = 'settings-session-revoke-button nui-button-danger';
                 unlinkBtn.textContent = '連携解除';
                 unlinkBtn.addEventListener('click', async () => {
                     if (linkedProviders.length <= 1) {
@@ -1269,7 +1269,7 @@ export async function showSettingsScreen(
             actions.className = 'settings-session-actions nui-actions';
             const revokeBtn = document.createElement('button');
             revokeBtn.type = 'button';
-            revokeBtn.className = 'settings-session-revoke-button';
+            revokeBtn.className = 'settings-session-revoke-button nui-button-danger';
             revokeBtn.textContent = '無効化';
             revokeBtn.addEventListener('click', async () => {
                 if (!(await showAppConfirm(`APIキー「${token.name || token.tokenId}」を無効化しますか？\n無効化するとこのキーを使用したBotはアクセスできなくなります。`))) return;
@@ -1523,7 +1523,7 @@ export async function showSettingsScreen(
             // Revoke button
             const revokeBtn = document.createElement('button');
             revokeBtn.type = 'button';
-            revokeBtn.className = 'settings-session-revoke-button';
+            revokeBtn.className = 'settings-session-revoke-button nui-button-danger';
             revokeBtn.textContent = '連携を解除';
             revokeBtn.addEventListener('click', async () => {
                 if (!(await showAppConfirm(`アプリケーション「${app.app_name}」の連携を解除しますか？\n解除するとこのアプリからのアクセスは直ちに停止されます。`))) return;
@@ -1643,7 +1643,7 @@ export async function showSettingsScreen(
                     });
                     const removeButton = document.createElement('button');
                     removeButton.type = 'button';
-                    removeButton.className = 'settings-session-revoke-button';
+                    removeButton.className = 'settings-session-revoke-button nui-button-danger';
                     removeButton.textContent = '解除';
                     removeButton.addEventListener('click', async () => {
                         if (!(await showAppConfirm(`NyaitterID ${formatImposterId(member.user_id)} の共同運用を解除しますか？`))) return;
@@ -1713,6 +1713,7 @@ export async function showSettingsScreen(
                     deleteButton.disabled = true;
                     const { error: deleteError } = await apiRequest(`/server/api/imposters/${encodeURIComponent(imposter.id)}`, { method: 'DELETE' });
                     if (deleteError) showAppAlert(`インポスターの削除に失敗しました: ${deleteError.message}`);
+                    else await refreshAccountList();
                     await loadImposters();
                 });
                 actions.appendChild(deleteButton);
@@ -1734,7 +1735,10 @@ export async function showSettingsScreen(
             body: { name },
         });
         if (error) showAppAlert(`インポスターの作成に失敗しました: ${error.message}`);
-        else if (imposterNameInput) imposterNameInput.value = '';
+        else {
+            if (imposterNameInput) imposterNameInput.value = '';
+            await refreshAccountList();
+        }
         imposterCreateButton.disabled = false;
         await loadImposters();
     });
@@ -1796,7 +1800,7 @@ export async function showSettingsScreen(
             actions.className = 'settings-session-actions nui-actions';
             const deleteButton = document.createElement('button');
             deleteButton.type = 'button';
-            deleteButton.className = 'settings-session-revoke-button';
+            deleteButton.className = 'settings-session-revoke-button nui-button-danger';
             deleteButton.textContent = '削除';
             deleteButton.addEventListener('click', async () => {
                 if (!file.id || !(await showAppConfirm(`ファイル「${file.name || file.id}」を削除しますか？\n投稿やプロフィールで使用中の場合、表示できなくなることがあります。`))) return;
@@ -2286,18 +2290,15 @@ export async function showSettingsScreen(
         if (activeGroup === 'resources') renderResourceLinks();
         if (activeGroup === 'client') void loadClientSettings();
         if (activeGroup === 'status') void loadSettingsStatus();
-        if (activeGroup === 'privacy') void loadSettingsDisplayRanks();
+        if (activeGroup === 'privacy') {
+            void loadSettingsDisplayRanks();
+        }
     };
 
     const dangerZone = document.querySelector('.settings-danger-zone');
     if (dangerZone) {
         const isImposter = Boolean(getCurrentUser()?.is_imposter);
         let dangerZoneHTML = `
-            <section class="nui-section settings-account-identity" aria-labelledby="settings-nyaitter-id-title">
-                <h4 class="nui-section-title" id="settings-nyaitter-id-title">NyaitterID</h4>
-                <p class="settings-help-text nui-help-text">再割り当てをした場合元のIDに戻すことはできません。</p>
-                <button type="button" id="settings-reassign-nyaitter-id-btn" class="nui-button-secondary">NyaitterIDを再割り当て</button>
-            </section>
             ${isImposter ? '' : `
                 <section class="nui-section settings-account-delete" aria-labelledby="settings-account-delete-title">
                     <h4 class="nui-section-title" id="settings-account-delete-title">NyaitterIDの破棄</h4>
@@ -2468,39 +2469,6 @@ export async function showSettingsScreen(
     document.getElementById('push-notification-action')?.addEventListener('click', togglePushSubscription);
     document.getElementById('settings-account-switcher-btn')?.addEventListener('click', openAccountSwitcherModal);
     document.getElementById('settings-logout-btn')?.addEventListener('click', handleLogout);
-
-    document.getElementById('settings-reassign-nyaitter-id-btn')?.addEventListener('click', async (event) => {
-        const button = event.currentTarget;
-        if (!(await showAppConfirm('NyaitterIDを再割り当てしますか？ 現在のIDへ戻せない場合があります。'))) return;
-        button.disabled = true;
-
-        const previousId = getCurrentUser()?.id != null ? Number(getCurrentUser().id) : null;
-        const { data, error } = await apiRequest('/server/api/users/me/nyaitter-id/reassign', {
-            method: 'POST',
-            body: {},
-        });
-        if (error) {
-            button.disabled = false;
-            showAppAlert(error.message || 'NyaitterIDを再割り当てできませんでした。');
-            return;
-        }
-        if (data?.user) {
-            const newUser = data.user;
-            const newUserId = Number(newUser.id);
-            invalidateCachesAfterUserIdReassignment(previousId, newUserId);
-            setCurrentUser(newUser);
-            updateAccountData(newUser, previousId);
-            if (previousId != null) {
-                getPublicProfileCache().delete(previousId);
-                getAllUsersCache().delete(previousId);
-            }
-            getPublicProfileCache().set(newUserId, newUser);
-            cacheUser(newUser);
-            await updateNavAndSidebars();
-        }
-        showAppAlert('NyaitterIDを再割り当てしました。');
-        await router();
-    });
 
     document.getElementById('settings-delete-account-btn')?.addEventListener('click', async (event) => {
         const button = event.currentTarget;

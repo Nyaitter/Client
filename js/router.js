@@ -199,6 +199,8 @@ export async function router() {
         DOM.timeline.innerHTML = `<p class="error-message">ページの読み込み中にエラーが発生しました。</p>`;
     } finally {
         if (generation !== routerGeneration) return;
-        restoreScrollPosition(routeKey);
+        // 復元キーは描画後の状態で確定させる（タイムラインのタブは描画中に
+        // 決まるため、遷移開始時点のキーでは別のタブの位置を復元しうる）。
+        restoreScrollPosition(getScrollRouteKey(hash));
     }
 }

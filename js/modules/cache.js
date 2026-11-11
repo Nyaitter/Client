@@ -480,30 +480,6 @@ export function invalidateTimelinePageCache() {
     persistPageCaches();
 }
 
-export function invalidateCachesAfterUserIdReassignment(previousId, nextId) {
-    const cache = getAllUsersCache();
-    const oldId = Number(previousId);
-    const newId = Number(nextId);
-
-    if (Number.isInteger(oldId) && oldId >= 0) {
-        cache.delete(oldId);
-        cache.delete(String(oldId));
-    }
-    if (Number.isInteger(newId) && newId >= 0) {
-        cache.delete(newId);
-        cache.delete(String(newId));
-    }
-
-    timelinePageCaches.clear();
-    profilePostPageCaches.clear();
-    auxiliaryPostPageCaches.clear();
-    userPageCaches.clear();
-    screenDataCaches.clear();
-    pendingRealtimeTimelineUpdates.foryou.length = 0;
-    pendingRealtimeTimelineUpdates.following.length = 0;
-    persistPageCaches();
-}
-
 /**
  * Update a post's data or reaction metrics across all in-memory and persistent caches.
  * @param {number|string} postId

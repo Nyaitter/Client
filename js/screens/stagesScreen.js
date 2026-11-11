@@ -61,18 +61,18 @@ function createStageDialog(context) {
             <div class="stage-dialog-body">
                 <section class="stage-form-section nui-section" aria-labelledby="stage-section-basic" data-nui="section">
                     <h3 class="stage-form-section-title nui-section-title" id="stage-section-basic">基本情報</h3>
-                    <label for="stage-create-name">ステージ名<input id="stage-create-name" name="name" maxlength="50" placeholder="どんな話をしますか？" required></label>
-                    <label for="stage-create-description">説明<textarea id="stage-create-description" name="description" maxlength="2000" rows="3" placeholder="話したいことや参加する人への案内（任意）"></textarea></label>
+                    <label for="stage-create-name">ステージ名<input id="stage-create-name" name="name" class="nui-input" maxlength="50" placeholder="どんな話をしますか？" required></label>
+                    <label for="stage-create-description">説明<textarea id="stage-create-description" name="description" class="nui-input" maxlength="2000" rows="3" placeholder="話したいことや参加する人への案内（任意）"></textarea></label>
                 </section>
                 <section class="stage-form-section nui-section" aria-labelledby="stage-section-visibility" data-nui="section">
                     <h3 class="stage-form-section-title nui-section-title" id="stage-section-visibility">公開範囲</h3>
-                    <label for="stage-create-visibility">公開範囲<select id="stage-create-visibility" name="visibility"><option value="public">公開</option><option value="private">招待した人のみ</option><option value="group">グループ</option></select></label>
-                    <label for="stage-create-group" data-stage-group-field hidden>対象グループ<select id="stage-create-group" name="group_id"></select><span class="stage-field-help nui-help-text">選択したグループのメンバーだけが閲覧・参加できます。</span></label>
+                    <label for="stage-create-visibility">公開範囲<select id="stage-create-visibility" name="visibility" class="nui-input"><option value="public">公開</option><option value="private">招待した人のみ</option><option value="group">グループ</option></select></label>
+                    <label for="stage-create-group" data-stage-group-field hidden>対象グループ<select id="stage-create-group" name="group_id" class="nui-input"></select><span class="stage-field-help nui-help-text">選択したグループのメンバーだけが閲覧・参加できます。</span></label>
                     <label class="stage-guest-toggle nui-toggle"><span class="stage-guest-toggle-copy">ゲストユーザーの参加を許可<span class="stage-field-help nui-help-text">ゲストは視聴のみで、コメントやスピーカーへの昇格はできません。</span></span><input type="checkbox" name="allow_guest_join"><span class="settings-toggle-track" aria-hidden="true"></span></label>
                 </section>
                 <section class="stage-form-section nui-section" aria-labelledby="stage-section-schedule" data-nui="section">
                     <h3 class="stage-form-section-title nui-section-title" id="stage-section-schedule">開始</h3>
-                    <label for="stage-create-scheduled">開始日時<input id="stage-create-scheduled" name="scheduled_at" type="datetime-local"><span class="stage-field-help nui-help-text">未指定ならすぐに開始します。</span></label>
+                    <label for="stage-create-scheduled">開始日時<input id="stage-create-scheduled" name="scheduled_at" type="datetime-local" class="nui-input"><span class="stage-field-help nui-help-text">未指定ならすぐに開始します。</span></label>
                 </section>
                 <details class="stage-form-options">
                     <summary class="stage-form-section-title nui-section-title">参加者を招待</summary>
@@ -246,7 +246,7 @@ async function showDetail(id, container, context) {
     }
     const shareButton = container.querySelector('[data-stage-share]');
     if (shareButton) shareButton.onclick = () => {
-        void copyEntityUrl('stage', id, shareButton).catch(error => {
+        void copyEntityUrl('stage', id).catch(error => {
             if (!context.signal.aborted) container.querySelector('[data-stage-error]').textContent = error.message || '共有URLをコピーできませんでした。';
         });
     };

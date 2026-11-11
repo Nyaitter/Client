@@ -35,7 +35,7 @@ function stageManageMarkup(stage) {
         <h3 class="stage-manage-heading">${ICONS.activity}<span>ステージの状態</span></h3>
         <div class="stage-manage-row"><p>${stage.status === 'live' ? '開催中' : stage.status === 'ended' ? '終了' : '開始前'}</p>${stage.status === 'scheduled' ? '<button type="button" class="settings-primary-button nui-button" data-stage-status="live">開始する</button>' : ''}</div>
     </section>
-    <label class="stage-guest-toggle"><span class="stage-guest-toggle-copy">ゲストユーザーの参加を許可<span class="stage-field-help nui-help-text">ゲストは視聴のみで、コメントやスピーカーへの昇格はできません。</span></span><input type="checkbox" data-stage-guest-toggle ${stage.allow_guest_join ? 'checked' : ''}><span class="settings-toggle-track" aria-hidden="true"></span></label>
+    <label class="stage-guest-toggle nui-toggle"><span class="stage-guest-toggle-copy">ゲストユーザーの参加を許可<span class="stage-field-help nui-help-text">ゲストは視聴のみで、コメントやスピーカーへの昇格はできません。</span></span><input type="checkbox" data-stage-guest-toggle ${stage.allow_guest_join ? 'checked' : ''}><span class="settings-toggle-track" aria-hidden="true"></span></label>
     <form class="stage-manage-section user-invite-form" data-stage-manage-invite>
         <h3 class="stage-manage-heading">${ICONS.mention}<span>参加者を招待</span></h3>
         ${inviteFields('stage-manage-invite')}

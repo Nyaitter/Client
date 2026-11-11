@@ -295,7 +295,7 @@ export async function openAccountSwitcherModal() {
         if (event.target === modal) closeModal();
     };
     content.innerHTML = `
-        <button type="button" class="account-switcher-add-btn">＋ アカウント追加</button>
+        <button type="button" class="account-switcher-add-btn nui-button">＋ アカウント追加</button>
         <ul class="account-switcher-list">
             <li class="account-switcher-empty"><div class="spinner" aria-label="アカウント一覧を読み込み中"></div></li>
         </ul>
@@ -317,7 +317,7 @@ export async function openAccountSwitcherModal() {
     );
 
     content.innerHTML = `
-        <button type="button" class="account-switcher-add-btn">＋ アカウント追加</button>
+        <button type="button" class="account-switcher-add-btn nui-button">＋ アカウント追加</button>
         <ul class="account-switcher-list">
             ${
                 accounts.length > 0
@@ -491,16 +491,16 @@ export async function openLoginApprovalModal(approvalRequest) {
     };
 
     body.innerHTML = `
-        <h3 id="login-approval-modal-title">新しい端末からのログイン確認</h3>
-        <p class="settings-help-text">以下の端末からログインの許可がリクエストされています。</p>
+        <h3 id="login-approval-modal-title" class="nui-modal-title">新しい端末からのログイン確認</h3>
+        <p class="settings-help-text nui-help-text">以下の端末からログインの許可がリクエストされています。</p>
         <div class="login-approval-details">
             <p><strong>IPアドレス:</strong> ${escapeHTML(requestData.ip_masked || requestData.ip || '不明')}</p>
             <p><strong>端末情報:</strong> ${escapeHTML(requestData.user_agent || '不明')}</p>
             <p><strong>リクエスト日時:</strong> ${new Date(requestData.created_at).toLocaleString()}</p>
         </div>
         <div class="login-approval-actions">
-            <button type="button" class="login-secondary-button login-approval-deny-btn">拒否</button>
-            <button type="button" class="settings-primary-button login-approval-approve-btn">ログインを許可</button>
+            <button type="button" class="login-secondary-button login-approval-deny-btn nui-button-secondary">拒否</button>
+            <button type="button" class="settings-primary-button login-approval-approve-btn nui-button">ログインを許可</button>
         </div>
     `;
 
@@ -586,8 +586,8 @@ export async function openAccountRecoveryModal(recoveryRequest) {
     };
 
     body.innerHTML = `
-        <h3 id="account-recovery-modal-title">アカウントアクセスの復旧依頼</h3>
-        <p class="settings-help-text">心当たりのない場所から、アカウントへのアクセス復旧が求められています。</p>
+        <h3 id="account-recovery-modal-title" class="nui-modal-title">アカウントアクセスの復旧依頼</h3>
+        <p class="settings-help-text nui-help-text">心当たりのない場所から、アカウントへのアクセス復旧が求められています。</p>
         <dl class="account-recovery-facts">
             <div><dt>接続元</dt><dd>${escapeHTML(requestData.ip_masked || '不明')}</dd></div>
             <div><dt>端末</dt><dd>${escapeHTML(requestData.user_agent || '不明')}</dd></div>
@@ -597,16 +597,16 @@ export async function openAccountRecoveryModal(recoveryRequest) {
         </dl>
         ${isCurrentIp ? '<p class="account-recovery-warning" role="alert">この依頼は、いま使っている場所から送信されています。ブロックすると、この端末からログインできなくなります。</p>' : ''}
         ${pending ? `
-            <p class="settings-help-text">自分で依頼した場合は「承認」を、心当たりがない場合は「ブロック」を選んでください。</p>
+            <p class="settings-help-text nui-help-text">自分で依頼した場合は「承認」を、心当たりがない場合は「ブロック」を選んでください。</p>
             <div class="login-approval-actions">
-                <button type="button" class="login-secondary-button account-recovery-block-btn">ブロック</button>
-                <button type="button" class="settings-primary-button account-recovery-approve-btn">承認</button>
+                <button type="button" class="login-secondary-button account-recovery-block-btn nui-button-secondary">ブロック</button>
+                <button type="button" class="settings-primary-button account-recovery-approve-btn nui-button">承認</button>
             </div>
             <details class="account-recovery-more">
                 <summary>ブロックするとどうなりますか？</summary>
                 <p>依頼元の場所からログインできなくなります。ログイン方法が2つ以上ある場合は、依頼に使われた方法の連携も解除されます。</p>
             </details>
-        ` : `<p class="settings-help-text">この依頼はすでに処理されています（${escapeHTML(accountRecoveryStatusLabel(status))}）。</p>`}
+        ` : `<p class="settings-help-text nui-help-text">この依頼はすでに処理されています（${escapeHTML(accountRecoveryStatusLabel(status))}）。</p>`}
     `;
 
     const decide = async (action) => {

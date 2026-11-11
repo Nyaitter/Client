@@ -37,6 +37,29 @@ textarea {
         sans-serif;
 }
 
+/* テキスト選択はポスト本文とプロフィールだけに許可する。 */
+body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.post-content,
+.user-me,
+.me {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+}
+
+input,
+textarea,
+select,
+[contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
 .hidden {
     display: none !important;
 }

@@ -112,14 +112,14 @@ export function renderAppShellHTML() {
                 <h4>${t('login.banner.subtitle')}</h4>
             </div>
             <div class="login-banner-actions">
-                <button id="banner-login-button">${t('login.login')}</button>
-                <button id="banner-signup-button">${t('login.signup')}</button>
+                <button id="banner-login-button" class="nui-button">${t('login.login')}</button>
+                <button id="banner-signup-button" class="nui-button-secondary">${t('login.signup')}</button>
             </div>
         </div>
 
         <!-- ログインモーダル -->
-        <div id="login-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="login-title" tabindex="-1">
-            <div class="modal-content login-modal-content">
+        <div id="login-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="login-title" tabindex="-1">
+            <div class="modal-content login-modal-content nui-modal" style="width: min(520px, calc(100vw - 2rem)); max-height: min(760px, calc(100dvh - 2rem)); padding: clamp(1.25rem, 4vw, 2rem); border-radius: 20px;">
                 <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
                 <div class="login-modal-heading">
                     <button type="button" id="login-back-btn" class="login-modal-back-btn hidden" aria-label="${t('login.back_to_methods')}">←</button>
@@ -128,70 +128,70 @@ export function renderAppShellHTML() {
 
                 <!-- Provider Selection Screen -->
                 <div id="auth-provider-select">
-                    <p class="settings-help-text">${t('login.select_provider')}</p>
+                    <p class="settings-help-text nui-help-text">${t('login.select_provider')}</p>
                     <div id="login-provider-buttons" class="login-provider-list"></div>
                 </div>
 
                 <!-- Scratch Flow -->
                 <div id="auth-scratch-panel" class="hidden">
                     <div id="auth-step1">
-                        <p id="login-instruction" class="settings-help-text">${t('login.scratch.instruction')}</p>
+                        <p id="login-instruction" class="settings-help-text nui-help-text">${t('login.scratch.instruction')}</p>
                         <label class="login-modal-field" for="username-input">ScratchID</label>
-                        <input type="text" id="username-input" placeholder="ScratchID" autocomplete="username" />
-                        <button type="button" id="get-code-btn" class="settings-primary-button login-auth-action">${t('login.scratch.get_code')}</button>
+                        <input type="text" id="username-input" class="nui-input" placeholder="ScratchID" autocomplete="username" />
+                        <button type="button" id="get-code-btn" class="settings-primary-button login-auth-action nui-button">${t('login.scratch.get_code')}</button>
                     </div>
                     <div id="auth-step2" class="hidden">
-                        <p class="settings-help-text">${t('login.scratch.step2')}</p>
+                        <p class="settings-help-text nui-help-text">${t('login.scratch.step2')}</p>
                         <button type="button" id="verification-code" class="login-verification-code" title="${t('login.scratch.copy_title')}"></button>
                         <div class="login-modal-links">
-                            <a class="login-secondary-button" href="https://scratch.mit.edu/projects/1239738451/" target="_blank" rel="noopener noreferrer" id="projlink">${t('login.scratch.open_project')}</a>
-                            <a class="login-secondary-button" href="https://scratch.mit.edu/" target="_blank" rel="noopener noreferrer" id="pflink">${t('login.scratch.open_profile')}</a>
+                            <a class="login-secondary-button nui-button-secondary" href="https://scratch.mit.edu/projects/1239738451/" target="_blank" rel="noopener noreferrer" id="projlink">${t('login.scratch.open_project')}</a>
+                            <a class="login-secondary-button nui-button-secondary" href="https://scratch.mit.edu/" target="_blank" rel="noopener noreferrer" id="pflink">${t('login.scratch.open_profile')}</a>
                         </div>
-                        <button type="button" id="verify-comment-btn" class="settings-primary-button login-auth-action">${t('login.scratch.verify')}</button>
+                        <button type="button" id="verify-comment-btn" class="settings-primary-button login-auth-action nui-button">${t('login.scratch.verify')}</button>
                     </div>
                 </div>
 
                 <!-- Email Flow -->
                 <div id="auth-email-panel" class="hidden">
                     <div id="auth-email-step1">
-                        <p class="settings-help-text">${t('login.email.instruction')}</p>
+                        <p class="settings-help-text nui-help-text">${t('login.email.instruction')}</p>
                         <label class="login-modal-field" for="login-email-input">${t('login.email.address')}</label>
-                        <input type="email" id="login-email-input" placeholder="you@example.com" autocomplete="email" />
-                        <button type="button" id="get-email-code-btn" class="settings-primary-button login-auth-action">${t('login.email.send_code')}</button>
+                        <input type="email" id="login-email-input" class="nui-input" placeholder="you@example.com" autocomplete="email" />
+                        <button type="button" id="get-email-code-btn" class="settings-primary-button login-auth-action nui-button">${t('login.email.send_code')}</button>
                     </div>
                     <div id="auth-email-step2" class="hidden">
-                        <p class="settings-help-text">${t('login.email.step2')}</p>
+                        <p class="settings-help-text nui-help-text">${t('login.email.step2')}</p>
                         <label class="login-modal-field" for="login-email-code-input">${t('login.email.code')}</label>
-                        <input type="text" id="login-email-code-input" placeholder="123456" maxlength="8" autocomplete="one-time-code" />
-                        <button type="button" id="verify-email-code-btn" class="settings-primary-button login-auth-action">${t('login.login')}</button>
+                        <input type="text" id="login-email-code-input" class="nui-input" placeholder="123456" maxlength="8" autocomplete="one-time-code" />
+                        <button type="button" id="verify-email-code-btn" class="settings-primary-button login-auth-action nui-button">${t('login.login')}</button>
                         <div class="login-modal-links">
-                            <button type="button" id="resend-email-code-btn" class="login-secondary-button">${t('login.email.resend')}</button>
+                            <button type="button" id="resend-email-code-btn" class="login-secondary-button nui-button-secondary">${t('login.email.resend')}</button>
                         </div>
                     </div>
                     <div id="auth-email-step3" class="hidden">
-                        <p class="settings-help-text">${t('login.email.name_instruction')}</p>
+                        <p class="settings-help-text nui-help-text">${t('login.email.name_instruction')}</p>
                         <label class="login-modal-field" for="login-email-name-input">${t('login.email.username')}</label>
-                        <input type="text" id="login-email-name-input" placeholder="${t('login.email.username')}" maxlength="50" autocomplete="nickname" />
-                        <button type="button" id="submit-email-signup-btn" class="settings-primary-button login-auth-action">${t('login.email.finish')}</button>
+                        <input type="text" id="login-email-name-input" class="nui-input" placeholder="${t('login.email.username')}" maxlength="50" autocomplete="nickname" />
+                        <button type="button" id="submit-email-signup-btn" class="settings-primary-button login-auth-action nui-button">${t('login.email.finish')}</button>
                     </div>
                 </div>
 
                 <!-- Passkey Flow -->
                 <div id="auth-passkey-panel" class="hidden">
-                    <p class="settings-help-text">${t('login.passkey.instruction')}</p>
-                    <button type="button" id="passkey-signin-btn" class="settings-primary-button login-auth-action">${t('login.passkey.signin')}</button>
+                    <p class="settings-help-text nui-help-text">${t('login.passkey.instruction')}</p>
+                    <button type="button" id="passkey-signin-btn" class="settings-primary-button login-auth-action nui-button">${t('login.passkey.signin')}</button>
                 </div>
 
                 <!-- NyaitterAuth Flow -->
                 <div id="auth-nyaitter-panel" class="hidden">
-                    <p class="settings-help-text">${t('login.nyaitter.instruction')}</p>
+                    <p class="settings-help-text nui-help-text">${t('login.nyaitter.instruction')}</p>
                     <label class="login-modal-field" for="login-nyaitter-server-input">${t('login.nyaitter.url')}</label>
-                    <input type="url" id="login-nyaitter-server-input" placeholder="https://example.com" autocomplete="url" required />
-                    <button type="button" id="nyaitter-signin-btn" class="settings-primary-button login-auth-action">${t('login.login')}</button>
+                    <input type="url" id="login-nyaitter-server-input" class="nui-input" placeholder="https://example.com" autocomplete="url" required />
+                    <button type="button" id="nyaitter-signin-btn" class="settings-primary-button login-auth-action nui-button">${t('login.login')}</button>
                 </div>
 
                 <div id="login-turnstile-container" class="login-turnstile-container hidden">
-                    <p class="login-turnstile-hint settings-help-text">${t('login.turnstile.hint')}</p>
+                    <p class="login-turnstile-hint settings-help-text nui-help-text">${t('login.turnstile.hint')}</p>
                     <div id="login-turnstile-widget"></div>
                 </div>
 
@@ -201,32 +201,32 @@ export function renderAppShellHTML() {
             </div>
         </div>
 
-        <div id="login-approval-wait-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="login-approval-wait-title">
-            <section class="modal-content login-approval-modal-content login-approval-wait-content">
+        <div id="login-approval-wait-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="login-approval-wait-title">
+            <section class="modal-content login-approval-modal-content login-approval-wait-content nui-modal" style="width: min(480px, calc(100vw - 2rem)); padding: 1.7rem 1.25rem 1.25rem;">
                 <div class="login-modal-heading">
                     <h3 id="login-approval-wait-title">${t('login.approval.title')}</h3>
                 </div>
-                <p id="login-approval-wait-description" class="settings-help-text">${t('login.approval.description')}</p>
+                <p id="login-approval-wait-description" class="settings-help-text nui-help-text">${t('login.approval.description')}</p>
                 <div class="login-approval-wait-progress" aria-hidden="true"><div class="spinner"></div><span id="login-approval-wait-progress-label">${t('login.approval.checking')}</span></div>
                 <p id="login-approval-wait-status" class="login-approval-detail login-approval-wait-status" role="status">${t('login.approval.waiting')}</p>
                 <div id="login-approval-recovery-section" class="login-approval-recovery hidden">
-                    <p class="settings-help-text">${t('login.approval.no_device_help')}</p>
-                    <button type="button" id="account-recovery-start-btn" class="login-secondary-button">${t('login.recovery.start')}</button>
+                    <p class="settings-help-text nui-help-text">${t('login.approval.no_device_help')}</p>
+                    <button type="button" id="account-recovery-start-btn" class="login-secondary-button nui-button-secondary">${t('login.recovery.start')}</button>
                 </div>
                 <p id="account-recovery-wait-status" class="login-approval-detail login-approval-wait-status hidden" role="status"></p>
                 <div class="login-approval-actions login-approval-wait-actions">
-                    <button type="button" id="login-approval-wait-cancel-btn" class="login-secondary-button">${t('login.cancel')}</button>
+                    <button type="button" id="login-approval-wait-cancel-btn" class="login-secondary-button nui-button-secondary">${t('login.cancel')}</button>
                 </div>
             </section>
         </div>
 
-        <div id="post-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="${t('composer.create')}">
-            <div class="modal-content">
+        <div id="post-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="${t('composer.create')}">
+            <div class="modal-content" style="width: min(600px, calc(100vw - 2rem));">
                 <div class="post-form-container-modal"></div>
             </div>
         </div>
 
-        <div id="image-preview-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="${t('image.preview')}">
+        <div id="image-preview-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="${t('image.preview')}">
             <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
             <button type="button" class="image-modal-nav-btn image-modal-prev-btn hidden" aria-label="${t('image.prev')}">
                 <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -240,81 +240,81 @@ export function renderAppShellHTML() {
             <div class="image-modal-counter hidden"></div>
         </div>
 
-        <div id="edit-post-modal" class="modal-overlay hidden">
-            <div class="modal-content">
+        <div id="edit-post-modal" class="modal-overlay nui-modal-backdrop hidden">
+            <div class="modal-content" style="width: min(600px, calc(100vw - 2rem));">
                 <div id="edit-post-modal-content"></div>
             </div>
         </div>
 
-        <div id="create-dm-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="create-dm-modal-title">
-            <div class="modal-content dm-modal-content">
+        <div id="create-dm-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="create-dm-modal-title">
+            <div class="modal-content dm-modal-content nui-modal" style="width: min(520px, calc(100vw - 2rem)); padding: 1.5rem;">
                 <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
                 <div id="create-dm-modal-content"></div>
             </div>
         </div>
 
-        <div id="dm-manage-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dm-manage-modal-title">
-            <div class="modal-content dm-modal-content">
+        <div id="dm-manage-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dm-manage-modal-title">
+            <div class="modal-content dm-modal-content nui-modal" style="width: min(520px, calc(100vw - 2rem)); padding: 1.5rem;">
                 <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
                 <div id="dm-manage-modal-content"></div>
             </div>
         </div>
 
-        <div id="report-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
-            <div class="modal-content report-modal-content">
+        <div id="report-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
+            <div class="modal-content report-modal-content nui-modal" style="width: min(520px, calc(100vw - 2rem)); padding: 1.6rem;">
                 <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
                 <div class="report-modal-heading">
-                    <h3 id="report-modal-title">${t('report.title')}</h3>
-                    <p id="report-modal-target" class="settings-help-text"></p>
+                    <h3 id="report-modal-title" class="nui-modal-title">${t('report.title')}</h3>
+                    <p id="report-modal-target" class="settings-help-text nui-help-text"></p>
                 </div>
                 <form id="report-form">
                     <label for="report-description">${t('report.description_label')}</label>
-                    <textarea id="report-description" maxlength="2000" rows="5" placeholder="${t('report.placeholder')}"></textarea>
+                    <textarea id="report-description" class="nui-input" maxlength="2000" rows="5" placeholder="${t('report.placeholder')}"></textarea>
                     <p class="report-modal-note">${t('report.note')}</p>
                     <div class="report-modal-actions">
-                        <button type="button" class="login-secondary-button" data-action="close-report-modal">${t('common.cancel')}</button>
-                        <button type="submit" class="settings-primary-button">${t('common.send')}</button>
+                        <button type="button" class="login-secondary-button nui-button-secondary" data-action="close-report-modal">${t('common.cancel')}</button>
+                        <button type="submit" class="settings-primary-button nui-button">${t('common.send')}</button>
                     </div>
                     <p id="report-modal-error" class="login-modal-message login-modal-error hidden" role="alert"></p>
                 </form>
             </div>
         </div>
 
-        <div id="account-switcher-modal" class="modal-overlay hidden">
-            <div class="modal-content" style="max-width: 400px">
+        <div id="account-switcher-modal" class="modal-overlay nui-modal-backdrop hidden">
+            <div class="modal-content nui-modal" style="max-width: 400px; width: min(400px, calc(100vw - 2rem));">
                 <button class="modal-close-btn">×</button>
                 <div id="account-switcher-modal-content"></div>
             </div>
         </div>
 
-        <div id="login-approval-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="login-approval-modal-title">
-            <div class="modal-content login-approval-modal-content">
+        <div id="login-approval-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="login-approval-modal-title">
+            <div class="modal-content login-approval-modal-content nui-modal" style="width: min(480px, calc(100vw - 2rem)); padding: 1.7rem 1.25rem 1.25rem;">
                 <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
                 <div id="login-approval-modal-body"></div>
             </div>
         </div>
 
-        <div id="account-recovery-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="account-recovery-modal-title">
-            <div class="modal-content login-approval-modal-content account-recovery-modal-content">
+        <div id="account-recovery-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="account-recovery-modal-title">
+            <div class="modal-content login-approval-modal-content account-recovery-modal-content nui-modal" style="width: min(480px, calc(100vw - 2rem)); padding: 1.7rem 1.25rem 1.25rem;">
                 <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
                 <div id="account-recovery-modal-body"></div>
             </div>
         </div>
 
-        <div id="app-dialog-modal" class="modal-overlay app-dialog-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message">
-            <div class="modal-content app-dialog-content">
+        <div id="app-dialog-modal" class="modal-overlay app-dialog-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message">
+            <div class="modal-content app-dialog-content nui-modal" style="width: min(420px, calc(100vw - 2rem)); padding: 1.7rem 1.25rem 1.25rem;">
                 <button type="button" id="app-dialog-close-btn" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
                 <div class="login-modal-heading">
-                    <h3 id="app-dialog-title">通知</h3>
+                    <h3 id="app-dialog-title" class="nui-modal-title">通知</h3>
                 </div>
                 <p id="app-dialog-message" class="app-dialog-message" role="alert"></p>
                 <div id="app-dialog-input-group" class="app-dialog-input-group hidden">
                     <label for="app-dialog-input">${t('dialog.input_label')}</label>
-                    <input id="app-dialog-input" type="text" autocomplete="off" />
+                    <input id="app-dialog-input" class="nui-input" type="text" autocomplete="off" />
                 </div>
                 <div class="app-dialog-actions">
-                    <button type="button" id="app-dialog-cancel-btn" class="login-secondary-button">${t('common.cancel')}</button>
-                    <button type="button" id="app-dialog-submit-btn" class="settings-primary-button">${t('common.close')}</button>
+                    <button type="button" id="app-dialog-cancel-btn" class="login-secondary-button nui-button-secondary">${t('common.cancel')}</button>
+                    <button type="button" id="app-dialog-submit-btn" class="settings-primary-button nui-button">${t('common.close')}</button>
                 </div>
             </div>
         </div>
@@ -330,31 +330,31 @@ export function renderAppShellHTML() {
                     <p id="freeze-reason"></p>
                 </div>
                 <p id="freeze-appeal-status" class="freeze-appeal-status hidden" role="status"></p>
-                <button id="open-freeze-appeal-btn" type="button" class="freeze-appeal-button">異議申し立てを行う</button>
+                <button id="open-freeze-appeal-btn" type="button" class="freeze-appeal-button nui-button">異議申し立てを行う</button>
                 <p class="freeze-panel-help">判断に誤りがあると思われる場合は、説明を添えて再審査を申し立てられます。</p>
             </section>
         </div>
 
-        <div id="freeze-appeal-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="freeze-appeal-title">
-            <section class="modal-content freeze-appeal-modal-content">
+        <div id="freeze-appeal-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="freeze-appeal-title">
+            <section class="modal-content freeze-appeal-modal-content nui-modal" style="width: min(100% - 2rem, 34rem); padding: 0;">
                 <button type="button" class="modal-close-btn" data-action="close-freeze-appeal" aria-label="${t('common.close')}">×</button>
                 <p class="freeze-panel-eyebrow">REVIEW REQUEST</p>
                 <h2 id="freeze-appeal-title">異議申し立てを送信</h2>
                 <p>凍結の判断について、再審査を希望する理由を説明してください。内容は担当管理者が確認します。</p>
                 <form id="freeze-appeal-form">
                     <label for="freeze-appeal-description">説明 <span aria-hidden="true">*</span></label>
-                    <textarea id="freeze-appeal-description" maxlength="2000" rows="7" required placeholder="再審査を希望する理由や、確認してほしい事情を入力してください。"></textarea>
+                    <textarea id="freeze-appeal-description" class="nui-input" maxlength="2000" rows="7" required placeholder="再審査を希望する理由や、確認してほしい事情を入力してください。"></textarea>
                     <p id="freeze-appeal-error" class="login-modal-message login-modal-error hidden" role="alert"></p>
                     <div class="freeze-appeal-modal-actions">
                         <button type="button" class="cancel-button" data-action="close-freeze-appeal">キャンセル</button>
-                        <button type="submit" class="freeze-appeal-button">送信する</button>
+                        <button type="submit" class="freeze-appeal-button nui-button">送信する</button>
                     </div>
                 </form>
             </section>
         </div>
 
-        <div id="edit-dm-message-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-dm-modal-title">
-            <div class="modal-content dm-modal-content">
+        <div id="edit-dm-message-modal" class="modal-overlay nui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="edit-dm-modal-title">
+            <div class="modal-content dm-modal-content nui-modal" style="width: min(520px, calc(100vw - 2rem)); padding: 1.5rem;">
                 <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
                 <div id="edit-dm-message-modal-content"></div>
             </div>

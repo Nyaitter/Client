@@ -209,7 +209,7 @@
   "settings.group.api.title": "API / Bots",
   "settings.group.apps.description": "Manage the apps you've authorized through NyaitterAuth.",
   "settings.group.apps.title": "Connected apps",
-  "settings.group.client.description": "Check the client version stored on this device and update it.",
+  "settings.group.client.description": "Check and switch the client version stored on this device.",
   "settings.group.client.title": "Client",
   "settings.group.connection.description": "Control how much data images and real-time updates use.",
   "settings.group.connection.title": "Connection & data usage",

@@ -209,7 +209,7 @@
   "settings.group.api.title": "API / Bot",
   "settings.group.apps.description": "NyaitterAuthでアクセスを許可したアプリケーションを管理します。",
   "settings.group.apps.title": "連携アプリ",
-  "settings.group.client.description": "この端末に保存されたクライアントのバージョンを確認し、更新します。",
+  "settings.group.client.description": "この端末に保存されたクライアントのバージョンを確認し、切り替えます。",
   "settings.group.client.title": "クライアント",
   "settings.group.connection.description": "画像とリアルタイム更新の通信量を調整します。",
   "settings.group.connection.title": "通信とデータ使用量",
