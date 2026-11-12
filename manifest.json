@@ -10,7 +10,18 @@
   "default_language": "ja",
   "language_packs": {
     "ja": "/langs/ja.json",
-    "en": "/langs/en.json"
+    "en": "/langs/en.json",
+    "ko": "/langs/ko.json",
+    "zh-Hans": "/langs/zh-Hans.json",
+    "zh-Hant": "/langs/zh-Hant.json",
+    "es": "/langs/es.json",
+    "fr": "/langs/fr.json",
+    "de": "/langs/de.json",
+    "pt": "/langs/pt.json",
+    "it": "/langs/it.json",
+    "ru": "/langs/ru.json",
+    "ar": "/langs/ar.json",
+    "emoji": "/langs/emoji.json"
   },
   "advertising": {
     "enabled": false,
