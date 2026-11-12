@@ -1744,9 +1744,27 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 }
 
 
+.settings-redesigned .settings-group-panel[data-settings-panel="client"]:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.settings-redesigned .settings-group-panel[data-settings-panel="client"] .settings-client {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 .settings-client-version-list {
-    max-height: 320px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
 }
 
 .settings-client-version-select {
