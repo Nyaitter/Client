@@ -85,10 +85,11 @@ function formatDate(value) {
     return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-function buildVersionRow({ title, sub, label, date, current, disabled, onSelect }) {
+function buildVersionRow({ versionId, title, sub, label, date, current, disabled, onSelect }) {
     const item = document.createElement('li');
     item.className = 'settings-client-version-row nui-list-item' + (current ? ' settings-client-version-row--current' : '');
     item.setAttribute('data-nui', 'list-item');
+    item.dataset.versionId = versionId || '';
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'settings-client-version-select';
@@ -136,6 +137,14 @@ async function switchToVersion(entry) {
     if (switching) return;
     switching = true;
     const page = getNapPage();
+    const list = document.getElementById('settings-client-versions');
+    if (list) {
+        list.querySelectorAll('button').forEach((button) => { button.disabled = true; });
+    }
+    let row = null;
+    if (entry && list) {
+        row = [...list.children].find((item) => item.dataset.versionId === entry.id) || null;
+    }
     try {
         if (!entry) {
             await clearNapVersionCaches();
@@ -143,8 +152,19 @@ async function switchToVersion(entry) {
             setStatus('サーバーの版に切り替えました。再読み込みします…');
         } else {
             setStatus('版を取得しています…');
+            if (row) {
+                row.classList.add('settings-client-version-row--downloading');
+                row.style.setProperty('--version-progress', '0%');
+            }
             const ref = entry.tag ? `${entry.id}-${entry.tag}` : entry.id;
-            const version = await page.fetchVersion(ref);
+            const version = await page.fetchVersion(ref, {
+                onProgress: ({ fetched, cached, total }) => {
+                    if (!row || !total) return;
+                    const percent = Math.min(100, Math.round(((fetched + cached) / total) * 100));
+                    row.style.setProperty('--version-progress', `${percent}%`);
+                },
+            });
+            if (row) row.style.setProperty('--version-progress', '100%');
             await page.store(version);
             await page.activate(version.versionId);
             setStatus('切り替えました。再読み込みします…');
@@ -177,6 +197,7 @@ async function runLoad({ announce = false } = {}) {
     const currentId = await getCurrentVersionId();
     list.textContent = '';
     list.appendChild(buildVersionRow({
+        versionId: '',
         title: 'サーバーの版',
         sub: '',
         label: '',
@@ -189,6 +210,7 @@ async function runLoad({ announce = false } = {}) {
     for (const entry of ordered) {
         const isCurrent = !!currentId && entry.id === currentId;
         list.appendChild(buildVersionRow({
+            versionId: entry.id,
             title: entry.code || entry.id.slice(0, 12),
             sub: entry.code ? entry.id.slice(0, 12) : '',
             label: entry.tag || '',

@@ -1810,3 +1810,7 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     font-size: 0.8rem;
     font-weight: 700;
 }
+
+.settings-client-version-row--downloading {
+    background: linear-gradient(to right, var(--light-primary-color) var(--version-progress, 0%), transparent var(--version-progress, 0%));
+}
