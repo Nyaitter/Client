@@ -85,7 +85,7 @@ function formatDate(value) {
     return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-function buildVersionRow({ versionId, title, sub, label, date, current, disabled, onSelect }) {
+function buildVersionRow({ versionId, title, sub, label, server, description, date, current, disabled, onSelect }) {
     const item = document.createElement('li');
     item.className = 'settings-client-version-row nui-list-item' + (current ? ' settings-client-version-row--current' : '');
     item.setAttribute('data-nui', 'list-item');
@@ -94,6 +94,8 @@ function buildVersionRow({ versionId, title, sub, label, date, current, disabled
     button.type = 'button';
     button.className = 'settings-client-version-select';
     button.disabled = !!disabled;
+    const body = document.createElement('span');
+    body.className = 'settings-client-version-body';
     const main = document.createElement('span');
     main.className = 'settings-client-version-main';
     const titleElement = document.createElement('span');
@@ -106,13 +108,26 @@ function buildVersionRow({ versionId, title, sub, label, date, current, disabled
         subElement.textContent = sub;
         main.appendChild(subElement);
     }
-    button.appendChild(main);
+    body.appendChild(main);
+    if (description) {
+        const descriptionElement = document.createElement('span');
+        descriptionElement.className = 'settings-client-version-description';
+        descriptionElement.textContent = description;
+        body.appendChild(descriptionElement);
+    }
+    button.appendChild(body);
     const side = document.createElement('span');
     side.className = 'settings-client-version-side';
     if (label) {
         const chip = document.createElement('span');
         chip.className = 'settings-client-version-label';
         chip.textContent = label;
+        side.appendChild(chip);
+    }
+    if (server) {
+        const chip = document.createElement('span');
+        chip.className = 'settings-client-version-label';
+        chip.textContent = 'サーバーの版';
         side.appendChild(chip);
     }
     if (date) {
@@ -195,29 +210,32 @@ async function runLoad({ announce = false } = {}) {
     }
     const supported = await isClientUpdateSupported();
     const currentId = await getCurrentVersionId();
+    const descriptions = new Map();
+    if (typeof page.describe === 'function') {
+        await Promise.all(entries.map(async (entry) => {
+            const ref = entry.tag ? `${entry.id}-${entry.tag}` : entry.id;
+            const text = await page.describe(ref);
+            if (text) descriptions.set(entry.id, text);
+        }));
+    }
+    const formal = entries.filter((entry) => !entry.tag);
+    const serverEntry = formal.length ? formal[formal.length - 1] : null;
     list.textContent = '';
-    list.appendChild(buildVersionRow({
-        versionId: '',
-        title: 'サーバーの版',
-        sub: '',
-        label: '',
-        date: '',
-        current: !currentId,
-        disabled: !supported || switching || !currentId,
-        onSelect: () => void switchToVersion(null),
-    }));
     const ordered = [...entries].reverse();
     for (const entry of ordered) {
-        const isCurrent = !!currentId && entry.id === currentId;
+        const isServer = !!serverEntry && entry.id === serverEntry.id;
+        const isCurrent = currentId ? entry.id === currentId : isServer;
         list.appendChild(buildVersionRow({
             versionId: entry.id,
             title: entry.code || entry.id.slice(0, 12),
             sub: entry.code ? entry.id.slice(0, 12) : '',
             label: entry.tag || '',
+            server: isServer,
+            description: descriptions.get(entry.id) || '',
             date: formatDate(entry.at),
             current: isCurrent,
             disabled: !supported || switching || isCurrent,
-            onSelect: () => void switchToVersion(entry),
+            onSelect: isServer ? () => void switchToVersion(null) : () => void switchToVersion(entry),
         }));
     }
     if (!supported) {

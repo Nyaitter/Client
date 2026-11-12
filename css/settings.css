@@ -1814,3 +1814,18 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 .settings-client-version-row--downloading {
     background: linear-gradient(to right, var(--light-primary-color) var(--version-progress, 0%), transparent var(--version-progress, 0%));
 }
+
+.settings-client-version-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-client-version-description {
+    color: var(--secondary-text-color);
+    font-size: 0.85rem;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
