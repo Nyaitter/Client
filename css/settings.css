@@ -1742,3 +1742,71 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
         padding: 0.7rem 0.75rem;
     }
 }
+
+
+.settings-client-version-list {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.settings-client-version-select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.6rem 0.25rem;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.settings-client-version-select:disabled {
+    cursor: default;
+}
+
+.settings-client-version-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+.settings-client-version-code {
+    font-weight: 700;
+}
+
+.settings-client-version-id,
+.settings-client-version-date {
+    color: var(--secondary-text-color);
+    font-size: 0.8rem;
+}
+
+.settings-client-version-side {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.settings-client-version-label {
+    padding: 0.1rem 0.5rem;
+    border-radius: 9999px;
+    background: var(--secondary-bg-color);
+    color: var(--secondary-text-color);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.settings-client-version-row--current {
+    background: var(--light-primary-color);
+}
+
+.settings-client-version-current {
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    font-weight: 700;
+}

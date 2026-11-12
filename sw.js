@@ -179,33 +179,6 @@ function isCacheableStaticResponse(response) {
   return !/\bno-store\b/i.test(cacheControl) && !response.headers.has('Set-Cookie');
 }
 
-const CLIENT_MANIFEST_URL = new URL('manifest.json', self.location.href).href;
-
-async function readCachedClientVersion() {
-  try {
-    const cache = await openAssetCache();
-    const response = cache && await cache.match(CLIENT_MANIFEST_URL);
-    if (!response) return '';
-    const manifest = await response.json();
-    return String(manifest?.client_version || '').trim();
-  } catch (_) {
-    return '';
-  }
-}
-
-// SW 内からの fetch は自身の fetch ハンドラを通らないため、キャッシュに
-// 邪魔されずサーバー上のマニフェストを直接読める。
-async function readNetworkClientVersion() {
-  try {
-    const response = await fetch(CLIENT_MANIFEST_URL, { cache: 'no-store' });
-    if (!response.ok) return '';
-    const manifest = await response.json();
-    return String(manifest?.client_version || '').trim();
-  } catch (_) {
-    return '';
-  }
-}
-
 async function cacheAppShell() {
   const cache = await openAssetCache();
   if (!cache) return;
@@ -218,20 +191,6 @@ async function cacheAppShell() {
 self.addEventListener('message', (event) => {
   const data = event.data || {};
   const port = event.ports && event.ports[0];
-  if (data.type === 'nyaitter:client-version') {
-    event.waitUntil((async () => {
-      const version = await readCachedClientVersion();
-      port?.postMessage({ version });
-    })());
-    return;
-  }
-  if (data.type === 'nyaitter:client-latest') {
-    event.waitUntil((async () => {
-      const version = await readNetworkClientVersion();
-      port?.postMessage({ version });
-    })());
-    return;
-  }
   if (data.type === 'nyaitter:client-update') {
     event.waitUntil((async () => {
       let ok = true;
@@ -296,6 +255,22 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// 切り替え中の版があれば、その版のキャッシュから返す。
+async function matchNapVersionResponse(url, isNavigate) {
+  try {
+    const keys = await caches.keys();
+    const name = keys.find((key) => key.startsWith('nap-page:'));
+    if (!name) return null;
+    const scopePath = new URL(self.registration.scope).pathname;
+    let relative = url.pathname.startsWith(scopePath) ? url.pathname.slice(scopePath.length) : '';
+    if (isNavigate || relative === '') relative = 'index.html';
+    const cache = await caches.open(name);
+    return (await cache.match(relative)) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -313,15 +288,18 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate' || isStaticAsset) {
     const cacheKey = request.mode === 'navigate' ? INDEX_CACHE_KEY : request;
     event.respondWith(
-      openAssetCache().then((cache) => cache?.match(cacheKey)).catch(() => null).then((cachedResponse) => {
-        if (cachedResponse) {
-          if (Date.now() - (revalidatedAt.get(request.url) || 0) >= REVALIDATE_INTERVAL) {
-            event.waitUntil(fetchAsset(request, cacheKey, event).catch(() => {}));
+      matchNapVersionResponse(url, request.mode === 'navigate').then((napResponse) => {
+        if (napResponse) return napResponse;
+        return openAssetCache().then((cache) => cache?.match(cacheKey)).catch(() => null).then((cachedResponse) => {
+          if (cachedResponse) {
+            if (Date.now() - (revalidatedAt.get(request.url) || 0) >= REVALIDATE_INTERVAL) {
+              event.waitUntil(fetchAsset(request, cacheKey, event).catch(() => {}));
+            }
+            return cachedResponse;
           }
-          return cachedResponse;
-        }
-        return fetchAsset(request, cacheKey, event).catch(() =>
-          new Response('Network unavailable', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
+          return fetchAsset(request, cacheKey, event).catch(() =>
+            new Response('Network unavailable', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
+        });
       }),
     );
     return;

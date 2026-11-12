@@ -1,11 +1,11 @@
-const MANIFEST_URL = new URL('../../manifest.json', import.meta.url).href;
-const CACHE_NAME = 'nyaitter-client';
-const VERSION_QUERY_TIMEOUT_MS = 2500;
+import { createNapPage } from '../../nap_modules/nyaitter/nap/client/nap-page.js';
+
 const UPDATE_TIMEOUT_MS = 15000;
-const SW_READY_TIMEOUT_MS = 5000;
-const CACHE_RETRY_DELAY_MS = 800;
+const RELOAD_DELAY_MS = 400;
 let bound = false;
-let checkInFlight = null;
+let loadInFlight = null;
+let napPage = null;
+let switching = false;
 
 function serviceWorkerApiAvailable() {
     return typeof navigator !== 'undefined' && 'serviceWorker' in navigator && !!navigator.serviceWorker;
@@ -14,8 +14,6 @@ function serviceWorkerApiAvailable() {
 async function isClientUpdateSupported() {
     if (!serviceWorkerApiAvailable()) return false;
     if (navigator.serviceWorker.controller) return true;
-    // 対応環境でも登録前は controller が無いため、登録の有無で判定する。
-    // Service Worker が無効化された環境 (block 等) では登録が存在しない。
     try {
         return !!(await navigator.serviceWorker.getRegistration());
     } catch (_) {
@@ -23,21 +21,12 @@ async function isClientUpdateSupported() {
     }
 }
 
-async function waitForServiceWorkerReady() {
-    if (!serviceWorkerApiAvailable()) return null;
-    try {
-        return await Promise.race([
-            navigator.serviceWorker.ready,
-            new Promise((resolve) => setTimeout(() => resolve(null), SW_READY_TIMEOUT_MS)),
-        ]);
-    } catch (_) {
-        return null;
-    }
-}
-
-function getRunningVersion() {
-    const value = globalThis.NyaitterClientConfig?.clientVersion;
-    return String(value || '').trim();
+function getNapPage() {
+    if (napPage) return napPage;
+    const source = String(globalThis.NyaitterClientConfig?.clientNap || '').trim();
+    if (!source) return null;
+    napPage = createNapPage({ source });
+    return napPage;
 }
 
 function askServiceWorker(message, timeoutMs = 8000) {
@@ -62,190 +51,181 @@ function askServiceWorker(message, timeoutMs = 8000) {
     });
 }
 
-async function getCachedVersion() {
-    const fromWorker = await askServiceWorker(
-        { type: 'nyaitter:client-version' },
-        VERSION_QUERY_TIMEOUT_MS,
-    );
-    if (fromWorker && String(fromWorker.version || '').trim()) {
-        return String(fromWorker.version).trim();
-    }
+async function getCurrentVersionId() {
+    const page = getNapPage();
+    if (!page || typeof caches === 'undefined') return '';
     try {
-        const cache = await caches.open(CACHE_NAME);
-        const response = await cache.match(MANIFEST_URL);
-        if (!response) return '';
-        const manifest = await response.json();
-        return String(manifest?.client_version || '').trim();
+        const prefix = page.cacheName('');
+        const keys = await caches.keys();
+        const name = keys.find((key) => key.startsWith(prefix));
+        return name ? name.slice(prefix.length) : '';
     } catch (_) {
         return '';
     }
 }
 
-async function getNetworkVersion() {
-    // SW が有効な間はページからの fetch がキャッシュ済みマニフェストを返してしまうため、
-    // SW 自身にサーバー上のマニフェストを読ませる。SW 未制御なら直接取得する。
-    const controller = navigator.serviceWorker?.controller;
-    const fromWorker = await askServiceWorker(
-        { type: 'nyaitter:client-latest' },
-        VERSION_QUERY_TIMEOUT_MS,
-    );
-    if (fromWorker && String(fromWorker.version || '').trim()) {
-        return { version: String(fromWorker.version).trim(), unknown: false };
-    }
-    if (controller) {
-        // 古い SW が制御していると、ページからの fetch は (no-store でも) キャッシュ済みの
-        // マニフェストを返すため最新判定に使えない。明示的に「不明」として扱う。
-        return { version: '', unknown: true };
-    }
+async function clearNapVersionCaches() {
+    const page = getNapPage();
+    if (!page || typeof caches === 'undefined') return;
     try {
-        const response = await fetch(MANIFEST_URL, { cache: 'no-store', credentials: 'same-origin' });
-        if (!response.ok) return { version: '', unknown: false };
-        const manifest = await response.json();
-        return { version: String(manifest?.client_version || '').trim(), unknown: false };
-    } catch (_) {
-        return { version: '', unknown: false };
-    }
-}
-
-function setText(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.textContent = value || '—';
+        const prefix = page.cacheName('');
+        const keys = await caches.keys();
+        await Promise.all(keys.filter((key) => key.startsWith(prefix)).map((key) => caches.delete(key)));
+    } catch (_) {}
 }
 
 function setStatus(text) {
-    setText('settings-client-status', text);
+    const element = document.getElementById('settings-client-status');
+    if (element) element.textContent = text || '';
 }
 
-function setUpdateVisible(visible) {
-    const button = document.getElementById('settings-client-update');
-    // `hidden` 属性は .nui-button の display 指定に負けるため、共通の .hidden で切り替える。
-    if (button) button.classList.toggle('hidden', !visible);
+function formatDate(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-async function runClientVersionCheck({ announce = false } = {}) {
-    const running = getRunningVersion();
-    setText('settings-client-version', running);
+function buildVersionRow({ title, sub, label, date, current, disabled, onSelect }) {
+    const item = document.createElement('li');
+    item.className = 'settings-client-version-row nui-list-item' + (current ? ' settings-client-version-row--current' : '');
+    item.setAttribute('data-nui', 'list-item');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'settings-client-version-select';
+    button.disabled = !!disabled;
+    const main = document.createElement('span');
+    main.className = 'settings-client-version-main';
+    const titleElement = document.createElement('span');
+    titleElement.className = 'settings-client-version-code';
+    titleElement.textContent = title;
+    main.appendChild(titleElement);
+    if (sub) {
+        const subElement = document.createElement('span');
+        subElement.className = 'settings-client-version-id';
+        subElement.textContent = sub;
+        main.appendChild(subElement);
+    }
+    button.appendChild(main);
+    const side = document.createElement('span');
+    side.className = 'settings-client-version-side';
+    if (label) {
+        const chip = document.createElement('span');
+        chip.className = 'settings-client-version-label';
+        chip.textContent = label;
+        side.appendChild(chip);
+    }
+    if (date) {
+        const dateElement = document.createElement('span');
+        dateElement.className = 'settings-client-version-date';
+        dateElement.textContent = date;
+        side.appendChild(dateElement);
+    }
+    if (current) {
+        const marker = document.createElement('span');
+        marker.className = 'settings-client-version-current';
+        marker.textContent = '使用中';
+        side.appendChild(marker);
+    }
+    button.appendChild(side);
+    if (onSelect) button.addEventListener('click', onSelect);
+    item.appendChild(button);
+    return item;
+}
 
-    if (!(await isClientUpdateSupported())) {
-        setText('settings-client-cached', '');
-        setText('settings-client-latest', '');
-        setStatus('この環境ではクライアントの更新に対応していません。');
-        setUpdateVisible(false);
+async function switchToVersion(entry) {
+    if (switching) return;
+    switching = true;
+    const page = getNapPage();
+    try {
+        if (!entry) {
+            await clearNapVersionCaches();
+            await askServiceWorker({ type: 'nyaitter:client-update' }, UPDATE_TIMEOUT_MS);
+            setStatus('サーバーの版に切り替えました。再読み込みします…');
+        } else {
+            setStatus('版を取得しています…');
+            const ref = entry.tag ? `${entry.id}-${entry.tag}` : entry.id;
+            const version = await page.fetchVersion(ref);
+            await page.store(version);
+            await page.activate(version.id);
+            setStatus('切り替えました。再読み込みします…');
+        }
+        window.setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
+    } catch (_) {
+        switching = false;
+        setStatus('切り替えできませんでした。通信状態を確認して、もう一度お試しください。');
+        void loadClientVersionList();
+    }
+}
+
+async function runLoad({ announce = false } = {}) {
+    const list = document.getElementById('settings-client-versions');
+    if (!list) return;
+    const page = getNapPage();
+    if (!page) {
+        setStatus('クライアントの配布元が設定されていません。');
         return;
     }
-
     if (announce) setStatus('更新を確認しています…');
-
-    const [initialCached, latest] = await Promise.all([getCachedVersion(), getNetworkVersion()]);
-    let cached = initialCached;
-    if (!cached && navigator.serviceWorker?.controller) {
-        // install 直後は APP_SHELL のキャッシュがまだ揃っていないことがあるため、
-        // controller がある場合に限り一度だけ待って再取得する（無限リトライはしない）。
-        await new Promise((resolve) => setTimeout(resolve, CACHE_RETRY_DELAY_MS));
-        cached = await getCachedVersion();
-    }
-    setText('settings-client-cached', cached);
-    setText('settings-client-latest', latest.version);
-
-    if (latest.unknown) {
-        setStatus('サーバーのバージョンを確認できませんでした。');
-        setUpdateVisible(true);
-        return;
-    }
-    if (!latest.version) {
+    let entries = [];
+    try {
+        entries = await page.versions();
+    } catch (_) {
         setStatus('サーバーに接続できませんでした。オフラインの可能性があります。');
-        setUpdateVisible(false);
         return;
     }
-    if (!cached) {
-        setStatus('このブラウザーにはまだクライアントが保存されていません。');
-        setUpdateVisible(true);
-        return;
+    const supported = await isClientUpdateSupported();
+    const currentId = await getCurrentVersionId();
+    list.textContent = '';
+    list.appendChild(buildVersionRow({
+        title: 'サーバーの版',
+        sub: '',
+        label: '',
+        date: '',
+        current: !currentId,
+        disabled: !supported || switching || !currentId,
+        onSelect: () => void switchToVersion(null),
+    }));
+    const ordered = [...entries].reverse();
+    for (const entry of ordered) {
+        const isCurrent = !!currentId && entry.id === currentId;
+        list.appendChild(buildVersionRow({
+            title: entry.code || entry.id.slice(0, 12),
+            sub: entry.code ? entry.id.slice(0, 12) : '',
+            label: entry.tag || '',
+            date: formatDate(entry.at),
+            current: isCurrent,
+            disabled: !supported || switching || isCurrent,
+            onSelect: () => void switchToVersion(entry),
+        }));
     }
-    if (cached !== latest.version) {
-        setStatus(`新しいクライアントがあります（保存済み ${cached} → 最新 ${latest.version}）。`);
-        setUpdateVisible(true);
-        return;
+    if (!supported) {
+        setStatus('この環境ではクライアントの更新に対応していません。');
+    } else if (announce) {
+        setStatus('');
     }
-    setStatus('最新のクライアントを使用しています。');
-    setUpdateVisible(false);
 }
 
-function checkClientVersion(options) {
-    // 同時実行は1回にまとめ、連打による重複チェックを防ぐ。
-    if (checkInFlight) return checkInFlight;
-    checkInFlight = runClientVersionCheck(options).finally(() => {
-        checkInFlight = null;
+function loadClientVersionList(options) {
+    if (loadInFlight) return loadInFlight;
+    loadInFlight = runLoad(options).finally(() => {
+        loadInFlight = null;
     });
-    return checkInFlight;
+    return loadInFlight;
 }
 
 export function bindClientSettings() {
     if (bound) return;
     bound = true;
     document.getElementById('settings-client-check')?.addEventListener('click', () => {
-        void checkClientVersion({ announce: true });
+        void loadClientVersionList({ announce: true });
     });
-    // controller が無い状態で読み込まれた場合でも、SW が claim した時点で再確認する。
     navigator.serviceWorker?.addEventListener('controllerchange', () => {
-        void checkClientVersion();
-    });
-    document.getElementById('settings-client-update')?.addEventListener('click', async (event) => {
-        // Event.currentTarget is cleared after the synchronous event dispatch ends;
-        // capture it before the first await so it remains available below.
-        const button = event.currentTarget;
-        if (!button) return;
-
-        if (!(await isClientUpdateSupported())) {
-            // 非対応環境では再読み込みしても更新されないため、何もしない。
-            setStatus('この環境ではクライアントの更新に対応していません。');
-            setUpdateVisible(false);
-            return;
-        }
-
-        button.disabled = true;
-        const checkButton = document.getElementById('settings-client-check');
-        if (checkButton) checkButton.disabled = true;
-        setStatus('更新しています…');
-
-        const controller = navigator.serviceWorker?.controller;
-        if (!controller) {
-            // 初回起動などでまだ SW が有効でない場合は、登録が完了してから再試行する。
-            // 登録が現れなければ再読み込みせず、無駄なリロードループを避ける。
-            let ready = null;
-            try {
-                ready = await Promise.race([
-                    navigator.serviceWorker.ready,
-                    new Promise((resolve) => setTimeout(() => resolve(null), SW_READY_TIMEOUT_MS)),
-                ]);
-            } catch (_) {}
-            if (ready) {
-                setStatus('更新しました。再読み込みします…');
-                window.setTimeout(() => window.location.reload(), 200);
-                return;
-            }
-            setStatus('更新できませんでした。通信状態を確認して、もう一度お試しください。');
-            button.disabled = false;
-            if (checkButton) checkButton.disabled = false;
-            return;
-        }
-        const result = await askServiceWorker({ type: 'nyaitter:client-update' }, UPDATE_TIMEOUT_MS);
-        if (!result?.ok) {
-            setStatus('更新できませんでした。通信状態を確認して、もう一度お試しください。');
-            button.disabled = false;
-            if (checkButton) checkButton.disabled = false;
-            return;
-        }
-        setStatus('更新しました。再読み込みします…');
-        window.setTimeout(() => window.location.reload(), 200);
+        void loadClientVersionList();
     });
 }
 
 export async function loadClientSettings() {
     bindClientSettings();
     await globalThis.NyaitterClientConfig?.ready;
-    // 初回は SW の install 完了前にキャッシュ確認が走り「未保存」と誤表示することがあるため、
-    // 対応環境では ready を上限付きで待ってから最初の確認を行う。
-    await waitForServiceWorkerReady();
-    await checkClientVersion();
+    await loadClientVersionList();
 }

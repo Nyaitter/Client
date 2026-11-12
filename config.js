@@ -154,7 +154,7 @@
     };
     Object.defineProperties(clientConfig, {
         apiEndpoint: { get: () => getConfig('api_endpoint') },
-        clientVersion: { get: () => String(getConfig('client_version', '') || '').trim() },
+        clientNap: { get: () => String(getConfig('client_nap', '') || '').trim() },
         userFileEndpoint: { get: () => getUserFileEndpoint() },
         shareUrl: { get: () => getConfig('share_url', null) },
         postShareUrl: { get: () => getConfig('post_share_url', null) },
