@@ -359,6 +359,31 @@ export function renderAppShellHTML() {
                 <div id="edit-dm-message-modal-content"></div>
             </div>
         </div>
+
+        <div id="connection-error-overlay" class="modal-overlay nui-modal-backdrop hidden" style="z-index: 2000">
+            <div class="nui-card" style="background: var(--nui-bg); color: var(--nui-text); padding: 2rem; border-radius: var(--nui-radius); text-align: center;">
+                <h2 style="margin-top: 0">${t('error.connection.title')}</h2>
+                <p>${t('error.connection.body')}</p>
+                <button id="retry-connection-btn" class="nui-button" style="padding: 0.6rem 1.2rem; border-radius: 9999px; border: none; background-color: var(--nui-accent); color: white; font-weight: 700;">
+                    <span>${t('common.retry')}</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="mainjs-error-overlay" class="modal-overlay nui-modal-backdrop hidden" style="z-index: 3001">
+            <div class="nui-card" style="background: var(--nui-bg); color: var(--nui-text); padding: 2rem; border-radius: var(--nui-radius); text-align: center; max-width: 400px; margin: 2rem auto;">
+                <h2 style="margin-top: 0; color: var(--nui-danger)">${t('common.error')}</h2>
+                <div id="mainjs-error-text" style="color: var(--nui-danger); margin: 1em 0; word-break: break-all"></div>
+                <p style="color: var(--nui-muted); font-size: 0.96em">${t('error.app.body')}</p>
+                <ul style="text-align: left; color: var(--nui-muted); margin: 1.2em 0 1.5em 0; font-size: 0.98em">
+                    <li>${t('error.app.hint_cache')}</li>
+                    <li>${t('error.app.hint_contact')}</li>
+                </ul>
+                <button id="mainjs-error-reload-btn" class="nui-button" style="padding: 0.7em 1.5em; font-size: 1em; border-radius: 9999px; background: var(--nui-accent); color: white; border: none; font-weight: 700;">
+                    <span>${t('common.reload')}</span>
+                </button>
+            </div>
+        </div>
     `;
 }
 
