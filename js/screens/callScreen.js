@@ -1,3 +1,4 @@
+import { t } from '../modules/i18n.js';
 import { DOM } from '../dom.js';
 import { mountCallScreen } from '../modules/calls.js';
 import { escapeHTML } from '../utils/helpers.js';
@@ -17,6 +18,6 @@ export async function showCallScreen(kind, id, showScreenFn) {
         await mountCallScreen(kind, id, container, context);
     } catch (error) {
         if (context.signal.aborted) return;
-        container.innerHTML = `<div class="call-error nui-empty-text"><p role="alert">${escapeHTML(error.message)}</p><a class="nui-button-secondary" href="${kind === 'stage' ? `#stage/${encodeURIComponent(id)}` : `#dm/${encodeURIComponent(id)}`}">戻る</a></div>`;
+        container.innerHTML = `<div class="call-error nui-empty-text"><p role="alert">${escapeHTML(error.message)}</p><a class="nui-button-secondary" href="${kind === 'stage' ? `#stage/${encodeURIComponent(id)}` : `#dm/${encodeURIComponent(id)}`}">${t('admin.back_label')}</a></div>`;
     }
 }

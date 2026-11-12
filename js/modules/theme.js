@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { DOM } from '../dom.js';
 import { getCurrentUser, getIsDarkmode, setIsDarkmode } from '../state.js';
 import { matchesMedia } from '../utils/helpers.js';
@@ -360,7 +361,7 @@ export function setupTimelinePullToRefresh(onRefresh) {
         indicator.style.setProperty('--pull-opacity', '0');
         indicator.setAttribute('aria-hidden', 'true');
         const label = indicator.querySelector('.pull-to-refresh-label');
-        if (label) label.textContent = '引いて更新';
+        if (label) label.textContent = t('timeline.pull_to_refresh');
     };
 
     const showPullProgress = (distance) => {
@@ -384,7 +385,7 @@ export function setupTimelinePullToRefresh(onRefresh) {
         indicator.style.setProperty('--pull-opacity', String(Math.min(1, pullDistance / 34)));
         indicator.setAttribute('aria-hidden', 'false');
         const label = indicator.querySelector('.pull-to-refresh-label');
-        if (label) label.textContent = ready ? '離して更新' : '引いて更新';
+        if (label) label.textContent = ready ? t('theme.refresh_release') : t('timeline.pull_to_refresh');
     };
 
     const runRefresh = async () => {
@@ -397,7 +398,7 @@ export function setupTimelinePullToRefresh(onRefresh) {
         indicator.style.setProperty('--pull-distance', '0px');
         indicator.style.setProperty('--pull-opacity', '1');
         const label = indicator.querySelector('.pull-to-refresh-label');
-        if (label) label.textContent = '更新中';
+        if (label) label.textContent = t('theme.refreshing');
 
         try {
             invalidatePullToRefreshCaches(context);

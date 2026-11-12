@@ -60,9 +60,9 @@
 .call-device-toggle input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
 .call-device-toggle > svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: currentColor; }
 .call-device-state { font-size: .7rem; min-width: 2em; }
-.call-device-state::after { content: 'オフ'; }
+.call-device-state::after { content: attr(data-off); }
 .call-device-toggle:has(:checked) { color: var(--primary-color); border-color: var(--primary-color); }
-.call-device-toggle:has(:checked) .call-device-state::after { content: 'オン'; }
+.call-device-toggle:has(:checked) .call-device-state::after { content: attr(data-on); }
 .call-device-toggle:has(:focus-visible) { outline: 2px solid var(--primary-color); outline-offset: 3px; }
 .call-device-toggle:has(:disabled) { opacity: .4; cursor: default; }
 .call-room { display: grid; grid-template-columns: minmax(0, 1fr) 320px; flex: 1; min-height: 0; }
@@ -173,7 +173,7 @@
 .call-chat-close { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: var(--secondary-text-color); cursor: pointer; }
 .call-chat-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; }
 .call-chat [role="log"] { flex: 1; min-height: 0; overflow-y: auto; overflow-wrap: anywhere; font-size: .85rem; line-height: 1.7; }
-.call-chat [role="log"]:empty::after { content: 'まだメッセージはありません'; display: block; padding-top: 20px; color: var(--secondary-text-color); font-size: .78rem; text-align: center; }
+.call-chat [role="log"]:empty::after { content: attr(data-empty-text); display: block; padding-top: 20px; color: var(--secondary-text-color); font-size: .78rem; text-align: center; }
 .call-message { display: flex; align-items: flex-start; gap: 10px; padding: 0 0 20px; }
 .call-message-avatar { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; overflow: hidden; border-radius: 50%; background: var(--light-primary-color); color: var(--text-color); font-size: .8rem; font-weight: 700; }
 .call-message-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }

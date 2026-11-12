@@ -1,3 +1,7 @@
+function lt(key, params) {
+  return globalThis.NyaitterI18n?.t(key, params) ?? String(key || '');
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
 	const container = document.getElementById('emoji-container');
 	if (!container) return;
@@ -73,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 		if (!response.ok) throw new Error(`HTTP ${response.status}`);
 		const emojiList = await response.json();
 		if (!Array.isArray(emojiList) || emojiList.length === 0) {
-			showMessage('絵文字が見つかりませんでした。', 'error-text');
+			showMessage(lt('emoji.not_found'), 'error-text');
 			return;
 		}
 
@@ -103,14 +107,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 			button.type = 'button';
 			button.className = 'copy-button';
 			button.dataset.emojiId = emojiId;
-			button.textContent = 'コピー';
+			button.textContent = lt('common.copy');
 			wrapper.append(code, button);
 			card.append(image, name, wrapper);
 			fragment.appendChild(card);
 		}
 
 		if (!fragment.childNodes.length) {
-			showMessage('利用可能な絵文字が見つかりませんでした。', 'error-text');
+			showMessage(lt('emoji.none_available'), 'error-text');
 			return;
 		}
 		container.replaceChildren(fragment);
@@ -123,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 									await copyTextToClipboard(`_${emojiId}_`);
 
 				const originalText = button.textContent;
-				button.textContent = 'コピーしました!';
+				button.textContent = lt('post.link_copied');
 				button.disabled = true;
 				setTimeout(() => {
 					button.textContent = originalText;
@@ -131,11 +135,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 				}, 1500);
 			} catch (error) {
 				console.error('クリップボードへのコピーに失敗しました:', error);
-					showEmojiAlert('コピーに失敗しました。');
+					showEmojiAlert(lt('emoji.copy_failed'));
 			}
 		});
 	} catch (error) {
 		console.error('絵文字リストの読み込みに失敗しました:', error);
-		showMessage('絵文字リストの読み込みに失敗しました。', 'error-text');
+		showMessage(lt('emoji.list_load_failed'), 'error-text');
 	}
 });

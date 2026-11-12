@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { DOM } from '../dom.js';
 import { api, apiRequest } from '../api.js';
 import {
@@ -90,7 +91,7 @@ export async function fetchOptimizedPostPage(
         }
     } else if (type === 'group_posts') {
         const groupId = String(options.groupId || '');
-        if (!groupId) throw new Error('グループIDが必要です。');
+        if (!groupId) throw new Error(t('pagination.group_id_required'));
         if (options.mode) params.set('mode', options.mode);
         if (options.subType) params.set('sub_type', options.subType);
         if (options.order) params.set('order', options.order);
@@ -250,7 +251,7 @@ function loadAdvertisingScript(config) {
         script.async = true;
         script.src = config.scriptUrl;
         script.onload = resolve;
-        script.onerror = () => reject(new Error('広告スクリプトを読み込めませんでした。'));
+        script.onerror = () => reject(new Error(t('pagination.ad_script_failed')));
         document.head.appendChild(script);
     }).catch((error) => {
         advertisingScriptPromise = null;
@@ -264,10 +265,10 @@ function createAdvertisingPost(config) {
     const post = document.createElement('article');
     post.className = 'post advertising-post nui-card';
     post.dataset.nui = 'card';
-    post.setAttribute('aria-label', '広告');
+    post.setAttribute('aria-label', t('pagination.ad_label'));
     const label = document.createElement('span');
     label.className = 'advertising-post-label nui-badge';
-    label.textContent = '広告';
+    label.textContent = t('pagination.ad_label');
     const slot = document.createElement(config.provider === 'adsense' ? 'ins' : 'div');
     slot.className = config.provider === 'adsense'
         ? 'adsbygoogle nyaitter-ad-slot'
@@ -299,7 +300,7 @@ function createAdvertisingPost(config) {
                 const owner = path.reduce((value, key) => value?.[key], globalThis);
                 const initialize = owner?.[functionName];
                 if (typeof initialize !== 'function') {
-                    throw new Error(`広告初期化関数が見つかりません: ${config.init_function}`);
+                    throw new Error(t('pagination.ad_init_missing', { name: config.init_function }));
                 }
                 initialize.call(owner, slot);
             }
@@ -517,7 +518,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
             }
             posterror = error;
             console.error('ポストの読み込みに失敗:', error);
-            currentTrigger.innerText = 'ポストの読み込みに失敗しました。';
+            currentTrigger.innerText = t('pagination.post_load_failed');
             getCurrentPagination().hasMore = false;
             if (localPostLoadObserver) localPostLoadObserver.disconnect();
             return false;
@@ -532,13 +533,13 @@ export async function loadPostsWithPagination(container, type, options = {}) {
 
             if (!posterror) {
                 const emptyMessages = {
-                    timeline: 'まだポストがありません。',
-                    profile_posts: 'このユーザーはまだポストしていません。',
-                    replies: 'まだ返信はありません。',
-                    search: '該当するポストはありません。',
-                    likes: 'いいねしたポストはありません。',
-                    stars: 'お気に入りに登録したポストはありません。',
-                    group_posts: 'このグループにはまだポストがありません。',
+                    timeline: t('pagination.empty_timeline'),
+                    profile_posts: t('pagination.empty_profile_posts'),
+                    replies: t('pagination.empty_replies'),
+                    search: t('pagination.empty_search'),
+                    likes: t('pagination.empty_likes'),
+                    stars: t('pagination.empty_stars'),
+                    group_posts: t('pagination.empty_group_posts'),
                 };
                 const emptyMessageKey =
                     options.subType === 'replies_only' ? 'replies' : type;
@@ -547,7 +548,7 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                     finalTrigger.innerText =
                         container.querySelectorAll('.post').length === 0
                             ? emptyMessages[emptyMessageKey] || ''
-                            : 'すべてのポストを読み込みました';
+                            : t('pagination.all_posts_loaded');
                     if (localPostLoadObserver) localPostLoadObserver.disconnect();
                 } else {
                     if (finalTrigger.innerHTML.includes('spinner')) {
@@ -705,7 +706,7 @@ export function renderUserCard(u) {
     const badgeHTML = (u.admin
         ? ` <img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">`
         : u.verify
-          ? ` <img src="icons/verify.png" class="verify-badge" title="認証済み">`
+          ? ` <img src="icons/verify.png" class="verify-badge" title="${t('settings.verification.verified')}">`
           : '') + getGroupBadgesHtml(u);
 
     const bioText = u.me || u.bio || '';
@@ -713,7 +714,7 @@ export function renderUserCard(u) {
     userLink.innerHTML = `
         <img src="${getUserIconUrl(u)}" style="width:48px; height:48px; border-radius:50%; object-fit:cover;" alt="${escapeHTML(u.name || '')}'s icon">
         <div>
-            <span class="name" style="font-weight:700;">${getEmoji(escapeHTML(u.name || '不明'))}${badgeHTML}</span>
+            <span class="name" style="font-weight:700;">${getEmoji(escapeHTML(u.name || t('pagination.unknown')))}${badgeHTML}</span>
             <span class="id" style="color:var(--secondary-text-color);">${getNyaitterId(u)}</span>
             ${bioText ? `<p class="me" style="margin:0.2rem 0 0;">${getEmoji(escapeHTML(bioText))}</p>` : ''}
         </div>`;
@@ -818,7 +819,7 @@ export async function loadUsersWithPagination(container, type, options = {}) {
 
             if (error) {
                 console.error(`${type}のユーザー読み込みに失敗:`, error);
-                trigger.innerHTML = '読み込みに失敗しました。';
+                trigger.innerHTML = t('profile.load_failed_short');
             } else {
                 if (users && users.length > 0) {
                     users.forEach((u) => container.insertBefore(renderUserCard(u), trigger));
@@ -834,14 +835,14 @@ export async function loadUsersWithPagination(container, type, options = {}) {
 
                 if (!getCurrentPagination().hasMore) {
                     const emptyMessages = {
-                        follows: '誰もフォローしていません。',
-                        followers: 'まだフォロワーがいません。',
-                        search: 'ユーザーは見つかりませんでした。',
+                        follows: t('pagination.empty_follows'),
+                        followers: t('pagination.empty_followers'),
+                        search: t('pagination.empty_user_search'),
                     };
                     trigger.innerHTML =
                         container.querySelectorAll('.profile-card').length === 0
                             ? emptyMessages[type] || ''
-                            : 'すべてのユーザーを読み込みました';
+                            : t('pagination.all_users_loaded');
                 } else {
                     trigger.innerHTML = '';
                     requestAnimationFrame(checkAndTriggerNextIfVisible);

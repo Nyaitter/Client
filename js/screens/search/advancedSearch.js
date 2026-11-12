@@ -1,3 +1,4 @@
+import { t } from '../../modules/i18n.js';
 import { guardSearchFormComposition } from '../../utils/searchIme.js';
 
 const quote = value => `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -66,24 +67,24 @@ export function bindAdvancedSearch(header, context) {
         modal.setAttribute('aria-modal', 'true');
         modal.setAttribute('aria-labelledby', 'advanced-search-title');
         modal.innerHTML = `<section class="modal-content nui-modal advanced-search-modal" data-nui="modal" style="width: min(620px, calc(100vw - 2rem));">
-            <header class="advanced-search-heading"><h2 id="advanced-search-title" class="nui-modal-title">高度な検索</h2><button type="button" class="advanced-search-close" aria-label="閉じる">×</button></header>
+            <header class="advanced-search-heading"><h2 id="advanced-search-title" class="nui-modal-title">${t('advsearch.title')}</h2><button type="button" class="advanced-search-close" aria-label="${t('common.close')}">×</button></header>
             <form class="advanced-search-form nui-form">
                 <div class="advanced-search-fields">
-                    <label>キーワード・検索式<input name="keywords" type="text" class="nui-input" placeholder="例：猫 写真" autocomplete="off"></label>
-                    <label>完全一致する語句<input name="phrase" type="text" class="nui-input" placeholder="例：今日の猫" autocomplete="off"></label>
-                    <fieldset><legend>投稿者</legend><label>NyaitterID または Scratchユーザー名<input name="from" type="text" class="nui-input" placeholder="#1234 またはユーザー名" autocomplete="off"></label><label class="advanced-search-checkbox"><input name="excludeFrom" type="checkbox"><span>この投稿者を除く</span></label></fieldset>
-                    <fieldset><legend>投稿日 <small>UTC</small></legend><label>期間<select name="dateMode" class="nui-input"><option value="any">指定しない</option><option value="day">特定の日</option><option value="range">期間を指定</option></select></label>
-                        <label data-search-date="day" hidden>日付<input name="at" type="date" class="nui-input"></label>
-                        <div class="advanced-search-date-range" data-search-date="range" hidden><label>開始日（含む）<input name="since" type="date" class="nui-input"></label><label>終了日（含まない）<input name="until" type="date" class="nui-input"></label></div>
+                    <label>${t('advsearch.keywords_label')}<input name="keywords" type="text" class="nui-input" placeholder="${t('advsearch.keywords_placeholder')}" autocomplete="off"></label>
+                    <label>${t('advsearch.phrase_label')}<input name="phrase" type="text" class="nui-input" placeholder="${t('advsearch.phrase_placeholder')}" autocomplete="off"></label>
+                    <fieldset><legend>${t('advsearch.author_legend')}</legend><label>${t('advsearch.author_label')}<input name="from" type="text" class="nui-input" placeholder="${t('advsearch.author_placeholder')}" autocomplete="off"></label><label class="advanced-search-checkbox"><input name="excludeFrom" type="checkbox"><span>${t('advsearch.exclude_author')}</span></label></fieldset>
+                    <fieldset><legend>${t('advsearch.date_legend')} <small>UTC</small></legend><label>${t('advsearch.date_range_label')}<select name="dateMode" class="nui-input"><option value="any">${t('advsearch.date_any')}</option><option value="day">${t('advsearch.date_specific_day')}</option><option value="range">${t('advsearch.date_range_option')}</option></select></label>
+                        <label data-search-date="day" hidden>${t('advsearch.date_day_label')}<input name="at" type="date" class="nui-input"></label>
+                        <div class="advanced-search-date-range" data-search-date="range" hidden><label>${t('advsearch.date_since')}<input name="since" type="date" class="nui-input"></label><label>${t('advsearch.date_until')}<input name="until" type="date" class="nui-input"></label></div>
                     </fieldset>
-                    <fieldset class="advanced-search-filters"><legend>投稿の内容</legend>
-                        <label>添付ファイル<select name="media" class="nui-input"><option value="">指定しない</option><option value="include">添付あり</option><option value="exclude">添付なし</option></select></label>
-                        <label>リンク<select name="links" class="nui-input"><option value="">指定しない</option><option value="include">リンクあり</option><option value="exclude">リンクなし</option></select></label>
-                        <label class="advanced-search-kind">投稿の種類<select name="kind" class="nui-input"><option value="">すべて</option><option value="reply">返信</option><option value="quote">引用</option><option value="repost">リポスト</option><option value="-reply">返信を除く</option><option value="-quote">引用を除く</option><option value="-repost">リポストを除く</option></select></label>
+                    <fieldset class="advanced-search-filters"><legend>${t('advsearch.content_legend')}</legend>
+                        <label>${t('advsearch.media_label')}<select name="media" class="nui-input"><option value="">${t('advsearch.date_any')}</option><option value="include">${t('advsearch.media_include')}</option><option value="exclude">${t('advsearch.media_exclude')}</option></select></label>
+                        <label>${t('advsearch.links_label')}<select name="links" class="nui-input"><option value="">${t('advsearch.date_any')}</option><option value="include">${t('advsearch.links_include')}</option><option value="exclude">${t('advsearch.links_exclude')}</option></select></label>
+                        <label class="advanced-search-kind">${t('advsearch.kind_label')}<select name="kind" class="nui-input"><option value="">${t('timeline.tab.all')}</option><option value="reply">${t('advsearch.kind_reply')}</option><option value="quote">${t('advsearch.kind_quote')}</option><option value="repost">${t('advsearch.kind_repost')}</option><option value="-reply">${t('advsearch.kind_exclude_reply')}</option><option value="-quote">${t('advsearch.kind_exclude_quote')}</option><option value="-repost">${t('advsearch.kind_exclude_repost')}</option></select></label>
                     </fieldset>
                     <p class="advanced-search-error" role="alert" hidden></p>
                 </div>
-                <footer class="advanced-search-actions"><button type="button" class="nui-button-secondary" data-search-cancel>キャンセル</button><button type="submit" class="nui-button settings-primary-button">検索</button></footer>
+                <footer class="advanced-search-actions"><button type="button" class="nui-button-secondary" data-search-cancel>${t('common.cancel')}</button><button type="submit" class="nui-button settings-primary-button">${t('settings.account.search_button')}</button></footer>
             </form>
         </section>`;
         const previousOverflow = document.body.style.overflow;
@@ -127,7 +128,7 @@ export function bindAdvancedSearch(header, context) {
             const values = readValues();
             const query = buildAdvancedSearch(values);
             const error = modal.querySelector('.advanced-search-error');
-            const message = !query ? '検索条件を入力してください。' : values.dateMode === 'range' && values.since && values.until && values.since >= values.until ? '終了日は開始日より後の日付を指定してください。' : '';
+            const message = !query ? t('advsearch.no_criteria') : values.dateMode === 'range' && values.since && values.until && values.since >= values.until ? t('advsearch.invalid_range') : '';
             error.hidden = !message; error.textContent = message;
             if (message) { form.elements[!query ? 'keywords' : 'until'].focus(); return; }
             close();

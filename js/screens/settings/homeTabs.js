@@ -1,11 +1,12 @@
+import { t } from '../../modules/i18n.js';
 import { getCurrentUser } from '../../state.js';
 
 export const ALL_HOME_TABS = Object.freeze([
-    Object.freeze({ key: 'all', name: 'すべて', description: 'すべての投稿を表示' }),
-    Object.freeze({ key: 'foryou', name: 'おすすめ', description: 'おすすめの投稿を表示' }),
-    Object.freeze({ key: 'following', name: 'フォロー中', description: 'フォロー中のユーザーの投稿を表示' }),
-    Object.freeze({ key: 'announce', name: 'お知らせ', description: '運営によるアナウンスを表示' }),
-    Object.freeze({ key: 'groups', name: 'グループ', description: '参加中のグループタブを表示' }),
+    Object.freeze({ key: 'all', name: t('timeline.tab.all'), description: t('hometabs.desc_all') }),
+    Object.freeze({ key: 'foryou', name: t('timeline.tab.foryou'), description: t('hometabs.desc_foryou') }),
+    Object.freeze({ key: 'following', name: t('timeline.tab.following'), description: t('hometabs.desc_following') }),
+    Object.freeze({ key: 'announce', name: t('timeline.tab.announce_info'), description: t('hometabs.desc_announce') }),
+    Object.freeze({ key: 'groups', name: t('nav.groups'), description: t('hometabs.desc_groups') }),
 ]);
 
 export const DEFAULT_HOME_TABS = Object.freeze(['foryou', 'all', 'following', 'announce', 'groups']);

@@ -4,6 +4,7 @@
  * pull-to-refresh (PTR), scroll position management, and caching in Nyaitter.
  */
 
+import { t } from './i18n.js';
 import { renderPost } from './posts.js';
 import { renderUserCard } from './pagination.js';
 import { initTabGroup } from './tabSwipe.js';
@@ -26,7 +27,7 @@ import { escapeHTML } from '../utils/helpers.js';
  * @param {HTMLElement} container
  * @param {Array<Object>} posts
  * @param {Object} [options]
- * @param {string} [options.emptyText='ポストはありません']
+ * @param {string} [options.emptyText=t('tabbed.empty_posts')]
  * @param {string} [options.listClassName='tab-posts-list']
  * @returns {Promise<HTMLElement>}
  */
@@ -35,7 +36,7 @@ export async function renderPostList(container, posts = [], options = {}) {
     container.innerHTML = '';
 
     const {
-        emptyText = 'ポストはありません',
+        emptyText = t('tabbed.empty_posts'),
         listClassName = 'tab-posts-list',
     } = options;
 
@@ -68,7 +69,7 @@ export async function renderPostList(container, posts = [], options = {}) {
  * @param {HTMLElement} container
  * @param {Array<Object>} users
  * @param {Object} [options]
- * @param {string} [options.emptyText='ユーザーはいません']
+ * @param {string} [options.emptyText=t('tabbed.empty_users')]
  * @param {string} [options.listClassName='tab-users-list']
  * @returns {HTMLElement}
  */
@@ -77,7 +78,7 @@ export function renderUserList(container, users = [], options = {}) {
     container.innerHTML = '';
 
     const {
-        emptyText = 'ユーザーはいません',
+        emptyText = t('tabbed.empty_users'),
         listClassName = 'tab-users-list',
     } = options;
 
@@ -176,11 +177,11 @@ export async function setupTabbedListView(container, options = {}) {
 
             if (tabDef.type === 'posts') {
                 await renderPostList(bodyContainer, items, {
-                    emptyText: tabDef.emptyText || 'ポストはありません',
+                    emptyText: tabDef.emptyText || t('tabbed.empty_posts'),
                 });
             } else if (tabDef.type === 'users') {
                 renderUserList(bodyContainer, items, {
-                    emptyText: tabDef.emptyText || 'ユーザーはいません',
+                    emptyText: tabDef.emptyText || t('tabbed.empty_users'),
                 });
             } else if (typeof tabDef.render === 'function') {
                 await tabDef.render(bodyContainer, items);
@@ -194,7 +195,7 @@ export async function setupTabbedListView(container, options = {}) {
             }
         } catch (err) {
             console.error('[tabbedView] error rendering tab:', tabKey, err);
-            bodyContainer.innerHTML = `<div class="tab-empty-state" style="padding: 3rem 1rem; text-align: center; color: var(--secondary-text-color);"><p>${escapeHTML(err?.message || 'データの取得に失敗しました')}</p></div>`;
+            bodyContainer.innerHTML = `<div class="tab-empty-state" style="padding: 3rem 1rem; text-align: center; color: var(--secondary-text-color);"><p>${escapeHTML(err?.message || t('activity.fetch_failed'))}</p></div>`;
         }
     };
 

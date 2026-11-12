@@ -1,3 +1,4 @@
+import { t } from '../../modules/i18n.js';
 import { renderAdvancedSearchButton } from '../search/view.js';
 import { DOM } from '../../dom.js';
 import { escapeHTML } from '../../utils/helpers.js';
@@ -5,7 +6,7 @@ import { escapeHTML } from '../../utils/helpers.js';
 export function renderHeader() {
     DOM.pageHeader.innerHTML = `
         <div class="header-search-bar">
-            <input type="search" id="search-input" placeholder="検索" aria-label="検索">
+            <input type="search" id="search-input" placeholder="${t('settings.account.search_button')}" aria-label="${t('settings.account.search_button')}">
             ${renderAdvancedSearchButton()}
         </div>`;
 }
@@ -14,21 +15,21 @@ export function renderInitial(activeTab) {
     if (!DOM.exploreContent) return;
     DOM.exploreContent.innerHTML = `
         <div class="explore-tabs nui-tabs" id="explore-tabs">
-            <button type="button" class="tab-button nui-tab ${activeTab === 'tags' ? 'active' : ''}" data-explore-tab="tags">話題</button>
-            <button type="button" class="tab-button nui-tab ${activeTab === 'hashtags' ? 'active' : ''}" data-explore-tab="hashtags">トレンド</button>
+            <button type="button" class="tab-button nui-tab ${activeTab === 'tags' ? 'active' : ''}" data-explore-tab="tags">${t('explore.tab_topics')}</button>
+            <button type="button" class="tab-button nui-tab ${activeTab === 'hashtags' ? 'active' : ''}" data-explore-tab="hashtags">${t('explore.tab_trending')}</button>
         </div>
         <div id="explore-trends-container" class="trends-widget-container">
-            <div class="spinner" aria-label="読み込み中"></div>
+            <div class="spinner" aria-label="${t('common.loading')}"></div>
         </div>
     `;
 }
 
 export function renderTrends(container, trends, tab) {
     const currentList = tab === 'hashtags' ? trends.hashtags : trends.tags;
-    const tabTitle = tab === 'hashtags' ? 'トレンド' : '話題';
+    const tabTitle = tab === 'hashtags' ? t('explore.tab_trending') : t('explore.tab_topics');
     const emptyMessage = tab === 'hashtags'
-        ? '現在、トレンドのハッシュタグはありません。'
-        : '現在、話題のタグはありません。';
+        ? t('explore.no_trending')
+        : t('explore.no_topics');
     if (!currentList.length) {
         container.innerHTML = `<p class="explore-empty-message nui-empty-text">${emptyMessage}</p>`;
         return;
@@ -38,9 +39,9 @@ export function renderTrends(container, trends, tab) {
         <div class="nui-list">
         ${currentList.map((trend, index) => `
             <a href="#search/${encodeURIComponent(trend.tag_name)}" class="trend-item nui-list-item">
-                <div class="trend-item-meta nui-list-meta"><span>${index + 1}</span>位</div>
+                <div class="trend-item-meta nui-list-meta"><span>${t('explore.rank', { rank: index + 1 })}</span></div>
                 <div class="trend-item-name nui-list-title">${escapeHTML(trend.tag_name)}</div>
-                <div class="trend-item-count nui-list-meta">${trend.occurrence_count}件のポスト</div>
+                <div class="trend-item-count nui-list-meta">${t('explore.post_count', { count: trend.occurrence_count })}</div>
             </a>
         `).join('')}
         </div>
@@ -48,5 +49,5 @@ export function renderTrends(container, trends, tab) {
 }
 
 export function renderError(container) {
-    if (container) container.innerHTML = '<p class="explore-empty-message nui-empty-text">トレンドの取得に失敗しました。</p>';
+    if (container) container.innerHTML = `<p class="explore-empty-message nui-empty-text">${t('explore.load_failed')}</p>`;
 }

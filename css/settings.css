@@ -1542,11 +1542,11 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 }
 
 .side-menu-zone[data-zone='bar'] .side-menu-list:empty::after {
-    content: 'バーに表示されている項目はありません';
+    content: attr(data-empty-text);
 }
 
 .side-menu-zone[data-zone='more'] .side-menu-list:empty::after {
-    content: '他にまとめた項目はありません';
+    content: attr(data-empty-text);
 }
 
 .side-menu-item {

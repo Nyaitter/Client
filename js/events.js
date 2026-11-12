@@ -7,6 +7,7 @@ const openCall = async (...args) => (await import('./modules/calls.js')).openCal
  * All event listeners are attached once at app startup to avoid memory leaks.
  */
 
+import { t } from './modules/i18n.js';
 import { api, apiRequest } from './api.js';
 import { DOM, openImageModal, closeImageModal } from './dom.js';
 import { decorateMenuButtons } from './icons.js';
@@ -297,7 +298,7 @@ function handleGlobalClick(e) {
             e.stopPropagation();
             window.handleDownload?.(
                 downloadUrl,
-                String(actionTarget.dataset.name || '添付ファイル').slice(0, 255),
+                String(actionTarget.dataset.name || t('post.attachment_fallback')).slice(0, 255),
             );
         }
         return;
@@ -335,7 +336,7 @@ function handleGlobalClick(e) {
             openReportModal({
                 targetKind: 'dm_message',
                 targetId: `${dmId}:${messageId}`,
-                targetLabel: 'このメッセージ',
+                targetLabel: t('events.this_message'),
             });
             reportDmMessageButton.closest('.post-menu')?.classList.remove('is-visible');
         }
@@ -492,7 +493,7 @@ function handleGlobalClick(e) {
             openReportModal({
                 targetKind: 'post',
                 targetId: Number(actionTargetPostId || timelinePostId),
-                targetLabel: 'このポスト',
+                targetLabel: t('post.this_post'),
             });
             target.closest('.post-menu')?.classList.remove('is-visible');
             return;
@@ -623,7 +624,7 @@ function handleGlobalClick(e) {
             }).then(({ error }) => {
                 if (error) {
                     console.error('通知の削除に失敗:', error);
-                    showAppAlert('通知の削除に失敗しました。');
+                    showAppAlert(t('events.notification_delete_failed'));
                 } else {
                     getCurrentUser().notice = getCurrentUser().notice.filter(
                         (n) => Number(n.id) !== Number(notificationId),

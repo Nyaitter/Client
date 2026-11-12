@@ -1,3 +1,4 @@
+import { t } from '../../modules/i18n.js';
 import { DOM } from '../../dom.js';
 import { ICONS } from '../../icons.js';
 import { escapeHTML } from '../../utils/helpers.js';
@@ -5,13 +6,13 @@ import { escapeHTML } from '../../utils/helpers.js';
 export function renderHeader() {
     DOM.pageHeader.innerHTML = `
         <div class="header-with-action-button">
-            <button type="button" class="back-button" onclick="history.back()" aria-label="戻る">${ICONS.back}</button>
-            <h2 id="doc-detail-header-title">ドキュメント</h2>
+            <button type="button" class="back-button" onclick="history.back()" aria-label="${t('admin.back_label')}">${ICONS.back}</button>
+            <h2 id="doc-detail-header-title">${t('docsportal.title')}</h2>
         </div>`;
 }
 
 export function renderLoading(content) {
-    if (content) content.innerHTML = '<div class="spinner" aria-label="読み込み中"></div>';
+    if (content) content.innerHTML = `<div class="spinner" aria-label="${t('common.loading')}"></div>`;
 }
 
 export function renderDocument(content, title, renderedBody, updatedAt) {
@@ -21,11 +22,11 @@ export function renderDocument(content, title, renderedBody, updatedAt) {
     content.innerHTML = `
         <article class="doc-detail-container nui-page" data-nui="page">
             <div class="nui-card rule-markdown-body" data-nui="card">${renderedBody}</div>
-            ${updatedAt ? `<div class="rule-footer-meta nui-help-text"><small>最終更新日: ${escapeHTML(updatedAt)}</small></div>` : ''}
+            ${updatedAt ? `<div class="rule-footer-meta nui-help-text"><small>${t('docsdetail.last_updated', { date: escapeHTML(updatedAt) })}</small></div>` : ''}
         </article>
     `;
 }
 
 export function renderError(content) {
-    if (content) content.innerHTML = '<div class="docs-empty nui-page" data-nui="page"><p class="error-message nui-empty-text">ドキュメントの読み込みに失敗しました。</p></div>';
+    if (content) content.innerHTML = `<div class="docs-empty nui-page" data-nui="page"><p class="error-message nui-empty-text">${t('docsdetail.load_failed')}</p></div>`;
 }

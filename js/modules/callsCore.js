@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { callMarkup, renderParticipants, releaseCallView } from './callView.js';
 import { AppWindow } from './appWindow.js';
 import { apiRequest } from '../api.js';
@@ -153,7 +154,7 @@ async function request(path, options) {
 
 function send(record, type, data = {}) {
     const socket = getRealtimeChannel();
-    if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error('接続が切れました。再接続してください。');
+    if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error(t('call.disconnected'));
     socket.send(JSON.stringify({ type, kind: record.session?.kind, id: record.session?.id, ...data }));
 }
 
@@ -212,13 +213,13 @@ function showContextMenu(record, x, y, panelId, userId = panelId) {
     document.querySelector('.call-context-menu')?.remove();
     const menu = document.createElement('div'); menu.className = 'call-context-menu'; menu.setAttribute('role', 'menu');
     const prefs = { ...(session.preferences[String(panelId)] || {}), chatHidden: Boolean(session.preferences[String(userId)]?.chatHidden) };
-    const entries = [['mute', prefs.muted ? 'このユーザーのミュートを解除' : '自分だけミュート'], ['camera', prefs.cameraHidden ? '映像を表示' : '映像を自分だけ非表示'], ['chat', prefs.chatHidden ? 'チャットを表示' : 'チャットを自分だけ非表示'], ['pin', prefs.pinned ? '固定解除' : '固定表示'], ['hide', prefs.hidden ? '表示' : '退避']];
+    const entries = [['mute', prefs.muted ? t('call.pref_unmute') : t('call.pref_mute')], ['camera', prefs.cameraHidden ? t('call.pref_show_video') : t('call.pref_hide_video')], ['chat', prefs.chatHidden ? t('call.pref_show_chat') : t('call.pref_hide_chat')], ['pin', prefs.pinned ? t('call.pref_unpin') : t('call.pref_pin')], ['hide', prefs.hidden ? t('call.pref_show') : t('call.pref_shelve')]];
     if (session.role === 'host') {
         const target = session.roster.find(person => String(person.user_id) === String(userId));
-        entries.push(['host-mute', 'マイクを強制ミュート'], ['host-camera', 'カメラを強制オフ'], ['host-chat', 'チャットを強制オフ'], ['host-pin', target?.force_pinned ? 'パネルの強制固定を解除' : 'パネルを強制固定']);
-        if (target?.role === 'audience') entries.push(['host-promote', 'スピーカーに昇格']);
-        else if (target?.role === 'speaker') entries.push(['host-demote', 'リスナーに降格']);
-        entries.push(['host-kick', 'セッションから追放']);
+        entries.push(['host-mute', t('call.host_mute')], ['host-camera', t('call.host_camera_off')], ['host-chat', t('call.host_chat_off')], ['host-pin', target?.force_pinned ? t('call.host_unpin') : t('call.host_pin')]);
+        if (target?.role === 'audience') entries.push(['host-promote', t('call.host_promote')]);
+        else if (target?.role === 'speaker') entries.push(['host-demote', t('call.host_demote')]);
+        entries.push(['host-kick', t('call.host_kick')]);
     }
     for (const [action, label] of entries) {
         const button = document.createElement('button'); button.type = 'button'; button.setAttribute('role', 'menuitem'); button.textContent = label;
@@ -244,7 +245,7 @@ async function hostModerate(record, userId, action) {
     const session = record.session;
     if (!session || session.role !== 'host') return;
     if (String(userId) === String(session.localUserId) && action !== 'pin') { console.log('自分にはこの操作を実行できません。'); return; }
-    if (action === 'kick' && !globalThis.confirm('このユーザーを追放しますか？終了まで再参加できません。')) return;
+    if (action === 'kick' && !globalThis.confirm(t('call.kick_confirm'))) return;
     try {
         send(record, 'call:moderate', { target: userId, action });
     } catch (error) { status(error.message); }
@@ -450,9 +451,9 @@ export async function openCall(kind, id, options = {}) {
     let guestId = null;
     try {
         info = await request(`/server/api/calls/${kind === 'stage' ? 'stages' : 'dm'}/${encodeURIComponent(id)}`);
-        if (options.requireActive && info.active === false) throw new Error('この通話は終了しました。');
+        if (options.requireActive && info.active === false) throw new Error(t('call.ended'));
         if (!getCurrentUser()) {
-            if (kind !== 'stage' || !info.guest) throw new Error('この通話にはログインが必要です。');
+            if (kind !== 'stage' || !info.guest) throw new Error(t('call.login_required'));
             const guest = await request(`/server/api/calls/stages/${encodeURIComponent(id)}/guest-session`, { method: 'POST', body: {} });
             guestId = guest.guest_id;
         }
@@ -474,12 +475,12 @@ export async function openCall(kind, id, options = {}) {
     node.dataset.chatOpen = 'true';
     node.innerHTML = callMarkup(kind, info, getCurrentUser(), canCapture, record.uid);
     session.localTile = node.querySelector('[data-local-tile]');
-    actionLabel(record, 'transcribe', '文字起こしを表示');
+    actionLabel(record, 'transcribe', t('call.action_transcribe_show'));
     void refreshDeviceOptions(record);
     const shareButton = node.querySelector('[data-call-action="share"]');
     if (!rtcSupported() || !navigator.mediaDevices?.getDisplayMedia) {
         shareButton.disabled = true;
-        actionLabel(record, 'share', '画面共有（未対応）');
+        actionLabel(record, 'share', t('call.action_share_unsupported'));
     }
     const localPreview = node.querySelector('[data-local-preview]');
     if (localPreview) {
@@ -520,21 +521,21 @@ export async function openCall(kind, id, options = {}) {
         localPreview.addEventListener('playing', updateLocalPreview);
         localPreview.addEventListener('resize', updateLocalPreview);
     }
-    record.window = new AppWindow({ element: node, header: node.querySelector('.call-panel-header'), title: info.stage?.name || info.title || '通話', onClose: () => leaveCall(record), maximized: !stacked });
+    record.window = new AppWindow({ element: node, header: node.querySelector('.call-panel-header'), title: info.stage?.name || info.title || t('call.title_fallback'), onClose: () => leaveCall(record), maximized: !stacked });
     if (stacked) {
         const offset = ((calls.size - 1) % 5) * 28;
         record.window.bounds.x = Math.min(innerWidth - record.window.bounds.width, 24 + offset);
         record.window.bounds.y = Math.min(innerHeight - record.window.bounds.height, 24 + offset);
         record.window.render();
     }
-    record.window.controls.querySelector('[data-window-action="close"]').title = '閉じる';
+    record.window.controls.querySelector('[data-window-action="close"]').title = t('common.close');
     showPanel(record);
     if (guestId) {
         const chatInput = node.querySelector('[data-call-chat] input');
         const chatButton = node.querySelector('[data-call-chat] button');
         if (chatInput) chatInput.disabled = true;
         if (chatButton) chatButton.disabled = true;
-        node.querySelector('[data-call-chat]')?.insertAdjacentHTML('beforebegin', '<p class="call-guest-chat-note nui-help-text">ゲストはコメントできません。</p>');
+        node.querySelector('[data-call-chat]')?.insertAdjacentHTML('beforebegin', `<p class="call-guest-chat-note nui-help-text">${t('call.guest_chat_note')}</p>`);
         const guestSession = session;
         void connectGuestRealtime().then(() => {
             if (record.session !== guestSession) return;
@@ -550,7 +551,7 @@ export async function openCall(kind, id, options = {}) {
     }
     if (info.stage?.status === 'ended') {
         node.querySelector('[data-call-action="join"]')?.setAttribute('disabled', '');
-        status('このステージは終了しました。');
+        status(t('call.stage_ended'));
     } else if (!guestId && info.stage?.status === 'live' && role === 'audience') {
         void perform(record, 'join').catch(error => status(error.message));
     }
@@ -582,7 +583,7 @@ async function refreshDeviceOptions(record) {
         const list = devices.filter(item => item.kind === (kind === 'audio' ? 'audioinput' : 'videoinput'));
         for (const select of panel.querySelectorAll(`[data-call-input-select="${kind}"]`)) {
             const chosen = current?.inputDevices?.[kind] || select.value || '';
-            select.innerHTML = `<option value="">既定</option>${list.map((item, index) => `<option value="${escapeHTML(item.deviceId)}">${escapeHTML(item.label || `${kind === 'audio' ? 'マイク' : 'カメラ'} ${index + 1}`)}</option>`).join('')}`;
+            select.innerHTML = `<option value="">${t('call.device_default')}</option>${list.map((item, index) => `<option value="${escapeHTML(item.deviceId)}">${escapeHTML(item.label || `${kind === 'audio' ? t('call.device_microphone') : t('call.device_camera')} ${index + 1}`)}</option>`).join('')}`;
             select.value = list.some(item => item.deviceId === chosen) ? chosen : '';
         }
     }
@@ -623,7 +624,7 @@ async function switchInputDevice(record, kind, deviceId) {
         status('');
     } catch (error) {
         for (const track of replacement?.getTracks() || []) if (!localTracks(current).includes(track)) track.stop();
-        status(`機器を変更できません: ${error.message}`);
+        status(t('call.device_change_failed', { message: error.message }));
     }
     if (record.session === current) {
         syncDeviceInputs(record, current);
@@ -701,7 +702,7 @@ async function updateDevices(record, requested) {
         status('');
     } catch (error) {
         console.error('[calls] device capture failed', error);
-        status(`機器を使用できません: ${error.message}`);
+        status(t('call.device_unusable', { message: error.message }));
     }
     if (record.session !== current) return;
     syncDeviceInputs(record, current);
@@ -743,7 +744,7 @@ function startLocalTranscription(record, current) {
     recognition.onerror = () => {
         if (current.recognition !== recognition) return;
         current.recognition = null;
-        status('文字起こしを開始できませんでした。');
+        status(t('call.transcribe_start_failed'));
     };
     recognition.onend = () => {
         if (current.recognition !== recognition) return;
@@ -780,7 +781,7 @@ function syncScreenShares(current, roster) {
     const present = new Set(roster.map(person => String(person.user_id)));
     for (const id of current.screenShares.keys()) if (!present.has(String(id))) current.screenShares.delete(id);
     for (const person of roster) {
-        if (person.screen_stream_id) current.screenShares.set(String(person.user_id), { streamId: person.screen_stream_id, label: person.screen_label || `@${String(person.handle || person.name).replace(/^@/, '')}のスクリーン` });
+        if (person.screen_stream_id) current.screenShares.set(String(person.user_id), { streamId: person.screen_stream_id, label: person.screen_label || t('call.screen_label', { handle: String(person.handle || person.name).replace(/^@/, '') }) });
         else current.screenShares.delete(String(person.user_id));
     }
 }
@@ -916,7 +917,7 @@ function createPeer(record, userId) {
             await pc.setLocalDescription();
             tunePeerSenders(peer, current);
             if (record.session === current && current.joined) send(record, 'call:signal', { to: userId, data: { description: pc.localDescription.toJSON() } });
-        } catch (error) { if (record.session === current) status(`接続できません: ${error.message}`); }
+        } catch (error) { if (record.session === current) status(t('call.connect_failed', { message: error.message })); }
         finally { peer.makingOffer = false; }
     };
     pc.ontrack = event => {
@@ -946,7 +947,7 @@ function createPeer(record, userId) {
             remote.tile.append(video);
             current.streams.set(streamKey, remote);
             placeVideoInCard(record, remote, current);
-            void video.play().catch(() => { if (record.session === current) { record.panel.querySelector('[data-call-action="play"]').hidden = false; status('「音声を再生」を押すと音声が流れます。'); } });
+            void video.play().catch(() => { if (record.session === current) { record.panel.querySelector('[data-call-action="play"]').hidden = false; status(t('call.play_audio_hint')); } });
         }
         const video = remote.tile.querySelector('video');
     const pref = current.preferences[String(remote.userId)] || {};
@@ -1051,7 +1052,7 @@ function createPeer(record, userId) {
             clearIceRestart();
             void adaptPeerSenders(peer, current);
         } else if (state === 'failed') {
-            status('音声・映像に接続できません。再接続を試みます。');
+            status(t('call.media_connect_failed'));
             scheduleIceRestart('failed');
         } else if (state === 'disconnected') {
             scheduleIceRestart('disconnected');
@@ -1134,7 +1135,7 @@ function applyRoster(record, roster) {
         for (const id of [...current.peers.keys()]) closePeer(record, id);
         current.localFrameReady = false;
         current.refreshLocalPreview?.();
-        status(mine.role === 'audience' ? '視聴者に切り替わりました。' : 'スピーカーになりました。');
+        status(mine.role === 'audience' ? t('call.role_audience') : t('call.role_speaker'));
     }
     // Enforce host force-actions even when they arrive through the roster alone
     // (e.g. reconnect): the local capture tracks must actually stop/disable.
@@ -1224,7 +1225,7 @@ function appendMessage(record, event) {
     const line = document.createElement('div');
     line.className = 'call-message';
     line.dataset.userId = String(event.user_id);
-    const name = String(event.name || '参加者');
+    const name = String(event.name || t('call.participant_fallback'));
     const avatar = document.createElement('span');
     avatar.className = 'call-message-avatar nui-avatar';
     avatar.setAttribute('aria-hidden', 'true');
@@ -1246,7 +1247,7 @@ function appendMessage(record, event) {
     content.className = 'call-message-content';
     const author = document.createElement('div');
     author.className = 'call-message-author';
-    const handle = event.guest ? '' : String(event.name || '参加者');
+    const handle = event.guest ? '' : String(event.name || t('call.participant_fallback'));
     const displayName = document.createElement('strong');
     displayName.textContent = handle ? `@${handle}` : name;
     author.append(displayName);
@@ -1284,7 +1285,7 @@ function handleScreenShare(record, event) {
     const panel = record.panel;
     if (!current || !panel) return;
     const userId = String(event.user_id);
-    if (event.active && event.stream_id) current.screenShares.set(userId, { streamId: String(event.stream_id), label: String(event.label || 'スクリーン') });
+    if (event.active && event.stream_id) current.screenShares.set(userId, { streamId: String(event.stream_id), label: String(event.label || t('call.screen_fallback')) });
     else current.screenShares.delete(userId);
     renderParticipants(panel, current.roster, current.kind, current.localUserId, current.screenShares, current.role === 'host', current.preferences);
     placeLocalTiles(record, current);
@@ -1315,7 +1316,7 @@ export function handleCallEvent(event) {
             if (!session.joined) void perform(record, 'join').catch(error => status(error.message));
         } else if (event.status === 'ended') {
             leaveCall(record);
-            void showAppAlert('このステージは終了しました。');
+            void showAppAlert(t('call.stage_ended'));
         }
     } else if (event.type === 'call:joined') {
         if (!record.pending || event.request_id !== record.pending.id) return true;
@@ -1327,8 +1328,8 @@ export function handleCallEvent(event) {
         const deviceControls = panel.querySelector('[data-call-device-controls]');
         if (deviceControls) panel.querySelector('[data-call-device-target]').append(deviceControls);
         panel.dataset.chatOpen = String(panel.clientWidth >= 760);
-        actionLabel(record, 'chat', session.kind === 'stage' ? 'コメント' : 'チャット', panel.dataset.chatOpen === 'true');
-        record.window.controls.querySelector('[data-window-action="close"]').title = '退出して閉じる';
+        actionLabel(record, 'chat', session.kind === 'stage' ? t('call.action_comment') : t('call.action_chat'), panel.dataset.chatOpen === 'true');
+        record.window.controls.querySelector('[data-window-action="close"]').title = t('call.close_leave');
         for (const section of panel.querySelectorAll('[data-call-in-session]')) section.hidden = false;
         for (const element of panel.querySelectorAll('[data-call-chat] input, [data-call-chat] button')) element.disabled = Boolean(session.guest);
         applyRoster(record, event.roster); status('');
@@ -1368,13 +1369,13 @@ export function handleCallEvent(event) {
             const disabled = event.value === undefined ? true : Boolean(event.value);
             for (const input of panel.querySelectorAll('[data-call-chat] input, [data-call-chat] button')) input.disabled = disabled || Boolean(session.guest);
         }
-        const messages = { chat: 'ホストによりチャットが無効になりました。', mute: 'ホストによりマイクがミュートされました。', camera: 'ホストによりカメラがオフになりました。', pin: 'ホストによりパネルが固定されました。', promote: 'ホストによりスピーカーに昇格しました。', demote: 'ホストによりリスナーに降格しました。' };
-        const released = { chat: 'ホストによりチャットの制限が解除されました。', mute: 'ホストによりマイクの制限が解除されました。', camera: 'ホストによりカメラの制限が解除されました。' };
-        status((event.value === false && released[event.action]) || messages[event.action] || 'ホストにより設定が変更されました。');
+        const messages = { chat: t('call.host_chat_disabled'), mute: t('call.host_muted'), camera: t('call.host_camera_off_msg'), pin: t('call.host_pinned'), promote: t('call.host_promoted'), demote: t('call.host_demoted') };
+        const released = { chat: t('call.host_chat_released'), mute: t('call.host_mute_released'), camera: t('call.host_camera_released') };
+        status((event.value === false && released[event.action]) || messages[event.action] || t('call.host_settings_changed'));
     }
     else if (event.type === 'call:kicked') { const message = event.message; leaveCall(record); void showAppAlert(message); }
     else if (event.type === 'call:screen') handleScreenShare(record, event);
-    else if (event.type === 'call:signal') void signal(record, event).catch(error => status(`接続エラー: ${error.message}`));
+    else if (event.type === 'call:signal') void signal(record, event).catch(error => status(t('call.signal_error', { message: error.message })));
     else if (event.type === 'call:chat') appendMessage(record, event);
     else if (event.type === 'call:transcript') appendTranscript(record, event);
     else if (event.type === 'call:ended') { const message = event.message; leaveCall(record); void showAppAlert(message); }
@@ -1402,7 +1403,7 @@ function stopSharing(record, notify = true) {
         }
         track.stop();
     }
-    actionLabel(record, 'share', '画面を共有');
+    actionLabel(record, 'share', t('call.action_share'));
 }
 
 async function perform(record, action) {
@@ -1436,7 +1437,7 @@ async function perform(record, action) {
             const result = await endStage(session.id, { signal: controller.signal });
             if (result && record.session === session) leaveCall(record);
         } catch (error) {
-            if (record.session === session) await showAppAlert(error.message || 'ステージを終了できませんでした。');
+            if (record.session === session) await showAppAlert(error.message || t('call.stage_end_failed'));
         } finally {
             record.endingStage = false;
             if (record.stageEndController === controller) record.stageEndController = null;
@@ -1446,7 +1447,7 @@ async function perform(record, action) {
     }
     if (action === 'chat') {
         panel.dataset.chatOpen = String(panel.dataset.chatOpen !== 'true');
-        actionLabel(record, 'chat', session?.kind === 'stage' ? 'コメント' : 'チャット', panel.dataset.chatOpen === 'true');
+        actionLabel(record, 'chat', session?.kind === 'stage' ? t('call.action_comment') : t('call.action_chat'), panel.dataset.chatOpen === 'true');
         return;
     }
     if (action === 'minimize') { minimize(record); return; }
@@ -1461,7 +1462,7 @@ async function perform(record, action) {
             if (record.session !== current || record.pending || current.joined) return;
             await new Promise((resolve, reject) => {
                 const id = `${Date.now()}-${++requestSequence}`;
-                const timeout = setTimeout(() => { if (record.pending?.id === id) { record.pending = null; try { send(record, 'call:leave'); } catch (_) {} reject(new Error('参加できませんでした。再試行してください。')); } }, 10000);
+                const timeout = setTimeout(() => { if (record.pending?.id === id) { record.pending = null; try { send(record, 'call:leave'); } catch (_) {} reject(new Error(t('call.join_failed_retry'))); } }, 10000);
                 record.pending = { id, resolve: () => { clearTimeout(timeout); resolve(); }, reject: error => { clearTimeout(timeout); reject(error); } };
                 try { send(record, 'call:join', { request_id: id, muted: !hasActiveMicrophone(current), camera: localTracks(current, 'video').some(track => track.readyState === 'live' && track.enabled) }); }
                 catch (error) { record.pending.reject(error); record.pending = null; }
@@ -1469,7 +1470,7 @@ async function perform(record, action) {
         } finally { if (button?.isConnected) button.disabled = false; }
     } else if (action === 'share' && current.joined && current.role !== 'audience') {
         if (current.screen) { stopSharing(record); return; }
-        if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('画面共有に対応していません。');
+        if (!navigator.mediaDevices?.getDisplayMedia) throw new Error(t('call.share_unsupported'));
         const stream = await navigator.mediaDevices.getDisplayMedia({
             video: {
                 width: { max: 1920 },
@@ -1482,7 +1483,7 @@ async function perform(record, action) {
         if (record.session !== current || current.role === 'audience') { stream.getTracks().forEach(t => t.stop()); return; }
         current.screen = stream;
         const user = getCurrentUser();
-        const screenLabel = `@${String(user?.handle || user?.nyaitter_id || user?.name || 'ユーザー').replace(/^@/, '')}のスクリーン`;
+        const screenLabel = t('call.screen_label', { handle: String(user?.handle || user?.nyaitter_id || user?.name || t('post.user_fallback')).replace(/^@/, '') });
         try { send(record, 'call:screen', { active: true, stream_id: stream.id, track_id: stream.getVideoTracks()[0]?.id }); }
         catch (error) { current.screen = null; stream.getTracks().forEach(track => track.stop()); throw error; }
         current.screenShares.set(String(current.localUserId), { streamId: stream.id, label: screenLabel });
@@ -1503,7 +1504,7 @@ async function perform(record, action) {
         applyPersonPreferences(record);
         for (const peer of current.peers.values()) for (const track of stream.getTracks()) addTrack(peer, track, stream);
         stream.getVideoTracks()[0].onended = () => stopSharing(record);
-        actionLabel(record, 'share', '共有を停止', true);
+        actionLabel(record, 'share', t('call.action_share_stop'), true);
     } else if (action === 'transcribe' && current.joined) {
         current.transcriptionEnabled = !current.transcriptionEnabled;
         if (current.transcriptionEnabled) startLocalTranscription(record, current);
@@ -1513,7 +1514,7 @@ async function perform(record, action) {
         }
         sendState(record);
         renderTranscripts(record, current);
-        actionLabel(record, 'transcribe', current.transcriptionEnabled ? '文字起こしを非表示' : '文字起こしを表示', current.transcriptionEnabled);
+        actionLabel(record, 'transcribe', current.transcriptionEnabled ? t('call.action_transcribe_hide') : t('call.action_transcribe_show'), current.transcriptionEnabled);
     } else if (action === 'play') {
         await Promise.all([...panel.querySelectorAll('video')].map(video => video.play()));
     }
@@ -1531,7 +1532,7 @@ function closeRecord(record) {
     record.stageEndController?.abort(); record.stageEndController = null;
     record.stageManage?.close(); record.stageManage = null;
     const wasJoining = Boolean(record.pending);
-    if (record.pending) { record.pending.reject(new Error('参加を取り消しました。')); record.pending = null; }
+    if (record.pending) { record.pending.reject(new Error(t('call.join_cancelled'))); record.pending = null; }
     try { if (session && (session.joined || wasJoining || session.watching)) send(record, 'call:leave'); } catch (_) { /* 切断時も機器を解放する。 */ }
     if (session) {
         clearTimeout(session.localPreviewTimer);
@@ -1571,7 +1572,7 @@ export function leaveCall(record) {
 export function callConnectionClosed() {
     if (!calls.size) return;
     for (const active of [...calls.values()]) closeRecord(active);
-    void showAppAlert('接続が切れました。再接続してください。');
+    void showAppAlert(t('call.disconnected'));
 }
 
 window.addEventListener('pagehide', () => leaveCall());

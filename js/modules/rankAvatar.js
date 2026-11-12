@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { getRankAppearance } from "./rankAppearance.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -19,7 +20,7 @@ function portalScale(element) {
 
 // ランク取得や本人判定は呼出元で行い、公開してよいIDだけを渡す。
 export function attachRankAvatar(image, options = {}) {
-    if (!image || image.tagName !== "IMG") throw new TypeError("アバター画像が必要です。");
+    if (!image || image.tagName !== "IMG") throw new TypeError(t('rankavatar.image_required'));
     const previous = instances.get(image);
     if (previous) {
         previous.update(options);
@@ -159,7 +160,7 @@ export function attachRankAvatar(image, options = {}) {
         panel = document.createElement("div");
         panel.className = "rank-avatar-panel";
         panel.setAttribute("role", "dialog");
-        panel.setAttribute("aria-label", typeof settings.label === "string" ? settings.label + "の情報" : "表示ランクの情報");
+        panel.setAttribute("aria-label", typeof settings.label === "string" ? settings.label + t('rankavatar.info_suffix') : t('rankavatar.info_fallback'));
         const list = document.createElement("ul");
         for (const entry of entries) {
             const item = document.createElement("li");
@@ -168,7 +169,7 @@ export function attachRankAvatar(image, options = {}) {
         }
         const close = document.createElement("button");
         close.type = "button";
-        close.textContent = "閉じる";
+        close.textContent = t('common.close');
         close.addEventListener("click", () => closePanel(true));
         panel.append(list, close);
         document.body.append(panel);
@@ -361,7 +362,7 @@ export function attachRankAvatar(image, options = {}) {
         overlay = document.createElement("span");
         overlay.className = "rank-avatar-layer";
         overlay.setAttribute("role", "group");
-        overlay.setAttribute("aria-label", typeof settings.label === "string" ? settings.label : "表示ランク");
+        overlay.setAttribute("aria-label", typeof settings.label === "string" ? settings.label : t('rankavatar.display_rank'));
         const svg = document.createElementNS(SVG_NS, "svg");
         svg.setAttribute("viewBox", "0 0 100 100");
         svg.setAttribute("preserveAspectRatio", "none");
@@ -379,7 +380,7 @@ export function attachRankAvatar(image, options = {}) {
             hit.setAttribute("class", "rank-avatar-hit");
             hit.dataset.rankType = entry.type;
             hit.setAttribute("role", "button");
-            hit.setAttribute("aria-label", entry.label + "。ランク情報を開く");
+            hit.setAttribute("aria-label", entry.label + t('rankavatar.open_info_suffix'));
             hit.setAttribute("aria-haspopup", "dialog");
             hit.setAttribute("aria-expanded", "false");
             hit.setAttribute("tabindex", index === 0 ? "0" : "-1");

@@ -1,3 +1,4 @@
+import { t } from '../../modules/i18n.js';
 import { DOM } from '../../dom.js';
 import { renderNyarkDown } from '../../modules/nyarkdown.js';
 import { getAllUsersCache } from '../../state.js';
@@ -25,7 +26,7 @@ export async function mountRuleScreen(showScreenFn) {
 
         const data = await response.json();
         if (signal?.aborted) return;
-        const rulesText = data?.rules || '# ルール\n\nルールが見つかりませんでした。';
+        const rulesText = data?.rules || t('rulecontroller.fallback_text');
         const updatedAt = data?.updated_at
             ? new Date(data.updated_at).toLocaleDateString('ja-JP', {
                 year: 'numeric',

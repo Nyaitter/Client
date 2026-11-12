@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { getCurrentUser } from '../state.js';
 import { ICONS } from '../icons.js';
 
@@ -5,7 +6,7 @@ import { ICONS } from '../icons.js';
 export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         key: 'home',
-        name: 'ホーム',
+        name: t('nav.home'),
         labelKey: 'nav.home',
         hash: '#',
         icon: ICONS.home,
@@ -15,7 +16,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     }),
     Object.freeze({
         key: 'explore',
-        name: '検索',
+        name: t('nav.explore'),
         labelKey: 'nav.explore',
         hash: '#explore',
         icon: ICONS.explore,
@@ -25,7 +26,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     }),
     Object.freeze({
         key: 'notifications',
-        name: '通知',
+        name: t('nav.notifications'),
         labelKey: 'nav.notifications',
         hash: '#notifications',
         icon: ICONS.notifications,
@@ -35,7 +36,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     }),
     Object.freeze({
         key: 'likes',
-        name: 'いいね',
+        name: t('nav.likes'),
         labelKey: 'nav.likes',
         hash: '#likes',
         icon: ICONS.likes,
@@ -45,7 +46,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     }),
     Object.freeze({
         key: 'stars',
-        name: 'お気に入り',
+        name: t('nav.stars'),
         labelKey: 'nav.stars',
         hash: '#stars',
         icon: ICONS.stars,
@@ -55,7 +56,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     }),
     Object.freeze({
         key: 'dm',
-        name: 'メッセージ',
+        name: t('dm.fallback_title'),
         labelKey: 'nav.dm',
         hash: '#dm',
         icon: ICONS.dm,
@@ -66,7 +67,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     Object.freeze({
         // 実際のhrefはログインユーザーIDが必要なので sidebar.js 側で解決する。
         key: 'profile',
-        name: 'プロフィール',
+        name: t('nav.profile'),
         labelKey: 'nav.profile',
         hash: '#profile/',
         dynamicHash: true,
@@ -77,7 +78,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     }),
     Object.freeze({
         key: 'settings',
-        name: '設定',
+        name: t('nav.settings'),
         labelKey: 'nav.settings',
         hash: '#settings',
         icon: ICONS.settings,
@@ -87,7 +88,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     }),
     Object.freeze({
         key: 'spaces',
-        name: 'ステージ',
+        name: t('nav.spaces'),
         labelKey: 'nav.spaces',
         hash: '#stages',
         icon: ICONS.megaphone,
@@ -97,7 +98,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     }),
     Object.freeze({
         key: 'groups',
-        name: 'グループ',
+        name: t('nav.groups'),
         labelKey: 'nav.groups',
         hash: '#groups',
         icon: ICONS.group,
@@ -107,7 +108,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
     }),
     Object.freeze({
         key: 'admin_reports',
-        name: 'リクエスト',
+        name: t('dm.request_suffix'),
         labelKey: 'nav.admin_reports',
         hash: '#admin/reports',
         icon: ICONS.mask,

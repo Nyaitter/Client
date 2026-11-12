@@ -305,7 +305,7 @@ export function renderAppShellHTML() {
             <div class="modal-content app-dialog-content nui-modal" style="width: min(420px, calc(100vw - 2rem)); padding: 1.7rem 1.25rem 1.25rem;">
                 <button type="button" id="app-dialog-close-btn" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
                 <div class="login-modal-heading">
-                    <h3 id="app-dialog-title" class="nui-modal-title">通知</h3>
+                    <h3 id="app-dialog-title" class="nui-modal-title">${t('nav.notifications')}</h3>
                 </div>
                 <p id="app-dialog-message" class="app-dialog-message" role="alert"></p>
                 <div id="app-dialog-input-group" class="app-dialog-input-group hidden">
@@ -323,15 +323,15 @@ export function renderAppShellHTML() {
             <section class="freeze-panel" aria-labelledby="freeze-title">
                 <div class="freeze-panel-mark" aria-hidden="true">!</div>
                 <p class="freeze-panel-eyebrow">ACCOUNT RESTRICTED</p>
-                <h2 id="freeze-title">アカウントは凍結されています</h2>
-                <p class="freeze-panel-lead">現在、このアカウントからNyaitterの機能を利用することはできません。</p>
+                <h2 id="freeze-title">${t('appshell.frozen_title')}</h2>
+                <p class="freeze-panel-lead">${t('appshell.frozen_lead')}</p>
                 <div class="freeze-reason-card">
-                    <span>凍結理由</span>
+                    <span>${t('appshell.freeze_reason')}</span>
                     <p id="freeze-reason"></p>
                 </div>
                 <p id="freeze-appeal-status" class="freeze-appeal-status hidden" role="status"></p>
-                <button id="open-freeze-appeal-btn" type="button" class="freeze-appeal-button nui-button">異議申し立てを行う</button>
-                <p class="freeze-panel-help">判断に誤りがあると思われる場合は、説明を添えて再審査を申し立てられます。</p>
+                <button id="open-freeze-appeal-btn" type="button" class="freeze-appeal-button nui-button">${t('appshell.appeal_button')}</button>
+                <p class="freeze-panel-help">${t('appshell.frozen_help')}</p>
             </section>
         </div>
 
@@ -339,15 +339,15 @@ export function renderAppShellHTML() {
             <section class="modal-content freeze-appeal-modal-content nui-modal" style="width: min(100% - 2rem, 34rem); padding: 0;">
                 <button type="button" class="modal-close-btn" data-action="close-freeze-appeal" aria-label="${t('common.close')}">×</button>
                 <p class="freeze-panel-eyebrow">REVIEW REQUEST</p>
-                <h2 id="freeze-appeal-title">異議申し立てを送信</h2>
-                <p>凍結の判断について、再審査を希望する理由を説明してください。内容は担当管理者が確認します。</p>
+                <h2 id="freeze-appeal-title">${t('appshell.appeal_title')}</h2>
+                <p>${t('appshell.appeal_lead')}</p>
                 <form id="freeze-appeal-form">
-                    <label for="freeze-appeal-description">説明 <span aria-hidden="true">*</span></label>
-                    <textarea id="freeze-appeal-description" class="nui-input" maxlength="2000" rows="7" required placeholder="再審査を希望する理由や、確認してほしい事情を入力してください。"></textarea>
+                    <label for="freeze-appeal-description">${t('report.description_label')} <span aria-hidden="true">*</span></label>
+                    <textarea id="freeze-appeal-description" class="nui-input" maxlength="2000" rows="7" required placeholder="${t('appshell.appeal_placeholder')}"></textarea>
                     <p id="freeze-appeal-error" class="login-modal-message login-modal-error hidden" role="alert"></p>
                     <div class="freeze-appeal-modal-actions">
-                        <button type="button" class="cancel-button" data-action="close-freeze-appeal">キャンセル</button>
-                        <button type="submit" class="freeze-appeal-button nui-button">送信する</button>
+                        <button type="button" class="cancel-button" data-action="close-freeze-appeal">${t('common.cancel')}</button>
+                        <button type="submit" class="freeze-appeal-button nui-button">${t('appshell.appeal_submit')}</button>
                     </div>
                 </form>
             </section>

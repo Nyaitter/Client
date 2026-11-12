@@ -124,12 +124,12 @@ export async function uploadFileViaEdgeFunction(file, { asUserId = null, replace
     });
 
     if (prepareError) {
-        throw new Error(`ファイルアップロードの準備に失敗しました: ${prepareError.message}`);
+        throw new Error(t('post.upload_prepare_failed', { message: prepareError.message }));
     }
 
     const uploadId = prepareData?.id || prepareData?.data?.id;
     if (!uploadId) {
-        throw new Error('ファイルアップロード用IDを取得できませんでした。');
+        throw new Error(t('post.upload_id_failed'));
     }
 
     const response = await globalThis.NyaitterClientInstance.uploads.uploadPartResponse(uploadId, file, {
@@ -138,7 +138,7 @@ export async function uploadFileViaEdgeFunction(file, { asUserId = null, replace
     });
     const responseData = await response.json().catch(() => ({}));
     if (!response.ok || responseData.error) {
-        throw new Error(`ファイルアップロードに失敗しました: ${responseData.error || `HTTP ${response.status}`}`);
+        throw new Error(t('post.upload_failed', { message: responseData.error || `HTTP ${response.status}` }));
     }
     return responseData.id;
 }
@@ -236,7 +236,7 @@ export function renderUnknownPostReference(post) {
 
     const message = document.createElement('div');
     message.className = 'deleted-post-container nui-help-text';
-    message.textContent = '不明なポストです。';
+    message.textContent = t('post.unknown_post');
     postMain.append(postHeader, message);
     postEl.appendChild(postMain);
     return postEl;
@@ -326,14 +326,14 @@ export async function renderPost(post, author, options = {}) {
                     const menuBtn = document.createElement('button');
                     menuBtn.type = 'button';
                     menuBtn.className = 'post-menu-btn';
-                    menuBtn.title = 'ポストメニュー';
+                    menuBtn.title = t('post.menu');
                     menuBtn.setAttribute('aria-label', t('post.menu'));
                     menuBtn.innerHTML = ICONS.more;
                     const menu = document.createElement('div');
                     menu.className = 'post-menu';
                     const activityBtn = document.createElement('button');
                     activityBtn.className = 'activity-btn';
-                    activityBtn.textContent = 'ポストアクティビティを表示';
+                    activityBtn.textContent = t('post.show_activity');
                     activityBtn.onclick = (e) => {
                         e.stopPropagation();
                         menu.classList.remove('is-visible');
@@ -413,7 +413,7 @@ export async function renderPost(post, author, options = {}) {
     authorLink.className = 'post-author';
     const authorName = document.createElement('span');
     authorName.className = 'post-author-name';
-    authorName.innerHTML = getEmoji(escapeHTML(displayAuthor.name || '不明'));
+    authorName.innerHTML = getEmoji(escapeHTML(displayAuthor.name || t('dm.unknown_name')));
     authorLink.appendChild(authorName);
     postHeader.appendChild(authorLink);
 
@@ -427,7 +427,7 @@ export async function renderPost(post, author, options = {}) {
         const verifyBadge = document.createElement('img');
         verifyBadge.src = 'icons/verify.png';
         verifyBadge.className = 'verify-badge';
-        verifyBadge.title = '認証済み';
+        verifyBadge.title = t('settings.verification.verified');
         authorLink.appendChild(verifyBadge);
     }
 
@@ -444,25 +444,25 @@ export async function renderPost(post, author, options = {}) {
     if (!hideGroupIndicator && (post.groupId || post.group_id)) {
         const groupIndicator = document.createElement('a');
         groupIndicator.className = 'group-post-indicator';
-        const group = post.group || { id: post.groupId || post.group_id, name: post.group_name || 'グループ', icon_data: post.group_icon_data || null };
+        const group = post.group || { id: post.groupId || post.group_id, name: post.group_name || t('nav.groups'), icon_data: post.group_icon_data || null };
         groupIndicator.href = `#group/${encodeURIComponent(group.id)}`;
         groupIndicator.innerHTML = renderPostGroupMenuIcon(group);
         const groupLabel = document.createElement('span');
         groupLabel.textContent = group.name;
         groupIndicator.append(groupLabel);
-        groupIndicator.title = `${group.name}${post.group_announcement || post.groupAnnouncement ? ' · アナウンス' : ''}`;
+        groupIndicator.title = `${group.name}${post.group_announcement || post.groupAnnouncement ? t('post.announcement_suffix') : ''}`;
         postHeader.appendChild(groupIndicator);
     } else if (post.announcement) {
         const announcementIndicator = document.createElement('span');
         announcementIndicator.className = 'group-post-indicator';
-        announcementIndicator.textContent = 'アナウンス';
+        announcementIndicator.textContent = t('timeline.tab.announcements');
         postHeader.appendChild(announcementIndicator);
     }
 
     if (post.private || post.lock) {
         const lockIndicator = document.createElement('span');
         lockIndicator.className = 'post-lock-indicator';
-        lockIndicator.title = 'プライベート';
+        lockIndicator.title = t('post.private');
         lockIndicator.setAttribute('aria-label', t('post.private'));
         lockIndicator.innerHTML = ICONS.lock;
         postHeader.appendChild(lockIndicator);
@@ -476,10 +476,10 @@ export async function renderPost(post, author, options = {}) {
         const scheduledLabel = Number.isNaN(scheduledDate.getTime())
             ? ''
             : scheduledDate.toLocaleString();
-        indicator.title = scheduledLabel ? `公開予定: ${scheduledLabel}` : '予約投稿';
+        indicator.title = scheduledLabel ? t('post.scheduled_for', { label: scheduledLabel }) : t('composer.schedule');
         indicator.setAttribute('aria-label', scheduledLabel
-            ? `非公開の予約投稿。公開予定: ${scheduledLabel}`
-            : '非公開の予約投稿');
+            ? t('post.scheduled_private_for', { label: scheduledLabel })
+            : t('post.scheduled_private'));
         indicator.innerHTML = `
             <span class="post-scheduled-indicator-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -488,7 +488,7 @@ export async function renderPost(post, author, options = {}) {
                     <path d="M12 13v4l3 1"></path>
                 </svg>
             </span>
-            <span class="post-scheduled-indicator-label">予約投稿</span>`;
+            <span class="post-scheduled-indicator-label">${t('composer.schedule')}</span>`;
         postHeader.appendChild(indicator);
     }
 
@@ -500,7 +500,7 @@ export async function renderPost(post, author, options = {}) {
         const menuBtn = document.createElement('button');
         menuBtn.type = 'button';
         menuBtn.className = 'post-menu-btn';
-        menuBtn.title = 'ポストメニュー';
+        menuBtn.title = t('post.menu');
         menuBtn.setAttribute('aria-label', t('post.menu'));
         menuBtn.innerHTML = ICONS.more;
         const menu = document.createElement('div');
@@ -508,12 +508,12 @@ export async function renderPost(post, author, options = {}) {
 
         const shareBtn = document.createElement('button');
         shareBtn.className = 'share-btn';
-        shareBtn.textContent = 'URLをコピー';
+        shareBtn.textContent = t('post.copy_url');
         menu.appendChild(shareBtn);
 
         const activityBtn = document.createElement('button');
         activityBtn.className = 'activity-btn';
-        activityBtn.textContent = 'ポストアクティビティを表示';
+        activityBtn.textContent = t('post.show_activity');
         activityBtn.onclick = (e) => {
             e.stopPropagation();
             menu.classList.remove('is-visible');
@@ -527,7 +527,7 @@ export async function renderPost(post, author, options = {}) {
         const communityNoteMenuBtn = document.createElement('button');
         communityNoteMenuBtn.type = 'button';
         communityNoteMenuBtn.className = 'community-note-menu-btn';
-        communityNoteMenuBtn.textContent = 'コミュニティノートを追加';
+        communityNoteMenuBtn.textContent = t('post.note_add');
         communityNoteMenuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             menu.classList.remove('is-visible');
@@ -544,10 +544,10 @@ export async function renderPost(post, author, options = {}) {
         if (!isPostOwner) {
             const dislikeBtn = document.createElement('button');
             dislikeBtn.className = 'dislike-btn';
-            dislikeBtn.textContent = '関連性が低いと評価';
+            dislikeBtn.textContent = t('post.rate_low_relevance');
             menu.appendChild(dislikeBtn);
 
-            const authorRawName = String(displayAuthor.name || 'ユーザー').trim();
+            const authorRawName = String(displayAuthor.name || t('post.user_fallback')).trim();
             const authorShortName = authorRawName.length > 12 ? authorRawName.slice(0, 12) : authorRawName;
 
             const isFollowing = Array.isArray(currentUser.follow) && currentUser.follow.some((id) => Number(id) === Number(displayAuthor.id));
@@ -579,7 +579,7 @@ export async function renderPost(post, author, options = {}) {
                     openReportModal({
                         targetKind: 'post',
                         targetId: post.id,
-                        targetLabel: 'このポスト',
+                        targetLabel: t('post.this_post'),
                     });
                 }
                 menu.classList.remove('is-visible');
@@ -670,7 +670,7 @@ export async function renderPost(post, author, options = {}) {
     if (post.mask) {
         const postAlert = document.createElement('button');
         postAlert.className = 'post-mask-alert nui-button-secondary';
-        postAlert.innerText = 'このポストにはワンクッションが付与されています';
+        postAlert.innerText = t('post.cushion_attached');
         postBody.appendChild(postAlert);
     }
 
@@ -686,7 +686,7 @@ export async function renderPost(post, author, options = {}) {
             itemDiv.className = 'attachment-item';
             const fileinfo = document.createElement('p');
             fileinfo.className = 'attachment-fileinfo';
-            fileinfo.textContent = `📄 ${post.attachments.length}件のファイル`;
+            fileinfo.textContent = t('post.files_count', { count: post.attachments.length });
             itemDiv.appendChild(fileinfo);
             attachmentsContainer.appendChild(itemDiv);
         } else {
@@ -703,7 +703,7 @@ export async function renderPost(post, author, options = {}) {
                     .getPublicUrl(attachment.id);
                 const publicURL = getSafeHttpUrl(publicUrlData?.publicUrl);
                 if (!publicURL) continue;
-                const attachmentName = String(attachment.name || '添付ファイル').slice(0, 255);
+                const attachmentName = String(attachment.name || t('post.attachment_fallback')).slice(0, 255);
 
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'attachment-item';
@@ -870,14 +870,14 @@ export async function renderPost(post, author, options = {}) {
             const toggleBtn = document.createElement('button');
             toggleBtn.type = 'button';
             toggleBtn.className = 'post-clamp-toggle';
-            toggleBtn.textContent = '続きを表示';
+            toggleBtn.textContent = t('post.show_more');
             toggleBtn.addEventListener('click', () => {
                 const expanded = targetEl.classList.toggle('post-content-expanded');
                 postEl.classList.toggle('post-expanded', expanded);
                 targetEl.querySelectorAll('.post-content').forEach((c) => {
                     c.classList.toggle('post-content-expanded', expanded);
                 });
-                toggleBtn.textContent = expanded ? '閉じる' : '続きを表示';
+                toggleBtn.textContent = expanded ? t('common.close') : t('post.show_more');
                 toggleBtn.classList.toggle('expanded', expanded);
             });
             targetEl.after(toggleBtn);
@@ -964,17 +964,17 @@ function setPostingAccount(container, account) {
     if (icon) {
         icon.src = getUserIconUrl(account);
         registerRankAvatar(icon, account);
-        icon.alt = `${account.name || 'アカウント'}のアイコン`;
+        icon.alt = t('composer.account_icon_alt', { name: account.name || t('composer.account_fallback') });
     }
     if (selector) {
-        selector.title = `投稿アカウント: ${account.name || '不明なユーザー'}`;
+        selector.title = t('post.posting_account', { name: account.name || t('composer.account_unknown') });
         selector.setAttribute('aria-label', selector.title);
     }
     const announcementButton = container.querySelector('.post-announcement-button');
     if (announcementButton && !getPostingGroup(container)) {
         announcementButton.hidden = !account.admin;
         announcementButton.classList.toggle('hidden', !account.admin);
-        announcementButton.title = 'Nyaitterアナウンス';
+        announcementButton.title = t('composer.announcement');
         announcementButton.setAttribute('aria-label', announcementButton.title);
     }
     if (accountChanged) {
@@ -1014,7 +1014,7 @@ async function openPostAccountMenu(container) {
         }
         const selectedId = getPostingAccountId(container);
         if (accounts.length === 0) {
-            menu.innerHTML = '<p class="post-account-menu-empty">利用可能なアカウントがありません。</p>';
+            menu.innerHTML = `<p class="post-account-menu-empty">${t('post.no_accounts_available')}</p>`;
             return;
         }
 
@@ -1030,10 +1030,10 @@ async function openPostAccountMenu(container) {
             item.innerHTML = `
                 <img ${rankAvatarAttributes(account)} src="${escapeHTML(getUserIconUrl(account))}" alt="" class="post-account-menu-icon">
                 <span class="post-account-menu-user">
-                    <strong>${getEmoji(escapeHTML(account.name || '不明なユーザー'))}</strong>
+                    <strong>${getEmoji(escapeHTML(account.name || t('composer.account_unknown')))}</strong>
                     <small>${escapeHTML(getNyaitterId(account))}</small>
                 </span>
-                ${account.is_imposter ? '<span class="settings-session-current">インポスター</span>' : ''}
+                ${account.is_imposter ? `<span class="settings-session-current">${t('post.imposter_badge')}</span>` : ''}
             `;
             item.addEventListener('click', () => {
                 setPostingAccount(container, account);
@@ -1043,7 +1043,7 @@ async function openPostAccountMenu(container) {
         });
     } catch (error) {
         if (!menu.classList.contains('hidden')) {
-            menu.innerHTML = '<p class="post-account-menu-empty">アカウント一覧を読み込めませんでした。</p>';
+            menu.innerHTML = `<p class="post-account-menu-empty">${t('post.accounts_load_failed')}</p>`;
         }
     }
 }
@@ -1117,11 +1117,11 @@ function updatePostScheduleButton(container) {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
     button.title = active
-        ? `予約投稿: ${new Date(container._scheduledAt).toLocaleString()}`
-        : '予約投稿';
+        ? t('post.scheduled_colon', { date: new Date(container._scheduledAt).toLocaleString() })
+        : t('composer.schedule');
     const submitButton = container?.querySelector('#post-submit-button');
     if (submitButton && !submitButton.disabled) {
-        submitButton.textContent = active ? '予約投稿' : 'ポスト';
+        submitButton.textContent = active ? t('composer.schedule') : t('composer.submit');
     }
 }
 
@@ -1146,40 +1146,40 @@ function renderPostScheduleMenu(container) {
                     </svg>
                 </span>
                 <span>
-                    <strong>予約投稿</strong>
-                    <small>公開するタイミングを指定</small>
+                    <strong>${t('composer.schedule')}</strong>
+                    <small>${t('post.schedule_hint')}</small>
                 </span>
             </div>
-            ${currentSchedule ? `<div class="post-schedule-current">設定中 <strong>${escapeHTML(currentSchedule)}</strong></div>` : ''}
+            ${currentSchedule ? `<div class="post-schedule-current">${t('post.schedule_set')} <strong>${escapeHTML(currentSchedule)}</strong></div>` : ''}
         </div>
 
-        <div class="post-schedule-tabs" role="tablist" aria-label="予約日時の指定方法">
-            <button type="button" class="active" data-schedule-mode="relative" role="tab" aria-selected="true">あとで</button>
-            <button type="button" data-schedule-mode="absolute" role="tab" aria-selected="false">日時指定</button>
+        <div class="post-schedule-tabs" role="tablist" aria-label="${t('post.schedule_method_label')}">
+            <button type="button" class="active" data-schedule-mode="relative" role="tab" aria-selected="true">${t('post.schedule_relative')}</button>
+            <button type="button" data-schedule-mode="absolute" role="tab" aria-selected="false">${t('post.schedule_absolute')}</button>
         </div>
 
         <div class="post-schedule-panel" data-schedule-panel="relative">
             <label class="post-schedule-field">
-                <span class="post-schedule-field-label">公開まで</span>
+                <span class="post-schedule-field-label">${t('post.schedule_until')}</span>
                 <span class="post-schedule-relative-control">
                     <input type="number" min="1" step="1" value="10" data-schedule-relative-value>
                     <select data-schedule-relative-unit>
-                        <option value="minute">分後</option>
-                        <option value="hour">時間後</option>
-                        <option value="day">日後</option>
+                        <option value="minute">${t('post.schedule_unit_minute')}</option>
+                        <option value="hour">${t('post.schedule_unit_hour')}</option>
+                        <option value="day">${t('post.schedule_unit_day')}</option>
                     </select>
                 </span>
             </label>
         </div>
         <div class="post-schedule-panel hidden" data-schedule-panel="absolute">
             <label class="post-schedule-field">
-                <span class="post-schedule-field-label">公開日時</span>
+                <span class="post-schedule-field-label">${t('post.schedule_datetime')}</span>
                 <input type="datetime-local" value="${localAbsolute}" data-schedule-absolute>
             </label>
         </div>
         <div class="post-schedule-actions">
-            <button type="button" class="post-schedule-clear">解除</button>
-            <button type="button" class="post-schedule-apply">この日時で予約</button>
+            <button type="button" class="post-schedule-clear">${t('post.schedule_clear')}</button>
+            <button type="button" class="post-schedule-apply">${t('post.schedule_apply')}</button>
         </div>`;
 
     let mode = 'relative';
@@ -1214,7 +1214,7 @@ function renderPostScheduleMenu(container) {
             targetTime = Date.now() + amount * unitMs;
         }
         if (!Number.isFinite(targetTime) || targetTime <= Date.now()) {
-            showAppAlert('現在より後の日時を指定してください。');
+            showAppAlert(t('post.schedule_future_required'));
             return;
         }
         container._scheduledAt = new Date(targetTime).toISOString();
@@ -1329,24 +1329,24 @@ export function setupPostToolsOverflowObserver(container) {
 const REPLY_CONTROL_OPTIONS = [
     {
         id: 'everyone',
-        title: '誰でも返信可能',
-        description: '全てのユーザーが返信できます',
+        title: t('post.reply_all_title'),
+        description: t('post.reply_all_desc'),
         icon: ICONS.globe,
-        buttonTitle: '返信可能なユーザー: 誰でも',
+        buttonTitle: t('composer.reply_control.everyone'),
     },
     {
         id: 'following',
-        title: 'フォローしている/メンションしたユーザーのみ返信可能',
-        description: 'フォロー中のユーザーとメンションされたユーザー',
+        title: t('post.reply_follow_mention_title'),
+        description: t('post.reply_follow_mention_desc'),
         icon: ICONS.user_check,
-        buttonTitle: '返信可能なユーザー: フォロー中またはメンション',
+        buttonTitle: t('post.reply_follow_mention_button'),
     },
     {
         id: 'mentioned',
-        title: 'メンションしたユーザーのみ返信可能',
-        description: 'このポストでメンションされたユーザーのみ',
+        title: t('post.reply_mention_title'),
+        description: t('post.reply_mention_desc'),
         icon: ICONS.mention,
-        buttonTitle: '返信可能なユーザー: メンションしたユーザーのみ',
+        buttonTitle: t('post.reply_mention_button'),
     },
 ];
 
@@ -1461,8 +1461,8 @@ function setPostingGroup(container, group = null, { locked = false } = {}) {
     if (destinationButton) {
         destinationButton.disabled = locked;
         destinationButton.title = locked
-            ? `返信先グループ: ${groupName}`
-            : `投稿先: ${groupName}`;
+            ? t('post.reply_group', { name: groupName })
+            : t('post.posting_group', { name: groupName });
         destinationButton.setAttribute('aria-label', destinationButton.title);
         destinationButton.classList.toggle('active', Boolean(group));
     }
@@ -1478,7 +1478,7 @@ function setPostingGroup(container, group = null, { locked = false } = {}) {
         const visible = group ? Boolean(group.canAnnounce) : Boolean(container?._postingAccount?.admin ?? getCurrentUser()?.admin);
         announcementButton.hidden = !visible;
         announcementButton.classList.toggle('hidden', !visible);
-        announcementButton.title = group ? 'グループアナウンス' : 'Nyaitterアナウンス';
+        announcementButton.title = group ? t('post.group_announcement') : t('composer.announcement');
         announcementButton.setAttribute('aria-label', announcementButton.title);
         announcementButton.classList.remove('active');
         announcementButton.setAttribute('aria-pressed', 'false');
@@ -1537,7 +1537,7 @@ async function applyPostGroupSelection(container, groupId, { timelineSyncVersion
     const query = parameters.size ? `?${parameters.toString()}` : '';
     const { data, error } = await apiRequest(`/server/api/groups/${encodeURIComponent(groupId)}${query}`);
     if (error || !data?.group?.membership || data.group.membership.status !== 'active') {
-        throw error || new Error('参加中のグループを確認できません。');
+        throw error || new Error(t('post.groups_check_failed'));
     }
     if (container?._postingAccountVersion !== requestedAccountVersion) return;
     if (timelineSyncVersion != null && container?._timelinePostingDestinationVersion !== timelineSyncVersion) return;
@@ -1546,7 +1546,7 @@ async function applyPostGroupSelection(container, groupId, { timelineSyncVersion
     const permissions = role?.permissions || [];
     setPostingGroup(container, {
         id: group.id,
-        name: group.name || 'グループ',
+        name: group.name || t('nav.groups'),
         canAnnounce: Number(group.owner_id) === Number(getPostingAccountId(container))
             || permissions.includes('admin')
             || permissions.includes('announce'),
@@ -1556,12 +1556,12 @@ async function applyPostGroupSelection(container, groupId, { timelineSyncVersion
 function renderPostGroupMenu(container, groups) {
     const menu = container?.querySelector('.post-group-menu');
     if (!menu) return;
-    const nyaitterItem = `<button type="button" class="post-group-menu-item ${!getPostingGroup(container) ? 'active' : ''}" data-group-id="" aria-pressed="${String(!getPostingGroup(container))}">${renderNyaitterPostMenuIcon()}<span class="post-group-menu-copy"><strong>Nyaitter</strong><small>通常ポスト</small></span></button>`;
+    const nyaitterItem = `<button type="button" class="post-group-menu-item ${!getPostingGroup(container) ? 'active' : ''}" data-group-id="" aria-pressed="${String(!getPostingGroup(container))}">${renderNyaitterPostMenuIcon()}<span class="post-group-menu-copy"><strong>Nyaitter</strong><small>${t('post.group_menu_normal')}</small></span></button>`;
     const groupItems = groups.map((group) => {
         const selected = String(group.id) === String(getPostingGroup(container)?.id);
-        return `<button type="button" class="post-group-menu-item ${selected ? 'active' : ''}" data-group-id="${escapeHTML(String(group.id))}" aria-pressed="${String(selected)}">${renderPostGroupMenuIcon(group)}<span class="post-group-menu-copy"><strong>${escapeHTML(group.name || '無題のグループ')}</strong><small>グループポスト</small></span></button>`;
+        return `<button type="button" class="post-group-menu-item ${selected ? 'active' : ''}" data-group-id="${escapeHTML(String(group.id))}" aria-pressed="${String(selected)}">${renderPostGroupMenuIcon(group)}<span class="post-group-menu-copy"><strong>${escapeHTML(group.name || t('post.group_untitled'))}</strong><small>${t('post.group_menu_group_post')}</small></span></button>`;
     }).join('');
-    menu.innerHTML = `${nyaitterItem}${groupItems || '<p class="post-group-menu-empty">参加中のグループはありません。</p>'}`;
+    menu.innerHTML = `${nyaitterItem}${groupItems || `<p class="post-group-menu-empty">${t('post.no_groups_joined')}</p>`}`;
     menu.querySelectorAll('[data-group-id]').forEach((item) => item.addEventListener('click', async () => {
         try {
             container._timelinePostingDestinationVersion = Number(container._timelinePostingDestinationVersion || 0) + 1;
@@ -1570,7 +1570,7 @@ function renderPostGroupMenu(container, groups) {
             else setPostingGroup(container, null);
             closePostGroupMenu(container);
         } catch (error) {
-            showAppAlert(error.message || '投稿先グループを選択できませんでした。');
+            showAppAlert(error.message || t('post.group_select_failed'));
         }
     }));
 }
@@ -1602,7 +1602,7 @@ async function syncPostGroupDestinationsForPostingAccount(container, postingAcco
     } catch (_) {
         const menu = container.querySelector('.post-group-menu');
         if (container._postingAccountVersion === postingAccountVersion && menu && !menu.classList.contains('hidden')) {
-            menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
+            menu.innerHTML = `<p class="post-group-menu-empty">${t('post.groups_load_failed')}</p>`;
             const button = container.querySelector('.post-group-button');
             if (button) {
                 positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
@@ -1623,7 +1623,7 @@ export function syncPostFormDestinationWithTimeline(container, groupId = null, g
     const postingAccountVersion = Number(container._postingAccountVersion || 0);
     setPostingGroup(container, {
         id: String(groupId),
-        name: groupName || 'グループ',
+        name: groupName || t('nav.groups'),
         canAnnounce: false,
     });
     void applyPostGroupSelection(container, groupId, { timelineSyncVersion, postingAccountVersion }).catch(() => {
@@ -1663,7 +1663,7 @@ async function openPostGroupMenu(container) {
         });
     } catch (_) {
         if (container._postingAccountVersion === postingAccountVersion) {
-            menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
+            menu.innerHTML = `<p class="post-group-menu-empty">${t('post.groups_load_failed')}</p>`;
             positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
             window.requestAnimationFrame(() => {
                 positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
@@ -1673,15 +1673,15 @@ async function openPostGroupMenu(container) {
 }
 
 export function formatPollRemainingTime(expiresAt) {
-    if (!expiresAt) return '無期限';
+    if (!expiresAt) return t('post.poll_no_expiry');
     const diff = new Date(expiresAt).getTime() - Date.now();
-    if (diff <= 0) return '終了';
+    if (diff <= 0) return t('post.poll_ended');
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-    if (days > 0) return `${days}日`;
-    if (hours > 0) return `${hours}時間`;
-    return `${Math.max(1, minutes)}分`;
+    if (days > 0) return t('post.duration_days', { days });
+    if (hours > 0) return t('post.duration_hours', { hours });
+    return t('post.duration_minutes', { minutes: Math.max(1, minutes) });
 }
 
 export function renderPostPoll(parentContainer, poll, post = null) {
@@ -1712,7 +1712,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
     // 4. 結果閲覧可能 かつ 閲覧ボタンを押下
     const showResults = isExpired || hasVoted || !currentUser || isViewingResults;
 
-    let html = `<div class="post-poll-title">${escapeHTML(poll.title || '投票')}</div>`;
+    let html = `<div class="post-poll-title">${escapeHTML(poll.title || t('post.poll_fallback'))}</div>`;
 
     if (!showResults) {
         const inputType = poll.allow_multiple ? 'checkbox' : 'radio';
@@ -1733,17 +1733,17 @@ export function renderPostPoll(parentContainer, poll, post = null) {
                 <div class="post-poll-other-wrapper">
                     <label class="post-poll-option-label">
                         <input type="${inputType}" name="${inputName}" value="-1" class="poll-option-input poll-other-radio">
-                        <span>その他</span>
+                        <span>${t('post.poll_other')}</span>
                     </label>
-                    <input type="text" class="post-poll-other-input nui-input hidden" placeholder="その他の回答を入力" maxlength="200">
+                    <input type="text" class="post-poll-other-input nui-input hidden" placeholder="${t('post.poll_other_placeholder')}" maxlength="200">
                 </div>
             `;
         }
 
         html += `
             <div class="post-poll-actions">
-                <button type="submit" class="post-poll-vote-btn nui-button" data-nui="button" disabled>投票する</button>
-                ${showResultsBeforeVoting ? '<button type="button" class="post-poll-view-results-btn nui-button-secondary" data-nui="button-secondary">結果を見る</button>' : ''}
+                <button type="submit" class="post-poll-vote-btn nui-button" data-nui="button" disabled>${t('post.poll_vote')}</button>
+                ${showResultsBeforeVoting ? `<button type="button" class="post-poll-view-results-btn nui-button-secondary" data-nui="button-secondary">${t('post.poll_view_results')}</button>` : ''}
             </div>
         </form>`;
     } else {
@@ -1762,7 +1762,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
                             <span>${escapeHTML(opt.text)}</span>
                         </div>
                         <div class="post-poll-result-percent">
-                            ${percent}% <span style="font-size: 0.8rem; font-weight: normal; color: var(--secondary-text-color);">(${opt.votes_count || 0}票)</span>
+                            ${percent}% <span style="font-size: 0.8rem; font-weight: normal; color: var(--secondary-text-color);">${t('post.poll_votes', { count: opt.votes_count || 0 })}</span>
                         </div>
                     </div>
                 </div>
@@ -1778,10 +1778,10 @@ export function renderPostPoll(parentContainer, poll, post = null) {
                     <div class="post-poll-result-content">
                         <div class="post-poll-result-text">
                             ${isMyVote ? '<span class="post-poll-result-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>' : ''}
-                            <span>その他</span>
+                            <span>${t('post.poll_other')}</span>
                         </div>
                         <div class="post-poll-result-percent">
-                            ${percent}% <span style="font-size: 0.8rem; font-weight: normal; color: var(--secondary-text-color);">(${poll.other_count || 0}票)</span>
+                            ${percent}% <span style="font-size: 0.8rem; font-weight: normal; color: var(--secondary-text-color);">${t('post.poll_votes', { count: poll.other_count || 0 })}</span>
                         </div>
                     </div>
                 </div>
@@ -1790,7 +1790,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
             if (poll.other_votes && poll.other_votes.length > 0) {
                 html += `
                     <div class="post-poll-other-list">
-                        <div class="post-poll-other-list-title">その他の回答:</div>
+                        <div class="post-poll-other-list-title">${t('post.poll_other_answers')}</div>
                         <div class="post-poll-other-items">
                             ${poll.other_votes.map((v) => `<div class="post-poll-other-item">${escapeHTML(v.text)}</div>`).join('')}
                         </div>
@@ -1806,17 +1806,17 @@ export function renderPostPoll(parentContainer, poll, post = null) {
     const totalVoters = poll.total_voters || 0;
     let expiryText = '';
     if (isExpired) {
-        expiryText = '・最終結果';
+        expiryText = t('post.poll_final_results');
     } else if (poll.expires_at) {
-        expiryText = `・残り時間: ${formatPollRemainingTime(poll.expires_at)}`;
+        expiryText = t('post.poll_time_left', { time: formatPollRemainingTime(poll.expires_at) });
     } else {
-        expiryText = '・無期限';
+        expiryText = t('post.poll_no_expiry_suffix');
     }
 
     html += `
         <div class="post-poll-footer">
-            <span>${totalVoters}人が投票 (${totalVotes}票) ${expiryText}</span>
-            ${showResults && !isExpired && !hasVoted && currentUser && isViewingResults ? '<button type="button" class="post-poll-back-to-vote-btn nui-button-secondary" data-nui="button-secondary">投票する</button>' : ''}
+            <span>${t('post.poll_voters', { voters: totalVoters, votes: totalVotes })} ${expiryText}</span>
+            ${showResults && !isExpired && !hasVoted && currentUser && isViewingResults ? `<button type="button" class="post-poll-back-to-vote-btn nui-button-secondary" data-nui="button-secondary">${t('post.poll_vote')}</button>` : ''}
         </div>
     `;
 
@@ -1859,7 +1859,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (!currentUser) return showAppAlert('投票するにはログインが必要です。');
+            if (!currentUser) return showAppAlert(t('post.poll_login_required'));
 
             const checkedInputs = Array.from(form.querySelectorAll('.poll-option-input:checked'));
             const selectedOptionIds = checkedInputs.map((i) => Number(i.value));
@@ -1868,7 +1868,7 @@ export function renderPostPoll(parentContainer, poll, post = null) {
             if (selectedOptionIds.length === 0) return;
 
             voteBtn.disabled = true;
-            voteBtn.textContent = '送信中';
+            voteBtn.textContent = t('post.sending');
 
             try {
                 const { data, error } = await apiRequest(`/server/api/polls/${poll.id}/vote`, {
@@ -1887,9 +1887,9 @@ export function renderPostPoll(parentContainer, poll, post = null) {
                     renderPostPoll(parentContainer, updatedPoll, post);
                 }
             } catch (err) {
-                showAppAlert(`投票に失敗しました: ${err.message || '不明なエラー'}`);
+                showAppAlert(t('post.poll_vote_failed', { message: err.message || t('post.unknown_error') }));
                 voteBtn.disabled = false;
-                voteBtn.textContent = '投票する';
+                voteBtn.textContent = t('post.poll_vote');
             }
         });
     } else {
@@ -1920,26 +1920,26 @@ export function renderPollAttachmentPreview(container) {
     }
 
     const poll = container._attachedPoll;
-    let durationLabel = '無期限';
+    let durationLabel = t('post.poll_no_expiry');
     if (poll.expires_at) {
-        durationLabel = `期限: ${new Date(poll.expires_at).toLocaleString()}`;
+        durationLabel = t('post.poll_expires', { date: new Date(poll.expires_at).toLocaleString() });
     }
 
     const metaTags = [
         `<span class="poll-preview-tag">${escapeHTML(durationLabel)}</span>`,
-        poll.allow_multiple ? '<span class="poll-preview-tag">複数選択可</span>' : '<span class="poll-preview-tag">単一選択</span>',
-        poll.allow_other ? '<span class="poll-preview-tag">その他あり</span>' : '',
-        poll.show_results_before_voting ? '<span class="poll-preview-tag">結果閲覧可</span>' : '<span class="poll-preview-tag">投票後表示</span>',
+        poll.allow_multiple ? `<span class="poll-preview-tag">${t('post.poll_multiple')}</span>` : `<span class="poll-preview-tag">${t('post.poll_single')}</span>`,
+        poll.allow_other ? `<span class="poll-preview-tag">${t('post.poll_other_allowed')}</span>` : '',
+        poll.show_results_before_voting ? `<span class="poll-preview-tag">${t('post.poll_results_visible')}</span>` : `<span class="poll-preview-tag">${t('post.poll_results_after')}</span>`,
     ].filter(Boolean).join(' ');
 
     pollPreview.innerHTML = `
         <div class="poll-attachment-preview-header">
-            <div class="poll-attachment-preview-title">${escapeHTML(poll.title || '投票')}</div>
-            <button type="button" class="poll-attachment-preview-close" title="投票を削除">×</button>
+            <div class="poll-attachment-preview-title">${escapeHTML(poll.title || t('post.poll_fallback'))}</div>
+            <button type="button" class="poll-attachment-preview-close" title="${t('post.poll_delete')}">×</button>
         </div>
         <div class="poll-attachment-preview-options">
             ${poll.options.map((opt, i) => `<div class="poll-attachment-preview-opt">${i + 1}. ${escapeHTML(opt.text)}</div>`).join('')}
-            ${poll.allow_other ? '<div class="poll-attachment-preview-opt">その他</div>' : ''}
+            ${poll.allow_other ? `<div class="poll-attachment-preview-opt">${t('post.poll_other')}</div>` : ''}
         </div>
         <div class="poll-attachment-preview-meta">
             ${metaTags}
@@ -1979,63 +1979,63 @@ export function openCreatePollModal(container) {
     modal.innerHTML = `
         <div class="poll-modal-content nui-modal">
             <button type="button" class="modal-close-btn" id="poll-modal-close-btn">×</button>
-            <div class="poll-modal-title nui-modal-title">投票を作成</div>
+            <div class="poll-modal-title nui-modal-title">${t('post.poll_create')}</div>
             
             <div class="poll-field-group">
-                <label class="poll-field-label" for="poll-title-input">質問 / タイトル</label>
-                <input type="text" id="poll-title-input" class="poll-text-input nui-input" placeholder="質問を入力してください" value="${escapeHTML(initialTitle)}">
+                <label class="poll-field-label" for="poll-title-input">${t('post.poll_title_label')}</label>
+                <input type="text" id="poll-title-input" class="poll-text-input nui-input" placeholder="${t('post.poll_title_placeholder')}" value="${escapeHTML(initialTitle)}">
             </div>
 
             <div class="poll-field-group">
-                <label class="poll-field-label">選択肢 (最大10件)</label>
+                <label class="poll-field-label">${t('post.poll_options_label')}</label>
                 <div class="poll-options-list" id="poll-options-list"></div>
-                <button type="button" class="poll-add-option-btn" id="poll-add-option-btn">+ 選択肢を追加</button>
+                <button type="button" class="poll-add-option-btn" id="poll-add-option-btn">${t('post.poll_add_option')}</button>
             </div>
 
             <div class="poll-field-group">
-                <label class="poll-field-label">投票期限</label>
+                <label class="poll-field-label">${t('post.poll_duration_label')}</label>
                 <div class="poll-duration-tabs">
-                    <button type="button" class="poll-duration-tab-btn active" data-duration-tab="relative">相対指定</button>
-                    <button type="button" class="poll-duration-tab-btn" data-duration-tab="absolute">日時指定</button>
-                    <button type="button" class="poll-duration-tab-btn" data-duration-tab="unlimited">無制限</button>
+                    <button type="button" class="poll-duration-tab-btn active" data-duration-tab="relative">${t('post.poll_duration_relative')}</button>
+                    <button type="button" class="poll-duration-tab-btn" data-duration-tab="absolute">${t('post.schedule_absolute')}</button>
+                    <button type="button" class="poll-duration-tab-btn" data-duration-tab="unlimited">${t('post.poll_unlimited')}</button>
                 </div>
                 <div id="poll-duration-relative" class="poll-duration-content">
                     <select id="poll-relative-select" class="poll-text-input nui-input">
-                        <option value="1h">1時間</option>
-                        <option value="6h">6時間</option>
-                        <option value="12h">12時間</option>
-                        <option value="1d" selected>1日 (24時間)</option>
-                        <option value="3d">3日</option>
-                        <option value="7d">7日</option>
+                        <option value="1h">${t('post.duration_1h')}</option>
+                        <option value="6h">${t('post.duration_6h')}</option>
+                        <option value="12h">${t('post.duration_12h')}</option>
+                        <option value="1d" selected>${t('post.duration_1d')}</option>
+                        <option value="3d">${t('post.duration_3d')}</option>
+                        <option value="7d">${t('post.duration_7d')}</option>
                     </select>
                 </div>
                 <div id="poll-duration-absolute" class="poll-duration-content hidden">
                     <input type="datetime-local" id="poll-datetime-input" class="poll-text-input nui-input">
                 </div>
                 <div id="poll-duration-unlimited" class="poll-duration-content hidden">
-                    <p style="font-size: 0.85rem; color: var(--secondary-text-color); margin: 0.4rem 0;">期限なしで無制限に投票を受け付けます。</p>
+                    <p style="font-size: 0.85rem; color: var(--secondary-text-color); margin: 0.4rem 0;">${t('post.poll_unlimited_desc')}</p>
                 </div>
             </div>
 
             <div class="poll-field-group">
-                <label class="poll-field-label">設定</label>
+                <label class="poll-field-label">${t('post.poll_settings_label')}</label>
                 <label class="poll-checkbox-label">
                     <input type="checkbox" id="poll-allow-multiple" ${initialAllowMultiple ? 'checked' : ''}>
-                    <span>複数選択を許可する</span>
+                    <span>${t('post.poll_allow_multiple')}</span>
                 </label>
                 <label class="poll-checkbox-label">
                     <input type="checkbox" id="poll-allow-other" ${initialAllowOther ? 'checked' : ''}>
-                    <span>「その他」の回答を許可する</span>
+                    <span>${t('post.poll_allow_other')}</span>
                 </label>
                 <label class="poll-checkbox-label">
                     <input type="checkbox" id="poll-show-results" ${initialShowResults ? 'checked' : ''}>
-                    <span>投票前でも結果・票数を閲覧可能にする</span>
+                    <span>${t('post.poll_show_results_before')}</span>
                 </label>
             </div>
 
             <div class="poll-modal-actions">
-                <button type="button" class="poll-btn-cancel nui-button-secondary" data-nui="button-secondary" id="poll-btn-cancel">キャンセル</button>
-                <button type="button" class="poll-btn-submit nui-button" data-nui="button" id="poll-btn-submit">投票を追加</button>
+                <button type="button" class="poll-btn-cancel nui-button-secondary" data-nui="button-secondary" id="poll-btn-cancel">${t('common.cancel')}</button>
+                <button type="button" class="poll-btn-submit nui-button" data-nui="button" id="poll-btn-submit">${t('post.poll_add')}</button>
             </div>
         </div>
     `;
@@ -2052,8 +2052,8 @@ export function openCreatePollModal(container) {
             const row = document.createElement('div');
             row.className = 'poll-option-input-row';
             row.innerHTML = `
-                <input type="text" class="poll-text-input poll-opt-input nui-input" placeholder="選択肢 ${index + 1}" value="${escapeHTML(optText)}">
-                ${initialOptions.length > 2 ? `<button type="button" class="poll-option-remove-btn" title="削除">×</button>` : ''}
+                <input type="text" class="poll-text-input poll-opt-input nui-input" placeholder="${t('post.poll_option_placeholder', { n: index + 1 })}" value="${escapeHTML(optText)}">
+                ${initialOptions.length > 2 ? `<button type="button" class="poll-option-remove-btn" title="${t('post.delete')}">×</button>` : ''}
             `;
             row.querySelector('.poll-opt-input').addEventListener('input', (e) => {
                 initialOptions[index] = e.target.value;
@@ -2123,7 +2123,7 @@ export function openCreatePollModal(container) {
             .filter((o) => o.text.length > 0);
 
         if (validOptions.length < 2) {
-            return showAppAlert('選択肢を2つ以上入力してください。');
+            return showAppAlert(t('post.poll_options_required'));
         }
 
         let expiresAt = null;
@@ -2141,10 +2141,10 @@ export function openCreatePollModal(container) {
             expiresAt = new Date(now + (durations[relVal] || durations['1d'])).toISOString();
         } else if (activeDurationTab === 'absolute') {
             const dtVal = dtInput.value;
-            if (!dtVal) return showAppAlert('期限の日時を選択してください。');
+            if (!dtVal) return showAppAlert(t('post.poll_deadline_required'));
             const targetDate = new Date(dtVal);
             if (targetDate.getTime() <= Date.now()) {
-                return showAppAlert('未来の日時を選択してください。');
+                return showAppAlert(t('post.poll_future_required'));
             }
             expiresAt = targetDate.toISOString();
         } else {
@@ -2156,7 +2156,7 @@ export function openCreatePollModal(container) {
         const showResults = modal.querySelector('#poll-show-results').checked;
 
         container._attachedPoll = {
-            title: title || '投票',
+            title: title || t('post.poll_fallback'),
             options: validOptions,
             allow_multiple: allowMultiple,
             allow_other: allowOther,
@@ -2391,12 +2391,12 @@ export function handlePostAnnouncement(container) {
 export async function handlePostSubmit(container, onPostSuccess = null) {
     if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
     const postingAccountId = getPostingAccountId(container);
-    if (!postingAccountId) return showAppAlert('投稿アカウントを確認できません。');
+    if (!postingAccountId) return showAppAlert(t('post.posting_account_unknown'));
     const contentEl = container.querySelector('#post-content');
     const content = getMarkdownEditorValue(contentEl).trim();
     const hasAttachments = getSelectedFiles().length > 0 || Boolean(container._attachedPoll);
     if (!content && !hasAttachments && !getQuotingPost()) {
-        return showAppAlert('内容を入力するか、ファイルまたは投票を添付してください。');
+        return showAppAlert(t('post.content_required'));
     }
 
     const maskActive = container.querySelector('.post-mask-button')?.classList.contains('active') || false;
@@ -2406,13 +2406,13 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     const scheduledGroupId = postingGroup?.id || null;
     const groupAnnouncementActive = Boolean(postingGroup && announcementActive);
     if (postingGroup && getQuotingPost()) {
-        return showAppAlert('引用・リポストはグループ投稿として送信できません。');
+        return showAppAlert(t('post.quote_group_forbidden'));
     }
 
     const button = container.querySelector('#post-submit-button');
     if (button) {
         button.disabled = true;
-        button.textContent = '送信中';
+        button.textContent = t('post.sending');
     }
     showLoading(true);
 
@@ -2504,11 +2504,11 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 asUserId: postingAccountId,
             });
         }
-        showAppAlert(`投稿に失敗しました: ${e.message || '不明なエラー'}`);
+        showAppAlert(t('post.post_failed', { message: e.message || t('post.unknown_error') }));
     } finally {
         if (button) {
             button.disabled = false;
-            button.textContent = 'ポスト';
+            button.textContent = t('composer.submit');
         }
         showLoading(false);
     }
@@ -2521,7 +2521,7 @@ function renderQuotingPostPreview(container, quotingPost) {
     const author = quotingPost.author
         || quotingPost.user
         || getCachedUser(quotingPost.userid)
-        || { name: '不明なユーザー' };
+        || { name: t('composer.account_unknown') };
     const nestedPost = document.createElement('div');
     nestedPost.className = 'nested-repost-container quoting-post-preview nui-card';
 
@@ -2531,12 +2531,12 @@ function renderQuotingPostPreview(container, quotingPost) {
     icon.className = 'user-icon nui-avatar';
     icon.src = getUserIconUrl(author);
     registerRankAvatar(icon, author);
-    icon.alt = `${author.name || '不明なユーザー'}のアイコン`;
+    icon.alt = t('composer.account_icon_alt', { name: author.name || t('composer.account_unknown') });
     header.appendChild(icon);
 
     const authorName = document.createElement('span');
     authorName.className = 'post-author';
-    authorName.innerHTML = getEmoji(escapeHTML(author.name || '不明なユーザー'));
+    authorName.innerHTML = getEmoji(escapeHTML(author.name || t('composer.account_unknown')));
     header.appendChild(authorName);
     nestedPost.appendChild(header);
 
@@ -2552,7 +2552,7 @@ function renderQuotingPostPreview(container, quotingPost) {
     if (Array.isArray(quotingPost.attachments) && quotingPost.attachments.length > 0) {
         const attachmentInfo = document.createElement('div');
         attachmentInfo.className = 'attachment-fileinfo';
-        attachmentInfo.textContent = `添付ファイル ${quotingPost.attachments.length}件`;
+        attachmentInfo.textContent = t('post.attachments_count', { count: quotingPost.attachments.length });
         nestedPost.appendChild(attachmentInfo);
     }
 
@@ -2576,7 +2576,7 @@ export function openPostModal(replyTo = null, quotingPost = null) {
         if (replyGroupId) {
             setPostingGroup(modalFormContainer, {
                 id: replyGroupId,
-                name: replyTo?.group_name || 'グループ',
+                name: replyTo?.group_name || t('nav.groups'),
                 canAnnounce: false,
             }, { locked: true });
             void applyPostGroupSelection(modalFormContainer, replyGroupId).catch(() => {});
@@ -2715,7 +2715,7 @@ export function updateFollowButtonState(button, isFollowing, isLock = false) {
     if (!button) return;
     button.classList.toggle('follow-button-following', isFollowing);
     button.classList.toggle('follow-button-not-following', !isFollowing);
-    button.textContent = isFollowing ? 'フォロー中' : isLock ? 'フォロー申請' : 'フォロー';
+    button.textContent = isFollowing ? t('timeline.tab.following') : isLock ? t('post.follow_request') : t('nav.follow');
 }
 
 export function applyOptimisticPostToggle(button, postId, { activeClass, accountField }) {
@@ -2764,7 +2764,7 @@ export async function openEditPostModal(postId, onSaved = null) {
             .select('content, mask, attachments, reply_id, replyTo, reply_to, reply_to_post, reply_control, replyControl, lock')
             .eq('id', postId)
             .single();
-        if (error || !post) throw new Error('ポスト情報の取得に失敗しました。');
+        if (error || !post) throw new Error(t('post.fetch_failed'));
 
         const isReply = Boolean(post.reply_id || post.replyTo || post.reply_to || post.reply_to_post);
         let currentAttachments = post.attachments || [];
@@ -2807,16 +2807,16 @@ export async function openEditPostModal(postId, onSaved = null) {
                     <div class="file-preview-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">${renderAttachments()}</div>
                     <div class="post-form-actions" style="padding-top: 1rem;">
                         <div class="post-form-tools-row">
-                            <button type="button" class="attachment-button" title="ファイルを追加">${ICONS.attachment}</button>
+                            <button type="button" class="attachment-button" title="${t('post.add_file')}">${ICONS.attachment}</button>
                             <button type="button" class="emoji-pic-button" title="${t('composer.emoji')}">${ICONS.emoji}</button>
                             <div class="post-tools-right-group post-tools-right-start">
-                                <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
-                                <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
+                                <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="${t('post.private')}" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
+                                <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="${t('post.mask_title')}">${ICONS.mask}</button>
                                 ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="${t('composer.reply_control.everyone')}" aria-label="${t('composer.reply_control.everyone')}" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
                             </div>
                         </div>
                         <div class="post-form-submit-row">
-                            <button id="update-post-button" class="nui-button" data-nui="button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700;">保存</button>
+                            <button id="update-post-button" class="nui-button" data-nui="button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700;">${t('common.save')}</button>
                         </div>
                         <input type="file" id="edit-file-input" class="hidden" multiple>
                         <div id="emoji-picker" class="hidden"></div>
@@ -2924,7 +2924,7 @@ export async function openEditPostModal(postId, onSaved = null) {
         }
     } catch (error) {
         console.error(error);
-        showAppAlert(error.message || '編集モーダルの読み込みに失敗しました');
+        showAppAlert(error.message || t('post.edit_load_failed'));
     } finally {
         showLoading(false);
     }
@@ -2938,12 +2938,12 @@ export async function handleUpdatePost(postId, originalAttachments, filesToAdd, 
     const lockActive = DOM.editPostModal.querySelector('.post-lock-button')?.classList.contains('active') || false;
     const replyControlValue = getPostingReplyControl(DOM.editPostModalContent);
 
-    if (!newContent) return showAppAlert('内容を入力するか、ファイルを添付してください。');
+    if (!newContent) return showAppAlert(t('post.edit_content_required'));
 
     const button = DOM.editPostModal.querySelector('#update-post-button');
     if (button) {
         button.disabled = true;
-        button.textContent = '保存中';
+        button.textContent = t('common.saving');
     }
     showLoading(true);
 
@@ -2996,11 +2996,11 @@ export async function handleUpdatePost(postId, originalAttachments, filesToAdd, 
         }
     } catch (e) {
         console.error(e);
-        showAppAlert('ポストの更新に失敗しました。');
+        showAppAlert(t('post.update_failed'));
     } finally {
         if (button) {
             button.disabled = false;
-            button.textContent = '保存';
+            button.textContent = t('common.save');
         }
         showLoading(false);
     }
@@ -3021,7 +3021,7 @@ export async function copyPost(postId, button) {
     }
     await copyTextToClipboard(postUrl);
     if (button) {
-        button.innerText = `コピーしました!`;
+        button.innerText = t('post.link_copied');
     }
 }
 
@@ -3030,17 +3030,17 @@ export async function pinPost(postId) {
 
     if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
     if (!isPinnedPost(postId)) {
-        cmessage = 'このポストをピン留めしますか?';
-        emessage = 'ポストのピン留め';
+        cmessage = t('post.pin_confirm');
+        emessage = t('post.pin_title');
     } else {
-        cmessage = 'このポストのピン留めを解除しますか?';
-        emessage = 'ポストのピン留めの解除';
+        cmessage = t('post.unpin_confirm');
+        emessage = t('post.unpin_title');
     }
     if (!(await showAppConfirm(cmessage))) return;
     showLoading(true);
     try {
         const { data: pinId, error: fetchError } = await api.rpc('handle_pin', { p_post_id: postId });
-        if (fetchError) throw new Error(`ポストのピン留め処理に失敗: ${fetchError.message}`);
+        if (fetchError) throw new Error(t('post.pin_failed', { message: fetchError.message }));
         const normalizedPinId = normalizePostId(pinId);
         getCurrentUser().pin = normalizedPinId;
         const currentUserId = Number(getCurrentUser().id);
@@ -3052,7 +3052,7 @@ export async function pinPost(postId) {
         await router();
     } catch (e) {
         console.error(e);
-        showAppAlert(`${emessage}に失敗しました。`);
+        showAppAlert(t('post.action_failed', { action: emessage }));
     } finally {
         showLoading(false);
     }
@@ -3261,7 +3261,7 @@ export async function handleFollowToggle(targetUserId, button, isLock = false) {
             followerCountSpan.textContent = String(originalFollowerCount);
         }
         console.error('フォロー切り替えエラー:', e);
-        showAppAlert('フォロー状態の更新に失敗しました。');
+        showAppAlert(t('post.follow_update_failed'));
     }
 }
 
@@ -3277,13 +3277,13 @@ export async function handleDislikePost(postId, menu = null) {
         // 時系列タブ（フォロー・すべて・グループ等）は再読込で戻るのでカードを残し、文面も切り分ける。
         if (getCurrentTimelineTab() === 'foryou') {
             removePostFromTimeline(postId);
-            showToast('このポストを表示しないようにしました。');
+            showToast(t('post.hidden_toast'));
         } else {
-            showToast('関連性が低いと評価しました。おすすめでの表示を減らします。');
+            showToast(t('post.low_relevance_toast'));
         }
     } catch (e) {
         console.error('Dislike error:', e);
-        showToast('評価の送信に失敗しました。');
+        showToast(t('post.rating_send_failed'));
     }
 }
 
@@ -3310,7 +3310,7 @@ export async function handleFollowMenuToggle(author, menu = null) {
     } catch (e) {
         currentUser.follow = originalFollows;
         console.error('フォロー切り替えエラー:', e);
-        showAppAlert('フォロー状態の更新に失敗しました。');
+        showAppAlert(t('post.follow_update_failed'));
     }
 }
 
@@ -3365,9 +3365,9 @@ export function openReplyControlModal(post, onUpdated = null) {
         <div class="modal-content nui-modal" style="max-width: 440px; padding: 1.25rem;">
             <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
             <div style="margin-bottom: 1rem;">
-                <h3 style="margin: 0 0 0.4rem 0; font-size: 1.15rem;">返信可能なユーザーの変更</h3>
+                <h3 style="margin: 0 0 0.4rem 0; font-size: 1.15rem;">${t('post.reply_control_title')}</h3>
                 <p class="nui-help-text" style="margin: 0; font-size: 0.85rem; color: var(--secondary-text-color);">
-                    このポストに返信できるユーザーを選択してください。条件を満たさなくなった既存の返信は自動的に削除されます。
+                    ${t('post.reply_control_desc')}
                 </p>
             </div>
             <div class="reply-control-modal-options" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -3416,13 +3416,13 @@ export function openReplyControlModal(post, onUpdated = null) {
                 post.replyControl = nextControl;
                 invalidateTimelinePageCache();
                 closeModal();
-                showAppAlert('返信可能なユーザーを変更しました。');
+                showAppAlert(t('post.reply_control_updated'));
                 if (typeof onUpdated === 'function') {
                     await onUpdated(nextControl);
                 }
             } catch (err) {
                 console.error(err);
-                showAppAlert('返信設定の更新に失敗しました。');
+                showAppAlert(t('post.reply_control_failed'));
                 item.disabled = false;
             }
         });
@@ -3558,10 +3558,10 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
             Number(currentUser.id) === noteAuthorId;
         const noteStatus = String(note.status || '');
         title.textContent = isOwnNote
-            ? 'あなたが追加した背景情報'
+            ? t('post.note_yours')
             : noteStatus === 'public'
-                ? '他の閲覧者によって追加された背景情報'
-                : '他の閲覧者によって提案された背景情報';
+                ? t('post.note_added_by_others')
+                : t('post.note_suggested_by_others');
 
         header.append(title);
 
@@ -3589,14 +3589,14 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
             const readMoreBtn = document.createElement('button');
             readMoreBtn.type = 'button';
             readMoreBtn.className = 'community-note-readmore';
-            readMoreBtn.textContent = '続きを読む';
+            readMoreBtn.textContent = t('post.read_more');
             readMoreBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 textExpanded = !textExpanded;
                 updateContentText();
                 readMoreBtn.textContent = textExpanded
-                    ? '閉じる'
-                    : '続きを読む';
+                    ? t('common.close')
+                    : t('post.read_more');
             });
             readMoreWrap.appendChild(readMoreBtn);
         }
@@ -3633,30 +3633,30 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
 
         const ratingQuestion = document.createElement('span');
         ratingQuestion.className = 'community-note-rating-question';
-        ratingQuestion.textContent = '参考になりましたか?';
+        ratingQuestion.textContent = t('post.note_helpful_question');
 
         const evaluateBtn = document.createElement('button');
         evaluateBtn.type = 'button';
         evaluateBtn.className = 'community-note-evaluate-btn';
-        evaluateBtn.textContent = 'ノートを評価';
+        evaluateBtn.textContent = t('post.note_rate');
         let ratingChoicesVisible = false;
 
         const helpfulBtn = document.createElement('button');
         helpfulBtn.type = 'button';
         helpfulBtn.className = 'community-note-rating-btn';
-        helpfulBtn.textContent = '参考になった';
+        helpfulBtn.textContent = t('post.note_helpful');
 
         const unhelpfulBtn = document.createElement('button');
         unhelpfulBtn.type = 'button';
         unhelpfulBtn.className = 'community-note-rating-btn';
-        unhelpfulBtn.textContent = '参考にならなかった';
+        unhelpfulBtn.textContent = t('post.note_unhelpful');
 
         const countLabel = document.createElement('span');
         countLabel.className = 'community-note-rating-count';
 
         const ratedLabel = document.createElement('span');
         ratedLabel.className = 'community-note-rated-label';
-        ratedLabel.textContent = '評価済み ✓';
+        ratedLabel.textContent = t('post.note_rated');
         ratedLabel.hidden = true;
 
         const canRate =
@@ -3697,7 +3697,7 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
                 evaluateBtn.disabled = true;
                 helpfulBtn.disabled = true;
                 unhelpfulBtn.disabled = true;
-                const reason = currentUser ? '自分のノートは評価できません' : '評価するにはログインしてください';
+                const reason = currentUser ? t('post.note_own_cannot_rate') : t('post.note_login_to_rate');
                 evaluateBtn.title = reason;
                 helpfulBtn.title = reason;
                 unhelpfulBtn.title = reason;
@@ -3705,7 +3705,7 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
             if (note.helpfulCount != null) {
                 countLabel.textContent =
                     note.helpfulCount > 0
-                        ? '参考になった ' + String(note.helpfulCount)
+                        ? t('post.note_helpful_with_count', { count: note.helpfulCount })
                         : '';
             }
         };
@@ -3759,7 +3759,7 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
 
             const loading = document.createElement('span');
             loading.className = 'community-note-reason-loading';
-            loading.textContent = '理由を読み込み中…';
+            loading.textContent = t('post.note_reasons_loading');
             reasonPanel.appendChild(loading);
 
             const { data, error } = await api.notes.reasonTags();
@@ -3818,7 +3818,7 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
                     } else if (selectedReasonCodes.size < 3) {
                         selectedReasonCodes.add(code);
                     } else {
-                        showToast('理由は3つまで選択できます。');
+                        showToast(t('post.note_reasons_max'));
                     }
                     syncChips();
                 });
@@ -3832,7 +3832,7 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
                 const empty = document.createElement('span');
                 empty.className = 'community-note-reason-loading';
                 empty.textContent =
-                    '理由を取得できませんでした。理由なしで評価できます。';
+                    t('post.note_reasons_failed');
                 reasonPanel.appendChild(empty);
             }
 
@@ -3842,18 +3842,18 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
             confirmBtn.type = 'button';
             confirmBtn.className =
                 'community-note-reason-confirm nui-button';
-            confirmBtn.textContent = 'この理由で評価';
+            confirmBtn.textContent = t('post.note_rate_with_reason');
             confirmBtn.disabled = true;
 
             const noReasonBtn = document.createElement('button');
             noReasonBtn.type = 'button';
             noReasonBtn.className = 'community-note-reason-skip';
-            noReasonBtn.textContent = '理由なしで評価';
+            noReasonBtn.textContent = t('post.note_rate_without_reason');
 
             const cancelBtn = document.createElement('button');
             cancelBtn.type = 'button';
             cancelBtn.className = 'community-note-reason-cancel';
-            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.textContent = t('common.cancel');
 
             const setBusy = (busy) => {
                 confirmBtn.disabled = busy || selectedReasonCodes.size === 0;
@@ -3876,7 +3876,7 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
                 ]);
                 if (!ok) {
                     setBusy(false);
-                    showAppAlert('評価に失敗しました。');
+                    showAppAlert(t('post.note_rate_failed'));
                 }
             });
             noReasonBtn.addEventListener('click', async (e) => {
@@ -3885,7 +3885,7 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
                 const ok = await handleRate(helpful, []);
                 if (!ok) {
                     setBusy(false);
-                    showAppAlert('評価に失敗しました。');
+                    showAppAlert(t('post.note_rate_failed'));
                 }
             });
             cancelBtn.addEventListener('click', (e) => {
@@ -3942,7 +3942,7 @@ export async function renderCommunityNoteCard(post, postBody, { immediate = fals
             sourcesWrap.className = 'community-note-sources';
             const sourcesLabel = document.createElement('span');
             sourcesLabel.className = 'community-note-sources-label';
-            sourcesLabel.textContent = '出典: ';
+            sourcesLabel.textContent = t('post.note_sources');
             sourcesWrap.appendChild(sourcesLabel);
             sourceLinks.forEach(({ url, title }, index) => {
                 if (index > 0) sourcesWrap.appendChild(document.createTextNode(' / '));
@@ -3992,24 +3992,24 @@ export function openCommunityNoteModal(postId, post, postBody) {
     modal.innerHTML = `
         <div class="community-note-modal-content nui-modal" style="width: min(560px, calc(100vw - 2rem)); padding: 1.5rem;">
             <button type="button" class="modal-close-btn" id="community-note-modal-close" aria-label="${t('common.close')}">×</button>
-            <div class="community-note-modal-title nui-modal-title">コミュニティノートを作成</div>
+            <div class="community-note-modal-title nui-modal-title">${t('post.note_create_title')}</div>
 
             <div class="community-note-modal-field">
-                <label class="community-note-modal-label" for="community-note-content">内容・ソース</label>
-                <textarea id="community-note-content" class="community-note-modal-textarea nui-input" rows="6" maxlength="1000" placeholder="補足情報とソースを入力してください"></textarea>
+                <label class="community-note-modal-label" for="community-note-content">${t('post.note_content_label')}</label>
+                <textarea id="community-note-content" class="community-note-modal-textarea nui-input" rows="6" maxlength="1000" placeholder="${t('post.note_content_placeholder')}"></textarea>
                 <div class="community-note-modal-count" id="community-note-content-count">0 / 1000</div>
             </div>
 
             <div class="community-note-modal-field" id="community-note-reasons-field">
-                <label class="community-note-modal-label">理由</label>
+                <label class="community-note-modal-label">${t('post.note_reason_label')}</label>
                 <div class="community-note-modal-reasons" id="community-note-reasons-list">
-                    <div class="community-note-modal-reasons-loading">読み込み中…</div>
+                    <div class="community-note-modal-reasons-loading">${t('post.loading_ellipsis')}</div>
                 </div>
             </div>
 
             <div class="community-note-modal-actions">
-                <button type="button" class="community-note-modal-cancel nui-button-secondary" id="community-note-cancel">キャンセル</button>
-                <button type="button" class="community-note-modal-submit nui-button" id="community-note-submit">送信</button>
+                <button type="button" class="community-note-modal-cancel nui-button-secondary" id="community-note-cancel">${t('common.cancel')}</button>
+                <button type="button" class="community-note-modal-submit nui-button" id="community-note-submit">${t('common.send')}</button>
             </div>
         </div>
     `;
@@ -4088,7 +4088,7 @@ export function openCommunityNoteModal(postId, post, postBody) {
         const content = String(contentTextarea.value || '').trim();
         const contentLen = [...content].length;
         if (contentLen < 1 || contentLen > 1000) {
-            showAppAlert('内容は1〜1000文字で入力してください。');
+            showAppAlert(t('post.note_content_length'));
             return;
         }
 
@@ -4110,14 +4110,14 @@ export function openCommunityNoteModal(postId, post, postBody) {
                 reasons: selectedReasons,
             });
             if (error) {
-                showAppAlert(error.message || 'ノートの作成に失敗しました。');
+                showAppAlert(error.message || t('post.note_create_failed'));
                 return;
             }
             closeModal();
             await renderCommunityNoteCard(post, postBody, { immediate: true, force: true });
         } catch (err) {
             console.error('create community note error:', err);
-            showAppAlert(err?.message || 'ノートの作成に失敗しました。');
+            showAppAlert(err?.message || t('post.note_create_failed'));
         } finally {
             submitBtn.disabled = false;
             showLoading(false);

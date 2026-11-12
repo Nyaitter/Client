@@ -83,8 +83,8 @@ function setupLoginModal() {
 
   const PROVIDER_DISPLAY_NAMES = {
     scratch: 'Scratch',
-    email: 'メールアドレス',
-    passkey: 'パスキー',
+    email: lt('login.email.address'),
+    passkey: lt('login.provider.passkey'),
     nyaitter: 'NyaitterAuth',
     nyaitterauth: 'NyaitterAuth',
     'nyaitter-auth': 'NyaitterAuth',
@@ -190,14 +190,14 @@ function setupLoginModal() {
       const existing = document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]');
       if (existing) {
         existing.addEventListener('load', () => resolve(), { once: true });
-        existing.addEventListener('error', () => reject(new Error('Turnstileの読み込みに失敗しました。')), { once: true });
+        existing.addEventListener('error', () => reject(new Error(lt('settings.security.turnstile_failed'))), { once: true });
         return;
       }
       const script = document.createElement('script');
       script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
       script.async = true;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Turnstileの読み込みに失敗しました。'));
+      script.onerror = () => reject(new Error(lt('settings.security.turnstile_failed')));
       document.head.appendChild(script);
     });
   }
@@ -367,9 +367,9 @@ function setupLoginModal() {
   function formatRecoveryRemaining(waitUntil) {
     const remainMs = Math.max(0, new Date(waitUntil || 0).getTime() - Date.now());
     const hours = Math.max(1, Math.ceil(remainMs / 3600000));
-    if (hours >= 48) return `約${Math.floor(hours / 24)}日`;
-    if (hours >= 24) return '約1日';
-    return `約${hours}時間`;
+    if (hours >= 48) return lt('login.duration_days', { days: Math.floor(hours / 24) });
+    if (hours >= 24) return lt('login.duration_1day');
+    return lt('login.duration_hours', { hours });
   }
 
   function updateRecoveryStatus(waitUntil) {
@@ -398,7 +398,7 @@ function setupLoginModal() {
       approval_token: approvalToken,
     });
     if (!response.ok || !data.success) {
-      throw new Error(data.error || '復旧を開始できませんでした。');
+      throw new Error(data.error || lt('login.recovery.failed'));
     }
     waitState.recovery = { id: String(data.recovery_id), token: String(data.recovery_token) };
     if (loginApprovalRecoverySection) loginApprovalRecoverySection.classList.add('hidden');
@@ -417,7 +417,7 @@ function setupLoginModal() {
       return null;
     }
     if (!response.ok || data.error || !data.success) {
-      throw new Error(data.error || '復旧の確認に失敗しました。');
+      throw new Error(data.error || lt('login.recovery_confirm_failed'));
     }
     return data;
   }
@@ -487,7 +487,7 @@ function setupLoginModal() {
         if (waitState.cancelled) break;
         await wait(30000);
       }
-      throw new Error('ログインをキャンセルしました。');
+      throw new Error(lt('login.cancelled'));
     } finally {
       const ownsWaitModal = activeApprovalWait === waitState;
       if (ownsWaitModal) {
@@ -501,7 +501,7 @@ function setupLoginModal() {
     if (!activeApprovalWait) return;
     activeApprovalWait.cancelled = true;
     closeApprovalWait({ restoreLogin: true });
-    showError('ログインをキャンセルしました。');
+    showError(lt('login.cancelled'));
   }
 
   async function completeApprovedLogin(pendingLogin) {
@@ -510,7 +510,7 @@ function setupLoginModal() {
     const approvalToken = String(pendingLogin?.approval_token || '');
     const expiresAt = new Date(pendingLogin?.expires_at || 0).getTime();
     if (!/^[A-Za-z0-9_-]{16,128}$/.test(approvalId) || !/^[A-Za-z0-9_-]{20,128}$/.test(approvalToken)) {
-      throw new Error('ログイン承認情報が無効です。最初からやり直してください。');
+      throw new Error(lt('login.approval_invalid'));
     }
     const waitState = showApprovalWait(pendingLogin);
     let approved = false;
@@ -541,7 +541,7 @@ function setupLoginModal() {
         }
 
         if (Date.now() >= expiresAt) {
-          throw new Error('ログイン承認の有効期限が切れました。最初からやり直してください。');
+          throw new Error(lt('login.approval_expired'));
         }
         await wait(2500);
         if (waitState.cancelled || waitState.recovery) continue;
@@ -552,12 +552,12 @@ function setupLoginModal() {
           continue;
         }
         if (!response.ok || data.error || !data.success) {
-          throw new Error(data.error || 'ログイン要求は許可されませんでした。');
+          throw new Error(data.error || lt('login.request_denied'));
         }
         approved = true;
         return data;
       }
-      throw new Error('ログインをキャンセルしました。');
+      throw new Error(lt('login.cancelled'));
     } finally {
       const ownsWaitModal = activeApprovalWait === waitState;
       if (ownsWaitModal) {
@@ -635,7 +635,7 @@ function setupLoginModal() {
     hideAllPanels();
     hideTurnstile();
     loginBackBtn?.classList.remove('hidden');
-    loginBackBtn?.setAttribute('aria-label', 'ログイン方法選択に戻る');
+    loginBackBtn?.setAttribute('aria-label', lt('login.back_to_methods'));
     hideMessages();
 
     const name = String(provider?.name || '').toLowerCase();
@@ -695,7 +695,7 @@ function setupLoginModal() {
           showLoading(false);
           return;
         }
-        throw new Error(data.error || '認証の開始に失敗しました。');
+        throw new Error(data.error || lt('login.auth_start_failed'));
       }
       if (isLink) {
         writeLinkIntent({
@@ -706,7 +706,7 @@ function setupLoginModal() {
       window.location.href = data.auth_url;
     } catch (error) {
       showLoading(false);
-      showError(error.message || '認証の開始に失敗しました。');
+      showError(error.message || lt('login.auth_start_failed'));
     }
   }
 
@@ -882,7 +882,7 @@ function setupLoginModal() {
     const onSuccess = linkOnSuccess;
     const name = provider?.name || provider?.provider || '';
     const key = String(name || '').toLowerCase();
-    const displayName = provider?.displayName || resolveProviderDisplayName(name) || name || '認証方法';
+    const displayName = provider?.displayName || resolveProviderDisplayName(name) || name || lt('login.provider_fallback');
 
     clearLinkIntent();
     resetLoginModal();
@@ -894,7 +894,7 @@ function setupLoginModal() {
     }
     loginModalReturnFocus = null;
 
-    void showLinkCompletionAlert(`${displayName}の連携が完了しました！`);
+    void showLinkCompletionAlert(lt('login.link_completed', { name: displayName }));
     try {
       onSuccess?.();
     } catch (_) {}
@@ -907,7 +907,7 @@ function setupLoginModal() {
   getCodeBtn?.addEventListener('click', async () => {
     const loginInput = usernameInput?.value.trim();
     if (!loginInput) {
-      showError('Scratchユーザー名を入力してください。');
+      showError(lt('login.scratch_username_required'));
       return;
     }
 
@@ -919,14 +919,14 @@ function setupLoginModal() {
       if (loginModalMode === 'link') {
         const initRes = await postAuthJson('/link/scratch/initiate', { username: scratchUsername });
         if (!initRes.response.ok || initRes.data.error) {
-          throw new Error(initRes.data.error || 'コードの生成に失敗しました。');
+          throw new Error(initRes.data.error || lt('login.code_generate_failed'));
         }
         data = initRes.data;
       } else {
         const response = await globalThis.NyaitterClientInstance.auth.generateScratchResponse(scratchUsername);
         data = await response.json().catch(() => ({}));
         if (!response.ok || data.error) {
-          throw new Error(data.error || 'コードの生成に失敗しました。');
+          throw new Error(data.error || lt('login.code_generate_failed'));
         }
       }
 
@@ -953,7 +953,7 @@ function setupLoginModal() {
       copyMessage?.classList.remove('hidden');
       errorMessage?.classList.add('hidden');
       window.setTimeout(() => copyMessage?.classList.add('hidden'), 2000);
-    }).catch(() => showError('認証コードをコピーできませんでした。手動でコピーしてください。'));
+    }).catch(() => showError(lt('login.code_copy_failed')));
   });
 
   verifyCommentBtn?.addEventListener('click', async () => {
@@ -973,10 +973,10 @@ function setupLoginModal() {
               showTurnstileInline(verifyCommentBtn, attemptVerify);
               return;
             }
-            throw new Error(data.error || '連携に失敗しました。');
+            throw new Error(data.error || lt('login.link_failed'));
           }
           resetTurnstile();
-          if (!data.success) throw new Error('連携に失敗しました。');
+          if (!data.success) throw new Error(lt('login.link_failed'));
           finishLink();
           return;
         }
@@ -993,11 +993,11 @@ function setupLoginModal() {
             showTurnstileInline(verifyCommentBtn, attemptVerify);
             return;
           }
-          throw new Error(data.error || '認証に失敗しました。');
+          throw new Error(data.error || lt('login.auth_failed'));
         }
         resetTurnstile();
         if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
-        if (!data.success) throw new Error('セッションの設定に失敗しました。');
+        if (!data.success) throw new Error(lt('login.session_failed'));
         finishLogin();
       } catch (error) {
         showError(error.message);
@@ -1012,7 +1012,7 @@ function setupLoginModal() {
   async function requestEmailCode() {
     const email = loginEmailInput?.value.trim();
     if (!email) {
-      showError('メールアドレスを入力してください。');
+      showError(lt('login.email.instruction'));
       return;
     }
 
@@ -1023,13 +1023,13 @@ function setupLoginModal() {
       if (loginModalMode === 'link') {
         const { response, data } = await postAuthJson('/link/email/initiate', { email });
         if (!response.ok || data.error) {
-          throw new Error(data.error || '認証コードの送信に失敗しました。');
+          throw new Error(data.error || lt('login.code_send_failed'));
         }
       } else {
         const response = await globalThis.NyaitterClientInstance.auth.initiateEmailResponse(currentEmail);
         const data = await response.json().catch(() => ({}));
         if (!response.ok || data.error) {
-          throw new Error(data.error || '認証コードの送信に失敗しました。');
+          throw new Error(data.error || lt('login.code_send_failed'));
         }
       }
 
@@ -1056,7 +1056,7 @@ function setupLoginModal() {
   verifyEmailCodeBtn?.addEventListener('click', async () => {
     const code = loginEmailCodeInput?.value.trim();
     if (!code) {
-      showError('認証コードを入力してください。');
+      showError(lt('login.code_required'));
       return;
     }
 
@@ -1076,10 +1076,10 @@ function setupLoginModal() {
               showTurnstileInline(verifyEmailCodeBtn, attemptVerify);
               return;
             }
-            throw new Error(data.error || '連携に失敗しました。');
+            throw new Error(data.error || lt('login.link_failed'));
           }
           resetTurnstile();
-          if (!data.success) throw new Error('連携に失敗しました。');
+          if (!data.success) throw new Error(lt('login.link_failed'));
           finishLink();
           return;
         }
@@ -1104,11 +1104,11 @@ function setupLoginModal() {
             window.setTimeout(() => loginEmailNameInput?.focus(), 0);
             return;
           }
-          throw new Error(data.error || '認証に失敗しました。');
+          throw new Error(data.error || lt('login.auth_failed'));
         }
         resetTurnstile();
         if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
-        if (!data.success) throw new Error('セッションの設定に失敗しました。');
+        if (!data.success) throw new Error(lt('login.session_failed'));
         finishLogin();
       } catch (error) {
         showError(error.message);
@@ -1123,7 +1123,7 @@ function setupLoginModal() {
     const code = loginEmailCodeInput?.value.trim();
     const name = loginEmailNameInput?.value.trim();
     if (!name) {
-      showError('ユーザー名を入力してください。');
+      showError(lt('login.username_required'));
       loginEmailNameInput?.focus();
       return;
     }
@@ -1145,10 +1145,10 @@ function setupLoginModal() {
             showTurnstileInline(submitEmailSignupBtn, attemptSignup);
             return;
           }
-          throw new Error(data.error || '登録に失敗しました。');
+          throw new Error(data.error || lt('login.register_failed'));
         }
         if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
-        if (!data.success) throw new Error('セッションの設定に失敗しました。');
+        if (!data.success) throw new Error(lt('login.session_failed'));
         finishLogin();
       } catch (error) {
         showError(error.message);
@@ -1212,7 +1212,7 @@ function setupLoginModal() {
 
   passkeySigninBtn?.addEventListener('click', async () => {
     if (!window.PublicKeyCredential) {
-      showError('このブラウザはパスキー認証に対応していません。');
+      showError(lt('login.passkey_unsupported'));
       return;
     }
 
@@ -1232,7 +1232,7 @@ function setupLoginModal() {
               showTurnstileInline(passkeySigninBtn, attemptPasskey);
               return;
             }
-            throw new Error(initData.error || 'パスキー連携の開始に失敗しました。');
+            throw new Error(initData.error || lt('login.passkey_link_start_failed'));
           }
 
           // 連携先アカウントの表示名（user.id は常駐キーの識別子に使われるだけで認証には影響しない）
@@ -1277,13 +1277,13 @@ function setupLoginModal() {
             });
           } catch (webAuthnError) {
             if (webAuthnError.name === 'NotAllowedError') {
-              throw new Error('パスキーの作成がキャンセルされました。');
+              throw new Error(lt('login.passkey_create_cancelled'));
             }
-            throw new Error(`パスキーの作成に失敗しました: ${webAuthnError.message}`);
+            throw new Error(lt('login.passkey_create_failed', { message: webAuthnError.message }));
           }
 
           if (!credential) {
-            throw new Error('パスキーの作成がキャンセルされました。');
+            throw new Error(lt('login.passkey_create_cancelled'));
           }
 
           showLoading(true);
@@ -1306,10 +1306,10 @@ function setupLoginModal() {
               showTurnstileInline(passkeySigninBtn, attemptPasskey);
               return;
             }
-            throw new Error(verifyRes.data.error || 'パスキーの連携に失敗しました。');
+            throw new Error(verifyRes.data.error || lt('login.passkey_link_failed'));
           }
           resetTurnstile();
-          if (!verifyRes.data.success) throw new Error('パスキーの連携に失敗しました。');
+          if (!verifyRes.data.success) throw new Error(lt('login.passkey_link_failed'));
           finishLink();
           return;
         }
@@ -1325,7 +1325,7 @@ function setupLoginModal() {
             showTurnstileInline(passkeySigninBtn, attemptPasskey);
             return;
           }
-          throw new Error(initiateData.error || 'パスキー認証の開始に失敗しました。');
+          throw new Error(initiateData.error || lt('login.passkey_auth_start_failed'));
         }
 
         // Step 2: WebAuthn API でパスキーウィンドウを表示して認証
@@ -1346,13 +1346,13 @@ function setupLoginModal() {
           });
         } catch (webAuthnError) {
           if (webAuthnError.name === 'NotAllowedError') {
-            throw new Error('パスキー認証がキャンセルされました。');
+            throw new Error(lt('login.passkey_auth_cancelled'));
           }
-          throw new Error(`パスキー認証に失敗しました: ${webAuthnError.message}`);
+          throw new Error(lt('login.passkey_auth_failed_msg', { message: webAuthnError.message }));
         }
 
         if (!credential) {
-          throw new Error('パスキー認証がキャンセルされました。');
+          throw new Error(lt('login.passkey_auth_cancelled'));
         }
 
         showLoading(true);
@@ -1378,10 +1378,10 @@ function setupLoginModal() {
             showTurnstileInline(passkeySigninBtn, attemptPasskey);
             return;
           }
-          throw new Error(data.error || 'パスキー認証に失敗しました。');
+          throw new Error(data.error || lt('login.passkey_auth_failed'));
         }
         if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
-        if (!data.success) throw new Error('セッションの設定に失敗しました。');
+        if (!data.success) throw new Error(lt('login.session_failed'));
         finishLogin();
       } catch (error) {
         showError(error.message);
@@ -1396,7 +1396,7 @@ function setupLoginModal() {
   nyaitterSigninBtn?.addEventListener('click', async () => {
     const serverUrl = (loginNyaitterServerInput?.value || '').trim();
     if (!serverUrl) {
-      showError('NyaitterサーバーURLを入力してください。');
+      showError(lt('login.server_url_required'));
       return;
     }
 
@@ -1415,7 +1415,7 @@ function setupLoginModal() {
               showTurnstileInline(nyaitterSigninBtn, attemptNyaitter);
               return;
             }
-            throw new Error(data.error || 'NyaitterAuth連携の開始に失敗しました。');
+            throw new Error(data.error || lt('login.nyaitterauth_link_start_failed'));
           }
           // リダイレクトを跨いで連携意図を復元できるよう sessionStorage に保持する。
           writeLinkIntent({
@@ -1438,7 +1438,7 @@ function setupLoginModal() {
             showTurnstileInline(nyaitterSigninBtn, attemptNyaitter);
             return;
           }
-          throw new Error(initiateData.error || 'NyaitterAuth認証の開始に失敗しました。');
+          throw new Error(initiateData.error || lt('login.nyaitterauth_auth_start_failed'));
         }
 
         // Redirect to authorization URL
@@ -1461,7 +1461,7 @@ function setupLoginModal() {
   }
 
   function promptOAuthUsername() {
-    const message = 'Nyaitterで使用するユーザー名を入力してください。';
+    const message = lt('login.username_prompt');
     if (typeof globalThis.showAppPrompt === 'function') {
       return Promise.resolve(globalThis.showAppPrompt(message, ''));
     }
@@ -1477,8 +1477,8 @@ function setupLoginModal() {
 
     if (!code || oauthError) {
       const message = oauthError
-        ? '認証がキャンセルされたか、認証プロバイダーでエラーが発生しました。'
-        : '認証コードがありません。もう一度ログインしてください。';
+        ? lt('login.auth_cancelled_or_error')
+        : lt('login.auth_code_missing');
       clearOAuthCallbackQuery();
       if (isLink) clearLinkIntent();
       showLoading(false);
@@ -1492,9 +1492,9 @@ function setupLoginModal() {
       if (isLink) {
         const { response, data } = await postAuthJson(`/link/${encodeURIComponent(provider)}/verify`, { code, state });
         if (!response.ok || data.error) {
-          throw new Error(data.error || '連携に失敗しました。');
+          throw new Error(data.error || lt('login.link_failed'));
         }
-        if (!data.success) throw new Error('連携に失敗しました。');
+        if (!data.success) throw new Error(lt('login.link_failed'));
         clearOAuthCallbackQuery();
         window.location.hash = '#';
         finishLink({
@@ -1510,7 +1510,7 @@ function setupLoginModal() {
       let pendingToken = data?.code === 'username_required' ? data.pending_token : null;
       for (let attempt = 0; pendingToken && attempt < 3; attempt += 1) {
         const name = await promptOAuthUsername();
-        if (name == null) throw new Error('ユーザー名の設定をキャンセルしました。');
+        if (name == null) throw new Error(lt('login.username_setup_cancelled'));
         const retry = await postAuthJson(`/${encodeURIComponent(provider)}/verify`, {
           pending_token: pendingToken,
           name: String(name).trim(),
@@ -1520,10 +1520,10 @@ function setupLoginModal() {
         pendingToken = retry.data?.code === 'username_required' ? retry.data.pending_token : null;
       }
       if (!ok || result.error) {
-        throw new Error(result.error || '認証に失敗しました。');
+        throw new Error(result.error || lt('login.auth_failed'));
       }
       if (result.approval_required || result.recovery_waiting) result = await completeApprovedLogin(result);
-      if (!result.success) throw new Error('セッションの設定に失敗しました。');
+      if (!result.success) throw new Error(lt('login.session_failed'));
 
       clearOAuthCallbackQuery();
       window.location.hash = '#';
@@ -1534,7 +1534,7 @@ function setupLoginModal() {
       clearOAuthCallbackQuery();
       if (isLink) clearLinkIntent();
       await openLoginModal();
-      showError(error.message || 'ログイン処理に失敗しました。');
+      showError(error.message || lt('login.process_failed'));
       return true;
     }
   }
@@ -1582,9 +1582,9 @@ function setupLoginModal() {
           serverUrl: targetServerUrl || undefined,
         });
         if (!response.ok || data.error) {
-          throw new Error(data.error || '連携に失敗しました。');
+          throw new Error(data.error || lt('login.link_failed'));
         }
-        if (!data.success) throw new Error('連携に失敗しました。');
+        if (!data.success) throw new Error(lt('login.link_failed'));
 
         window.location.hash = '#';
         finishLink({
@@ -1596,7 +1596,7 @@ function setupLoginModal() {
         showLoading(false);
         clearLinkIntent();
         await openLoginModal();
-        showError(error.message || '連携処理に失敗しました。');
+        showError(error.message || lt('login.link_process_failed'));
         return true;
       }
     }
@@ -1609,10 +1609,10 @@ function setupLoginModal() {
       });
       let data = await verifyRes.json().catch(() => ({}));
       if (!verifyRes.ok || data.error) {
-        throw new Error(data.error || '認証に失敗しました。');
+        throw new Error(data.error || lt('login.auth_failed'));
       }
       if (data.approval_required || data.recovery_waiting) data = await completeApprovedLogin(data);
-      if (!data.success) throw new Error('セッションの設定に失敗しました。');
+      if (!data.success) throw new Error(lt('login.session_failed'));
 
       // Clear callback url params
       window.location.hash = '#';
@@ -1621,7 +1621,7 @@ function setupLoginModal() {
     } catch (error) {
       showLoading(false);
       await openLoginModal();
-      showError(error.message || 'ログイン処理に失敗しました。');
+      showError(error.message || lt('login.process_failed'));
       return true;
     }
   }

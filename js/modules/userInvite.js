@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { api } from '../api.js';
 import { getCurrentUser } from '../state.js';
 import { escapeHTML, getNyaitterId, getUserIconUrl } from '../utils/helpers.js';
@@ -6,14 +7,14 @@ import { rankAvatarAttributes } from './rankAvatarIntegration.js';
 const SEARCH_DEBOUNCE_MS = 250;
 
 function renderChip(user) {
-    return `<span class="user-invite-chip"><span class="user-invite-chip-name">${escapeHTML(user.name || `#${user.id}`)}</span> <small>${escapeHTML(getNyaitterId(user))}</small><button type="button" data-invite-remove="${Number(user.id)}" aria-label="${escapeHTML(user.name || `#${user.id}`)}を選択解除">×</button></span>`;
+    return `<span class="user-invite-chip"><span class="user-invite-chip-name">${escapeHTML(user.name || `#${user.id}`)}</span> <small>${escapeHTML(getNyaitterId(user))}</small><button type="button" data-invite-remove="${Number(user.id)}" aria-label="${t('userinvite.deselect_label', { name: escapeHTML(user.name || `#${user.id}`) })}">×</button></span>`;
 }
 
 function renderOption(user) {
     return `<button type="button" class="user-invite-option" role="option" data-invite-user="${Number(user.id)}"><img ${rankAvatarAttributes(user)} src="${escapeHTML(getUserIconUrl(user))}" alt=""><span><strong>${escapeHTML(user.name || `#${user.id}`)}</strong><small>${escapeHTML(getNyaitterId(user))}${user.scid ? ` · @${escapeHTML(user.scid)}` : ''}</small></span></button>`;
 }
 
-export function createUserInvitePicker({ input, suggestions, selected, signal, excludeIds = [], initialUsers = [], emptyText = '招待するユーザーを検索してください。', onChange } = {}) {
+export function createUserInvitePicker({ input, suggestions, selected, signal, excludeIds = [], initialUsers = [], emptyText = t('userinvite.empty_text_default'), onChange } = {}) {
     const selectedUsers = new Map();
     const excluded = new Set((excludeIds || []).map(Number));
     const currentUserId = Number(getCurrentUser()?.id);
@@ -41,7 +42,7 @@ export function createUserInvitePicker({ input, suggestions, selected, signal, e
         const matches = (users || []).filter((user) => !selectedUsers.has(Number(user.id)) && !excluded.has(Number(user.id)) && Number(user.id) !== currentUserId);
         suggestions.innerHTML = matches.length
             ? matches.map(renderOption).join('')
-            : '<p class="user-invite-empty">一致するユーザーがいません。</p>';
+            : `<p class="user-invite-empty">${t('userinvite.no_match')}</p>`;
         for (const option of suggestions.querySelectorAll('[data-invite-user]')) {
             option.onclick = () => {
                 const user = matches.find((item) => Number(item.id) === Number(option.dataset.inviteUser));

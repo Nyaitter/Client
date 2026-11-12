@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import {
     openCall as openCallCore,
     handleCallEvent,
@@ -14,8 +15,8 @@ const callHash = (kind, id) => `#call/${kind === 'stage' ? 'stage' : 'dm'}/${enc
 let mountedKey = null;
 
 export async function openCall(kind, id, options = {}) {
-    if (kind !== 'stage' && kind !== 'dm') throw new Error('通話の種類が正しくありません。');
-    if (id === undefined || id === null || id === '') throw new Error('通話IDが正しくありません。');
+    if (kind !== 'stage' && kind !== 'dm') throw new Error(t('calls.invalid_kind'));
+    if (id === undefined || id === null || id === '') throw new Error(t('calls.invalid_id'));
     const hash = callHash(kind, id);
     if (window.location.hash !== hash) {
         window.location.hash = hash;

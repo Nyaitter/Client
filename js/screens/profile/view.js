@@ -1,3 +1,4 @@
+import { t } from '../../modules/i18n.js';
 import { DOM } from '../../dom.js';
 import { ICONS } from '../../icons.js';
 import { escapeHTML } from '../../utils/helpers.js';
@@ -6,9 +7,9 @@ import { isCurrentUserProfile } from '../../modules/cache.js';
 export function renderHeader() {
     DOM.pageHeader.innerHTML = `
         <div class="header-with-back-button">
-            <button class="header-back-btn" data-action="history-back" aria-label="戻る">${ICONS.back}</button>
+            <button class="header-back-btn" data-action="history-back" aria-label="${t('admin.back_label')}">${ICONS.back}</button>
             <h2 id="page-title">
-                <div id="page-title-main">プロフィール</div>
+                <div id="page-title-main">${t('nav.profile')}</div>
                 <small id="page-title-sub"></small>
             </h2>
         </div>`;
@@ -18,19 +19,19 @@ export function renderTabs(container, user, activeTab) {
     if (!container) return;
     const sharedGroups = Array.isArray(user?.groups) ? user.groups : [];
     const tabs = [
-        { key: 'posts', name: 'ポスト' },
-        { key: 'replies', name: '返信' },
-        { key: 'media', name: 'メディア' },
-        { key: 'likes', name: 'いいね' },
-        { key: 'stars', name: 'お気に入り' },
+        { key: 'posts', name: t('composer.submit') },
+        { key: 'replies', name: t('dm.reply_button') },
+        { key: 'media', name: t('profileview.tab_media') },
+        { key: 'likes', name: t('nav.likes') },
+        { key: 'stars', name: t('nav.stars') },
         ...(isCurrentUserProfile(user)
-            ? [{ key: 'scheduled', name: '予約済み' }]
+            ? [{ key: 'scheduled', name: t('profileview.tab_scheduled') }]
             : []),
         ...sharedGroups.map((group) => ({
             key: `group:${group.id}`,
-            name: group.name || 'グループ',
+            name: group.name || t('nav.groups'),
             className: 'profile-group-tab',
-            title: group.name || 'グループ',
+            title: group.name || t('nav.groups'),
         })),
     ];
     container.classList.add('nui-tabs');

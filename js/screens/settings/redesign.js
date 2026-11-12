@@ -33,11 +33,11 @@ export function rebuildSettings(root) {
     usage.className = 'settings-network-usage nui-section';
     usage.dataset.nui = 'section';
     usage.innerHTML = `<h4 class="nui-section-title">${t('settings.usage.title')}</h4>
-        <p class="settings-help-text nui-help-text">今日と今月の送受信量です。計測開始後の通信だけを、この端末・ブラウザーに記録します。</p>
+        <p class="settings-help-text nui-help-text">${t('usage.today_month')}</p>
         <div class="settings-usage-totals"><div class="nui-stat"><span>${t('settings.usage.today')}</span><strong data-usage="today"></strong></div><div class="nui-stat"><span>${t('settings.usage.month')}</span><strong data-usage="month"></strong></div></div>
         <dl class="settings-usage-breakdown"><div><dt>${t('settings.usage.received')}</dt><dd data-usage="httpReceived"></dd></div><div><dt>${t('settings.usage.sent')}</dt><dd data-usage="httpSent"></dd></div><div><dt>${t('settings.usage.realtime_received')}</dt><dd data-usage="realtimeReceived"></dd></div><div><dt>${t('settings.usage.realtime_sent')}</dt><dd data-usage="realtimeSent"></dd></div></dl>
         <p data-usage="coverage" class="settings-help-text nui-help-text" role="status"></p>
-        <p class="settings-help-text nui-help-text">ブラウザーが取得できる受信転送サイズと送信本文を集計しています。送信ヘッダー、ファイル送信の区切り、Realtimeの通信ヘッダーは含みません。サイズを取得できない外部リソースなどもあり、通信会社の請求量とは一致しません。</p>
+        <p class="settings-help-text nui-help-text">${t('usage.method_note')}</p>
         <button type="button" class="settings-secondary-button nui-button-secondary" id="settings-reset-network-usage" ${isDataSaverEnabled() ? 'disabled aria-disabled="true" style="opacity:0.5;cursor:not-allowed;"' : ''}>${t('settings.usage.reset')}</button>`;
     panel('connection').prepend(usage);
     const dangerZone = form.querySelector('.settings-danger-zone');
@@ -207,7 +207,7 @@ export function bindSettingsDiscovery(root, selectGroup, requestSave) {
                 count += 1;
             }
         }
-        if (!count) results.textContent = '一致する設定がありません。別の言葉で検索してください。';
+        if (!count) results.textContent = t('usage.no_matching_settings');
     });
     root.querySelector('#settings-save-retry').addEventListener('click', () => requestSave());
     root.querySelector('#settings-mobile-category').addEventListener('change', event => navigate(event.target.value));
@@ -217,7 +217,7 @@ export function showSettingsSaveStatus(form, state) {
     const status = form?.querySelector('#settings-save-status');
     if (!status) return;
     status.dataset.state = state;
-    status.textContent = ({ saving: '保存しています…', saved: '保存しました', error: '保存できませんでした。再試行してください。' })[state];
+    status.textContent = ({ saving: t('settings.client.saving'), saved: t('group.saved_status'), error: t('usage.save_failed_retry') })[state];
     form.querySelector('#settings-save-retry').hidden = state !== 'error';
 }
 
@@ -234,7 +234,7 @@ export function bindSettingsNetworkUsage(root) {
         root.querySelector('[data-usage="today"]').textContent = format(total(today));
         root.querySelector('[data-usage="month"]').textContent = format(total(month));
         for (const key of ['httpReceived', 'httpSent', 'realtimeReceived', 'realtimeSent']) root.querySelector(`[data-usage="${key}"]`).textContent = format(month[key]);
-        root.querySelector('[data-usage="coverage"]').textContent = `今月：キャッシュ利用 ${month.cached} 件、サイズを取得できなかった通信 ${month.unmeasured} 件`;
+        root.querySelector('[data-usage="coverage"]').textContent = t('usage.coverage', { cached: month.cached, unmeasured: month.unmeasured });
     };
     root.querySelector('#settings-reset-network-usage').addEventListener('click', resetNetworkUsage);
     return subscribeNetworkUsage(update);

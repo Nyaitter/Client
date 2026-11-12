@@ -1,3 +1,4 @@
+import { t } from '../../modules/i18n.js';
 import { api } from '../../api.js';
 
 const STATUS_TABS = [
@@ -20,7 +21,7 @@ export function bindSettingsStatus(root, context) {
     if (!group) return () => {};
     group.innerHTML = `
         <div class="settings-status-tabs-container">
-            <div class="settings-status-tabs nui-tabs" role="tablist" aria-label="ステータスの種類" data-nui="tabs">
+            <div class="settings-status-tabs nui-tabs" role="tablist" aria-label="${t('status.tabs_label')}" data-nui="tabs">
                 ${STATUS_TABS.map(([key, label], index) => `
                     <button type="button" class="settings-status-tab nui-tab" role="tab" id="settings-status-tab-${key}" aria-controls="settings-status-panel-${key}" aria-selected="${index === 0}" tabindex="${index === 0 ? 0 : -1}">${label}</button>
                 `).join('')}
@@ -66,7 +67,7 @@ export function bindSettingsStatus(root, context) {
     const renderDetails = (detail, status, key) => {
         const selectedLabel = document.createElement('p');
         selectedLabel.className = 'settings-help-text nui-help-text';
-        selectedLabel.textContent = '選択中のランク';
+        selectedLabel.textContent = t('status.selected_rank');
         const rank = document.createElement('h4');
         rank.className = 'settings-status-rank';
         rank.style.color = rankColor(key, status);
@@ -79,10 +80,10 @@ export function bindSettingsStatus(root, context) {
         section.className = 'settings-status-details';
         const heading = document.createElement('h5');
         heading.id = `settings-status-details-heading-${key}`;
-        heading.textContent = '状況';
+        heading.textContent = t('status.situation');
         const list = document.createElement('ul');
         const items = [...(status.benefits || []), ...(status.restrictions || [])];
-        for (const text of items.length ? items : ['なし']) {
+        for (const text of items.length ? items : [t('status.none')]) {
             const item = document.createElement('li');
             item.textContent = text;
             list.append(item);
@@ -101,13 +102,13 @@ export function bindSettingsStatus(root, context) {
         const current = document.createElement('p');
         current.className = 'settings-status-current';
         current.id = `settings-status-current-${key}`;
-        current.textContent = `現在のランク: ${status.label}`;
+        current.textContent = t('status.current_rank', { label: status.label });
         const layout = document.createElement('div');
         layout.className = 'settings-status-layout';
         const rankList = document.createElement('div');
         rankList.className = 'settings-status-list nui-card';
         const heading = document.createElement('h4');
-        heading.textContent = 'ランク一覧';
+        heading.textContent = t('status.rank_list');
         const list = document.createElement('ul');
         list.className = 'settings-status-ranks';
         rankList.append(heading, list);
@@ -115,7 +116,7 @@ export function bindSettingsStatus(root, context) {
         detail.id = `settings-status-detail-${key}`;
         detail.className = 'settings-status-card nui-card';
         detail.setAttribute('role', 'region');
-        detail.setAttribute('aria-label', '選択中のランクの詳細');
+        detail.setAttribute('aria-label', t('status.selected_detail_label'));
         detail.setAttribute('aria-live', 'polite');
         const ranks = Array.isArray(status.ranks) && status.ranks.length ? status.ranks : [status];
         const buttons = [];
@@ -147,7 +148,7 @@ export function bindSettingsStatus(root, context) {
             if (isCurrent) {
                 const badge = document.createElement('span');
                 badge.className = 'settings-status-current-badge';
-                badge.textContent = '現在';
+                badge.textContent = t('status.current_badge');
                 button.append(badge);
             }
             button.addEventListener('click', () => {
@@ -174,7 +175,7 @@ export function bindSettingsStatus(root, context) {
         pending = true;
         group.setAttribute('aria-busy', 'true');
         message.hidden = false;
-        message.textContent = 'ステータスを読み込み中…';
+        message.textContent = t('status.loading');
         try {
             const { data, error } = await api.users.status({ signal: controller.signal });
             if (controller.signal.aborted || !group.isConnected) return;
@@ -198,7 +199,7 @@ export function bindSettingsStatus(root, context) {
         } catch (error) {
             if (controller.signal.aborted || !group.isConnected) return;
             console.error('[settings/status] ステータスの表示に失敗しました', error);
-            message.textContent = 'ステータスを取得できませんでした。';
+            message.textContent = t('status.load_failed');
         } finally {
             pending = false;
             group.setAttribute('aria-busy', 'false');
