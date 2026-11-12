@@ -172,38 +172,51 @@ async function switchToVersion(entry) {
                 row.style.setProperty('--version-progress', '0%');
             }
             const ref = entry.tag ? `${entry.id}-${entry.tag}` : entry.id;
+            const PHASE_COUNT = 3;
+            let phaseIndex = 0;
+            const setOverallProgress = (fraction) => {
+                if (!row) return;
+                const clamped = Math.min(1, Math.max(0, fraction || 0));
+                const percent = Math.min(100, Math.round(((phaseIndex + clamped) / PHASE_COUNT) * 100));
+                row.style.setProperty('--version-progress', `${percent}%`);
+            };
             let lastSizeLabel = '';
             const version = await page.fetchVersion(ref, {
                 onProgress: (progress) => {
-                    if (!row) return;
                     if (progress.phase === 'unpack') {
+                        phaseIndex = 1;
                         setStatus('展開しています…');
-                        if (progress.total) {
-                            const percent = Math.min(100, Math.round((progress.fetched / progress.total) * 100));
-                            row.style.setProperty('--version-progress', `${percent}%`);
-                        }
+                        setOverallProgress(progress.total ? progress.fetched / progress.total : 0);
                         return;
                     }
+                    phaseIndex = 0;
                     if (progress.bytesTotal) {
-                        setStatus('ダウンロードしています…');
-                        const percent = Math.min(100, Math.round((progress.bytes / progress.bytesTotal) * 100));
-                        row.style.setProperty('--version-progress', `${percent}%`);
+                        const label = `${(progress.bytes / 1048576).toFixed(1)} MB / ${(progress.bytesTotal / 1048576).toFixed(1)} MB`;
+                        if (label !== lastSizeLabel) {
+                            lastSizeLabel = label;
+                            setStatus(`ダウンロードしています… ${label}`);
+                        }
+                        setOverallProgress(progress.bytes / progress.bytesTotal);
                     } else if (progress.bytes) {
-                        const sizeLabel = `${(progress.bytes / 1048576).toFixed(1)} MB`;
-                        if (sizeLabel !== lastSizeLabel) {
-                            lastSizeLabel = sizeLabel;
-                            setStatus(`ダウンロードしています… ${sizeLabel}`);
+                        const label = `${(progress.bytes / 1048576).toFixed(1)} MB`;
+                        if (label !== lastSizeLabel) {
+                            lastSizeLabel = label;
+                            setStatus(`ダウンロードしています… ${label}`);
                         }
                     } else if (progress.total) {
                         setStatus('ダウンロードしています…');
-                        const percent = Math.min(100, Math.round(((progress.fetched + progress.cached) / progress.total) * 100));
-                        row.style.setProperty('--version-progress', `${percent}%`);
+                        setOverallProgress((progress.fetched + progress.cached) / progress.total);
                     }
                 },
             });
-            if (row) row.style.setProperty('--version-progress', '100%');
+            phaseIndex = 2;
             setStatus('保存しています…');
-            await page.store(version);
+            await page.store(version, {
+                onProgress: ({ done, total }) => {
+                    if (total) setOverallProgress(done / total);
+                },
+            });
+            if (row) row.style.setProperty('--version-progress', '100%');
             await page.activate(version.versionId);
             setStatus('切り替えました。再読み込みします…');
         }
