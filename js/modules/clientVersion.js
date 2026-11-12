@@ -146,7 +146,7 @@ async function switchToVersion(entry) {
             const ref = entry.tag ? `${entry.id}-${entry.tag}` : entry.id;
             const version = await page.fetchVersion(ref);
             await page.store(version);
-            await page.activate(version.id);
+            await page.activate(version.versionId);
             setStatus('切り替えました。再読み込みします…');
         }
         window.setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
