@@ -15,6 +15,10 @@
     {
       "name": "nyaitter/nyaitterime",
       "version": "b6e45bdfc06d0f647044da4a2b35ac994a8ac68e9202a99a022da414cf885e67"
+    },
+    {
+      "name": "nyaitter/nap",
+      "version": "17b5b5767955f58f4b6dfe8c3b29d3defc5878aaa03e22b3d1b031b831b57237"
     }
   ]
 }
