@@ -9,6 +9,39 @@
     // ページの配信ベース (このスクリプト自身の位置) を基準に相対解決する。
     const pageBaseUrl = new URL('.', document.currentScript?.src || document.baseURI).href;
 
+    // アプリのスタイルシート。index.html には含めず、起動時にここから読み込む。
+    // 版のキャッシュが有効なときは Service Worker がその版のものを返す。
+    const APP_STYLESHEETS = [
+        'css/variables.css',
+        'css/base.css',
+        'css/layout.css',
+        'css/components.css',
+        'css/timeline.css',
+        'css/markdown.css',
+        'css/dm.css',
+        'css/notifications.css',
+        'css/profile.css',
+        'css/search.css',
+        'css/groups.css',
+        'css/calls.css',
+        'css/callView.css',
+        'css/callTabHost.css',
+        'css/call.css',
+        'css/settings.css',
+        'css/auth.css',
+        'css/docs.css',
+        'css/responsive.css',
+        'css/scale.css',
+        'css/header.css',
+        'css/rankAvatar.css',
+        'css/communityNotes.css',
+    ];
+
+    const SERVER_VERSION_KEY = 'nyaitter-client-server';
+    const BOOT_FAILURE_KEY = 'nyaitter-client-bootstrap-failed';
+    const BOOT_FAILURE_COOLDOWN_MS = 60 * 60 * 1000;
+    const SW_READY_TIMEOUT_MS = 10000;
+
     function getNyaitterJsUrl() {
         return new URL('nap_modules/nyaitter/nyaitter.js/dist/nyaitter.js', pageBaseUrl).href;
     }
@@ -67,18 +100,168 @@
             });
     }
 
-    config.ready
-        .then(() => loadScript(getNyaitterJsUrl()))
-        .then(() => {
-            const endpoint = new URL(config.apiEndpoint, window.location.href);
-            const client = new globalThis.Nyaitter.NyaitterClient({
-                baseUrl: `${endpoint.origin}${endpoint.pathname.replace(/\/+$/, '')}`,
+    function loadAppStylesheets() {
+        for (const path of APP_STYLESHEETS) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = new URL(path, pageBaseUrl).href;
+            document.head.appendChild(link);
+        }
+    }
+
+    function setBootStatus(text) {
+        const element = document.getElementById('boot-status');
+        if (element) element.textContent = text || '';
+    }
+
+    function setBootProgress(fraction) {
+        const wrap = document.getElementById('boot-progress');
+        const bar = document.getElementById('boot-progress-bar');
+        if (!wrap || !bar) return;
+        if (fraction == null) {
+            wrap.hidden = true;
+            return;
+        }
+        wrap.hidden = false;
+        const clamped = Math.min(1, Math.max(0, fraction || 0));
+        bar.style.width = `${Math.round(clamped * 100)}%`;
+    }
+
+    function storageGet(key) {
+        try {
+            return window.localStorage.getItem(key);
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function storageSet(key, value) {
+        try {
+            window.localStorage.setItem(key, value);
+        } catch (_) {}
+    }
+
+    // 再読み込み後のナビゲーションを Service Worker が受け持てるよう、先に登録して有効化を待つ。
+    function registerShellServiceWorker() {
+        if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+        let pending;
+        try {
+            pending = navigator.serviceWorker.register(new URL('sw.js', pageBaseUrl).href, { scope: pageBaseUrl });
+        } catch (_) {
+            return Promise.resolve(null);
+        }
+        return pending.then((registration) => {
+            if (!registration || registration.active) return registration;
+            const worker = registration.installing || registration.waiting;
+            if (!worker) return registration;
+            return new Promise((resolve) => {
+                const timer = setTimeout(() => resolve(registration), SW_READY_TIMEOUT_MS);
+                worker.addEventListener('statechange', () => {
+                    if (worker.state === 'activated') {
+                        clearTimeout(timer);
+                        resolve(registration);
+                    }
+                });
             });
-            globalThis.NyaitterClientInstance = client;
+        }).catch(() => null);
+    }
+
+    // 起動できる版がキャッシュにあるかを確認し、無ければ最新の正式版を取得して格納する。
+    // 'fetched' のときは格納した版で読み直す。'server' のときはサーバー配信のファイルで起動する。
+    async function ensureStoredVersion() {
+        const source = String(config.clientNap || '').trim();
+        if (!source) return 'server';
+        if (storageGet(SERVER_VERSION_KEY) === '1') return 'server';
+        if (typeof caches === 'undefined') return 'server';
+        let page;
+        try {
+            const mod = await import(new URL('nap_modules/nyaitter/nap/client/nap-page.js', pageBaseUrl).href);
+            page = mod.createNapPage({ source });
+        } catch (_) {
+            return 'server';
+        }
+        try {
+            const stored = await page.storedVersions();
+            if (stored.length) return 'ready';
+        } catch (_) {
+            return 'server';
+        }
+        const failedAt = Number(storageGet(BOOT_FAILURE_KEY) || 0);
+        if (failedAt && Date.now() - failedAt < BOOT_FAILURE_COOLDOWN_MS) return 'server';
+        await registerShellServiceWorker();
+        const PHASE_COUNT = 3;
+        let phaseIndex = 0;
+        let lastSizeLabel = '';
+        const setOverall = (fraction) => {
+            const clamped = Math.min(1, Math.max(0, fraction || 0));
+            setBootProgress((phaseIndex + clamped) / PHASE_COUNT);
+        };
+        try {
+            setBootStatus(lt('settings.client.downloading'));
+            setBootProgress(0);
+            const result = await page.fetchLatest({
+                onProgress: (progress) => {
+                    if (progress.phase === 'unpack') {
+                        phaseIndex = 1;
+                        setBootStatus(lt('settings.client.unpacking'));
+                        setOverall(progress.total ? progress.fetched / progress.total : 0);
+                        return;
+                    }
+                    phaseIndex = 0;
+                    if (progress.bytesTotal) {
+                        const label = `${(progress.bytes / 1048576).toFixed(1)} MB / ${(progress.bytesTotal / 1048576).toFixed(1)} MB`;
+                        if (label !== lastSizeLabel) {
+                            lastSizeLabel = label;
+                            setBootStatus(lt('settings.client.downloading_size', { size: label }));
+                        }
+                        setOverall(progress.bytes / progress.bytesTotal);
+                    } else if (progress.total) {
+                        setOverall((progress.fetched + progress.cached) / progress.total);
+                    }
+                },
+            });
+            phaseIndex = 2;
+            setBootStatus(lt('settings.client.saving'));
+            await page.store(result, {
+                onProgress: ({ done, total }) => {
+                    if (total) setOverall(done / total);
+                },
+            });
+            await page.activate(result.versionId);
+            setBootProgress(1);
+            return 'fetched';
+        } catch (_) {
+            storageSet(BOOT_FAILURE_KEY, String(Date.now()));
+            setBootStatus('');
+            setBootProgress(null);
+            return 'server';
+        }
+    }
+
+    function startApp() {
+        loadAppStylesheets();
+        return loadScript(getNyaitterJsUrl())
+            .then(() => {
+                const endpoint = new URL(config.apiEndpoint, window.location.href);
+                const client = new globalThis.Nyaitter.NyaitterClient({
+                    baseUrl: `${endpoint.origin}${endpoint.pathname.replace(/\/+$/, '')}`,
+                });
+                globalThis.NyaitterClientInstance = client;
+            })
+            .then(() => loadNyaitterUi())
+            .then(() => loadScript('./login.js'))
+            .then(() => import('./js/main.js'));
+    }
+
+    config.ready
+        .then(() => ensureStoredVersion())
+        .then((mode) => {
+            if (mode === 'fetched') {
+                window.location.reload();
+                return new Promise(() => {});
+            }
+            return startApp();
         })
-        .then(() => loadNyaitterUi())
-        .then(() => loadScript('./login.js'))
-        .then(() => import('./js/main.js'))
         .catch((error) => {
             window.dispatchEvent(new CustomEvent('nyaitter-bootstrap-error', { detail: error }));
         });

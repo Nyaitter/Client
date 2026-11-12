@@ -75,6 +75,20 @@ async function clearNapVersionCaches() {
     } catch (_) {}
 }
 
+const SERVER_VERSION_KEY = 'nyaitter-client-server';
+
+function markServerVersion() {
+    try {
+        window.localStorage.setItem(SERVER_VERSION_KEY, '1');
+    } catch (_) {}
+}
+
+function unmarkServerVersion() {
+    try {
+        window.localStorage.removeItem(SERVER_VERSION_KEY);
+    } catch (_) {}
+}
+
 function setStatus(text) {
     const element = document.getElementById('settings-client-status');
     if (element) element.textContent = text || '';
@@ -163,10 +177,12 @@ async function switchToVersion(entry) {
     }
     try {
         if (!entry) {
+            markServerVersion();
             await clearNapVersionCaches();
             await askServiceWorker({ type: 'nyaitter:client-update' }, UPDATE_TIMEOUT_MS);
             setStatus(t('settings.client.switched_to_server'));
         } else {
+            unmarkServerVersion();
             setStatus(t('settings.client.downloading'));
             if (row) {
                 row.classList.add('settings-client-version-row--downloading');
