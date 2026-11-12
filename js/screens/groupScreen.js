@@ -1,0 +1,1381 @@
+import { apiRequest } from '../api.js';
+import { ICONS } from '../icons.js';
+import { getCurrentUser } from '../state.js';
+import { loadPostsWithPagination } from '../modules/pagination.js';
+import { uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
+import { initTabGroup } from '../modules/tabSwipe.js';
+
+let groupPostsTabGroupController = null;
+let groupManageTabGroupController = null;
+import { createUserInvitePicker } from '../modules/userInvite.js';
+import { escapeHTML, getNyaitterId, getSafeConfiguredFileUrl, getUserIconUrl, showAppAlert, showAppConfirm, showLoading } from '../utils/helpers.js';
+import { rankAvatarAttributes } from '../modules/rankAvatarIntegration.js';
+import { showScreenCompat } from '../screenManager.js';
+import { copyEntityUrl } from '../modules/share.js';
+
+const VISIBILITY_LABELS = {
+    open: '公開',
+    open_invite: '承認制',
+    private: '限定公開',
+    invite: '招待制',
+};
+
+const PERMISSION_CONFIG = [
+    {
+        id: 'admin',
+        label: 'すべての操作',
+        badge: '全権限',
+        description: '設定・メンバー・ロールを含むすべての操作ができます。',
+    },
+    {
+        id: 'profile',
+        label: '基本情報の編集',
+        description: '名前・説明・画像・公開範囲を変更できます。',
+    },
+    {
+        id: 'invite',
+        label: '招待と申請',
+        description: 'メンバーの招待と参加申請の対応ができます。',
+    },
+    {
+        id: 'ban',
+        label: 'メンバーの禁止',
+        description: 'メンバーを外し、参加を禁止できます。',
+    },
+    {
+        id: 'post',
+        label: '投稿',
+        description: 'グループに投稿できます。',
+    },
+    {
+        id: 'announce',
+        label: 'アナウンス',
+        description: 'メンバー全員へのお知らせを投稿できます。',
+    },
+    {
+        id: 'delete',
+        label: '投稿の削除',
+        description: 'グループ内の投稿を削除できます。',
+    },
+];
+
+function groupsContent() {
+    return document.getElementById('groups-content');
+}
+
+function groupPath(groupId, suffix = '') {
+    return `/server/api/groups/${encodeURIComponent(groupId)}${suffix}`;
+}
+
+async function request(path, options = {}) {
+    const { data, error } = await apiRequest(path, options);
+    if (error) throw error;
+    return data || {};
+}
+
+function getRole(group) {
+    const roleId = group?.membership?.role_id;
+    return Array.isArray(group?.roles)
+        ? group.roles.find((role) => String(role.id) === String(roleId)) || null
+        : null;
+}
+
+function hasGroupPermission(group, permission) {
+    const userId = Number(getCurrentUser()?.id);
+    if (Number(group?.owner_id) === userId) return true;
+    const permissions = getRole(group)?.permissions || [];
+    return permissions.includes('admin') || permissions.includes(permission);
+}
+
+function isGroupAdmin(group) {
+    return hasGroupPermission(group, 'admin');
+}
+
+function isGroupOwner(group) {
+    return Number(group?.owner_id) === Number(getCurrentUser()?.id);
+}
+
+function visibilityOptions(selected = 'open') {
+    return Object.entries(VISIBILITY_LABELS)
+        .map(([value, label]) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`)
+        .join('');
+}
+
+function getGroupImageUrl(value) {
+    const image = typeof value === 'string' ? value.trim() : '';
+    if (!image) return '';
+    if (/^data:image\/(?:jpeg|png|gif|webp);base64,[a-z0-9+/]+=*$/i.test(image)) return image;
+    if (/^https?:\/\/[^\s"'<>]+$/i.test(image)) return getSafeConfiguredFileUrl(image);
+    const configuredUrl = globalThis.NyaitterClientConfig?.userFileUrl?.(image);
+    const safeConfiguredUrl = getSafeConfiguredFileUrl(configuredUrl);
+    if (safeConfiguredUrl) return safeConfiguredUrl;
+    return /^attachments\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(image) && !image.includes('..') ? image : '';
+}
+
+function groupAvatar(group, className = 'nui-avatar') {
+    const imageUrl = getGroupImageUrl(group?.icon_data);
+    if (imageUrl) {
+        return `<img class="${className}" src="${escapeHTML(imageUrl)}" alt="">`;
+    }
+    return `<div class="${className}" aria-hidden="true">${ICONS.group}</div>`;
+}
+
+function groupHeader(group) {
+    const imageUrl = getGroupImageUrl(group?.header_image);
+    if (!imageUrl) return '';
+    return `<div class="nui-cover"><img src="${escapeHTML(imageUrl)}" alt=""></div>`;
+}
+
+function groupMeta(group) {
+    const visibility = VISIBILITY_LABELS[group?.visibility] || '公開';
+    return `${visibility} ・ メンバー${Number(group?.member_count || 0)}人`;
+}
+
+function renderGroupCard(group, { joined = false } = {}) {
+    const groupId = escapeHTML(String(group.id));
+    const name = escapeHTML(group.name || '無題のグループ');
+    const description = escapeHTML(group.description || '説明はありません。');
+    return `<article class="nui-list-item" data-nui="list-item">
+        <a class="nui-list-link" href="#group/${groupId}">
+            ${groupAvatar(group)}
+            <div class="nui-list-copy">
+                <span class="nui-list-title">${name}${joined ? '<span class="nui-badge nui-badge-accent">参加中</span>' : ''}</span>
+                <p class="nui-list-meta">${groupMeta(group)}<br>${description}</p>
+            </div>
+        </a>
+    </article>`;
+}
+
+function showScreen(showScreenFn) {
+    showScreenCompat('groups-screen', showScreenFn);
+}
+
+function renderGroupSection(title, content, description = '', options = {}) {
+    const feature = options.feature ? ` data-nui-feature="${escapeHTML(options.feature)}"` : '';
+    return `<section class="nui-section" data-nui="section"${feature}>
+        <div class="nui-section-heading">
+            <div><h4 class="nui-section-title">${escapeHTML(title)}</h4>${description ? `<p class="nui-help-text">${escapeHTML(description)}</p>` : ''}</div>
+        </div>
+        ${content}
+    </section>`;
+}
+
+function imageDataUrlToFile(dataUrl) {
+    const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/i.exec(String(dataUrl || ''));
+    if (!match) throw new Error('画像の形式が正しくありません。');
+    const mimeType = match[1].toLowerCase();
+    const binary = atob(match[2]);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    const extension = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[mimeType] || 'png';
+    return new File([bytes], `group-image.${extension}`, { type: mimeType });
+}
+
+async function resizeImageToDataUrl(file, maxWidth, maxHeight) {
+    if (!file?.type?.startsWith('image/')) throw new Error('画像ファイルを選択してください。');
+    const sourceDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('画像を読み込めませんでした。'));
+        reader.readAsDataURL(file);
+    });
+    const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('画像を読み込めませんでした。'));
+        img.src = sourceDataUrl;
+    });
+    const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d')?.drawImage(image, 0, 0, width, height);
+    const outputType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? file.type : 'image/png';
+    return canvas.toDataURL(outputType);
+}
+
+function isStoredImageId(value) {
+    return typeof value === 'string' && value.trim() !== '' && !/^data:image\//i.test(value) && !/^https?:\/\//i.test(value);
+}
+
+function setModalIconPreview(container, source = '') {
+    container.innerHTML = source
+        ? `<img src="${escapeHTML(source)}" alt="アイコンのプレビュー">`
+        : `<span aria-hidden="true">${ICONS.group}</span>`;
+}
+
+function setModalHeaderPreview(container, source = '') {
+    container.innerHTML = source
+        ? `<img src="${escapeHTML(source)}" alt="ヘッダー画像のプレビュー">`
+        : '<span>ヘッダー画像を選択</span>';
+    container.classList.toggle('is-empty', !source);
+}
+
+function openGroupModal(group = null) {
+    document.getElementById('group-edit-modal')?.remove();
+
+    const editing = Boolean(group?.id);
+    let newIconDataUrl = null;
+    let newHeaderDataUrl = null;
+    let resetIcon = false;
+    let resetHeader = false;
+    const modal = document.createElement('div');
+    modal.id = 'group-edit-modal';
+    modal.className = 'modal-overlay nui-modal-backdrop group-modal-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'group-modal-title');
+    modal.innerHTML = `<div class="modal-content group-modal-content nui-modal" style="width: min(680px, calc(100vw - 2rem)); padding: 0;">
+        <button type="button" class="modal-close-btn" aria-label="閉じる">×</button>
+        <form id="group-modal-form" class="nui-form group-modal-form">
+            <header class="group-modal-heading"><h3 id="group-modal-title" class="nui-modal-title">${editing ? 'グループを編集' : 'グループを作成'}</h3><p class="nui-help-text">${editing ? '名前や公開範囲を変更できます。' : '作成後も名前や公開範囲を変更できます。'}</p></header>
+            <div class="group-modal-images">
+                <div class="group-modal-image-field">
+                    <span class="group-modal-image-label">アイコン</span>
+                    <div class="group-modal-image-actions">
+                        <button type="button" class="group-modal-icon-preview" id="group-icon-picker" title="アイコン画像を選択"></button>
+                        <input type="file" id="group-icon-input" accept="image/*" class="hidden">
+                        ${editing ? '<button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-icon">アイコンを削除</button>' : ''}
+                    </div>
+                </div>
+                <div class="group-modal-image-field group-modal-header-field">
+                    <span class="group-modal-image-label">ヘッダー画像</span>
+                    <div class="group-modal-image-actions">
+                        <button type="button" class="group-modal-header-preview" id="group-header-picker" title="ヘッダー画像を選択"></button>
+                        <input type="file" id="group-header-input" accept="image/*" class="hidden">
+                        ${editing ? '<button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-header">ヘッダー画像を削除</button>' : ''}
+                    </div>
+                </div>
+            </div>
+            <label>グループ名<input name="name" class="nui-input" maxlength="100" required value="${escapeHTML(group?.name || '')}" placeholder="グループ名"></label>
+            <label>説明<textarea name="description" class="nui-input" maxlength="2000" rows="4" placeholder="グループの目的やルール">${escapeHTML(group?.description || '')}</textarea></label>
+            <label>公開範囲<select name="visibility" class="settings-select nui-input">${visibilityOptions(group?.visibility || 'open')}</select></label>
+            <div class="settings-save-row"><button type="button" class="nui-button-secondary group-ui-secondary-button group-modal-cancel-button" data-nui="button-secondary" data-close-group-modal>キャンセル</button><button type="submit" class="nui-button settings-primary-button" data-nui="button">${editing ? '変更を保存' : '作成'}</button></div>
+        </form>
+    </div>`;
+    document.body.append(modal);
+
+    const form = modal.querySelector('#group-modal-form');
+    const iconInput = modal.querySelector('#group-icon-input');
+    const headerInput = modal.querySelector('#group-header-input');
+    const iconPreview = modal.querySelector('#group-icon-picker');
+    const headerPreview = modal.querySelector('#group-header-picker');
+    setModalIconPreview(iconPreview, getGroupImageUrl(group?.icon_data));
+    setModalHeaderPreview(headerPreview, getGroupImageUrl(group?.header_image));
+
+    const closeModal = () => {
+        document.removeEventListener('keydown', handleKeydown);
+        modal.remove();
+    };
+    const handleKeydown = (event) => {
+        if (event.key === 'Escape') closeModal();
+    };
+    document.addEventListener('keydown', handleKeydown);
+    modal.querySelector('.modal-close-btn')?.addEventListener('click', closeModal);
+    modal.querySelector('[data-close-group-modal]')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) closeModal();
+    });
+
+    iconPreview?.addEventListener('click', () => iconInput?.click());
+    headerPreview?.addEventListener('click', () => headerInput?.click());
+    iconInput?.addEventListener('change', async (event) => {
+        try {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            newIconDataUrl = await resizeImageToDataUrl(file, 300, 300);
+            resetIcon = false;
+            setModalIconPreview(iconPreview, newIconDataUrl);
+        } catch (error) {
+            showAppAlert(error.message || 'アイコン画像を選択できませんでした。');
+        }
+    });
+    headerInput?.addEventListener('change', async (event) => {
+        try {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            newHeaderDataUrl = await resizeImageToDataUrl(file, 1500, 600);
+            resetHeader = false;
+            setModalHeaderPreview(headerPreview, newHeaderDataUrl);
+        } catch (error) {
+            showAppAlert(error.message || 'ヘッダー画像を選択できませんでした。');
+        }
+    });
+    modal.querySelector('#reset-group-icon')?.addEventListener('click', () => {
+        resetIcon = true;
+        newIconDataUrl = null;
+        if (iconInput) iconInput.value = '';
+        setModalIconPreview(iconPreview);
+    });
+    modal.querySelector('#reset-group-header')?.addEventListener('click', () => {
+        resetHeader = true;
+        newHeaderDataUrl = null;
+        if (headerInput) headerInput.value = '';
+        setModalHeaderPreview(headerPreview);
+    });
+
+    form?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        const values = new FormData(form);
+        const body = {
+            name: values.get('name'),
+            description: values.get('description'),
+            visibility: values.get('visibility'),
+        };
+        const uploadedFileIds = [];
+        const previousFileIds = new Set();
+        try {
+            showLoading(true);
+            if (resetIcon) {
+                body.icon_data = null;
+            } else if (newIconDataUrl) {
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newIconDataUrl), {
+                    replaceId: editing && isStoredImageId(group?.icon_data) ? group.icon_data : null,
+                });
+                if (!editing || !isStoredImageId(group?.icon_data)) uploadedFileIds.push(fileId);
+                body.icon_data = fileId;
+            }
+            if (resetHeader) {
+                body.header_image = null;
+            } else if (newHeaderDataUrl) {
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newHeaderDataUrl), {
+                    replaceId: editing && isStoredImageId(group?.header_image) ? group.header_image : null,
+                });
+                if (!editing || !isStoredImageId(group?.header_image)) uploadedFileIds.push(fileId);
+                body.header_image = fileId;
+            }
+            if (resetIcon && isStoredImageId(group?.icon_data)) previousFileIds.add(group.icon_data);
+            if (resetHeader && isStoredImageId(group?.header_image)) previousFileIds.add(group.header_image);
+
+            const data = await request(editing ? groupPath(group.id) : '/server/api/groups', {
+                method: editing ? 'PATCH' : 'POST',
+                body,
+            });
+            const savedGroup = data.group;
+            closeModal();
+            if (previousFileIds.size > 0) {
+                void deleteFilesViaEdgeFunction([...previousFileIds]).catch((error) => {
+                    console.warn('グループの古い画像を削除できませんでした。', error);
+                });
+            }
+            if (!savedGroup?.id) throw new Error('更新後のグループを取得できませんでした。');
+            if (editing) {
+                await showGroupDetailScreen(savedGroup.id, 'manage');
+            } else {
+                window.location.hash = `#group/${savedGroup.id}`;
+            }
+        } catch (error) {
+            if (uploadedFileIds.length > 0) {
+                await deleteFilesViaEdgeFunction(uploadedFileIds).catch(() => {});
+            }
+            showAppAlert(error.message || (editing ? 'グループを更新できませんでした。' : 'グループを作成できませんでした。'));
+        } finally {
+            showLoading(false);
+        }
+    });
+
+    requestAnimationFrame(() => form?.querySelector('[name="name"]')?.focus());
+}
+
+export async function showGroupsScreen(showScreenFn = null) {
+    if (!getCurrentUser()) {
+        window.location.hash = '#';
+        return;
+    }
+    document.getElementById('page-header').innerHTML = '<h2 id="page-title">グループ</h2>';
+    showScreen(showScreenFn);
+    const content = groupsContent();
+    if (!content) return;
+    content.innerHTML = '<div class="group-screen-loading"><div class="spinner"></div></div>';
+    try {
+        const [mineData, publicData, inviteData] = await Promise.all([
+            request('/server/api/groups/mine?limit=200'),
+            request('/server/api/groups?limit=100'),
+            request('/server/api/groups/invites/mine'),
+        ]);
+        const joinedGroups = Array.isArray(mineData.groups) ? mineData.groups : [];
+        const publicGroups = Array.isArray(publicData.groups) ? publicData.groups : [];
+        const invites = Array.isArray(inviteData.invites) ? inviteData.invites : [];
+        const joinedIds = new Set(joinedGroups.map((group) => String(group.id)));
+        content.innerHTML = `<main class="nui-page group-ui-page" data-nui="page">
+            <header class="nui-page-heading settings-detail-heading group-ui-page-heading" data-nui="page-heading">
+                <div><h3>グループ</h3><p class="nui-help-text settings-group-description">同じ話題で投稿できる場所です。</p></div>
+                <button type="button" class="nui-button settings-primary-button" data-nui="button" id="open-create-group" data-nui-feature="groupCreate">グループを作成</button>
+            </header>
+            ${invites.length ? renderGroupSection('グループ招待', `<div class="nui-list">${invites.map((invite) => `<article class="nui-list-item nui-row" data-nui="list-item"><div class="nui-list-copy"><span class="nui-list-title">${escapeHTML(invite.group?.name || 'グループ')}</span><p class="nui-list-meta">招待が届いています。</p></div><div class="nui-actions"><button type="button" class="nui-button settings-primary-button" data-nui="button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="accept">参加</button><button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="decline">拒否</button></div></article>`).join('')}</div>`, '', { feature: 'groupInvites' }) : ''}
+            ${renderGroupSection('参加中のグループ', joinedGroups.length ? `<div class="nui-list">${joinedGroups.map((group) => renderGroupCard(group, { joined: true })).join('')}</div>` : '<p class="nui-empty-text">参加中のグループはありません。</p>')}
+            ${renderGroupSection('公開グループ', publicGroups.length ? `<div class="nui-list">${publicGroups.map((group) => renderGroupCard(group, { joined: joinedIds.has(String(group.id)) })).join('')}</div>` : '<p class="nui-empty-text">公開グループはまだありません。</p>', '', { feature: 'groupDiscovery' })}
+        </main>`;
+        bindGroupsIndexEvents();
+    } catch (error) {
+        content.innerHTML = `<p class="nui-empty-text">グループの読み込みに失敗しました。${escapeHTML(error.message || '')}</p>`;
+    } finally {
+        showLoading(false);
+    }
+}
+
+function bindGroupsIndexEvents() {
+    document.getElementById('open-create-group')?.addEventListener('click', () => openGroupModal());
+    document.querySelectorAll('[data-group-invite]').forEach((button) => button.addEventListener('click', async () => {
+        try {
+            showLoading(true);
+            await request(`/server/api/groups/invites/${encodeURIComponent(button.dataset.groupInvite)}/respond`, { method: 'POST', body: { decision: button.dataset.decision } });
+            await showGroupsScreen();
+        } catch (error) {
+            showAppAlert(error.message || '招待を処理できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    }));
+}
+
+export async function showGroupDetailScreen(groupId, section = 'overview', showScreenFn = null, initialManageTab = null) {
+    if (!getCurrentUser()) {
+        window.location.hash = '#';
+        return;
+    }
+    showScreen(showScreenFn);
+    const content = groupsContent();
+    if (!content) return;
+    content.innerHTML = '<div class="group-screen-loading"><div class="spinner"></div></div>';
+    try {
+        const data = await request(groupPath(groupId));
+        const group = data.group;
+        if (!group) throw new Error('グループが見つかりません。');
+        document.getElementById('page-header').innerHTML = `<div class="header-with-back-button"><button class="header-back-btn" type="button" id="group-back-btn">${ICONS.back}</button><h2 id="page-title">${escapeHTML(group.name || 'グループ')}</h2></div>`;
+        document.getElementById('group-back-btn')?.addEventListener('click', () => { window.location.hash = '#groups'; });
+        if (section === 'manage') await renderGroupManage(content, group, initialManageTab || 'profile');
+        else renderGroupOverview(content, group, data.join_request || null);
+    } catch (error) {
+        content.innerHTML = `<p class="nui-empty-text">グループを読み込めませんでした。${escapeHTML(error.message || '')}</p>`;
+    } finally {
+        showLoading(false);
+    }
+}
+
+function renderGroupOverview(content, group, pendingJoinRequest = null) {
+    const membership = group.membership;
+    const isActive = membership?.status === 'active';
+    const hasPendingJoinRequest = Boolean(pendingJoinRequest);
+    const isApprovalRequired = group.visibility === 'open_invite' || group.visibility === 'invite';
+    const canJoin = !membership || (membership.status === 'pending' && !isApprovalRequired);
+    const canManage = isGroupAdmin(group) || hasGroupPermission(group, 'profile') || hasGroupPermission(group, 'invite') || hasGroupPermission(group, 'ban');
+    const groupId = escapeHTML(String(group.id));
+    const joinBtnText = isApprovalRequired ? '参加申請する' : '参加する';
+    content.innerHTML = `<main class="nui-page group-ui-page" data-nui="page">
+        <section class="nui-card profile-hero" data-nui="card">
+            ${groupHeader(group)}
+            <div class="profile-hero-main">
+                ${groupAvatar(group, 'nui-avatar profile-hero-avatar')}
+                <div class="profile-hero-copy"><h3>${escapeHTML(group.name || '')}</h3><p class="nui-help-text settings-group-description">${groupMeta(group)}</p><p>${escapeHTML(group.description || '説明はありません。')}</p></div>
+                <div class="profile-hero-actions">
+                    ${canJoin && !hasPendingJoinRequest ? `<button type="button" class="nui-button settings-primary-button" data-nui="button" id="join-group-btn">${joinBtnText}</button>` : ''}
+                    ${hasPendingJoinRequest ? '<button type="button" class="nui-button settings-primary-button" data-nui="button" disabled aria-disabled="true">承認待ち</button>' : ''}
+                    ${membership?.status === 'invited' ? '<span class="nui-badge nui-badge-accent">招待に応答してください</span>' : ''}
+                    ${isActive && !isGroupOwner(group) ? '<button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="leave-group-btn">退出する</button>' : ''}
+                    ${canManage ? `<a class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" href="#group/${groupId}/manage">設定</a>` : ''}
+                    <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="share-group-btn" title="共有URLをコピー">${ICONS.share}<span>共有</span></button>
+                </div>
+            </div>
+        </section>
+        ${isActive ? `<section class="nui-section group-ui-posts"><div class="timeline-tabs-sticky-container group-ui-post-tabs"><div class="timeline-tabs nui-tabs" role="tablist" aria-label="投稿の表示"><button type="button" class="group-post-tab-button active" data-group-post-mode="all" role="tab" aria-selected="true">すべて</button><button type="button" class="group-post-tab-button" data-group-post-mode="recommended" role="tab" aria-selected="false">おすすめ</button><button type="button" class="group-post-tab-button" data-group-post-mode="announcements" role="tab" aria-selected="false">アナウンス</button></div></div><div id="group-detail-posts"></div></section>` : '<p class="nui-empty-text">投稿は参加者だけが閲覧できます。</p>'}
+    </main>`;
+    if (isActive) {
+        const postContainer = content.querySelector('#group-detail-posts');
+        const tabsEl = content.querySelector('.group-ui-post-tabs .timeline-tabs');
+        const loadGroupPosts = (mode = 'all') => {
+            if (!postContainer) return;
+            postContainer.replaceChildren();
+            void loadPostsWithPagination(postContainer, 'group_posts', { groupId: group.id, mode });
+        };
+        if (tabsEl) {
+            groupPostsTabGroupController?.destroy();
+            groupPostsTabGroupController = initTabGroup({
+                container: tabsEl,
+                tabSelector: '[data-group-post-mode]',
+                contentContainer: postContainer,
+                getTabKey: (btn) => btn.dataset.groupPostMode || 'all',
+                onTabChange: (mode) => loadGroupPosts(mode),
+            });
+        }
+        loadGroupPosts('all');
+    }
+    document.getElementById('join-group-btn')?.addEventListener('click', () => joinGroup(group));
+    document.getElementById('leave-group-btn')?.addEventListener('click', () => leaveGroup(group));
+    const shareButton = document.getElementById('share-group-btn');
+    shareButton?.addEventListener('click', () => {
+        void copyEntityUrl('group', group.id).catch(error => showAppAlert(error.message || '共有URLをコピーできませんでした。'));
+    });
+}
+
+async function joinGroup(group) {
+    try {
+        showLoading(true);
+        const data = await request(groupPath(group.id, '/join'), { method: 'POST', body: {} });
+        if (data.pending) await showAppAlert('参加申請を送信しました。');
+        await showGroupDetailScreen(group.id);
+    } catch (error) {
+        showAppAlert(error.message || '参加できませんでした。');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function leaveGroup(group) {
+    if (!await showAppConfirm('このグループから退出しますか？')) return;
+    try {
+        showLoading(true);
+        await request(groupPath(group.id, '/leave'), { method: 'POST', body: {} });
+        await showGroupDetailScreen(group.id);
+    } catch (error) {
+        showAppAlert(error.message || '退出できませんでした。');
+    } finally {
+        showLoading(false);
+    }
+}
+
+const VISIBILITY_CONFIG = [
+    {
+        id: 'open',
+        label: '公開',
+        badge: '誰でも参加できます',
+        description: 'グループ一覧と検索に表示され、誰でも参加できます。',
+    },
+    {
+        id: 'open_invite',
+        label: '承認制',
+        badge: '承認が必要です',
+        description: 'グループ一覧と検索に表示され、参加には承認が必要です。',
+    },
+    {
+        id: 'private',
+        label: '限定公開',
+        badge: 'リンクから参加できます',
+        description: '一覧と検索には表示されません。リンクを知っている人は参加できます。',
+    },
+    {
+        id: 'invite',
+        label: '招待制',
+        badge: '招待された人だけ',
+        description: '一覧と検索には表示されず、招待された人だけが参加できます。',
+    },
+];
+
+function renderVisibilityCards(currentVisibility = 'open') {
+    return `<div class="group-visibility-grid" role="radiogroup" aria-label="公開範囲">
+        ${VISIBILITY_CONFIG.map((vis) => {
+            const isSelected = vis.id === currentVisibility;
+            return `<label class="group-visibility-card ${isSelected ? 'is-selected' : ''}" data-visibility-card="${vis.id}">
+                <input type="radio" name="visibility" value="${vis.id}" ${isSelected ? 'checked' : ''}>
+                <div class="group-visibility-card-header">
+                    <span>${escapeHTML(vis.label)}</span>
+                    <span class="group-visibility-card-badge">${escapeHTML(vis.badge)}</span>
+                </div>
+                <p class="group-visibility-card-desc">${escapeHTML(vis.description)}</p>
+            </label>`;
+        }).join('')}
+    </div>`;
+}
+
+function renderGroupProfileForm(group) {
+    const iconUrl = getGroupImageUrl(group?.icon_data);
+    const headerUrl = getGroupImageUrl(group?.header_image);
+    const currentVis = group?.visibility || 'open';
+    return `<form id="group-profile-form" class="nui-form group-profile-form" data-nui="form">
+        <label for="group-profile-name">グループ名</label>
+        <input id="group-profile-name" name="name" class="nui-input" maxlength="100" required value="${escapeHTML(group?.name || '')}">
+        <label for="group-profile-icon-input">アイコン</label>
+        <div class="group-profile-image-actions">
+            <button type="button" class="group-profile-icon-preview" id="group-profile-icon-picker" title="クリックして画像を選択">${iconUrl ? `<img src="${escapeHTML(iconUrl)}" alt="アイコンのプレビュー">` : `<span aria-hidden="true">${ICONS.group}</span>`}</button>
+            <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-profile-icon">アイコンを削除</button>
+        </div>
+        <input type="file" id="group-profile-icon-input" accept="image/*" class="hidden">
+        <label for="group-profile-header-input">ヘッダー画像</label>
+        <div class="group-profile-image-actions group-profile-header-actions">
+            <button type="button" class="group-profile-header-preview ${headerUrl ? '' : 'is-empty'}" id="group-profile-header-picker" title="クリックして画像を選択">${headerUrl ? `<img src="${escapeHTML(headerUrl)}" alt="ヘッダー画像のプレビュー">` : '<span>ヘッダー画像を選択</span>'}</button>
+            <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-profile-header">ヘッダー画像を削除</button>
+        </div>
+        <input type="file" id="group-profile-header-input" accept="image/*" class="hidden">
+        <label for="group-profile-description">説明</label>
+        <textarea id="group-profile-description" name="description" class="nui-input" maxlength="2000" rows="4" placeholder="グループの目的やルール">${escapeHTML(group?.description || '')}</textarea>
+        <label>公開範囲</label>
+        ${renderVisibilityCards(currentVis)}
+        <p class="nui-help-text group-profile-save-status" id="group-profile-save-status" role="status" aria-live="polite">変更は自動で保存されます。</p>
+    </form>`;
+}
+
+const DEFAULT_ROLE_SORT_ORDERS = { owner: 0, admin: 1, member: 2 };
+const DEFAULT_ROLE_LABELS = { owner: 'オーナー', admin: '管理者', member: 'メンバー' };
+
+function getDefaultRoleType(role) {
+    if (!Boolean(role?.is_system ?? role?.isSystem)) return null;
+    const sortOrder = Number(role?.sort_order ?? role?.sortOrder);
+    return Object.entries(DEFAULT_ROLE_SORT_ORDERS).find(([, value]) => value === sortOrder)?.[0]
+        || Object.keys(DEFAULT_ROLE_SORT_ORDERS).find((type) => role?.name === type)
+        || 'system';
+}
+
+function renderRolePermissionCards(role = null) {
+    const assignedPermissions = new Set(Array.isArray(role?.permissions) ? role.permissions : []);
+    const checkIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3.5 8.5 6.5 11.5 12.5 4.5"></polyline></svg>`;
+    return PERMISSION_CONFIG.map((perm) => {
+        const isChecked = assignedPermissions.has(perm.id);
+        return `<label class="group-role-perm-tile ${isChecked ? 'is-checked' : ''}">
+            <input type="checkbox" name="permissions" value="${escapeHTML(perm.id)}" ${isChecked ? 'checked' : ''} class="group-role-perm-checkbox">
+            <div class="group-role-perm-tile-inner">
+                <div class="group-role-perm-tile-check">${checkIcon}</div>
+                <div class="group-role-perm-tile-info">
+                    <div class="group-role-perm-tile-title">
+                        <strong>${escapeHTML(perm.label)}</strong>
+                        ${perm.badge ? `<span class="group-role-perm-badge">${escapeHTML(perm.badge)}</span>` : ''}
+                    </div>
+                    <p class="group-role-perm-tile-desc">${escapeHTML(perm.description)}</p>
+                </div>
+            </div>
+        </label>`;
+    }).join('');
+}
+
+function renderRoleChips(role, isOwner) {
+    if (isOwner) {
+        return '<span class="group-role-chip is-admin">すべての権限</span>';
+    }
+    const permissions = Array.isArray(role?.permissions) ? role.permissions : [];
+    if (permissions.includes('admin')) {
+        return '<span class="group-role-chip is-admin">すべての権限</span>';
+    }
+    if (permissions.length === 0) {
+        return '<span class="group-role-chip is-empty">権限なし</span>';
+    }
+    return permissions.map((permId) => {
+        const perm = PERMISSION_CONFIG.find((p) => p.id === permId);
+        const label = perm?.label || permId;
+        return `<span class="group-role-chip">${escapeHTML(label)}</span>`;
+    }).join('');
+}
+
+function renderRoleCard(role) {
+    const roleId = escapeHTML(String(role.id));
+    const roleType = getDefaultRoleType(role);
+    const ownerRole = roleType === 'owner';
+    const defaultRole = Boolean(roleType);
+    const roleName = escapeHTML(role.name || '無題のロール');
+    
+    let badgeHtml = '';
+    if (ownerRole) {
+        badgeHtml = '<span class="settings-session-current group-role-badge-owner">オーナー</span>';
+    } else if (roleType === 'admin') {
+        badgeHtml = '<span class="settings-session-current group-role-badge-admin">管理者（既定）</span>';
+    } else if (defaultRole) {
+        badgeHtml = '<span class="settings-session-current group-role-badge-default">メンバー（既定）</span>';
+    } else {
+        badgeHtml = '<span class="settings-session-current group-role-badge-custom">カスタム</span>';
+    }
+
+    return `<article class="group-role-card ${ownerRole ? 'is-owner-role' : ''}" id="role-card-${roleId}" data-role-id="${roleId}">
+        <div class="group-role-card-summary">
+            <div class="group-role-summary-main">
+                <div class="group-role-title-row">
+                    <h5 class="group-role-title" data-role-title="${roleId}">${roleName}</h5>
+                    ${badgeHtml}
+                </div>
+                <div class="group-role-perm-preview" data-role-preview="${roleId}">
+                    ${renderRoleChips(role, ownerRole)}
+                </div>
+            </div>
+            <div class="group-role-summary-actions">
+                ${ownerRole ? '<span class="group-role-locked-tag">編集できません</span>' : `
+                    <button type="button" class="nui-button-secondary group-ui-secondary-button group-role-edit-toggle-btn" data-nui="button-secondary" data-toggle-role="${roleId}" aria-expanded="false" aria-controls="role-editor-${roleId}">
+                        編集
+                    </button>
+                    ${defaultRole ? '' : `<button type="button" class="settings-session-revoke-button nui-button-danger group-role-delete-btn" data-delete-role="${roleId}" aria-label="ロール「${roleName}」を削除">削除</button>`}
+                `}
+            </div>
+        </div>
+        ${ownerRole ? '' : `
+        <div class="group-role-editor-pane hidden" id="role-editor-${roleId}">
+            <form class="group-role-edit-form" data-edit-group-role="${roleId}">
+                <div class="group-role-input-group">
+                    <label class="group-role-input-label" for="role-name-${roleId}">ロール名</label>
+                    <input id="role-name-${roleId}" name="name" maxlength="50" required value="${roleName}" class="group-role-name-input nui-input">
+                </div>
+                <div class="group-role-perm-section">
+                    <div class="group-role-perm-header">
+                        <span class="group-role-input-label">できる操作</span>
+                        <span class="nui-help-text">選んだ操作だけができるようになります。</span>
+                    </div>
+                    <div class="group-role-perm-grid">
+                        ${renderRolePermissionCards(role)}
+                    </div>
+                </div>
+                <div class="group-role-card-actions">
+                    <span class="group-role-save-status" id="save-status-${roleId}" role="status" aria-live="polite"></span>
+                    <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" data-cancel-role="${roleId}">閉じる</button>
+                    <button type="submit" class="nui-button settings-primary-button group-role-save-btn" data-nui="button">変更を保存</button>
+                </div>
+            </form>
+        </div>
+        `}
+    </article>`;
+}
+
+function renderRolesPanel(group) {
+    const roles = Array.isArray(group.roles) ? group.roles : [];
+    return `<div class="group-roles-container">
+        <div class="group-roles-header">
+            <div class="group-roles-header-text">
+                <p class="nui-help-text">役割ごとにできる操作を決められます。オーナーの権限は変更できません。</p>
+            </div>
+            <button type="button" class="nui-button settings-primary-button group-role-add-btn" data-nui="button" id="toggle-create-role-btn">
+                ロールを追加
+            </button>
+        </div>
+
+        <div id="group-role-create-wrapper" class="group-role-create-wrapper hidden">
+            <form id="group-role-form" class="group-role-card group-role-create-card">
+                <div class="group-role-card-header">
+                    <div class="group-role-card-title-wrap">
+                        <h5 class="group-role-card-title">ロールを作成</h5>
+                        <span class="settings-session-current group-role-badge-custom">カスタム</span>
+                    </div>
+                    <button type="button" class="modal-close-btn group-role-create-close-btn" id="cancel-create-role-btn" aria-label="閉じる">×</button>
+                </div>
+                <div class="group-role-input-group">
+                    <label for="create-role-name" class="group-role-input-label">ロール名</label>
+                    <input id="create-role-name" name="name" maxlength="50" required placeholder="例: モデレーター、広報担当" class="group-role-name-input nui-input">
+                </div>
+                <div class="group-role-perm-section">
+                    <div class="group-role-perm-header">
+                        <span class="group-role-input-label">できる操作</span>
+                        <span class="nui-help-text">必要な操作だけを選んでください。</span>
+                    </div>
+                    <div class="group-role-perm-grid">
+                        ${renderRolePermissionCards()}
+                    </div>
+                </div>
+                <div class="group-role-card-actions">
+                    <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="cancel-create-role-btn-action">キャンセル</button>
+                    <button type="submit" class="nui-button settings-primary-button" data-nui="button">ロールを作成</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="group-role-list">
+            ${roles.map((role) => renderRoleCard(role)).join('')}
+        </div>
+    </div>`;
+}
+
+function renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, canTransfer }) {
+    const tabs = [];
+    if (canProfile) tabs.push({ id: 'profile', label: '基本情報', description: '名前・説明・画像・公開範囲を変更します。' });
+    if (canMembers) tabs.push({ id: 'members', label: 'メンバー', description: 'メンバーの役割変更と参加の禁止を行います。' });
+    if (canInvite) tabs.push({ id: 'invites', label: '招待と申請', description: '招待の送信と参加申請の承認を行います。' });
+    if (canAdmin) tabs.push({ id: 'roles', label: 'ロール', description: '役割ごとにできる操作を決めます。' });
+    if (canTransfer) tabs.push({ id: 'danger', label: '危険な操作', description: 'オーナーの移譲とグループの削除を行います。' });
+    return tabs;
+}
+
+async function renderGroupManage(content, group, initialTab = 'profile') {
+    if (!isGroupAdmin(group) && !hasGroupPermission(group, 'profile') && !hasGroupPermission(group, 'invite') && !hasGroupPermission(group, 'ban')) {
+        content.innerHTML = '<p class="nui-empty-text">このグループを管理する権限がありません。</p>';
+        return;
+    }
+    const canProfile = hasGroupPermission(group, 'profile');
+    const canInvite = hasGroupPermission(group, 'invite');
+    const canBan = hasGroupPermission(group, 'ban');
+    const canAdmin = isGroupAdmin(group);
+    const canMembers = canAdmin || canBan;
+    const canTransfer = isGroupOwner(group);
+    const [memberData, requestData] = await Promise.all([
+        canMembers ? request(groupPath(group.id, '/members?status=active')) : Promise.resolve({ members: [] }),
+        canInvite ? request(groupPath(group.id, '/join-requests?status=pending')) : Promise.resolve({ join_requests: [] }),
+    ]);
+    const members = Array.isArray(memberData.members) ? memberData.members : [];
+    const roles = Array.isArray(group.roles) ? group.roles : [];
+    const joinRequests = Array.isArray(requestData.join_requests) ? requestData.join_requests : [];
+    const groupId = escapeHTML(String(group.id));
+    const tabs = renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, canTransfer });
+    const selectedTab = tabs.some((tab) => tab.id === initialTab) ? initialTab : (tabs[0]?.id || 'profile');
+    content.innerHTML = `<main class="nui-page group-ui-page group-ui-manage-page" data-nui="page">
+        <header class="nui-page-heading settings-detail-heading group-ui-page-heading" data-nui="page-heading">
+            <div class="group-ui-manage-context">
+                ${groupAvatar(group, 'nui-avatar group-ui-manage-avatar')}
+                <div class="group-ui-manage-heading-copy">
+                    <span class="group-ui-manage-eyebrow">グループ管理</span>
+                    <h3>${escapeHTML(group.name || '')} の管理</h3>
+                    <p class="nui-help-text settings-group-description">${escapeHTML(tabs.find((tab) => tab.id === selectedTab)?.description || '')}</p>
+                </div>
+            </div>
+            <a href="#group/${groupId}" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary">グループへ戻る</a>
+        </header>
+        <div class="nui-split settings-layout group-ui-manage-layout">
+            <div class="nui-nav settings-group-list group-ui-manage-nav" role="tablist" aria-label="グループ管理" data-nui="nav">
+                ${tabs.map((tab) => `<button type="button" class="nui-nav-item settings-group-button ${tab.id === selectedTab ? 'active' : ''}" id="group-manage-tab-${tab.id}" role="tab" aria-selected="${tab.id === selectedTab ? 'true' : 'false'}" aria-controls="group-manage-panel-${tab.id}" data-nui="nav-item" data-group-manage-tab="${tab.id}" data-group-manage-title="${escapeHTML(tab.label)}" data-group-manage-description="${escapeHTML(tab.description)}">${escapeHTML(tab.label)}</button>`).join('')}
+            </div>
+            <div class="group-ui-manage-detail">
+                ${canProfile ? `<section class="nui-section settings-group-panel" id="group-manage-panel-profile" role="tabpanel" aria-labelledby="group-manage-tab-profile" data-group-manage-panel="profile" ${selectedTab === 'profile' ? '' : 'hidden'}>${renderGroupSection('基本情報', renderGroupProfileForm(group))}</section>` : ''}
+                ${canMembers ? `<section class="nui-section settings-group-panel" id="group-manage-panel-members" role="tabpanel" aria-labelledby="group-manage-tab-members" data-group-manage-panel="members" ${selectedTab === 'members' ? '' : 'hidden'}>${renderGroupSection('メンバー管理', `
+                    <div class="nui-toolbar group-members-toolbar">
+                        <input type="search" class="group-members-search-input nui-input" id="group-member-search" placeholder="名前やIDで検索" aria-label="メンバーを検索" aria-controls="group-members-list">
+                        <span class="nui-help-text" id="group-member-count-label" role="status" aria-live="polite">全 ${members.length} 名</span>
+                    </div>
+                    <div class="nui-list group-members-list" id="group-members-list">${members.map((entry) => {
+                        const member = entry.membership || {};
+                        const user = entry.user || {};
+                        const owner = Number(member.user_id) === Number(group.owner_id);
+                        const memberName = escapeHTML(user.name || `ユーザー #${member.user_id}`);
+                        const handle = escapeHTML(getNyaitterId(user) || `#${member.user_id}`);
+                        const avatarUrl = getUserIconUrl(user);
+                        return `<article class="nui-list-item nui-row group-member-item" data-nui="list-item" data-member-id="${Number(member.user_id)}" data-member-search-text="${escapeHTML((user.name || '').toLowerCase())} ${String(member.user_id)}">
+                            <div class="group-member-info">
+                                <img ${rankAvatarAttributes(user)} src="${escapeHTML(avatarUrl)}" class="nui-avatar group-member-avatar" alt="">
+                                <div class="group-member-details">
+                                    <div class="group-member-name-row">
+                                        <span class="group-member-name">${memberName}</span>
+                                        ${owner ? '<span class="settings-session-current group-role-badge-owner">オーナー</span>' : ''}
+                                    </div>
+                                    <span class="group-member-handle">${handle}</span>
+                                </div>
+                            </div>
+                            <div class="nui-actions group-member-actions">
+                                ${canAdmin && !owner ? `<select class="settings-select group-ui-role-select nui-input" data-member-role="${Number(member.user_id)}" aria-label="${memberName} のロール">${roles.map((role) => `<option value="${escapeHTML(String(role.id))}" ${String(role.id) === String(member.role_id) ? 'selected' : ''}>${escapeHTML(role.name)}</option>`).join('')}</select>` : ''}
+                                ${canBan && !owner ? `<button type="button" class="nui-button-danger settings-session-revoke-button" data-nui="button-danger" data-ban-member="${Number(member.user_id)}" aria-label="${memberName} の参加を禁止">参加を禁止</button>` : ''}
+                            </div>
+                        </article>`;
+                    }).join('') || '<p class="nui-empty-text">メンバーがいません。</p>'}</div>
+                    <p class="nui-empty-text group-members-empty" id="group-members-empty" hidden>該当するメンバーはいません。</p>
+                `)}</section>` : ''}
+                ${canInvite ? `<section class="nui-section settings-group-panel" id="group-manage-panel-invites" role="tabpanel" aria-labelledby="group-manage-tab-invites" data-group-manage-panel="invites" ${selectedTab === 'invites' ? '' : 'hidden'}>
+                    ${renderGroupSection('メンバーを招待', `
+                        <form id="group-invite-form" class="user-invite-form">
+                            <label for="group-invite-search">ユーザーID または ハンドル</label>
+                            <input id="group-invite-search" type="search" class="nui-input" autocomplete="off" placeholder="#1234 または @handle" data-invite-input>
+                            <div class="user-invite-suggestions" data-invite-suggestions role="listbox" aria-label="ユーザー候補"></div>
+                            <div class="user-invite-selected" data-invite-selected aria-live="polite"></div>
+                            <div class="user-invite-actions"><p class="nui-help-text">候補を選ぶと招待できます。</p><button type="submit" class="nui-button settings-primary-button" data-nui="button" data-invite-submit disabled>招待を送信</button></div>
+                        </form>
+                    `)}
+                    ${renderGroupSection('参加申請', joinRequests.length ? `
+                        <div class="nui-list group-requests-list">${joinRequests.map((item) => {
+                            const reqUser = item.user || {};
+                            const reqUserId = Number(item.userId ?? item.user_id);
+                            const reqName = escapeHTML(reqUser.name || `ユーザー #${reqUserId}`);
+                            const reqAvatar = getUserIconUrl(reqUser);
+                            return `<article class="nui-list-item nui-row group-request-card" data-nui="list-item">
+                                <div class="group-member-info">
+                                    <img ${rankAvatarAttributes(reqUser)} src="${escapeHTML(reqAvatar)}" class="nui-avatar group-member-avatar" alt="">
+                                    <div class="group-member-details">
+                                        <span class="group-member-name">${reqName}</span>
+                                        <span class="group-member-handle">${escapeHTML(getNyaitterId(reqUser) || `#${reqUserId}`)}</span>
+                                    </div>
+                                </div>
+                                <div class="nui-actions group-request-actions">
+                                    <button type="button" class="nui-button settings-primary-button" data-nui="button" data-join-request="${escapeHTML(String(item.id))}" data-decision="approve">承認</button>
+                                    <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" data-join-request="${escapeHTML(String(item.id))}" data-decision="decline">拒否</button>
+                                </div>
+                            </article>`;
+                        }).join('')}</div>
+                    ` : '<p class="nui-empty-text">参加申請はありません。</p>')}
+                </section>` : ''}
+                ${canAdmin ? `<section class="nui-section settings-group-panel" id="group-manage-panel-roles" role="tabpanel" aria-labelledby="group-manage-tab-roles" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection('ロールと権限', renderRolesPanel(group))}</section>` : ''}
+                ${canTransfer ? `<section class="nui-section settings-group-panel" id="group-manage-panel-danger" role="tabpanel" aria-labelledby="group-manage-tab-danger" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>
+                    ${renderGroupSection('危険な操作', `<div class="group-danger-stack">
+                        <div class="nui-card nui-danger-card group-danger-card" data-nui="card">
+                            <h4 class="nui-section-title group-danger-card-title">オーナーを移譲</h4>
+                            <p class="nui-help-text group-danger-card-desc">グループの所有者を別のメンバーに変更します。移譲すると、あなたは管理者になります。取り消せません。</p>
+                            <form id="group-transfer-owner-form" class="group-ui-inline-form">
+                                <label>新しいオーナーのユーザーID<input name="user_id" class="nui-input" inputmode="numeric" required placeholder="例: 1234"></label>
+                                <button type="submit" class="nui-button-danger settings-danger-button" data-nui="button-danger">移譲する</button>
+                            </form>
+                        </div>
+                        <div class="nui-card nui-danger-card group-danger-card" data-nui="card">
+                            <h4 class="nui-section-title group-danger-card-title">グループを削除</h4>
+                            <p class="nui-help-text group-danger-card-desc">グループとすべての投稿が削除されます。取り消せません。</p>
+                            <div>
+                                <button type="button" id="delete-group-button" class="nui-button-danger settings-danger-button" data-nui="button-danger">グループを削除</button>
+                            </div>
+                        </div>
+                    </div>`)}
+                </section>` : ''}
+            </div>
+        </div>
+    </main>`;
+    bindGroupManageEvents(group);
+}
+
+function refreshGroupManage(group, defaultTab = null) {
+    const activeTab = defaultTab || document.querySelector('[data-group-manage-tab].active')?.dataset.groupManageTab || 'profile';
+    return showGroupDetailScreen(group.id, 'manage', null, activeTab);
+}
+
+function bindGroupProfileForm(group) {
+    const form = document.getElementById('group-profile-form');
+    if (!form) return;
+
+    const nameInput = document.getElementById('group-profile-name');
+    const descriptionInput = document.getElementById('group-profile-description');
+    const iconInput = document.getElementById('group-profile-icon-input');
+    const headerInput = document.getElementById('group-profile-header-input');
+    const iconPreview = document.getElementById('group-profile-icon-picker');
+    const headerPreview = document.getElementById('group-profile-header-picker');
+    const saveStatus = document.getElementById('group-profile-save-status');
+    let statusTimer = null;
+    const setSaveStatus = (text, reset = false) => {
+        if (!saveStatus) return;
+        clearTimeout(statusTimer);
+        saveStatus.textContent = text;
+        if (reset) {
+            statusTimer = setTimeout(() => {
+                saveStatus.textContent = '変更は自動で保存されます。';
+            }, 2500);
+        }
+    };
+    let newIconDataUrl = null;
+    let newHeaderDataUrl = null;
+    let resetIcon = false;
+    let resetHeader = false;
+    let saveInFlight = false;
+    let saveQueued = false;
+    let savedName = String(group?.name || '');
+    let savedDescription = String(group?.description || '');
+    let savedVisibility = String(group?.visibility || 'open');
+
+    const hasPendingChanges = () => (
+        String(nameInput?.value || '') !== savedName
+        || String(descriptionInput?.value || '') !== savedDescription
+        || String(form.querySelector('input[name="visibility"]:checked')?.value || savedVisibility) !== savedVisibility
+        || resetIcon
+        || resetHeader
+        || Boolean(newIconDataUrl)
+        || Boolean(newHeaderDataUrl)
+    );
+
+    const updateSavedGroup = (updatedGroup = {}) => {
+        Object.assign(group, updatedGroup);
+        savedName = String(group?.name || '');
+        savedDescription = String(group?.description || '');
+        savedVisibility = String(group?.visibility || 'open');
+        document.getElementById('page-title')?.replaceChildren(document.createTextNode(savedName || 'グループ'));
+        const heading = document.querySelector('.group-ui-page-heading h3');
+        if (heading) heading.textContent = `${savedName} の${document.querySelector('[data-group-manage-tab].active')?.dataset.groupManageTitle || '管理'}`;
+    };
+
+    const saveProfile = async () => {
+        if (saveInFlight) {
+            saveQueued = true;
+            return;
+        }
+        if (!hasPendingChanges() || !form.reportValidity()) return;
+        saveInFlight = true;
+        setSaveStatus('保存中…');
+        const values = new FormData(form);
+        const body = {
+            name: values.get('name'),
+            description: values.get('description'),
+            visibility: values.get('visibility'),
+        };
+        const uploadedFileIds = [];
+        const previousFileIds = new Set();
+        const shouldReplaceIcon = resetIcon || Boolean(newIconDataUrl);
+        const shouldReplaceHeader = resetHeader || Boolean(newHeaderDataUrl);
+        try {
+            if (resetIcon) {
+                body.icon_data = null;
+            } else if (newIconDataUrl) {
+                const existingIconId = isStoredImageId(group?.icon_data) ? group.icon_data : null;
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newIconDataUrl), {
+                    replaceId: existingIconId,
+                });
+                if (!existingIconId) uploadedFileIds.push(fileId);
+                body.icon_data = fileId;
+            }
+            if (resetHeader) {
+                body.header_image = null;
+            } else if (newHeaderDataUrl) {
+                const existingHeaderId = isStoredImageId(group?.header_image) ? group.header_image : null;
+                const fileId = await uploadFileViaEdgeFunction(imageDataUrlToFile(newHeaderDataUrl), {
+                    replaceId: existingHeaderId,
+                });
+                if (!existingHeaderId) uploadedFileIds.push(fileId);
+                body.header_image = fileId;
+            }
+            if (resetIcon && isStoredImageId(group?.icon_data)) previousFileIds.add(group.icon_data);
+            if (resetHeader && isStoredImageId(group?.header_image)) previousFileIds.add(group.header_image);
+
+            const data = await request(groupPath(group.id), { method: 'PATCH', body });
+            if (shouldReplaceIcon) {
+                group.icon_data = body.icon_data;
+                newIconDataUrl = null;
+                resetIcon = false;
+            }
+            if (shouldReplaceHeader) {
+                group.header_image = body.header_image;
+                newHeaderDataUrl = null;
+                resetHeader = false;
+            }
+            updateSavedGroup(data.group || {});
+            setSaveStatus('保存しました', true);
+            if (previousFileIds.size > 0) {
+                void deleteFilesViaEdgeFunction([...previousFileIds]).catch((error) => {
+                    console.warn('グループの古い画像を削除できませんでした。', error);
+                });
+            }
+        } catch (error) {
+            if (uploadedFileIds.length > 0) {
+                await deleteFilesViaEdgeFunction(uploadedFileIds).catch(() => {});
+            }
+            setSaveStatus('保存できませんでした');
+            showAppAlert(error.message || 'グループを更新できませんでした。');
+        } finally {
+            saveInFlight = false;
+            if (saveQueued) {
+                saveQueued = false;
+                void saveProfile();
+            }
+        }
+    };
+
+    iconPreview?.addEventListener('click', () => iconInput?.click());
+    headerPreview?.addEventListener('click', () => headerInput?.click());
+    iconInput?.addEventListener('change', async (event) => {
+        try {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            newIconDataUrl = await resizeImageToDataUrl(file, 300, 300);
+            resetIcon = false;
+            setModalIconPreview(iconPreview, newIconDataUrl);
+            void saveProfile();
+        } catch (error) {
+            showAppAlert(error.message || 'アイコン画像を選択できませんでした。');
+        }
+    });
+    headerInput?.addEventListener('change', async (event) => {
+        try {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            newHeaderDataUrl = await resizeImageToDataUrl(file, 1500, 600);
+            resetHeader = false;
+            setModalHeaderPreview(headerPreview, newHeaderDataUrl);
+            void saveProfile();
+        } catch (error) {
+            showAppAlert(error.message || 'ヘッダー画像を選択できませんでした。');
+        }
+    });
+    document.getElementById('reset-group-profile-icon')?.addEventListener('click', () => {
+        resetIcon = true;
+        newIconDataUrl = null;
+        if (iconInput) iconInput.value = '';
+        setModalIconPreview(iconPreview);
+        void saveProfile();
+    });
+    document.getElementById('reset-group-profile-header')?.addEventListener('click', () => {
+        resetHeader = true;
+        newHeaderDataUrl = null;
+        if (headerInput) headerInput.value = '';
+        setModalHeaderPreview(headerPreview);
+        void saveProfile();
+    });
+    nameInput?.addEventListener('blur', () => { void saveProfile(); });
+    descriptionInput?.addEventListener('blur', () => { void saveProfile(); });
+    form.querySelectorAll('input[name="visibility"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            form.querySelectorAll('.group-visibility-card').forEach((card) => {
+                card.classList.toggle('is-selected', card.dataset.visibilityCard === radio.value);
+            });
+            void saveProfile();
+        });
+    });
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        void saveProfile();
+    });
+}
+
+function bindGroupManageEvents(group) {
+    const headingTitle = document.querySelector('.group-ui-page-heading h3');
+    const headingDescription = document.querySelector('.group-ui-page-heading .settings-group-description');
+    const tabsContainer = document.querySelector('.settings-group-list');
+    const manageDetail = document.querySelector('.group-ui-manage-detail');
+
+    if (tabsContainer) {
+        groupManageTabGroupController?.destroy();
+        groupManageTabGroupController = initTabGroup({
+            container: tabsContainer,
+            tabSelector: '[data-group-manage-tab]',
+            contentContainer: manageDetail,
+            getTabKey: (button) => button.dataset.groupManageTab,
+            onTabChange: (tabId, button) => {
+                document.querySelectorAll('[data-group-manage-panel]').forEach((panel) => {
+                    panel.hidden = panel.dataset.groupManagePanel !== tabId;
+                });
+                if (headingTitle) headingTitle.textContent = `${group.name || ''} の${button.dataset.groupManageTitle || '管理'}`;
+                if (headingDescription) headingDescription.textContent = button.dataset.groupManageDescription || '';
+            },
+        });
+    }
+    bindGroupProfileForm(group);
+
+    // メンバーのインクリメンタル検索
+    const memberSearchInput = document.getElementById('group-member-search');
+    const memberItems = document.querySelectorAll('.group-member-item');
+    const memberCountLabel = document.getElementById('group-member-count-label');
+    const memberEmpty = document.getElementById('group-members-empty');
+    if (memberSearchInput) {
+        memberSearchInput.addEventListener('input', () => {
+            const query = memberSearchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+            memberItems.forEach((item) => {
+                const searchText = (item.dataset.memberSearchText || '').toLowerCase();
+                const matches = !query || searchText.includes(query);
+                item.style.display = matches ? 'flex' : 'none';
+                if (matches) visibleCount += 1;
+            });
+            if (memberCountLabel) {
+                memberCountLabel.textContent = query
+                    ? `${visibleCount} / ${memberItems.length} 名`
+                    : `全 ${memberItems.length} 名`;
+            }
+            if (memberEmpty) {
+                memberEmpty.hidden = !(query && visibleCount === 0 && memberItems.length > 0);
+            }
+        });
+    }
+    const groupInviteForm = document.getElementById('group-invite-form');
+    if (groupInviteForm) {
+        const inviteSubmit = groupInviteForm.querySelector('[data-invite-submit]');
+        const invitePicker = createUserInvitePicker({
+            input: groupInviteForm.querySelector('[data-invite-input]'),
+            suggestions: groupInviteForm.querySelector('[data-invite-suggestions]'),
+            selected: groupInviteForm.querySelector('[data-invite-selected]'),
+            onChange: (size) => { inviteSubmit.disabled = size === 0; },
+        });
+        groupInviteForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!invitePicker.size) return;
+            inviteSubmit.disabled = true;
+            try {
+                showLoading(true);
+                const results = await Promise.allSettled(invitePicker.ids.map((userId) => request(groupPath(group.id, '/invites'), { method: 'POST', body: { user_id: userId } })));
+                const failed = results.filter((result) => result.status === 'rejected');
+                if (failed.length > 0) {
+                    showAppAlert(failed.map((result) => result.reason?.message || '招待を送信できませんでした。').join('\n'));
+                } else {
+                    await showAppAlert('招待を送信しました。');
+                }
+                if (failed.length < invitePicker.size) invitePicker.clear();
+            } catch (error) {
+                showAppAlert(error.message || '招待を送信できませんでした。');
+            } finally {
+                showLoading(false);
+                inviteSubmit.disabled = invitePicker.size === 0;
+            }
+        });
+    }
+    document.querySelectorAll('[data-join-request]').forEach((button) => button.addEventListener('click', async () => {
+        try {
+            showLoading(true);
+            await request(groupPath(group.id, `/join-requests/${encodeURIComponent(button.dataset.joinRequest)}/respond`), { method: 'POST', body: { decision: button.dataset.decision } });
+            await refreshGroupManage(group);
+        } catch (error) {
+            showAppAlert(error.message || '参加申請を処理できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    }));
+    document.querySelectorAll('[data-member-role]').forEach((select) => select.addEventListener('change', async () => {
+        try {
+            showLoading(true);
+            await request(groupPath(group.id, `/members/${encodeURIComponent(select.dataset.memberRole)}`), { method: 'PATCH', body: { role_id: select.value } });
+            await refreshGroupManage(group, 'members');
+        } catch (error) {
+            showAppAlert(error.message || 'ロールを更新できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    }));
+    document.querySelectorAll('[data-ban-member]').forEach((button) => button.addEventListener('click', async () => {
+        if (!await showAppConfirm('このユーザーをグループから禁止しますか？')) return;
+        try {
+            showLoading(true);
+            await request(groupPath(group.id, `/members/${encodeURIComponent(button.dataset.banMember)}/ban`), { method: 'POST', body: {} });
+            await refreshGroupManage(group, 'members');
+        } catch (error) {
+            showAppAlert(error.message || 'ユーザーを禁止できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    }));
+
+    // ロール権限チェックボックスのリアルタイム表示切り替え
+    document.querySelectorAll('.group-role-perm-checkbox').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+            const tile = checkbox.closest('.group-role-perm-tile');
+            if (tile) tile.classList.toggle('is-checked', checkbox.checked);
+        });
+    });
+
+    // ロール編集ペインの開閉
+    document.querySelectorAll('[data-toggle-role]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const roleId = button.dataset.toggleRole;
+            const editor = document.getElementById(`role-editor-${roleId}`);
+            if (!editor) return;
+            const isHidden = editor.classList.contains('hidden');
+            editor.classList.toggle('hidden', !isHidden);
+            button.textContent = isHidden ? '閉じる' : '編集';
+            button.setAttribute('aria-expanded', String(isHidden));
+        });
+    });
+
+    document.querySelectorAll('[data-cancel-role]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const roleId = button.dataset.cancelRole;
+            const editor = document.getElementById(`role-editor-${roleId}`);
+            const toggleBtn = document.querySelector(`[data-toggle-role="${roleId}"]`);
+            if (editor) editor.classList.add('hidden');
+            if (toggleBtn) {
+                toggleBtn.textContent = '編集';
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    });
+
+    // 新規ロール作成フォームの開閉
+    const createWrapper = document.getElementById('group-role-create-wrapper');
+    const toggleCreateBtn = document.getElementById('toggle-create-role-btn');
+    const closeCreateRole = () => {
+        createWrapper?.classList.add('hidden');
+        toggleCreateBtn?.classList.remove('hidden');
+    };
+    toggleCreateBtn?.addEventListener('click', () => {
+        createWrapper?.classList.remove('hidden');
+        toggleCreateBtn?.classList.add('hidden');
+        document.getElementById('create-role-name')?.focus();
+    });
+    document.getElementById('cancel-create-role-btn')?.addEventListener('click', closeCreateRole);
+    document.getElementById('cancel-create-role-btn-action')?.addEventListener('click', closeCreateRole);
+
+    // ロール編集のインプレース保存
+    document.querySelectorAll('[data-edit-group-role]').forEach((form) => {
+        const roleId = form.dataset.editGroupRole;
+        const statusEl = document.getElementById(`save-status-${roleId}`);
+        const submitBtn = form.querySelector('.group-role-save-btn');
+        let saveTimeout = null;
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) return;
+            const values = new FormData(form);
+            const newName = String(values.get('name') || '').trim();
+            const newPermissions = values.getAll('permissions');
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+        submitBtn.textContent = '保存中';
+            }
+            if (statusEl) {
+                statusEl.textContent = '';
+            }
+
+            try {
+                await request(groupPath(group.id, `/roles/${encodeURIComponent(roleId)}`), {
+                    method: 'PATCH',
+                    body: { name: newName, permissions: newPermissions },
+                });
+
+                // グループデータのインメモリ更新
+                const existingRole = group.roles?.find((r) => String(r.id) === String(roleId));
+                if (existingRole) {
+                    existingRole.name = newName;
+                    existingRole.permissions = newPermissions;
+                }
+
+                // サマリータイトルと権限プレビューのリアルタイム更新
+                const titleEl = document.querySelector(`[data-role-title="${roleId}"]`);
+                if (titleEl) titleEl.textContent = newName;
+                const previewEl = document.querySelector(`[data-role-preview="${roleId}"]`);
+                if (previewEl) previewEl.innerHTML = renderRoleChips(existingRole || { permissions: newPermissions }, false);
+
+                // メンバー一覧のロール選択肢更新
+                document.querySelectorAll(`select.group-ui-role-select option[value="${roleId}"]`).forEach((opt) => {
+                    opt.textContent = newName;
+                });
+
+                if (statusEl) {
+                    statusEl.textContent = '✓ 保存しました';
+                    clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => {
+                        if (statusEl) statusEl.textContent = '';
+                    }, 3000);
+                }
+            } catch (error) {
+                showAppAlert(error.message || 'ロールを更新できませんでした。');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '変更を保存';
+                }
+            }
+        });
+    });
+
+    // 新規ロール作成
+    document.getElementById('group-role-form')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        try {
+            showLoading(true);
+            await request(groupPath(group.id, '/roles'), { method: 'POST', body: { name: form.get('name'), permissions: form.getAll('permissions') } });
+            await refreshGroupManage(group, 'roles');
+        } catch (error) {
+            showAppAlert(error.message || 'ロールを追加できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    });
+
+    // ロール削除
+    document.querySelectorAll('[data-delete-role]').forEach((button) => button.addEventListener('click', async () => {
+        if (!await showAppConfirm('このロールを削除しますか？この操作は取り消せません。')) return;
+        try {
+            showLoading(true);
+            await request(groupPath(group.id, `/roles/${encodeURIComponent(button.dataset.deleteRole)}`), { method: 'DELETE' });
+            await refreshGroupManage(group, 'roles');
+        } catch (error) {
+            showAppAlert(error.message || 'ロールを削除できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    }));
+    document.getElementById('group-transfer-owner-form')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const userId = Number(new FormData(event.currentTarget).get('user_id'));
+        if (!await showAppConfirm('オーナーを移譲しますか？この操作は取り消せません。')) return;
+        try {
+            showLoading(true);
+            await request(groupPath(group.id, '/transfer-owner'), { method: 'POST', body: { user_id: userId } });
+            window.location.hash = `#group/${group.id}`;
+        } catch (error) {
+            showAppAlert(error.message || 'オーナーを移譲できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    });
+    document.getElementById('delete-group-button')?.addEventListener('click', async () => {
+        if (!await showAppConfirm(`「${group.name || 'このグループ'}」を削除しますか？グループ内の投稿もすべて削除されます。`)) return;
+        if (!await showAppConfirm('この操作は取り消せません。本当にグループを削除しますか？')) return;
+        try {
+            showLoading(true);
+            await request(groupPath(group.id), { method: 'DELETE' });
+            window.location.hash = '#groups';
+        } catch (error) {
+            showAppAlert(error.message || 'グループを削除できませんでした。');
+        } finally {
+            showLoading(false);
+        }
+    });
+}

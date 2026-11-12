@@ -1,0 +1,1845 @@
+/* ==========================================================================
+   Nyaitter - components.css
+   ========================================================================== */
+
+.account-button {
+    width: 100%;
+    font-size: 1rem;
+    justify-content: flex-start;
+    gap: 0.8rem;
+}
+
+.account-button img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.timeline-tab-button {
+    flex: 1 0 8rem;
+    min-width: 8rem;
+    white-space: nowrap;
+    padding: 1rem;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--secondary-text-color);
+    font-weight: 500;
+    position: relative;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    transition: background-color 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.timeline-tab-button:hover {
+    background-color: var(--bg-color);
+}
+
+.timeline-tab-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background-color: var(--primary-color);
+    border-radius: 9999px;
+}
+
+.timeline-tab-button.active {
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.new-posts-indicator button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s;
+}
+
+.new-posts-indicator button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.post-account-menu-loading,
+.post-account-menu-empty {
+    display: grid;
+    min-height: 4rem;
+    margin: 0;
+    place-items: center;
+    color: var(--secondary-text-color);
+    text-align: center;
+}
+
+.post-account-menu-loading .spinner {
+    width: 1.4rem;
+    height: 1.4rem;
+    margin: 0;
+}
+
+.post-form-actions button {
+    border: none;
+    cursor: pointer;
+}
+
+.post-form-actions #post-submit-button,
+.post-form-actions #update-post-button {
+    padding: 0.5rem 1.25rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    flex-shrink: 0 !important;
+    min-width: fit-content;
+    white-space: nowrap;
+}
+
+.post-form-actions button:disabled {
+    cursor: not-allowed;
+}
+
+.post-form-actions #post-submit-button,
+.post-form-actions #update-post-button {
+    background-color: var(--primary-color);
+    color: white;
+    transition: background-color 0.2s;
+}
+
+.post-form-actions #post-submit-button:hover,
+.post-form-actions #update-post-button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.attachment-button svg,
+.post-poll-button svg {
+    stroke: var(--text-color);
+    fill: none;
+}
+
+.post-mask-button svg {
+    stroke: var(--text-color);
+}
+
+.post-actions button {
+    background: none;
+    border: none;
+    color: var(--secondary-text-color);
+    padding: 0;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+/* 端末の表示倍率 0.8 を考慮し、指で押す要素は画面上24px以上を確保する。 */
+@media (max-width: 544px) {
+    .post-actions button {
+        min-width: 30px;
+        min-height: 30px;
+    }
+}
+
+.post-actions button svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    vertical-align: middle;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    transition:
+        fill 0.2s,
+        stroke 0.2s,
+        color 0.2s;
+}
+
+.reply-button:hover {
+    color: var(--primary-color);
+}
+
+.reply-button:disabled,
+.reply-button.disabled {
+    opacity: 0.38 !important;
+    cursor: not-allowed !important;
+    pointer-events: auto !important;
+}
+
+.reply-button:disabled:hover,
+.reply-button.disabled:hover {
+    color: inherit !important;
+}
+
+.like-button:hover {
+    color: var(--like-color);
+}
+
+.like-button.liked {
+    color: var(--like-color);
+    font-weight: bold; /* いいね済みの数字を太字に */
+}
+
+.like-button.liked svg {
+    fill: currentColor; /* いいね済みのアイコンを塗りつぶす */
+}
+
+.star-button:hover {
+    color: var(--star-color);
+}
+
+.star-button.starred {
+    color: var(--star-color);
+    font-weight: bold; /* お気に入り済みの数字を太字に */
+}
+
+.star-button.starred svg {
+    fill: currentColor; /* お気に入り済みのアイコンを塗りつぶす */
+}
+
+.post-actions button svg {
+    width: 1.25rem; /* サイズを微調整 */
+    height: 1.25rem;
+    vertical-align: middle;
+    fill: none; /* デフォルトは塗りつぶしなし */
+    stroke: currentColor; /* 枠線の色は親のcolorに連動 */
+    stroke-width: 2;
+    transition:
+        fill 0.2s,
+        stroke 0.2s; /* 色の遷移を滑らかに */
+}
+
+.post-menu-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 5;
+    border: none !important;
+}
+
+.post-menu-btn:hover {
+    border: none;
+    color: var(--text-color);
+}
+
+.post-menu button {
+    display: flex;
+    width: 100%;
+    min-height: 2.35rem;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.65rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.menu-item-icon {
+    display: inline-flex;
+    flex: 0 0 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-item-icon svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.menu-item-label {
+    min-width: 0;
+}
+
+.post-menu button:hover,
+.post-menu button:focus-visible {
+    background-color: var(--hover-bg-color, var(--main-bg-color));
+}
+
+.post-menu button:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+.edit-modal-attachments {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: var(--bg-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: var(--secondary-text-color);
+}
+
+.edit-modal-attachments p {
+    margin: 0 0 0.5rem 0;
+    font-weight: bold;
+}
+
+.edit-modal-attachments .attachments-container {
+    pointer-events: none; /* 添付ファイルは編集不可のため操作を無効化 */
+}
+
+.post-menu .delete-btn {
+    color: #e5484d;
+    font-weight: 600;
+}
+
+.post-menu .delete-btn:hover,
+.post-menu .delete-btn:focus-visible {
+    background-color: color-mix(in srgb, #e5484d 12%, transparent);
+    color: #e5484d;
+}
+
+.post-menu .report-btn {
+    color: var(--warning-color, #f76808);
+}
+
+.post-menu .report-btn:hover,
+.post-menu .report-btn:focus-visible {
+    background-color: color-mix(in srgb, var(--warning-color, #f76808) 12%, transparent);
+}
+
+.recommend-user > button {
+    flex-shrink: 0;
+}
+
+.follow-button-not-following {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.follow-button-not-following:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.follow-button-following {
+    background-color: var(--main-bg-color);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+}
+
+.follow-button-following:hover {
+    background-color: #fce8ec;
+    color: var(--like-color);
+    border-color: var(--like-color) !important;
+}
+
+#banner-signup-button {
+    background: white; /* 通常の青に変更 */
+    color: black;
+    border: none; /* 枠線を非表示に変更 */
+    margin-left: 1rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 9999px !important;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+#banner-signup-button:hover {
+    background-color: #f0f0f0; /* ホバー色も対応 */
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1001;
+}
+
+.modal-content {
+    background: var(--main-bg-color);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 0.1rem;
+    right: 0.2rem;
+    background: #888;
+    color: white;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.image-preview-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: 100dvh;
+    max-width: 100vw;
+    max-height: 100dvh;
+    box-sizing: border-box;
+    padding: max(0.25rem, env(safe-area-inset-top)) max(0.25rem, env(safe-area-inset-right)) max(0.25rem, env(safe-area-inset-bottom)) max(0.25rem, env(safe-area-inset-left));
+    cursor: default;
+    pointer-events: none;
+}
+
+#image-preview-modal-content {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+    cursor: default;
+    pointer-events: auto;
+    user-select: none;
+    box-shadow: 0 4px 28px rgba(0, 0, 0, 0.5);
+}
+
+#image-preview-modal .modal-close-btn {
+    top: max(1rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
+    z-index: 12;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: #fff;
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.15s;
+}
+
+#image-preview-modal .modal-close-btn:hover {
+    background: rgba(0, 0, 0, 0.85);
+    transform: scale(1.08);
+}
+
+.image-modal-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 11;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.15s, opacity 0.2s;
+    user-select: none;
+}
+
+.image-modal-nav-btn:hover {
+    background: rgba(0, 0, 0, 0.85);
+    transform: translateY(-50%) scale(1.08);
+}
+
+.image-modal-nav-btn svg {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    fill: none;
+    pointer-events: none;
+}
+
+.image-modal-prev-btn {
+    left: max(1rem, env(safe-area-inset-left));
+}
+
+.image-modal-next-btn {
+    right: max(1rem, env(safe-area-inset-right));
+}
+
+.image-modal-counter {
+    position: absolute;
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 0.35rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    pointer-events: none;
+    z-index: 11;
+    user-select: none;
+}
+
+.tab-button {
+    flex: 1 0 8rem;
+    min-width: 8rem;
+    white-space: nowrap;
+    padding: 1rem;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--secondary-text-color);
+    font-weight: 500;
+    position: relative;
+    transition: background-color 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.tab-button:hover {
+    background-color: var(--bg-color);
+}
+
+.tab-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background-color: var(--primary-color);
+    border-radius: 9999px;
+}
+
+.tab-button.active {
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+#reset-icon-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--border-color);
+    background: none;
+    color: var(--secondary-text-color);
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+}
+
+#reset-icon-btn:hover {
+    background-color: var(--bg-color);
+    border-color: var(--secondary-text-color);
+}
+
+#reset-header-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--border-color);
+    background: none;
+    color: var(--secondary-text-color);
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 0.2s,
+        border-color 0.2s;
+}
+
+#reset-header-btn:hover {
+    background-color: var(--bg-color);
+    border-color: var(--secondary-text-color);
+}
+
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--loading-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.spinner {
+    display: block;
+    margin: 2rem auto;
+    border: 4px solid var(--spin);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border-left-color: var(--primary-color);
+    animation: spin 1s ease infinite;
+}
+
+/* ボタン内・メニュー内・中央寄せ済み領域のスピナーは余白を打ち消す */
+button .spinner,
+.nav-item .spinner,
+.post-account-menu-loading .spinner,
+.post-group-menu-loading .spinner,
+.post-reply-control-menu-loading .spinner,
+.login-approval-wait-progress .spinner {
+    margin: 0;
+}
+
+.copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8em; /* テキスト表示用に調整 */
+}
+
+.copy-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.copy-btn svg {
+    width: 1em;
+    height: 1em;
+}
+
+@keyframes spin {
+0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.repost-button:hover {
+    color: #00ba7c; /* 緑色 */
+}
+
+#account-switcher-modal .modal-content {
+    padding: 2rem 1rem 1.5rem;
+}
+
+.account-switcher-item .switcher-delete-btn {
+    background: var(--main-bg-color);
+    border: none;
+    color: var(--like-color);
+    font-size: 1.2rem;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.account-switcher-item .switcher-delete-btn:hover {
+    background: var(--danger-color);
+}
+
+.account-switcher-add-btn {
+    width: 100%;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 9999px;
+    font-weight: 700;
+    padding: 0.7rem 0;
+    margin-bottom: 1rem;
+    font-size: 1.05rem;
+    cursor: pointer;
+}
+
+.account-switcher-add-btn:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.tag-post-button {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    padding: 1rem;
+    font-weight: bold;
+    font-size: 1rem;
+    color: var(--primary-color);
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--main-bg-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.tag-post-button:hover {
+    background-color: var(--bg-color);
+}
+
+.pull-to-refresh-indicator {
+    --pull-distance: 0px;
+    --pull-opacity: 0;
+    position: fixed;
+    top: max(0.5rem, env(safe-area-inset-top));
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.5rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    background: var(--pg-bg-color);
+    color: var(--secondary-text-color);
+    box-shadow: 0 0.25rem 0.85rem rgba(0, 0, 0, 0.14);
+    pointer-events: none;
+    z-index: 110;
+    opacity: var(--pull-opacity);
+    transform: translate(-50%, calc(-5.25rem + var(--pull-distance)));
+    transition:
+        transform 180ms ease-out,
+        opacity 150ms ease-out,
+        color 150ms ease-out;
+    will-change: transform, opacity;
+}
+
+.pull-to-refresh-indicator.is-pulling {
+    transition: none;
+}
+
+.pull-to-refresh-indicator.is-ready {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.pull-to-refresh-indicator.is-refreshing {
+    --pull-opacity: 1;
+    transform: translate(-50%, 0.5rem);
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.pull-to-refresh-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 150ms ease-out;
+}
+
+.pull-to-refresh-indicator.is-ready .pull-to-refresh-icon {
+    transform: rotate(180deg);
+}
+
+.pull-to-refresh-indicator.is-refreshing .pull-to-refresh-icon {
+    animation: pull-to-refresh-spin 800ms linear infinite;
+}
+
+@keyframes pull-to-refresh-spin {
+to {
+        transform: rotate(360deg);
+    }
+}
+
+html.pull-to-refresh-enabled,
+body.pull-to-refresh-enabled {
+    overscroll-behavior-y: contain;
+}
+
+/* Tab Swipe Transitions */
+.tab-swipe-left {
+    animation: tab-swipe-in-right 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-x: clip;
+}
+
+.tab-swipe-right {
+    animation: tab-swipe-in-left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-x: clip;
+}
+
+@keyframes tab-swipe-in-right {
+    from {
+        opacity: 0.6;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes tab-swipe-in-left {
+    from {
+        opacity: 0.6;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ==========================================================================
+   Rules Screen
+   ========================================================================== */
+
+.rule-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+    box-sizing: border-box;
+    color: var(--text-color);
+}
+
+.rule-markdown-body {
+    line-height: 1.7;
+    font-size: 1rem;
+    word-break: break-word;
+}
+
+.rule-markdown-body h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin: 0.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.rule-markdown-body h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 1.75rem 0 0.75rem;
+    color: var(--text-color);
+}
+
+.rule-markdown-body h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1.25rem 0 0.5rem;
+    color: var(--text-color);
+}
+
+.rule-markdown-body p {
+    margin: 0.75rem 0;
+    color: var(--text-color);
+}
+
+.rule-markdown-body hr {
+    border: 0;
+    height: 1px;
+    background: var(--border-color);
+    margin: 1.5rem 0;
+}
+
+.rule-markdown-body ul,
+.rule-markdown-body ol {
+    margin: 0.75rem 0 1rem 1.25rem;
+    padding-left: 0.5rem;
+}
+
+.rule-markdown-body li {
+    margin: 0.4rem 0;
+}
+
+.rule-markdown-body blockquote {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    background: color-mix(in srgb, var(--primary-color) 8%, var(--main-bg-color));
+    border-left: 4px solid var(--primary-color);
+    border-radius: 4px;
+    color: var(--text-color);
+}
+
+.rule-markdown-body blockquote p {
+    margin: 0.25rem 0;
+}
+
+.rule-markdown-body code {
+    background: color-mix(in srgb, var(--secondary-text-color) 15%, transparent);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9em;
+}
+
+.rule-markdown-body pre {
+    background: color-mix(in srgb, var(--secondary-text-color) 12%, transparent);
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+.rule-markdown-body pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+.rule-footer-meta {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border-color);
+    color: var(--secondary-text-color);
+    text-align: right;
+}
+
+/* ── NyaitterAuth Screen Styles ──────────────────────────────────────── */
+.nyauth-container {
+    max-width: 540px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.nyauth-card {
+    background: var(--card-bg-color, var(--main-bg-color));
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.nyauth-app-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.nyauth-app-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.nyauth-app-icon-placeholder {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+}
+
+.nyauth-app-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.nyauth-app-id {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: var(--secondary-text-color);
+}
+
+.nyauth-already-authorized-badge {
+    margin-top: 1rem;
+    padding: 0.6rem 0.9rem;
+    background: color-mix(in srgb, #10b981 12%, transparent);
+    border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
+    border-radius: 8px;
+    color: #10b981;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.nyauth-prompt-text {
+    margin: 1.25rem 0 1rem;
+}
+
+.nyauth-prompt-text p {
+    margin: 0.35rem 0;
+}
+
+.nyauth-scopes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+}
+
+.nyauth-scope-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--secondary-text-color) 5%, transparent);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.nyauth-scope-item:hover {
+    background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+    border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+}
+
+.nyauth-scope-item input[type="checkbox"] {
+    margin-top: 0.25rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+}
+
+.nyauth-scope-item.is-continuous {
+    border-color: color-mix(in srgb, var(--primary-color) 40%, var(--border-color));
+}
+
+.nyauth-scope-info {
+    flex: 1;
+}
+
+.nyauth-scope-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    font-size: 0.95rem;
+}
+
+.nyauth-scope-desc {
+    margin: 0.25rem 0 0;
+    font-size: 0.82rem;
+    color: var(--secondary-text-color);
+    line-height: 1.35;
+}
+
+.nyauth-badge-required {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #ef4444;
+}
+
+.nyauth-badge-continuous {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+    color: var(--primary-color);
+}
+
+/* NyaitterAuth Account Selection */
+.nyauth-account-section {
+    margin: 1.25rem 0;
+    padding: 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--secondary-text-color) 4%, transparent);
+}
+
+.nyauth-account-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.65rem;
+}
+
+.nyauth-account-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.nyauth-account-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--main-bg-color);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.nyauth-account-option:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 50%, var(--border-color));
+}
+
+.nyauth-account-option.selected {
+    border-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 8%, var(--main-bg-color));
+}
+
+.nyauth-account-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.nyauth-account-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.nyauth-account-name {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.92rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nyauth-account-id {
+    font-size: 0.78rem;
+    color: var(--secondary-text-color);
+}
+
+.nyauth-account-radio input[type="radio"] {
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+/* ==================== Poll Styles ==================== */
+
+/* Poll Create Modal */
+.poll-modal-content {
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+    position: relative;
+    box-sizing: border-box;
+    color: var(--text-color);
+}
+
+.poll-modal-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+.poll-field-group {
+    margin-bottom: 1.1rem;
+}
+
+.poll-field-label {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: var(--secondary-text-color);
+}
+
+.poll-text-input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--widget-bg-color, rgba(128, 128, 128, 0.08));
+    color: var(--text-color);
+    font-size: 0.95rem;
+    box-sizing: border-box;
+}
+
+.poll-text-input:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+.poll-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.poll-option-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.poll-option-input-row .poll-text-input {
+    flex: 1;
+}
+
+.poll-option-remove-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.4rem;
+    border-radius: 50%;
+    color: var(--danger-color, #e0245e);
+    font-size: 1.2rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+.poll-option-remove-btn:hover {
+    background-color: color-mix(in srgb, var(--danger-color, #e0245e) 12%, transparent);
+}
+
+.poll-add-option-btn {
+    background: none;
+    border: 1px dashed var(--border-color);
+    color: var(--primary-color);
+    border-radius: 8px;
+    padding: 0.5rem;
+    width: 100%;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.poll-add-option-btn:hover {
+    background-color: color-mix(in srgb, var(--primary-color) 12%, transparent);
+}
+
+.poll-duration-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.poll-duration-tab-btn {
+    flex: 1;
+    padding: 0.45rem;
+    border: 1px solid var(--border-color);
+    background: var(--main-bg-color);
+    color: var(--text-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.poll-duration-tab-btn.active {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+}
+
+.poll-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    cursor: pointer;
+    margin-bottom: 0.4rem;
+}
+
+.poll-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.poll-btn-cancel {
+    background: none;
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    color: var(--text-color);
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.poll-btn-cancel:hover {
+    background-color: color-mix(in srgb, var(--text-color) 8%, transparent);
+}
+
+.poll-btn-submit {
+    background: var(--primary-color);
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 9999px;
+    color: #ffffff;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+.poll-btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Poll Attachment Preview in Composer */
+.poll-attachment-preview {
+    background: color-mix(in srgb, var(--text-color) 4%, var(--main-bg-color));
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.poll-attachment-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.poll-attachment-preview-title {
+    font-weight: bold;
+    font-size: 0.95rem;
+    color: var(--text-color);
+}
+
+.poll-attachment-preview-close {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 50%;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.poll-attachment-preview-close:hover {
+    color: var(--danger-color, #e0245e);
+    background-color: color-mix(in srgb, var(--danger-color, #e0245e) 12%, transparent);
+}
+
+.poll-attachment-preview-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+}
+
+.poll-attachment-preview-opt {
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.85rem;
+    color: var(--text-color);
+}
+
+.poll-attachment-preview-meta {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+    color: var(--secondary-text-color);
+}
+
+.poll-preview-tag {
+    background: var(--border-color);
+    color: var(--text-color);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+}
+
+/* Post Poll Display Container */
+.post-poll-container {
+    background: color-mix(in srgb, var(--text-color) 3%, var(--main-bg-color));
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 0.6rem 0;
+    box-sizing: border-box;
+}
+
+.post-poll-title {
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--text-color);
+    margin-bottom: 0.75rem;
+}
+
+.post-poll-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.post-poll-option-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--main-bg-color);
+    border: 1.5px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.65rem 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+    font-size: 0.92rem;
+    color: var(--text-color);
+    user-select: none;
+}
+
+.post-poll-option-label:hover {
+    border-color: var(--primary-color);
+    background-color: color-mix(in srgb, var(--primary-color) 10%, var(--main-bg-color));
+}
+
+.post-poll-option-label:has(input:checked) {
+    border-color: var(--primary-color);
+    background-color: color-mix(in srgb, var(--primary-color) 15%, var(--main-bg-color));
+    font-weight: 500;
+}
+
+/* Custom Modern Radio Button */
+.post-poll-option-label input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: 2px solid var(--secondary-text-color);
+    border-radius: 50%;
+    margin: 0;
+    cursor: pointer;
+    display: grid;
+    place-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.2s, background-color 0.2s;
+    background-color: transparent;
+}
+
+.post-poll-option-label input[type="radio"]::before {
+    content: "";
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    transform: scale(0);
+    background-color: var(--primary-color);
+}
+
+.post-poll-option-label input[type="radio"]:checked {
+    border-color: var(--primary-color);
+}
+
+.post-poll-option-label input[type="radio"]:checked::before {
+    transform: scale(1);
+}
+
+/* Custom Modern Checkbox */
+.post-poll-option-label input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: 2px solid var(--secondary-text-color);
+    border-radius: 4px;
+    margin: 0;
+    cursor: pointer;
+    display: grid;
+    place-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.2s, background-color 0.2s;
+    background-color: transparent;
+}
+
+.post-poll-option-label input[type="checkbox"]::before {
+    content: "";
+    width: 0.5rem;
+    height: 0.3rem;
+    border-left: 2px solid #ffffff;
+    border-bottom: 2px solid #ffffff;
+    transform: rotate(-45deg) scale(0);
+    transition: transform 0.15s ease-in-out;
+    margin-top: -2px;
+}
+
+.post-poll-option-label input[type="checkbox"]:checked {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color);
+}
+
+.post-poll-option-label input[type="checkbox"]:checked::before {
+    transform: rotate(-45deg) scale(1);
+}
+
+.post-poll-other-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.post-poll-other-input {
+    width: 100%;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--widget-bg-color, rgba(128, 128, 128, 0.08));
+    color: var(--text-color);
+    font-size: 0.88rem;
+    box-sizing: border-box;
+}
+
+.post-poll-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.post-poll-vote-btn {
+    background: var(--primary-color);
+    color: #ffffff;
+    border: none;
+    border-radius: 9999px;
+    padding: 0.45rem 1.1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.post-poll-vote-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.post-poll-view-results-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--secondary-text-color);
+    border-radius: 9999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+
+.post-poll-view-results-btn:hover {
+    color: var(--text-color);
+    border-color: var(--text-color);
+    background-color: color-mix(in srgb, var(--text-color) 8%, transparent);
+}
+
+/* Poll Results View */
+.post-poll-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.post-poll-result-row {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--text-color) 6%, var(--main-bg-color));
+    min-height: 2.2rem;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+}
+
+.post-poll-result-row.voted {
+    border-color: var(--primary-color);
+}
+
+.post-poll-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: color-mix(in srgb, var(--primary-color) 25%, transparent);
+    transition: width 0.4s ease-out;
+    z-index: 1;
+}
+
+.post-poll-result-row.voted .post-poll-progress-fill {
+    background: color-mix(in srgb, var(--primary-color) 45%, transparent);
+}
+
+.post-poll-result-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0.4rem 0.8rem;
+    box-sizing: border-box;
+    font-size: 0.92rem;
+    color: var(--text-color);
+}
+
+.post-poll-result-text {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 500;
+}
+
+.post-poll-result-badge {
+    color: var(--primary-color);
+    font-size: 0.85rem;
+}
+
+.post-poll-result-percent {
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+}
+
+.post-poll-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--secondary-text-color);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.post-poll-back-to-vote-btn {
+    background: none;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    border-radius: 9999px;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.post-poll-back-to-vote-btn:hover {
+    background-color: var(--primary-color);
+    color: #ffffff;
+}
+
+.post-poll-other-list {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: var(--main-bg-color);
+    border: 1px dashed var(--border-color);
+    border-radius: 6px;
+    font-size: 0.82rem;
+}
+
+.post-poll-other-list-title {
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+    color: var(--secondary-text-color);
+}
+
+.post-poll-other-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.post-poll-other-item {
+    color: var(--text-color);
+    padding: 0.15rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* ==================== Universal Viewport Clamping for All Menus & Popovers ==================== */
+.post-menu,
+.group-timeline-mode-menu,
+.profile-timeline-mode-menu,
+.post-reply-control-menu,
+.post-tools-overflow-menu,
+.post-group-menu,
+.post-account-menu,
+.profile-notify-menu,
+.dm-message-menu-popover,
+.sidebar-overflow-panel,
+.user-menu-popover,
+#emoji-picker,
+.emoji-picker-container {
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100vh - 16px) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    box-sizing: border-box !important;
+}
+
+/* ==================== Post Activity Screen ==================== */
+.post-activity-screen-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.post-activity-screen-body {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.post-activity-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: var(--secondary-text-color);
+    font-size: 0.95rem;
+}
+
+.post-activity-users-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.post-activity-user-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1.2rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s ease;
+}
+
+.post-activity-user-item:last-child {
+    border-bottom: none;
+}
+
+.post-activity-user-item:hover {
+    background-color: var(--hover-bg, rgba(255, 255, 255, 0.03));
+}
+
+.post-activity-user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.post-activity-user-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.post-activity-user-handle {
+    font-size: 0.85rem;
+    color: var(--secondary-text-color);
+    margin-top: 0.1rem;
+}
+
+.post-activity-user-bio {
+    font-size: 0.88rem;
+    color: var(--main-text-color);
+    margin-top: 0.3rem;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.post-activity-quotes-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.post-activity-quotes-list .post {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+}
+
+/* ==========================================================================
+   トースト通知（操作結果をモーダルを開かずに伝える）
+   ========================================================================== */
+.nyaitter-toast-container {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 2200;
+    pointer-events: none;
+}
+
+.nyaitter-toast {
+    max-width: min(90vw, 420px);
+    background: var(--text-color);
+    color: var(--main-bg-color);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.nyaitter-toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+

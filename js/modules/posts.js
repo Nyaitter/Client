@@ -1,0 +1,4126 @@
+import { DOM, openImageModal } from '../dom.js';
+import { t } from './i18n.js';
+import { registerRankAvatar, rankAvatarAttributes } from './rankAvatarIntegration.js';
+import { ICONS, decorateMenuButtons } from '../icons.js';
+import { api, apiRequest, getCommunityNoteReasonLabel } from '../api.js';
+import {
+    getCurrentUser,
+    getCurrentTimelineTab,
+    getSelectedFiles,
+    setSelectedFiles,
+    getReplyingTo,
+    setReplyingTo,
+    getQuotingPost,
+    setQuotingPost,
+    getPublicProfileCache,
+} from '../state.js';
+import {
+    cacheUser,
+    getCachedUser,
+    cacheUsers,
+    isPinnedPost,
+    invalidateTimelinePageCache,
+    invalidateProfileTabPageCache,
+    normalizePostId,
+    updateCachedPost,
+    deleteCachedPost,
+} from './cache.js';
+import { getEmoji, emoji_picker_create } from './format.js';
+import { renderNyarkDown } from './nyarkdown.js';
+import {
+    attachMarkdownContentEditor,
+    autoResizeMarkdownEditor,
+    getMarkdownEditorValue,
+    setMarkdownEditorValue,
+    insertMarkdownEditorText,
+    setupMarkdownEditorPreviewButton,
+} from './editor.js';
+import { isDataSaverEnabled } from './theme.js';
+import { router } from '../router.js';
+// The report modal lives in the admin screen bundle, which is loaded on
+// navigation; import it on first use so the timeline does not pay for it.
+const openReportModal = async (...args) => (await import('../screens/adminScreen.js')).openReportModal(...args);
+import { getAccountList, refreshAccountList } from './auth.js';
+import {
+    escapeHTML,
+    getUserIconUrl,
+    getSafeHttpUrl,
+    getNyaitterId,
+    formatPostTimestamp,
+    configureAttachmentImage,
+    appendUrlCard,
+    compressImage,
+    showLoading,
+    showAppAlert,
+    showAppConfirm,
+    showToast,
+    copyTextToClipboard,
+    renderGroupBadgesElement,
+    getGroupIconUrl,
+} from '../utils/helpers.js';
+import { positionElementRelativeToAnchor } from '../utils/viewport.js';
+
+export const METRICS_FALLBACK = '?';
+let postModalReturnFocus = null;
+
+/* モーダル表示中は背面（タイムライン）をスクロールさせないためのロック。
+   グレーアウト部分へのスワイプも含め、背面側へスクロールを伝播させない */
+let postModalScrollLock = null;
+
+function lockPostModalScroll() {
+    if (postModalScrollLock) return;
+    const root = document.documentElement;
+    const body = document.body;
+    postModalScrollLock = {
+        rootOverflow: root.style.overflow,
+        bodyOverflow: body ? body.style.overflow : '',
+    };
+    root.style.overflow = 'hidden';
+    if (body) body.style.overflow = 'hidden';
+}
+
+function unlockPostModalScroll() {
+    if (!postModalScrollLock) return;
+    document.documentElement.style.overflow = postModalScrollLock.rootOverflow;
+    if (document.body) document.body.style.overflow = postModalScrollLock.bodyOverflow;
+    postModalScrollLock = null;
+}
+
+function handlePostModalKeydown(event) {
+    const modal = DOM.postModal;
+    if (!modal || modal.classList.contains('hidden')) return;
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closePostModal();
+        return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = [...modal.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')]
+        .filter(element => !element.closest('[hidden], .hidden'));
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+export async function uploadFileViaEdgeFunction(file, { asUserId = null, replaceId = null } = {}) {
+    const normalizedAsUserId = Number(asUserId);
+    const { data: prepareData, error: prepareError } = await apiRequest('/server/api/uploads/prepare', {
+        method: 'POST',
+        body: {
+            fileName: file.name,
+            contentType: file.type,
+            ...(replaceId ? { replaceId } : {}),
+            ...(Number.isInteger(normalizedAsUserId) && normalizedAsUserId > 0
+                ? { as_user_id: normalizedAsUserId }
+                : {}),
+        },
+    });
+
+    if (prepareError) {
+        throw new Error(`ファイルアップロードの準備に失敗しました: ${prepareError.message}`);
+    }
+
+    const uploadId = prepareData?.id || prepareData?.data?.id;
+    if (!uploadId) {
+        throw new Error('ファイルアップロード用IDを取得できませんでした。');
+    }
+
+    const response = await globalThis.NyaitterClientInstance.uploads.uploadPartResponse(uploadId, file, {
+        contentType: file.type || 'application/octet-stream',
+        asUserId: normalizedAsUserId,
+    });
+    const responseData = await response.json().catch(() => ({}));
+    if (!response.ok || responseData.error) {
+        throw new Error(`ファイルアップロードに失敗しました: ${responseData.error || `HTTP ${response.status}`}`);
+    }
+    return responseData.id;
+}
+
+export async function deleteFilesViaEdgeFunction(fileIds, { asUserId = null } = {}) {
+    if (!fileIds || fileIds.length === 0) return;
+    const normalizedAsUserId = Number(asUserId);
+    const { error } = await apiRequest('/server/api/uploads', {
+        method: 'DELETE',
+        body: {
+            fileIds,
+            ...(Number.isInteger(normalizedAsUserId) && normalizedAsUserId > 0
+                ? { as_user_id: normalizedAsUserId }
+                : {}),
+        },
+    });
+    if (error) {
+        console.error('ファイルの削除に失敗しました:', error.message);
+    }
+}
+
+export function filterBlockedPosts(posts) {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !Array.isArray(posts)) return posts || [];
+    const blockedIds = new Set(
+        (currentUser.block || []).map((id) => Number(id)),
+    );
+    return posts.filter((post) => {
+        const authorId = Number(post?.author?.id ?? post?.userid);
+        return !blockedIds.has(authorId);
+    });
+}
+
+export async function ensureMentionedUsersCached(contents = []) {
+    const mentionRegex = /@(\d+)/g;
+    const numericHashtagRegex = /#(\d+)(?=$|[<>\/@#\s])/g;
+    const missingUserIds = new Set();
+
+    contents.forEach((content) => {
+        if (!content || typeof content !== 'string') return;
+        for (const regex of [mentionRegex, numericHashtagRegex]) {
+            regex.lastIndex = 0;
+            let match;
+            while ((match = regex.exec(content)) !== null) {
+                const userId = parseInt(match[1], 10);
+                if (Number.isInteger(userId) && !getCachedUser(userId)) {
+                    missingUserIds.add(userId);
+                }
+            }
+        }
+    });
+
+    if (missingUserIds.size === 0) return;
+
+    try {
+        const { data: users } = await api
+            .from('user')
+            .in('id', Array.from(missingUserIds));
+        if (users) cacheUsers(users);
+    } catch (_) {}
+}
+
+export function isPostReactionActive(post, serverField, accountField) {
+    const serverState = post?.[serverField];
+    if (typeof serverState === 'boolean') return serverState;
+
+    const currentUser = getCurrentUser();
+    const postId = Number(post?.id);
+    return (
+        Number.isFinite(postId) &&
+        Array.isArray(currentUser?.[accountField]) &&
+        currentUser[accountField].some((id) => Number(id) === postId)
+    );
+}
+
+export function renderUnknownPostReference(post) {
+    const postEl = document.createElement('div');
+    postEl.className = 'post unknown-post nui-card';
+    postEl.dataset.nui = 'card';
+    if (Number.isInteger(Number(post?.id))) {
+        postEl.dataset.postId = String(post.id);
+    }
+
+    const postMain = document.createElement('div');
+    postMain.className = 'post-main';
+    const postHeader = document.createElement('div');
+    postHeader.className = 'post-header';
+    const authorName = document.createElement('span');
+    authorName.className = 'post-author-name';
+    authorName.textContent = 'UnknownPost';
+    const account = document.createElement('span');
+    account.className = 'post-time';
+    account.textContent = '@unknown';
+    postHeader.append(authorName, account);
+
+    const message = document.createElement('div');
+    message.className = 'deleted-post-container nui-help-text';
+    message.textContent = '不明なポストです。';
+    postMain.append(postHeader, message);
+    postEl.appendChild(postMain);
+    return postEl;
+}
+
+export async function renderPost(post, author, options = {}) {
+    if (!post) return null;
+    if (post.unknown) return renderUnknownPostReference(post);
+    if (filterBlockedPosts([post]).length === 0) return null;
+    await ensureMentionedUsersCached([post.content]);
+
+    const {
+        isNested = false,
+        isDirectReply = false,
+        userCache = new Map(),
+        metricsPromise,
+        isPinned = false,
+        clampHeight = false,
+        quoteDepth = 0,
+        onReportClick,
+        hideGroupIndicator = false,
+        forceDetailedDate = false,
+    } = options;
+
+    const baseAuthor = author || post.author || post.user;
+    if (!baseAuthor) return null;
+    const displayAuthor = cacheUser(baseAuthor) || baseAuthor;
+
+    const isSimpleRepost = post.repost_to && !post.content;
+
+    if (isSimpleRepost) {
+        const authorOfRepost = displayAuthor;
+        const originalPost = post.reposted_post;
+
+        if (!originalPost) {
+            const deletedPostWrapper = document.createElement('div');
+            deletedPostWrapper.className = 'post nui-card';
+            deletedPostWrapper.dataset.nui = 'card';
+            deletedPostWrapper.dataset.postId = post.id;
+
+            const deletedPostMain = document.createElement('div');
+            deletedPostMain.className = 'post-main';
+
+            const repostIndicator = document.createElement('div');
+            repostIndicator.className = 'repost-indicator nui-help-text';
+            repostIndicator.innerHTML = `${ICONS.repost} <a href="#profile/${authorOfRepost.id}">${getEmoji(escapeHTML(authorOfRepost.name))}</a><span>${t('post.reposted_by_suffix')}</span>`;
+            deletedPostMain.appendChild(repostIndicator);
+
+            const deletedContainer = document.createElement('div');
+            deletedContainer.className = 'deleted-post-container nui-help-text';
+            deletedContainer.textContent = t('post.deleted');
+            deletedPostMain.appendChild(deletedContainer);
+
+            deletedPostWrapper.appendChild(deletedPostMain);
+            return deletedPostWrapper;
+        }
+
+        const postEl = await renderPost(originalPost, originalPost.author, {
+            ...options,
+            isNested: false,
+            metricsPromise,
+        });
+        if (!postEl) return null;
+
+        postEl.dataset.postId = post.id;
+        postEl.dataset.actionTargetId = originalPost.id;
+
+        const repostedPostMain = postEl.querySelector('.post-main');
+        if (repostedPostMain) {
+            const repostIndicator = document.createElement('div');
+            repostIndicator.className = 'repost-indicator nui-help-text';
+            repostIndicator.innerHTML = `${ICONS.repost} <a href="#profile/${authorOfRepost.id}">${getEmoji(escapeHTML(authorOfRepost.name))}</a><span>${t('post.reposted_by_suffix')}</span>`;
+            repostedPostMain.prepend(repostIndicator);
+
+            const postHeader = repostedPostMain.querySelector('.post-header');
+            if (postHeader) {
+                postHeader.querySelector('.post-menu-btn')?.remove();
+                postHeader.querySelector('.post-menu')?.remove();
+                postHeader.classList.remove('has-post-menu');
+
+                if (
+                    getCurrentUser() &&
+                    !isNested &&
+                    (Number(getCurrentUser().id) === Number(post.userid) || getCurrentUser().admin)
+                ) {
+                    postHeader.classList.add('has-post-menu');
+                    const menuBtn = document.createElement('button');
+                    menuBtn.type = 'button';
+                    menuBtn.className = 'post-menu-btn';
+                    menuBtn.title = 'ポストメニュー';
+                    menuBtn.setAttribute('aria-label', t('post.menu'));
+                    menuBtn.innerHTML = ICONS.more;
+                    const menu = document.createElement('div');
+                    menu.className = 'post-menu';
+                    const activityBtn = document.createElement('button');
+                    activityBtn.className = 'activity-btn';
+                    activityBtn.textContent = 'ポストアクティビティを表示';
+                    activityBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        menu.classList.remove('is-visible');
+                        const targetId = post.repost_to || post.repostTo || post.id;
+                        window.location.hash = `#post/${targetId}/activity`;
+                    };
+                    menu.appendChild(activityBtn);
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.textContent = t('post.delete_repost');
+                    menu.appendChild(deleteBtn);
+                    postHeader.appendChild(menuBtn);
+                    postHeader.appendChild(menu);
+                }
+            }
+        }
+        return postEl;
+    }
+
+    if (!author && !post.author) return null;
+
+    const postEl = document.createElement('div');
+    postEl.className = 'post nui-card';
+    postEl.dataset.nui = 'card';
+    postEl.dataset.postId = post.id;
+    postEl.dataset.actionTargetId = post.id;
+    postEl._nyaitterPost = post;
+    postEl._displayAuthor = displayAuthor;
+
+    const userIconLink = document.createElement('a');
+    userIconLink.href = `#profile/${displayAuthor.id}`;
+    userIconLink.className = 'user-icon-link';
+    const userIcon = document.createElement('img');
+    userIcon.src = getUserIconUrl(displayAuthor);
+    registerRankAvatar(userIcon, displayAuthor);
+    userIcon.className = 'user-icon nui-avatar';
+    userIcon.alt = `${displayAuthor.name}'s icon`;
+    userIconLink.appendChild(userIcon);
+    postEl.appendChild(userIconLink);
+
+    const postMain = document.createElement('div');
+    postMain.className = 'post-main';
+
+    if (isPinned) {
+        const pinnedDiv = document.createElement('div');
+        pinnedDiv.className = 'pinned-indicator nui-help-text';
+        pinnedDiv.innerHTML = `${ICONS.pin} <span>${t('post.pinned')}</span>`;
+        postMain.appendChild(pinnedDiv);
+    } else if (!isDirectReply) {
+        if (post.reply_to_post && post.reply_to_post.author) {
+            const replyDiv = document.createElement('div');
+            replyDiv.className = 'replying-to nui-help-text';
+            replyDiv.innerHTML = `<span>${t('post.replying_to_prefix')}</span><a href="#profile/${post.reply_to_post.author.id}">@${getEmoji(escapeHTML(post.reply_to_post.author.name))}</a><span>${t('post.replying_to_suffix')}</span>`;
+            postMain.appendChild(replyDiv);
+        } else if (post.reply_to_user_id && post.reply_to_user_name) {
+            const replyDiv = document.createElement('div');
+            replyDiv.className = 'replying-to nui-help-text';
+            replyDiv.innerHTML = `<span>${t('post.replying_to_prefix')}</span><a href="#profile/${post.reply_to_user_id}">@${getEmoji(escapeHTML(post.reply_to_user_name))}</a><span>${t('post.replying_to_suffix')}</span>`;
+            postMain.appendChild(replyDiv);
+        } else if (post.reply_to_post?.unknown) {
+            const replyDiv = document.createElement('div');
+            replyDiv.className = 'replying-to nui-help-text';
+            replyDiv.innerHTML = `<span>${t('post.reply_unknown')}</span>`;
+            postMain.appendChild(replyDiv);
+        } else if (post.reply_to_post || post.reply_to || post.reply_id || post.replyTo) {
+            const replyDiv = document.createElement('div');
+            replyDiv.className = 'replying-to nui-help-text';
+            replyDiv.innerHTML = `<span>${t('post.reply_generic')}</span>`;
+            postMain.appendChild(replyDiv);
+        }
+    }
+
+    const postHeader = document.createElement('div');
+    postHeader.className = 'post-header';
+    const authorLink = document.createElement('a');
+    authorLink.href = `#profile/${displayAuthor.id}`;
+    authorLink.className = 'post-author';
+    const authorName = document.createElement('span');
+    authorName.className = 'post-author-name';
+    authorName.innerHTML = getEmoji(escapeHTML(displayAuthor.name || '不明'));
+    authorLink.appendChild(authorName);
+    postHeader.appendChild(authorLink);
+
+    if (displayAuthor.admin) {
+        const adminBadge = document.createElement('img');
+        adminBadge.src = 'icons/admin.png';
+        adminBadge.className = 'admin-badge';
+        adminBadge.title = 'NyaitterTeam';
+        authorLink.appendChild(adminBadge);
+    } else if (displayAuthor.verify) {
+        const verifyBadge = document.createElement('img');
+        verifyBadge.src = 'icons/verify.png';
+        verifyBadge.className = 'verify-badge';
+        verifyBadge.title = '認証済み';
+        authorLink.appendChild(verifyBadge);
+    }
+
+    const groupBadgesEl = renderGroupBadgesElement(displayAuthor);
+    if (groupBadgesEl) {
+        postHeader.appendChild(groupBadgesEl);
+    }
+
+    const postTime = document.createElement('span');
+    postTime.className = 'post-time nui-list-meta';
+    postTime.textContent = `${getNyaitterId(displayAuthor)} · ${formatPostTimestamp(post, forceDetailedDate ? 'absolute_24' : undefined)}`;
+    postHeader.appendChild(postTime);
+
+    if (!hideGroupIndicator && (post.groupId || post.group_id)) {
+        const groupIndicator = document.createElement('a');
+        groupIndicator.className = 'group-post-indicator';
+        const group = post.group || { id: post.groupId || post.group_id, name: post.group_name || 'グループ', icon_data: post.group_icon_data || null };
+        groupIndicator.href = `#group/${encodeURIComponent(group.id)}`;
+        groupIndicator.innerHTML = renderPostGroupMenuIcon(group);
+        const groupLabel = document.createElement('span');
+        groupLabel.textContent = group.name;
+        groupIndicator.append(groupLabel);
+        groupIndicator.title = `${group.name}${post.group_announcement || post.groupAnnouncement ? ' · アナウンス' : ''}`;
+        postHeader.appendChild(groupIndicator);
+    } else if (post.announcement) {
+        const announcementIndicator = document.createElement('span');
+        announcementIndicator.className = 'group-post-indicator';
+        announcementIndicator.textContent = 'アナウンス';
+        postHeader.appendChild(announcementIndicator);
+    }
+
+    if (post.private || post.lock) {
+        const lockIndicator = document.createElement('span');
+        lockIndicator.className = 'post-lock-indicator';
+        lockIndicator.title = 'プライベート';
+        lockIndicator.setAttribute('aria-label', t('post.private'));
+        lockIndicator.innerHTML = ICONS.lock;
+        postHeader.appendChild(lockIndicator);
+    }
+
+    const scheduledAt = post.scheduled_at || post.scheduledAt || null;
+    if (scheduledAt) {
+        const indicator = document.createElement('span');
+        indicator.className = 'post-scheduled-indicator';
+        const scheduledDate = new Date(scheduledAt);
+        const scheduledLabel = Number.isNaN(scheduledDate.getTime())
+            ? ''
+            : scheduledDate.toLocaleString();
+        indicator.title = scheduledLabel ? `公開予定: ${scheduledLabel}` : '予約投稿';
+        indicator.setAttribute('aria-label', scheduledLabel
+            ? `非公開の予約投稿。公開予定: ${scheduledLabel}`
+            : '非公開の予約投稿');
+        indicator.innerHTML = `
+            <span class="post-scheduled-indicator-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                    <path d="M7 2v6m10-6v6M3 10h18"></path>
+                    <path d="M12 13v4l3 1"></path>
+                </svg>
+            </span>
+            <span class="post-scheduled-indicator-label">予約投稿</span>`;
+        postHeader.appendChild(indicator);
+    }
+
+    if (getCurrentUser()) {
+        const currentUser = getCurrentUser();
+        const isPostOwner = Number(currentUser.id) === Number(post.userid || post.userId);
+
+        postHeader.classList.add('has-post-menu');
+        const menuBtn = document.createElement('button');
+        menuBtn.type = 'button';
+        menuBtn.className = 'post-menu-btn';
+        menuBtn.title = 'ポストメニュー';
+        menuBtn.setAttribute('aria-label', t('post.menu'));
+        menuBtn.innerHTML = ICONS.more;
+        const menu = document.createElement('div');
+        menu.className = 'post-menu';
+
+        const shareBtn = document.createElement('button');
+        shareBtn.className = 'share-btn';
+        shareBtn.textContent = 'URLをコピー';
+        menu.appendChild(shareBtn);
+
+        const activityBtn = document.createElement('button');
+        activityBtn.className = 'activity-btn';
+        activityBtn.textContent = 'ポストアクティビティを表示';
+        activityBtn.onclick = (e) => {
+            e.stopPropagation();
+            menu.classList.remove('is-visible');
+            const targetId = Number(post?.id ?? post?.postId ?? post?.post_id);
+            if (targetId) {
+                window.location.hash = `#post/${targetId}/activity`;
+            }
+        };
+        menu.appendChild(activityBtn);
+
+        const communityNoteMenuBtn = document.createElement('button');
+        communityNoteMenuBtn.type = 'button';
+        communityNoteMenuBtn.className = 'community-note-menu-btn';
+        communityNoteMenuBtn.textContent = 'コミュニティノートを追加';
+        communityNoteMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.classList.remove('is-visible');
+            const target = isSimpleRepost && post.reposted_post ? post.reposted_post : post;
+            const targetBody = postEl.querySelector('.post-body');
+            openCommunityNoteModal(
+                Number(target?.id ?? target?.postId ?? target?.post_id ?? post?.id),
+                target || post,
+                targetBody,
+            );
+        });
+        menu.appendChild(communityNoteMenuBtn);
+
+        if (!isPostOwner) {
+            const dislikeBtn = document.createElement('button');
+            dislikeBtn.className = 'dislike-btn';
+            dislikeBtn.textContent = '関連性が低いと評価';
+            menu.appendChild(dislikeBtn);
+
+            const authorRawName = String(displayAuthor.name || 'ユーザー').trim();
+            const authorShortName = authorRawName.length > 12 ? authorRawName.slice(0, 12) : authorRawName;
+
+            const isFollowing = Array.isArray(currentUser.follow) && currentUser.follow.some((id) => Number(id) === Number(displayAuthor.id));
+            const followBtn = document.createElement('button');
+            followBtn.className = 'follow-menu-btn';
+            followBtn.title = isFollowing ? t('post.unfollow', { name: authorRawName }) : t('post.follow', { name: authorRawName });
+            followBtn.textContent = isFollowing
+                ? t('post.unfollow', { name: authorShortName })
+                : t('post.follow', { name: authorShortName });
+            menu.appendChild(followBtn);
+
+            const isBlocked = Array.isArray(currentUser.block) && currentUser.block.some((id) => Number(id) === Number(displayAuthor.id));
+            const blockBtn = document.createElement('button');
+            blockBtn.className = 'block-menu-btn';
+            blockBtn.title = isBlocked ? t('post.unblock', { name: authorRawName }) : t('post.block', { name: authorRawName });
+            blockBtn.textContent = isBlocked
+                ? t('post.unblock', { name: authorShortName })
+                : t('post.block', { name: authorShortName });
+            menu.appendChild(blockBtn);
+
+            const reportBtn = document.createElement('button');
+            reportBtn.className = 'report-btn';
+            reportBtn.textContent = t('report.title');
+            reportBtn.onclick = (event) => {
+                event.stopPropagation();
+                if (typeof onReportClick === 'function') {
+                    onReportClick(post);
+                } else {
+                    openReportModal({
+                        targetKind: 'post',
+                        targetId: post.id,
+                        targetLabel: 'このポスト',
+                    });
+                }
+                menu.classList.remove('is-visible');
+            };
+            menu.appendChild(reportBtn);
+        } else {
+            const pinBtn = document.createElement('button');
+            pinBtn.className = 'pin-btn';
+            pinBtn.textContent = isPinnedPost(post.id) ? t('post.unpin') : t('post.pin');
+            menu.appendChild(pinBtn);
+
+            if (!post.repost_to || post.content) {
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-btn';
+                editBtn.textContent = t('post.edit');
+                menu.appendChild(editBtn);
+
+                const isReply = Boolean(post.reply_id || post.replyTo || post.reply_to || post.reply_to_post);
+                if (!isReply) {
+                    const replyControlBtn = document.createElement('button');
+                    replyControlBtn.className = 'reply-control-menu-btn';
+                    replyControlBtn.textContent = t('post.reply_control_change');
+                    menu.appendChild(replyControlBtn);
+                }
+            }
+        }
+
+        if (isPostOwner || currentUser.admin) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = t('post.delete');
+            menu.appendChild(deleteBtn);
+        }
+
+        postHeader.appendChild(menuBtn);
+        postHeader.appendChild(menu);
+        decorateMenuButtons(menu);
+    }
+    postMain.appendChild(postHeader);
+
+    const postBody = document.createElement('div');
+    postBody.className = 'post-body';
+
+    if (post.content) {
+        const postContent = document.createElement('div');
+        postContent.className = 'post-content';
+
+        if (post.mask) {
+            postContent.classList.add('hidden');
+            if (post.mask && post.content.startsWith('!')) {
+                const masktitle = document.createElement('div');
+                masktitle.className = 'post-content post-mask-title';
+                masktitle.innerHTML = renderNyarkDown(
+                    post.content.split('\n')[0].slice(1),
+                    userCache,
+                    { allowMarkdown: true, allowContentDecorations: true },
+                );
+                postBody.appendChild(masktitle);
+                postContent.innerHTML = renderNyarkDown(
+                    post.content.slice(1),
+                    userCache,
+                    { allowMarkdown: true, allowContentDecorations: true },
+                );
+            } else {
+                postContent.innerHTML = renderNyarkDown(
+                    post.content,
+                    userCache,
+                    { allowMarkdown: true, allowContentDecorations: true },
+                );
+            }
+        } else {
+            postContent.innerHTML = renderNyarkDown(
+                post.content,
+                userCache,
+                { allowMarkdown: true, allowContentDecorations: true },
+            );
+        }
+        postBody.appendChild(postContent);
+        if (!post.mask) {
+            appendUrlCard(postBody, post.content, {
+                hasExistingQuote: Boolean(post.repost_to && post.reposted_post),
+                renderPost,
+                options,
+            });
+        }
+    }
+
+    if (post.mask) {
+        const postAlert = document.createElement('button');
+        postAlert.className = 'post-mask-alert nui-button-secondary';
+        postAlert.innerText = 'このポストにはワンクッションが付与されています';
+        postBody.appendChild(postAlert);
+    }
+
+    if (post.attachments && post.attachments.length > 0) {
+        const attachmentsContainer = document.createElement('div');
+        attachmentsContainer.className = 'attachments-container';
+        if (post.mask) {
+            attachmentsContainer.classList.add('hidden');
+        }
+
+        if (isNested) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'attachment-item';
+            const fileinfo = document.createElement('p');
+            fileinfo.className = 'attachment-fileinfo';
+            fileinfo.textContent = `📄 ${post.attachments.length}件のファイル`;
+            itemDiv.appendChild(fileinfo);
+            attachmentsContainer.appendChild(itemDiv);
+        } else {
+            const allImageAttachments = post.attachments.filter((a) => a.type === 'image');
+            const allImageUrls = allImageAttachments.map((a) => {
+                const { data } = api.storage.from('nyaitter').getPublicUrl(a.id);
+                return getSafeHttpUrl(data?.publicUrl);
+            }).filter(Boolean);
+
+            let currentImageIndex = 0;
+            for (const attachment of post.attachments) {
+                const { data: publicUrlData } = api.storage
+                    .from('nyaitter')
+                    .getPublicUrl(attachment.id);
+                const publicURL = getSafeHttpUrl(publicUrlData?.publicUrl);
+                if (!publicURL) continue;
+                const attachmentName = String(attachment.name || '添付ファイル').slice(0, 255);
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'attachment-item';
+
+                if (attachment.type === 'image') {
+                    const img = document.createElement('img');
+                    configureAttachmentImage(img, attachment, publicURL);
+                    img.alt = attachmentName;
+                    img.className = 'attachment-image';
+                    const targetIndex = currentImageIndex++;
+                    img.onclick = (e) => {
+                        e.stopPropagation();
+                        openImageModal(publicURL, { images: allImageUrls, index: targetIndex });
+                    };
+                    itemDiv.appendChild(img);
+                } else if (attachment.type === 'video') {
+                    const video = document.createElement('video');
+                    video.src = publicURL;
+                    video.controls = true;
+                    video.preload = isDataSaverEnabled() ? 'metadata' : 'auto';
+                    video.onclick = (e) => e.stopPropagation();
+                    itemDiv.appendChild(video);
+                } else if (attachment.type === 'audio') {
+                    const audio = document.createElement('audio');
+                    audio.src = publicURL;
+                    audio.controls = true;
+                    audio.onclick = (e) => e.stopPropagation();
+                    itemDiv.appendChild(audio);
+                } else {
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = '#';
+                    downloadLink.className = 'attachment-download-link';
+                    downloadLink.textContent = `📄 ${attachmentName}`;
+                    downloadLink.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.handleDownload?.(publicURL, attachmentName);
+                    };
+                    itemDiv.appendChild(downloadLink);
+                }
+                attachmentsContainer.appendChild(itemDiv);
+            }
+        }
+        attachmentsContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        postBody.appendChild(attachmentsContainer);
+    } else {
+        const attachmentsContainer = document.createElement('div');
+        attachmentsContainer.className = 'attachments-container';
+        postBody.appendChild(attachmentsContainer);
+    }
+
+    renderCommunityNoteCard(post, postBody);
+
+    if (post.poll) {
+        renderPostPoll(postBody, post.poll, post);
+    }
+
+    if ((post.repost_to || post.reposted_post) && post.content && quoteDepth < 2) {
+        const nestedContainer = document.createElement('div');
+        nestedContainer.className = 'nested-repost-container';
+        if (post.reposted_post) {
+            const nestedPostEl = await renderPost(
+                post.reposted_post,
+                post.reposted_post.author,
+                { ...options, isNested: true, clampHeight: true, quoteDepth: quoteDepth + 1 },
+            );
+            if (nestedPostEl) {
+                nestedContainer.appendChild(nestedPostEl);
+            }
+        } else {
+            const deletedContainer = document.createElement('div');
+            deletedContainer.className = 'deleted-post-container nui-help-text';
+            deletedContainer.textContent = t('post.deleted');
+            nestedContainer.appendChild(deletedContainer);
+        }
+        postBody.appendChild(nestedContainer);
+    }
+
+    postMain.appendChild(postBody);
+
+    if (getCurrentUser() && !isNested) {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'post-actions nui-actions';
+        const actionTargetPost = isSimpleRepost && post.reposted_post ? post.reposted_post : post;
+
+        if (actionTargetPost) {
+            const replyBtn = document.createElement('button');
+            replyBtn.className = 'reply-button nui-button-secondary';
+            const replyAuthor = actionTargetPost.author
+                || actionTargetPost.user
+                || displayAuthor;
+            replyBtn.dataset.username = String(replyAuthor?.name || '');
+            replyBtn.dataset.isPrivate = String(
+                Boolean(actionTargetPost.private || actionTargetPost.lock || replyAuthor?.settings?.lock),
+            );
+            replyBtn._nyaitterPost = actionTargetPost;
+
+            const currentUser = getCurrentUser();
+            let canReply = true;
+            if (actionTargetPost.can_reply !== undefined) {
+                canReply = Boolean(actionTargetPost.can_reply);
+            } else if (!currentUser) {
+                canReply = false;
+            } else if (Number(actionTargetPost.userid || actionTargetPost.userId) === Number(currentUser.id)) {
+                canReply = true;
+            } else {
+                const replyControl = actionTargetPost.reply_control || actionTargetPost.replyControl || 'everyone';
+                if (replyControl === 'mentioned') {
+                    canReply = Boolean(actionTargetPost.content && new RegExp(`@${currentUser.id}\\b`).test(actionTargetPost.content));
+                }
+            }
+
+            if (!canReply) {
+                replyBtn.disabled = true;
+                replyBtn.classList.add('disabled');
+                replyBtn.title = t('post.reply_limited');
+                replyBtn.setAttribute('aria-disabled', 'true');
+            }
+
+            replyBtn.innerHTML = `${ICONS.reply} <span>---</span>`;
+            actionsDiv.appendChild(replyBtn);
+
+            const likeBtn = document.createElement('button');
+            likeBtn.className = `like-button nui-button-secondary ${isPostReactionActive(actionTargetPost, 'liked_by_me', 'like') ? 'liked' : ''}`;
+            likeBtn.innerHTML = `${ICONS.likes} <span>---</span>`;
+            actionsDiv.appendChild(likeBtn);
+
+            const starBtn = document.createElement('button');
+            starBtn.className = `star-button nui-button-secondary ${isPostReactionActive(actionTargetPost, 'starred_by_me', 'star') ? 'starred' : ''}`;
+            starBtn.innerHTML = `${ICONS.stars} <span>---</span>`;
+            actionsDiv.appendChild(starBtn);
+
+            const repostBtn = document.createElement('button');
+            repostBtn.className = 'repost-button nui-button-secondary';
+            repostBtn.innerHTML = `${ICONS.repost} <span>---</span>`;
+            repostBtn._nyaitterPost = actionTargetPost;
+            actionsDiv.appendChild(repostBtn);
+
+            (async () => {
+                await metricsPromise;
+                const replyCount = actionTargetPost.reply_count ?? METRICS_FALLBACK;
+                const likeCount = actionTargetPost.like_count ?? METRICS_FALLBACK;
+                const starCount = actionTargetPost.star_count ?? METRICS_FALLBACK;
+                const repostCount = actionTargetPost.repost_count ?? METRICS_FALLBACK;
+
+                replyBtn.innerHTML = `${ICONS.reply} <span>${replyCount}</span>`;
+                likeBtn.innerHTML = `${ICONS.likes} <span>${likeCount}</span>`;
+                starBtn.innerHTML = `${ICONS.stars} <span>${starCount}</span>`;
+                repostBtn.innerHTML = `${ICONS.repost} <span>${repostCount}</span>`;
+            })();
+        }
+
+        postMain.appendChild(actionsDiv);
+    }
+
+    postEl.appendChild(postMain);
+
+    if (clampHeight && !post.mask) {
+        const targetEl = postBody || postMain.querySelector('.post-body, .post-content');
+        if (targetEl && (post.content || (post.attachments && post.attachments.length > 0) || post.reposted_post || post.poll)) {
+            postEl.dataset.clampContent = '1';
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'post-clamp-toggle';
+            toggleBtn.textContent = '続きを表示';
+            toggleBtn.addEventListener('click', () => {
+                const expanded = targetEl.classList.toggle('post-content-expanded');
+                postEl.classList.toggle('post-expanded', expanded);
+                targetEl.querySelectorAll('.post-content').forEach((c) => {
+                    c.classList.toggle('post-content-expanded', expanded);
+                });
+                toggleBtn.textContent = expanded ? '閉じる' : '続きを表示';
+                toggleBtn.classList.toggle('expanded', expanded);
+            });
+            targetEl.after(toggleBtn);
+
+            const measure = () => {
+                if (!postEl.isConnected || !targetEl.isConnected) return null;
+                if (targetEl.classList.contains('post-content-expanded')) {
+                    toggleBtn.classList.add('is-visible');
+                    return true;
+                }
+
+                const scrollHeight = targetEl.scrollHeight || 0;
+                const clientHeight = targetEl.clientHeight || 0;
+                const clampLimit = Number.parseFloat(window.getComputedStyle(targetEl).maxHeight);
+
+                const isOverflowing = (Number.isFinite(clampLimit) && scrollHeight > clampLimit + 1) ||
+                                      (clientHeight > 0 && scrollHeight > clientHeight + 1);
+
+                if (isOverflowing) {
+                    toggleBtn.classList.add('is-visible');
+                } else {
+                    toggleBtn.classList.remove('is-visible');
+                }
+                return true;
+            };
+
+            if (typeof ResizeObserver !== 'undefined') {
+                let rafId = null;
+                const ro = new ResizeObserver(() => {
+                    if (targetEl.classList.contains('post-content-expanded')) return;
+                    if (rafId) cancelAnimationFrame(rafId);
+                    rafId = requestAnimationFrame(() => {
+                        rafId = null;
+                        measure();
+                    });
+                });
+                ro.observe(targetEl);
+            }
+
+            targetEl.querySelectorAll('img').forEach((img) => {
+                if (!img.complete) {
+                    img.addEventListener('load', () => requestAnimationFrame(measure), { once: true });
+                    img.addEventListener('error', () => requestAnimationFrame(measure), { once: true });
+                }
+            });
+
+            let attempts = 0;
+            const timer = setInterval(() => {
+                if (measure() === true || ++attempts >= 15) clearInterval(timer);
+            }, 60);
+        }
+    }
+
+    return postEl;
+}
+
+function getPostingAccountId(container) {
+    const selectedId = Number(container?.dataset.postAsUserId);
+    if (Number.isInteger(selectedId) && selectedId > 0) return selectedId;
+    return Number(getCurrentUser()?.id) || null;
+}
+
+function closePostAccountMenu(container) {
+    const menu = container.querySelector('.post-account-menu');
+    if (!menu) return;
+    menu.classList.add('hidden');
+    menu.innerHTML = '';
+    container.querySelector('.post-account-selector')?.setAttribute('aria-expanded', 'false');
+    if (container._postAccountMenuOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postAccountMenuOutsideHandler, true);
+        delete container._postAccountMenuOutsideHandler;
+    }
+}
+
+function setPostingAccount(container, account) {
+    const accountId = Number(account?.id);
+    if (!Number.isInteger(accountId) || accountId <= 0) return;
+    const previousAccountId = Number(container?.dataset.postAsUserId);
+    const accountChanged = !Number.isInteger(previousAccountId) || previousAccountId !== accountId;
+    container.dataset.postAsUserId = String(accountId);
+    container._postingAccount = account;
+    const selector = container.querySelector('.post-account-selector');
+    const icon = selector?.querySelector('.user-icon');
+    if (icon) {
+        icon.src = getUserIconUrl(account);
+        registerRankAvatar(icon, account);
+        icon.alt = `${account.name || 'アカウント'}のアイコン`;
+    }
+    if (selector) {
+        selector.title = `投稿アカウント: ${account.name || '不明なユーザー'}`;
+        selector.setAttribute('aria-label', selector.title);
+    }
+    const announcementButton = container.querySelector('.post-announcement-button');
+    if (announcementButton && !getPostingGroup(container)) {
+        announcementButton.hidden = !account.admin;
+        announcementButton.classList.toggle('hidden', !account.admin);
+        announcementButton.title = 'Nyaitterアナウンス';
+        announcementButton.setAttribute('aria-label', announcementButton.title);
+    }
+    if (accountChanged) {
+        const postingAccountVersion = Number(container._postingAccountVersion || 0) + 1;
+        container._postingAccountVersion = postingAccountVersion;
+        void syncPostGroupDestinationsForPostingAccount(container, postingAccountVersion);
+    }
+}
+
+async function openPostAccountMenu(container) {
+    const menu = container.querySelector('.post-account-menu');
+    const selector = container.querySelector('.post-account-selector');
+    const form = container.querySelector('.post-form');
+    if (!menu || !selector || !form) return;
+    if (!menu.classList.contains('hidden')) {
+        closePostAccountMenu(container);
+        return;
+    }
+
+    menu.classList.remove('hidden');
+    menu.innerHTML = '<div class="post-account-menu-loading"><span class="spinner" aria-label="' + t('composer.loading_accounts') + '"></span></div>';
+    selector.setAttribute('aria-expanded', 'true');
+    const outsideHandler = (event) => {
+        if (!form.contains(event.target)) closePostAccountMenu(container);
+    };
+    container._postAccountMenuOutsideHandler = outsideHandler;
+    document.addEventListener('pointerdown', outsideHandler, true);
+
+    try {
+        let accounts = getAccountList();
+        if (accounts.length === 0) {
+            accounts = await refreshAccountList();
+            if (menu.classList.contains('hidden')) return;
+        }
+        if (accounts.length === 0 && getCurrentUser()) {
+            accounts = [getCurrentUser()];
+        }
+        const selectedId = getPostingAccountId(container);
+        if (accounts.length === 0) {
+            menu.innerHTML = '<p class="post-account-menu-empty">利用可能なアカウントがありません。</p>';
+            return;
+        }
+
+        menu.innerHTML = '';
+        accounts.forEach((account) => {
+            const accountId = Number(account.id);
+            if (!Number.isInteger(accountId) || accountId <= 0) return;
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'post-account-menu-item';
+            item.classList.toggle('active', accountId === selectedId);
+            item.setAttribute('aria-pressed', String(accountId === selectedId));
+            item.innerHTML = `
+                <img ${rankAvatarAttributes(account)} src="${escapeHTML(getUserIconUrl(account))}" alt="" class="post-account-menu-icon">
+                <span class="post-account-menu-user">
+                    <strong>${getEmoji(escapeHTML(account.name || '不明なユーザー'))}</strong>
+                    <small>${escapeHTML(getNyaitterId(account))}</small>
+                </span>
+                ${account.is_imposter ? '<span class="settings-session-current">インポスター</span>' : ''}
+            `;
+            item.addEventListener('click', () => {
+                setPostingAccount(container, account);
+                closePostAccountMenu(container);
+            });
+            menu.appendChild(item);
+        });
+    } catch (error) {
+        if (!menu.classList.contains('hidden')) {
+            menu.innerHTML = '<p class="post-account-menu-empty">アカウント一覧を読み込めませんでした。</p>';
+        }
+    }
+}
+
+export function createPostFormHTML(isModal = false) {
+    const currentUser = getCurrentUser();
+    return `
+        <div class="post-form">
+            <button type="button" class="post-account-selector" title="${t('composer.account', { name: escapeHTML(currentUser?.name || t('composer.account_unknown')) })}" aria-label="${t('composer.account', { name: escapeHTML(currentUser?.name || t('composer.account_unknown')) })}" aria-haspopup="menu" aria-expanded="false">
+                <img ${rankAvatarAttributes(currentUser)} src="${getUserIconUrl(currentUser)}" class="user-icon nui-avatar" alt="${t('composer.account_icon_alt', { name: escapeHTML(currentUser?.name || t('composer.account_fallback')) })}">
+            </button>
+            <div class="post-account-menu hidden" role="menu"></div>
+            ${isModal ? '<button type="button" class="modal-close-btn" aria-label="' + t('common.close') + '">×</button>' : ''}
+            <div class="form-content">
+                <div id="reply-info" class="hidden" style="margin-bottom: 0.5rem; color: var(--secondary-text-color);"></div>
+                <div class="markdown-textarea-editor post-content-editor"><textarea id="post-content" class="markdown-content-editor" rows="3" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length" placeholder="${t('composer.placeholder')}"></textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
+                <div class="file-preview-container"></div>
+                ${isModal ? '<div id="quoting-preview-container"></div>' : ''}
+                <div class="post-form-actions">
+                    <div class="post-form-tools-row">
+                        <button type="button" class="attachment-button" title="${t('composer.attach')}">
+                            ${ICONS.attachment}
+                        </button>
+                        <button type="button" class="post-poll-button" title="${t('composer.poll')}">
+                            ${ICONS.poll}
+                        </button>
+                        <button type="button" class="emoji-pic-button" title="${t('composer.emoji')}">
+                            ${ICONS.emoji}
+                        </button>
+                        <div class="post-tools-right-group post-tools-right-start">
+                            <button type="button" class="post-tool-btn post-announcement-button hidden" title="${t('composer.announcement')}" aria-pressed="false">${ICONS.megaphone}</button>
+                            <button type="button" class="post-tool-btn post-lock-button" title="${t('composer.private')}" aria-pressed="false">
+                                ${ICONS.lock}
+                            </button>
+                            <button type="button" class="post-tool-btn post-mask-button" title="${t('composer.mask')}">
+                                ${ICONS.mask}
+                            </button>
+                            <button type="button" class="post-tool-btn post-reply-control-button" title="${t('composer.reply_control.everyone')}" aria-label="${t('composer.reply_control.everyone')}" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
+                            <button type="button" class="post-tool-btn post-schedule-button" title="${t('composer.schedule')}" aria-label="${t('composer.schedule')}" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 10h18"/><path d="M12 13v4l3 1"/></svg></button>
+                            <button type="button" class="post-tool-btn post-group-button" title="${t('composer.destination', { name: 'Nyaitter' })}" aria-label="${t('composer.destination', { name: 'Nyaitter' })}" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
+                        </div>
+                    </div>
+                    <div class="post-form-submit-row">
+                        <button id="post-submit-button" class="nui-button" data-nui="button">${t('composer.submit')}</button>
+                    </div>
+                    <input type="file" id="file-input" class="hidden" multiple>
+                    <div id="emoji-picker" class="hidden"></div>
+                    <div class="post-group-menu hidden" role="menu"></div>
+                    <div class="post-reply-control-menu hidden" role="menu"></div>
+                    <div class="post-schedule-menu hidden" role="dialog" aria-label="${t('composer.schedule.dialog')}"></div>
+                </div>
+            </div>
+        </div>`;
+}
+
+function closePostScheduleMenu(container) {
+    const menu = container?.querySelector('.post-schedule-menu');
+    const button = container?.querySelector('.post-schedule-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+    if (container?._postScheduleOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postScheduleOutsideHandler, true);
+        container._postScheduleOutsideHandler = null;
+    }
+}
+
+function updatePostScheduleButton(container) {
+    const button = container?.querySelector('.post-schedule-button');
+    if (!button) return;
+    const active = Boolean(container?._scheduledAt);
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+    button.title = active
+        ? `予約投稿: ${new Date(container._scheduledAt).toLocaleString()}`
+        : '予約投稿';
+    const submitButton = container?.querySelector('#post-submit-button');
+    if (submitButton && !submitButton.disabled) {
+        submitButton.textContent = active ? '予約投稿' : 'ポスト';
+    }
+}
+
+function renderPostScheduleMenu(container) {
+    const menu = container?.querySelector('.post-schedule-menu');
+    if (!menu) return;
+    const now = new Date();
+    const defaultAbsolute = new Date(Math.ceil((now.getTime() + 10 * 60 * 1000) / 60000) * 60000);
+    const localAbsolute = new Date(defaultAbsolute.getTime() - defaultAbsolute.getTimezoneOffset() * 60000)
+        .toISOString().slice(0, 16);
+    const currentSchedule = container?._scheduledAt
+        ? new Date(container._scheduledAt).toLocaleString()
+        : null;
+    menu.innerHTML = `
+        <div class="post-schedule-header">
+            <div class="post-schedule-heading">
+                <span class="post-schedule-heading-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+                        <path d="M7 2v6m10-6v6M3 10h18"></path>
+                        <path d="M12 13v4l3 1"></path>
+                    </svg>
+                </span>
+                <span>
+                    <strong>予約投稿</strong>
+                    <small>公開するタイミングを指定</small>
+                </span>
+            </div>
+            ${currentSchedule ? `<div class="post-schedule-current">設定中 <strong>${escapeHTML(currentSchedule)}</strong></div>` : ''}
+        </div>
+
+        <div class="post-schedule-tabs" role="tablist" aria-label="予約日時の指定方法">
+            <button type="button" class="active" data-schedule-mode="relative" role="tab" aria-selected="true">あとで</button>
+            <button type="button" data-schedule-mode="absolute" role="tab" aria-selected="false">日時指定</button>
+        </div>
+
+        <div class="post-schedule-panel" data-schedule-panel="relative">
+            <label class="post-schedule-field">
+                <span class="post-schedule-field-label">公開まで</span>
+                <span class="post-schedule-relative-control">
+                    <input type="number" min="1" step="1" value="10" data-schedule-relative-value>
+                    <select data-schedule-relative-unit>
+                        <option value="minute">分後</option>
+                        <option value="hour">時間後</option>
+                        <option value="day">日後</option>
+                    </select>
+                </span>
+            </label>
+        </div>
+        <div class="post-schedule-panel hidden" data-schedule-panel="absolute">
+            <label class="post-schedule-field">
+                <span class="post-schedule-field-label">公開日時</span>
+                <input type="datetime-local" value="${localAbsolute}" data-schedule-absolute>
+            </label>
+        </div>
+        <div class="post-schedule-actions">
+            <button type="button" class="post-schedule-clear">解除</button>
+            <button type="button" class="post-schedule-apply">この日時で予約</button>
+        </div>`;
+
+    let mode = 'relative';
+    const setMode = (nextMode) => {
+        mode = nextMode === 'absolute' ? 'absolute' : 'relative';
+        menu.querySelectorAll('[data-schedule-mode]').forEach((button) => {
+            const selected = button.dataset.scheduleMode === mode;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-selected', String(selected));
+        });
+        menu.querySelectorAll('[data-schedule-panel]').forEach((panel) => {
+            panel.classList.toggle('hidden', panel.dataset.schedulePanel !== mode);
+        });
+    };
+    menu.querySelectorAll('[data-schedule-mode]').forEach((button) => {
+        button.addEventListener('click', () => setMode(button.dataset.scheduleMode));
+    });
+    menu.querySelector('.post-schedule-clear')?.addEventListener('click', () => {
+        container._scheduledAt = null;
+        updatePostScheduleButton(container);
+        closePostScheduleMenu(container);
+    });
+    menu.querySelector('.post-schedule-apply')?.addEventListener('click', () => {
+        let targetTime = null;
+        if (mode === 'absolute') {
+            const value = menu.querySelector('[data-schedule-absolute]')?.value;
+            targetTime = value ? new Date(value).getTime() : NaN;
+        } else {
+            const amount = Number(menu.querySelector('[data-schedule-relative-value]')?.value);
+            const unit = menu.querySelector('[data-schedule-relative-unit]')?.value || 'minute';
+            const unitMs = unit === 'day' ? 86400000 : unit === 'hour' ? 3600000 : 60000;
+            targetTime = Date.now() + amount * unitMs;
+        }
+        if (!Number.isFinite(targetTime) || targetTime <= Date.now()) {
+            showAppAlert('現在より後の日時を指定してください。');
+            return;
+        }
+        container._scheduledAt = new Date(targetTime).toISOString();
+        updatePostScheduleButton(container);
+        closePostScheduleMenu(container);
+    });
+}
+
+function togglePostScheduleMenu(container) {
+    const menu = container?.querySelector('.post-schedule-menu');
+    const button = container?.querySelector('.post-schedule-button');
+    if (!menu || !button) return;
+    closePostGroupMenu(container);
+    closePostReplyControlMenu(container);
+    closePostAccountMenu(container);
+    const willOpen = menu.classList.contains('hidden');
+    if (!willOpen) {
+        closePostScheduleMenu(container);
+        return;
+    }
+    renderPostScheduleMenu(container);
+    menu.classList.remove('hidden');
+    button.setAttribute('aria-expanded', 'true');
+    positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+    const handler = (event) => {
+        if (menu.contains(event.target) || button.contains(event.target)) return;
+        closePostScheduleMenu(container);
+    };
+    container._postScheduleOutsideHandler = handler;
+    document.addEventListener('pointerdown', handler, true);
+}
+
+export function closePostToolsOverflowMenu(container) {
+    const menu = container?.querySelector('.post-tools-overflow-menu');
+    const button = container?.querySelector('.post-tools-overflow-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+    if (container?._postToolsOverflowMenuOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postToolsOverflowMenuOutsideHandler, true);
+        container._postToolsOverflowMenuOutsideHandler = null;
+    }
+}
+
+export function renderPostToolsOverflowMenu(_container) {}
+
+export function togglePostToolsOverflowMenu(_container) {}
+
+function syncPostToolsWrap(container) {
+    const row = container?.querySelector('.post-form-tools-row');
+    const group = row?.querySelector('.post-tools-right-group');
+    if (!row || !group) return;
+    const rowTop = row.getBoundingClientRect().top;
+    const wrapped = group.getBoundingClientRect().top > rowTop + 1;
+    group.classList.toggle('post-tools-right-wrap', wrapped);
+}
+
+export function updatePostToolsOverflow(container) {
+    if (!container) return;
+    const actions = container.querySelector('.post-form-actions');
+    const toolsRow = container.querySelector('.post-form-tools-row');
+    const submitRow = container.querySelector('.post-form-submit-row');
+    if (!actions || !toolsRow || !submitRow) return;
+
+    const visibleToolButtons = Array.from(toolsRow.querySelectorAll('button:not(.hidden)'));
+    let toolsRequiredWidth = 0;
+    visibleToolButtons.forEach((btn) => {
+        const w = Math.max(btn.getBoundingClientRect?.().width || btn.offsetWidth || 0, 36);
+        toolsRequiredWidth += w + 6;
+    });
+
+    const submitBtn = submitRow.querySelector('#post-submit-button, #update-post-button');
+    const submitRequiredWidth = Math.max(submitBtn?.getBoundingClientRect?.().width || submitBtn?.offsetWidth || 0, 72) + 8;
+    const totalRequired = toolsRequiredWidth + submitRequiredWidth;
+
+    const availableWidth = actions.clientWidth || container.clientWidth || 0;
+
+    if (availableWidth > 0) {
+        const isOverflowing = actions.scrollWidth > actions.clientWidth + 1 || availableWidth < totalRequired;
+        if (isOverflowing) {
+            actions.classList.add('post-form-stacked');
+        } else if (availableWidth >= totalRequired + 10) {
+            actions.classList.remove('post-form-stacked');
+        }
+    }
+    syncPostToolsWrap(container);
+}
+
+export function setupPostToolsOverflowObserver(container) {
+    if (!container || container._postToolsResizeObserver) return;
+    const actions = container.querySelector('.post-form-actions');
+    if (!actions) return;
+
+    const runUpdate = () => {
+        window.requestAnimationFrame(() => updatePostToolsOverflow(container));
+    };
+
+    if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => {
+            runUpdate();
+        });
+        observer.observe(actions);
+        observer.observe(container);
+        container._postToolsResizeObserver = observer;
+    }
+
+    window.addEventListener('resize', runUpdate);
+    setTimeout(runUpdate, 0);
+    setTimeout(runUpdate, 50);
+    setTimeout(runUpdate, 150);
+}
+
+const REPLY_CONTROL_OPTIONS = [
+    {
+        id: 'everyone',
+        title: '誰でも返信可能',
+        description: '全てのユーザーが返信できます',
+        icon: ICONS.globe,
+        buttonTitle: '返信可能なユーザー: 誰でも',
+    },
+    {
+        id: 'following',
+        title: 'フォローしている/メンションしたユーザーのみ返信可能',
+        description: 'フォロー中のユーザーとメンションされたユーザー',
+        icon: ICONS.user_check,
+        buttonTitle: '返信可能なユーザー: フォロー中またはメンション',
+    },
+    {
+        id: 'mentioned',
+        title: 'メンションしたユーザーのみ返信可能',
+        description: 'このポストでメンションされたユーザーのみ',
+        icon: ICONS.mention,
+        buttonTitle: '返信可能なユーザー: メンションしたユーザーのみ',
+    },
+];
+
+function getPostingReplyControl(container) {
+    return container?._replyControl || 'everyone';
+}
+
+function setPostingReplyControl(container, control = 'everyone') {
+    if (!container) return;
+    const normalized = ['everyone', 'following', 'mentioned'].includes(control) ? control : 'everyone';
+    container._replyControl = normalized;
+    const button = container.querySelector('.post-reply-control-button');
+    const option = REPLY_CONTROL_OPTIONS.find((opt) => opt.id === normalized) || REPLY_CONTROL_OPTIONS[0];
+    if (button) {
+        button.title = option.buttonTitle;
+        button.setAttribute('aria-label', option.buttonTitle);
+        button.classList.toggle('active', normalized !== 'everyone');
+    }
+}
+
+function closePostReplyControlMenu(container) {
+    const menu = container?.querySelector('.post-reply-control-menu');
+    const button = container?.querySelector('.post-reply-control-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+    if (container?._postReplyControlMenuOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postReplyControlMenuOutsideHandler, true);
+        container._postReplyControlMenuOutsideHandler = null;
+    }
+}
+
+function bindPostReplyControlMenuOutsideHandler(container) {
+    if (!container || container._postReplyControlMenuOutsideHandler) return;
+    const handler = (event) => {
+        const menu = container.querySelector('.post-reply-control-menu');
+        const button = container.querySelector('.post-reply-control-button');
+        if (!menu || menu.classList.contains('hidden') || menu.contains(event.target) || button?.contains(event.target)) return;
+        closePostReplyControlMenu(container);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+    container._postReplyControlMenuOutsideHandler = handler;
+    document.addEventListener('pointerdown', handler, true);
+}
+
+function renderPostReplyControlMenu(container) {
+    const menu = container?.querySelector('.post-reply-control-menu');
+    if (!menu) return;
+    const current = getPostingReplyControl(container);
+    menu.innerHTML = REPLY_CONTROL_OPTIONS.map((opt) => {
+        const selected = opt.id === current;
+        return `<button type="button" class="post-reply-control-menu-item ${selected ? 'active' : ''}" data-reply-control="${opt.id}" aria-pressed="${String(selected)}">
+            <span class="post-reply-control-menu-icon" aria-hidden="true">${opt.icon}</span>
+            <span class="post-reply-control-menu-copy">
+                <strong>${escapeHTML(opt.title)}</strong>
+                <small>${escapeHTML(opt.description)}</small>
+            </span>
+        </button>`;
+    }).join('');
+    menu.querySelectorAll('[data-reply-control]').forEach((item) => item.addEventListener('click', () => {
+        const control = item.dataset.replyControl;
+        setPostingReplyControl(container, control);
+        closePostReplyControlMenu(container);
+    }));
+}
+
+function togglePostReplyControlMenu(container) {
+    const menu = container?.querySelector('.post-reply-control-menu');
+    const button = container?.querySelector('.post-reply-control-button');
+    if (!menu || !button) return;
+    closePostGroupMenu(container);
+    closePostAccountMenu(container);
+    const willOpen = menu.classList.contains('hidden');
+    if (willOpen) {
+        renderPostReplyControlMenu(container);
+        menu.classList.remove('hidden');
+        button.setAttribute('aria-expanded', 'true');
+        bindPostReplyControlMenuOutsideHandler(container);
+        positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        window.requestAnimationFrame(() => {
+            positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        });
+    } else {
+        closePostReplyControlMenu(container);
+    }
+}
+
+function renderPostGroupMenuIcon(group) {
+    const iconUrl = getGroupIconUrl(group);
+    if (iconUrl) {
+        return `<img src="${escapeHTML(iconUrl)}" alt="" class="post-group-menu-icon">`;
+    }
+    return `<span class="post-group-menu-icon post-group-menu-icon-fallback" aria-hidden="true">${ICONS.group}</span>`;
+}
+
+function renderNyaitterPostMenuIcon() {
+    return '<img src="logo.png" alt="" class="post-group-menu-icon post-group-menu-nyaitter-logo">';
+}
+
+function getPostingGroup(container) {
+    return container?._postingGroup || null;
+}
+
+function setPostingGroup(container, group = null, { locked = false } = {}) {
+    if (!container) return;
+    container._postingGroup = group;
+    container._postGroupLocked = locked;
+    const destinationButton = container.querySelector('.post-group-button');
+    const lockButton = container.querySelector('.post-lock-button');
+    const announcementButton = container.querySelector('.post-announcement-button');
+    const groupName = group?.name || 'Nyaitter';
+    if (destinationButton) {
+        destinationButton.disabled = locked;
+        destinationButton.title = locked
+            ? `返信先グループ: ${groupName}`
+            : `投稿先: ${groupName}`;
+        destinationButton.setAttribute('aria-label', destinationButton.title);
+        destinationButton.classList.toggle('active', Boolean(group));
+    }
+    if (lockButton) {
+        lockButton.disabled = Boolean(group);
+        lockButton.classList.toggle('hidden', Boolean(group));
+        if (group) {
+            lockButton.classList.remove('active');
+            lockButton.setAttribute('aria-pressed', 'false');
+        }
+    }
+    if (announcementButton) {
+        const visible = group ? Boolean(group.canAnnounce) : Boolean(container?._postingAccount?.admin ?? getCurrentUser()?.admin);
+        announcementButton.hidden = !visible;
+        announcementButton.classList.toggle('hidden', !visible);
+        announcementButton.title = group ? 'グループアナウンス' : 'Nyaitterアナウンス';
+        announcementButton.setAttribute('aria-label', announcementButton.title);
+        announcementButton.classList.remove('active');
+        announcementButton.setAttribute('aria-pressed', 'false');
+    }
+    const tools = container.querySelector('.post-form-tools-row');
+    const rightGroup = tools?.querySelector('.post-tools-right-group');
+    // 右寄せツール群は常にひとまとまりとして扱う。折り返した場合だけ
+    // updatePostToolsOverflow 側で左寄せに切り替える。
+    rightGroup?.classList.add('post-tools-right-start');
+    updatePostToolsOverflow(container);
+}
+
+function closePostGroupMenu(container) {
+    const menu = container?.querySelector('.post-group-menu');
+    const button = container?.querySelector('.post-group-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+    if (container?._postGroupMenuOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postGroupMenuOutsideHandler, true);
+        container._postGroupMenuOutsideHandler = null;
+    }
+}
+
+function bindPostGroupMenuOutsideHandler(container) {
+    if (!container || container._postGroupMenuOutsideHandler) return;
+    const handler = (event) => {
+        const menu = container.querySelector('.post-group-menu');
+        const button = container.querySelector('.post-group-button');
+        if (!menu || menu.classList.contains('hidden') || menu.contains(event.target) || button?.contains(event.target)) return;
+        closePostGroupMenu(container);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+    container._postGroupMenuOutsideHandler = handler;
+    document.addEventListener('pointerdown', handler, true);
+}
+
+function getPostingGroupListPath(container) {
+    const parameters = new URLSearchParams({ limit: '200' });
+    const postingAccountId = getPostingAccountId(container);
+    if (postingAccountId != null) parameters.set('post_as_user_id', String(postingAccountId));
+    return `/server/api/groups/mine?${parameters.toString()}`;
+}
+
+async function getPostingAccountGroups(container) {
+    const { data, error } = await apiRequest(getPostingGroupListPath(container));
+    if (error) throw error;
+    return Array.isArray(data?.groups) ? data.groups : [];
+}
+
+async function applyPostGroupSelection(container, groupId, { timelineSyncVersion = null, postingAccountVersion = null } = {}) {
+    const requestedAccountVersion = postingAccountVersion ?? Number(container?._postingAccountVersion || 0);
+    const parameters = new URLSearchParams();
+    const postingAccountId = getPostingAccountId(container);
+    if (postingAccountId != null) parameters.set('post_as_user_id', String(postingAccountId));
+    const query = parameters.size ? `?${parameters.toString()}` : '';
+    const { data, error } = await apiRequest(`/server/api/groups/${encodeURIComponent(groupId)}${query}`);
+    if (error || !data?.group?.membership || data.group.membership.status !== 'active') {
+        throw error || new Error('参加中のグループを確認できません。');
+    }
+    if (container?._postingAccountVersion !== requestedAccountVersion) return;
+    if (timelineSyncVersion != null && container?._timelinePostingDestinationVersion !== timelineSyncVersion) return;
+    const group = data.group;
+    const role = (group.roles || []).find((candidate) => String(candidate.id) === String(group.membership.role_id));
+    const permissions = role?.permissions || [];
+    setPostingGroup(container, {
+        id: group.id,
+        name: group.name || 'グループ',
+        canAnnounce: Number(group.owner_id) === Number(getPostingAccountId(container))
+            || permissions.includes('admin')
+            || permissions.includes('announce'),
+    }, { locked: Boolean(container?._postGroupLocked) });
+}
+
+function renderPostGroupMenu(container, groups) {
+    const menu = container?.querySelector('.post-group-menu');
+    if (!menu) return;
+    const nyaitterItem = `<button type="button" class="post-group-menu-item ${!getPostingGroup(container) ? 'active' : ''}" data-group-id="" aria-pressed="${String(!getPostingGroup(container))}">${renderNyaitterPostMenuIcon()}<span class="post-group-menu-copy"><strong>Nyaitter</strong><small>通常ポスト</small></span></button>`;
+    const groupItems = groups.map((group) => {
+        const selected = String(group.id) === String(getPostingGroup(container)?.id);
+        return `<button type="button" class="post-group-menu-item ${selected ? 'active' : ''}" data-group-id="${escapeHTML(String(group.id))}" aria-pressed="${String(selected)}">${renderPostGroupMenuIcon(group)}<span class="post-group-menu-copy"><strong>${escapeHTML(group.name || '無題のグループ')}</strong><small>グループポスト</small></span></button>`;
+    }).join('');
+    menu.innerHTML = `${nyaitterItem}${groupItems || '<p class="post-group-menu-empty">参加中のグループはありません。</p>'}`;
+    menu.querySelectorAll('[data-group-id]').forEach((item) => item.addEventListener('click', async () => {
+        try {
+            container._timelinePostingDestinationVersion = Number(container._timelinePostingDestinationVersion || 0) + 1;
+            const groupId = item.dataset.groupId;
+            if (groupId) await applyPostGroupSelection(container, groupId);
+            else setPostingGroup(container, null);
+            closePostGroupMenu(container);
+        } catch (error) {
+            showAppAlert(error.message || '投稿先グループを選択できませんでした。');
+        }
+    }));
+}
+
+async function syncPostGroupDestinationsForPostingAccount(container, postingAccountVersion) {
+    if (!container || container._postGroupLocked) return;
+    try {
+        const groups = await getPostingAccountGroups(container);
+        if (container._postingAccountVersion !== postingAccountVersion) return;
+        container._postingAccountGroups = groups;
+        const selectedGroup = getPostingGroup(container);
+        if (selectedGroup && !groups.some((group) => String(group.id) === String(selectedGroup.id))) {
+            setPostingGroup(container, null);
+        } else if (selectedGroup) {
+            try {
+                await applyPostGroupSelection(container, selectedGroup.id, { postingAccountVersion });
+            } catch (_) {
+                if (container._postingAccountVersion === postingAccountVersion) setPostingGroup(container, null);
+            }
+        }
+        if (!container.querySelector('.post-group-menu')?.classList.contains('hidden')) {
+            renderPostGroupMenu(container, groups);
+            const button = container.querySelector('.post-group-button');
+            const menu = container.querySelector('.post-group-menu');
+            if (menu && button) {
+                positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+            }
+        }
+    } catch (_) {
+        const menu = container.querySelector('.post-group-menu');
+        if (container._postingAccountVersion === postingAccountVersion && menu && !menu.classList.contains('hidden')) {
+            menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
+            const button = container.querySelector('.post-group-button');
+            if (button) {
+                positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+            }
+        }
+    }
+}
+
+export function syncPostFormDestinationWithTimeline(container, groupId = null, groupName = '') {
+    if (!container || container._postGroupLocked) return;
+    const timelineSyncVersion = Number(container._timelinePostingDestinationVersion || 0) + 1;
+    container._timelinePostingDestinationVersion = timelineSyncVersion;
+    if (!groupId) {
+        setPostingGroup(container, null);
+        return;
+    }
+
+    const postingAccountVersion = Number(container._postingAccountVersion || 0);
+    setPostingGroup(container, {
+        id: String(groupId),
+        name: groupName || 'グループ',
+        canAnnounce: false,
+    });
+    void applyPostGroupSelection(container, groupId, { timelineSyncVersion, postingAccountVersion }).catch(() => {
+        if (
+            container._postingAccountVersion === postingAccountVersion
+            && container._timelinePostingDestinationVersion === timelineSyncVersion
+        ) {
+            setPostingGroup(container, null);
+        }
+    });
+}
+
+async function openPostGroupMenu(container) {
+    const menu = container?.querySelector('.post-group-menu');
+    const button = container?.querySelector('.post-group-button');
+    if (!menu || !button || container?._postGroupLocked) return;
+    if (!menu.classList.contains('hidden')) {
+        closePostGroupMenu(container);
+        return;
+    }
+    closePostReplyControlMenu(container);
+    closePostAccountMenu(container);
+    const postingAccountVersion = Number(container._postingAccountVersion || 0);
+    menu.classList.remove('hidden');
+    button.setAttribute('aria-expanded', 'true');
+    bindPostGroupMenuOutsideHandler(container);
+    menu.innerHTML = '<div class="post-group-menu-loading"><div class="spinner"></div></div>';
+    positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+    try {
+        const groups = await getPostingAccountGroups(container);
+        if (container._postingAccountVersion !== postingAccountVersion || menu.classList.contains('hidden')) return;
+        container._postingAccountGroups = groups;
+        renderPostGroupMenu(container, groups);
+        positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        window.requestAnimationFrame(() => {
+            positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        });
+    } catch (_) {
+        if (container._postingAccountVersion === postingAccountVersion) {
+            menu.innerHTML = '<p class="post-group-menu-empty">グループ一覧を読み込めませんでした。</p>';
+            positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+            window.requestAnimationFrame(() => {
+                positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+            });
+        }
+    }
+}
+
+export function formatPollRemainingTime(expiresAt) {
+    if (!expiresAt) return '無期限';
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    if (diff <= 0) return '終了';
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (days > 0) return `${days}日`;
+    if (hours > 0) return `${hours}時間`;
+    return `${Math.max(1, minutes)}分`;
+}
+
+export function renderPostPoll(parentContainer, poll, post = null) {
+    if (!poll || !parentContainer) return;
+
+    let pollContainer = parentContainer.querySelector(`.post-poll-container[data-poll-id="${poll.id}"]`);
+    if (!pollContainer) {
+        pollContainer = document.createElement('div');
+        pollContainer.className = 'post-poll-container nui-card';
+        pollContainer.dataset.nui = 'card';
+        pollContainer.dataset.pollId = String(poll.id);
+        pollContainer.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        parentContainer.appendChild(pollContainer);
+    }
+
+    const currentUser = getCurrentUser();
+    const isExpired = Boolean(poll.is_expired);
+    const hasVoted = Boolean(poll.has_voted);
+    const showResultsBeforeVoting = Boolean(poll.show_results_before_voting);
+    const isViewingResults = Boolean(pollContainer._isViewingResults);
+
+    // 結果表示モード条件:
+    // 1. 期限終了
+    // 2. 投票済み
+    // 3. 未ログイン
+    // 4. 結果閲覧可能 かつ 閲覧ボタンを押下
+    const showResults = isExpired || hasVoted || !currentUser || isViewingResults;
+
+    let html = `<div class="post-poll-title">${escapeHTML(poll.title || '投票')}</div>`;
+
+    if (!showResults) {
+        const inputType = poll.allow_multiple ? 'checkbox' : 'radio';
+        const inputName = `poll_choice_${poll.id}_${Math.random().toString(36).slice(2, 7)}`;
+
+        html += `<form class="post-poll-form">`;
+        for (const opt of (poll.options || [])) {
+            html += `
+                <label class="post-poll-option-label">
+                    <input type="${inputType}" name="${inputName}" value="${opt.id}" class="poll-option-input">
+                    <span>${escapeHTML(opt.text)}</span>
+                </label>
+            `;
+        }
+
+        if (poll.allow_other) {
+            html += `
+                <div class="post-poll-other-wrapper">
+                    <label class="post-poll-option-label">
+                        <input type="${inputType}" name="${inputName}" value="-1" class="poll-option-input poll-other-radio">
+                        <span>その他</span>
+                    </label>
+                    <input type="text" class="post-poll-other-input nui-input hidden" placeholder="その他の回答を入力" maxlength="200">
+                </div>
+            `;
+        }
+
+        html += `
+            <div class="post-poll-actions">
+                <button type="submit" class="post-poll-vote-btn nui-button" data-nui="button" disabled>投票する</button>
+                ${showResultsBeforeVoting ? '<button type="button" class="post-poll-view-results-btn nui-button-secondary" data-nui="button-secondary">結果を見る</button>' : ''}
+            </div>
+        </form>`;
+    } else {
+        html += `<div class="post-poll-results">`;
+        const myVotes = new Set((poll.my_votes || []).map(Number));
+
+        for (const opt of (poll.options || [])) {
+            const isMyVote = myVotes.has(Number(opt.id));
+            const percent = Number(opt.percentage || 0);
+            html += `
+                <div class="post-poll-result-row ${isMyVote ? 'voted' : ''}">
+                    <div class="post-poll-progress-fill" style="width: ${percent}%;"></div>
+                    <div class="post-poll-result-content">
+                        <div class="post-poll-result-text">
+                            ${isMyVote ? '<span class="post-poll-result-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>' : ''}
+                            <span>${escapeHTML(opt.text)}</span>
+                        </div>
+                        <div class="post-poll-result-percent">
+                            ${percent}% <span style="font-size: 0.8rem; font-weight: normal; color: var(--secondary-text-color);">(${opt.votes_count || 0}票)</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (poll.allow_other && (poll.other_count > 0 || poll.other_votes?.length > 0)) {
+            const isMyVote = myVotes.has(-1);
+            const percent = Number(poll.other_percentage || 0);
+            html += `
+                <div class="post-poll-result-row ${isMyVote ? 'voted' : ''}">
+                    <div class="post-poll-progress-fill" style="width: ${percent}%;"></div>
+                    <div class="post-poll-result-content">
+                        <div class="post-poll-result-text">
+                            ${isMyVote ? '<span class="post-poll-result-badge"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>' : ''}
+                            <span>その他</span>
+                        </div>
+                        <div class="post-poll-result-percent">
+                            ${percent}% <span style="font-size: 0.8rem; font-weight: normal; color: var(--secondary-text-color);">(${poll.other_count || 0}票)</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (poll.other_votes && poll.other_votes.length > 0) {
+                html += `
+                    <div class="post-poll-other-list">
+                        <div class="post-poll-other-list-title">その他の回答:</div>
+                        <div class="post-poll-other-items">
+                            ${poll.other_votes.map((v) => `<div class="post-poll-other-item">${escapeHTML(v.text)}</div>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        html += `</div>`;
+    }
+
+    const totalVotes = poll.total_votes || 0;
+    const totalVoters = poll.total_voters || 0;
+    let expiryText = '';
+    if (isExpired) {
+        expiryText = '・最終結果';
+    } else if (poll.expires_at) {
+        expiryText = `・残り時間: ${formatPollRemainingTime(poll.expires_at)}`;
+    } else {
+        expiryText = '・無期限';
+    }
+
+    html += `
+        <div class="post-poll-footer">
+            <span>${totalVoters}人が投票 (${totalVotes}票) ${expiryText}</span>
+            ${showResults && !isExpired && !hasVoted && currentUser && isViewingResults ? '<button type="button" class="post-poll-back-to-vote-btn nui-button-secondary" data-nui="button-secondary">投票する</button>' : ''}
+        </div>
+    `;
+
+    pollContainer.innerHTML = html;
+
+    // イベント設定
+    if (!showResults) {
+        const form = pollContainer.querySelector('.post-poll-form');
+        const voteBtn = form?.querySelector('.post-poll-vote-btn');
+        const otherRadio = form?.querySelector('.poll-other-radio');
+        const otherInput = form?.querySelector('.post-poll-other-input');
+        const viewResultsBtn = form?.querySelector('.post-poll-view-results-btn');
+
+        const updateVoteButtonState = () => {
+            const checkedInputs = Array.from(form.querySelectorAll('.poll-option-input:checked'));
+            const isOtherChecked = otherRadio?.checked;
+            const otherVal = otherInput?.value.trim() || '';
+
+            if (isOtherChecked) {
+                otherInput.classList.remove('hidden');
+                voteBtn.disabled = checkedInputs.length === 0 || (checkedInputs.length === 1 && !otherVal);
+            } else {
+                if (otherInput) otherInput.classList.add('hidden');
+                voteBtn.disabled = checkedInputs.length === 0;
+            }
+        };
+
+        form.querySelectorAll('.poll-option-input').forEach((input) => {
+            input.addEventListener('change', updateVoteButtonState);
+        });
+        otherInput?.addEventListener('input', updateVoteButtonState);
+
+        viewResultsBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            pollContainer._isViewingResults = true;
+            renderPostPoll(parentContainer, poll, post);
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!currentUser) return showAppAlert('投票するにはログインが必要です。');
+
+            const checkedInputs = Array.from(form.querySelectorAll('.poll-option-input:checked'));
+            const selectedOptionIds = checkedInputs.map((i) => Number(i.value));
+            const otherText = otherRadio?.checked ? otherInput?.value.trim() : null;
+
+            if (selectedOptionIds.length === 0) return;
+
+            voteBtn.disabled = true;
+            voteBtn.textContent = '送信中';
+
+            try {
+                const { data, error } = await apiRequest(`/server/api/polls/${poll.id}/vote`, {
+                    method: 'POST',
+                    body: {
+                        option_ids: selectedOptionIds,
+                        other_text: otherText,
+                    },
+                });
+
+                if (error) throw error;
+                const updatedPoll = data?.poll;
+                if (updatedPoll) {
+                    if (post) post.poll = updatedPoll;
+                    pollContainer._isViewingResults = false;
+                    renderPostPoll(parentContainer, updatedPoll, post);
+                }
+            } catch (err) {
+                showAppAlert(`投票に失敗しました: ${err.message || '不明なエラー'}`);
+                voteBtn.disabled = false;
+                voteBtn.textContent = '投票する';
+            }
+        });
+    } else {
+        const backToVoteBtn = pollContainer.querySelector('.post-poll-back-to-vote-btn');
+        backToVoteBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            pollContainer._isViewingResults = false;
+            renderPostPoll(parentContainer, poll, post);
+        });
+    }
+}
+
+export function renderPollAttachmentPreview(container) {
+    const previewContainer = container?.querySelector('.file-preview-container');
+    if (!previewContainer) return;
+
+    let pollPreview = previewContainer.querySelector('.poll-attachment-preview');
+    if (!container._attachedPoll) {
+        pollPreview?.remove();
+        return;
+    }
+
+    if (!pollPreview) {
+        pollPreview = document.createElement('div');
+        pollPreview.className = 'poll-attachment-preview nui-card';
+        previewContainer.appendChild(pollPreview);
+    }
+
+    const poll = container._attachedPoll;
+    let durationLabel = '無期限';
+    if (poll.expires_at) {
+        durationLabel = `期限: ${new Date(poll.expires_at).toLocaleString()}`;
+    }
+
+    const metaTags = [
+        `<span class="poll-preview-tag">${escapeHTML(durationLabel)}</span>`,
+        poll.allow_multiple ? '<span class="poll-preview-tag">複数選択可</span>' : '<span class="poll-preview-tag">単一選択</span>',
+        poll.allow_other ? '<span class="poll-preview-tag">その他あり</span>' : '',
+        poll.show_results_before_voting ? '<span class="poll-preview-tag">結果閲覧可</span>' : '<span class="poll-preview-tag">投票後表示</span>',
+    ].filter(Boolean).join(' ');
+
+    pollPreview.innerHTML = `
+        <div class="poll-attachment-preview-header">
+            <div class="poll-attachment-preview-title">${escapeHTML(poll.title || '投票')}</div>
+            <button type="button" class="poll-attachment-preview-close" title="投票を削除">×</button>
+        </div>
+        <div class="poll-attachment-preview-options">
+            ${poll.options.map((opt, i) => `<div class="poll-attachment-preview-opt">${i + 1}. ${escapeHTML(opt.text)}</div>`).join('')}
+            ${poll.allow_other ? '<div class="poll-attachment-preview-opt">その他</div>' : ''}
+        </div>
+        <div class="poll-attachment-preview-meta">
+            ${metaTags}
+        </div>
+    `;
+
+    pollPreview.querySelector('.poll-attachment-preview-close')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        container._attachedPoll = null;
+        pollPreview.remove();
+    });
+
+    pollPreview.addEventListener('click', () => {
+        openCreatePollModal(container);
+    });
+}
+
+export function openCreatePollModal(container) {
+    let existingModal = document.getElementById('create-poll-modal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'create-poll-modal';
+    modal.className = 'modal-overlay nui-modal-backdrop';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+
+    const initialPoll = container._attachedPoll || null;
+    const initialTitle = initialPoll?.title || '';
+    let initialOptions = initialPoll?.options && initialPoll.options.length >= 2
+        ? initialPoll.options.map((o) => o.text)
+        : ['', ''];
+    const initialAllowMultiple = initialPoll?.allow_multiple || false;
+    const initialAllowOther = initialPoll?.allow_other || false;
+    const initialShowResults = initialPoll?.show_results_before_voting ?? true;
+
+    modal.innerHTML = `
+        <div class="poll-modal-content nui-modal">
+            <button type="button" class="modal-close-btn" id="poll-modal-close-btn">×</button>
+            <div class="poll-modal-title nui-modal-title">投票を作成</div>
+            
+            <div class="poll-field-group">
+                <label class="poll-field-label" for="poll-title-input">質問 / タイトル</label>
+                <input type="text" id="poll-title-input" class="poll-text-input nui-input" placeholder="質問を入力してください" value="${escapeHTML(initialTitle)}">
+            </div>
+
+            <div class="poll-field-group">
+                <label class="poll-field-label">選択肢 (最大10件)</label>
+                <div class="poll-options-list" id="poll-options-list"></div>
+                <button type="button" class="poll-add-option-btn" id="poll-add-option-btn">+ 選択肢を追加</button>
+            </div>
+
+            <div class="poll-field-group">
+                <label class="poll-field-label">投票期限</label>
+                <div class="poll-duration-tabs">
+                    <button type="button" class="poll-duration-tab-btn active" data-duration-tab="relative">相対指定</button>
+                    <button type="button" class="poll-duration-tab-btn" data-duration-tab="absolute">日時指定</button>
+                    <button type="button" class="poll-duration-tab-btn" data-duration-tab="unlimited">無制限</button>
+                </div>
+                <div id="poll-duration-relative" class="poll-duration-content">
+                    <select id="poll-relative-select" class="poll-text-input nui-input">
+                        <option value="1h">1時間</option>
+                        <option value="6h">6時間</option>
+                        <option value="12h">12時間</option>
+                        <option value="1d" selected>1日 (24時間)</option>
+                        <option value="3d">3日</option>
+                        <option value="7d">7日</option>
+                    </select>
+                </div>
+                <div id="poll-duration-absolute" class="poll-duration-content hidden">
+                    <input type="datetime-local" id="poll-datetime-input" class="poll-text-input nui-input">
+                </div>
+                <div id="poll-duration-unlimited" class="poll-duration-content hidden">
+                    <p style="font-size: 0.85rem; color: var(--secondary-text-color); margin: 0.4rem 0;">期限なしで無制限に投票を受け付けます。</p>
+                </div>
+            </div>
+
+            <div class="poll-field-group">
+                <label class="poll-field-label">設定</label>
+                <label class="poll-checkbox-label">
+                    <input type="checkbox" id="poll-allow-multiple" ${initialAllowMultiple ? 'checked' : ''}>
+                    <span>複数選択を許可する</span>
+                </label>
+                <label class="poll-checkbox-label">
+                    <input type="checkbox" id="poll-allow-other" ${initialAllowOther ? 'checked' : ''}>
+                    <span>「その他」の回答を許可する</span>
+                </label>
+                <label class="poll-checkbox-label">
+                    <input type="checkbox" id="poll-show-results" ${initialShowResults ? 'checked' : ''}>
+                    <span>投票前でも結果・票数を閲覧可能にする</span>
+                </label>
+            </div>
+
+            <div class="poll-modal-actions">
+                <button type="button" class="poll-btn-cancel nui-button-secondary" data-nui="button-secondary" id="poll-btn-cancel">キャンセル</button>
+                <button type="button" class="poll-btn-submit nui-button" data-nui="button" id="poll-btn-submit">投票を追加</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const optionsList = modal.querySelector('#poll-options-list');
+    const addOptionBtn = modal.querySelector('#poll-add-option-btn');
+    const titleInput = modal.querySelector('#poll-title-input');
+
+    function renderOptions() {
+        optionsList.innerHTML = '';
+        initialOptions.forEach((optText, index) => {
+            const row = document.createElement('div');
+            row.className = 'poll-option-input-row';
+            row.innerHTML = `
+                <input type="text" class="poll-text-input poll-opt-input nui-input" placeholder="選択肢 ${index + 1}" value="${escapeHTML(optText)}">
+                ${initialOptions.length > 2 ? `<button type="button" class="poll-option-remove-btn" title="削除">×</button>` : ''}
+            `;
+            row.querySelector('.poll-opt-input').addEventListener('input', (e) => {
+                initialOptions[index] = e.target.value;
+            });
+            row.querySelector('.poll-option-remove-btn')?.addEventListener('click', () => {
+                initialOptions.splice(index, 1);
+                renderOptions();
+            });
+            optionsList.appendChild(row);
+        });
+
+        if (initialOptions.length >= 10) {
+            addOptionBtn.classList.add('hidden');
+        } else {
+            addOptionBtn.classList.remove('hidden');
+        }
+    }
+
+    renderOptions();
+
+    addOptionBtn.addEventListener('click', () => {
+        if (initialOptions.length < 10) {
+            initialOptions.push('');
+            renderOptions();
+            const inputs = optionsList.querySelectorAll('.poll-opt-input');
+            inputs[inputs.length - 1]?.focus();
+        }
+    });
+
+    // 期限タブ切り替え
+    let activeDurationTab = 'relative';
+    const durationTabBtns = modal.querySelectorAll('.poll-duration-tab-btn');
+    const durationContents = {
+        relative: modal.querySelector('#poll-duration-relative'),
+        absolute: modal.querySelector('#poll-duration-absolute'),
+        unlimited: modal.querySelector('#poll-duration-unlimited'),
+    };
+
+    durationTabBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            activeDurationTab = btn.dataset.durationTab;
+            durationTabBtns.forEach((b) => b.classList.toggle('active', b === btn));
+            Object.keys(durationContents).forEach((key) => {
+                durationContents[key].classList.toggle('hidden', key !== activeDurationTab);
+            });
+        });
+    });
+
+    // 初期の日時指定値を設定
+    const dtInput = modal.querySelector('#poll-datetime-input');
+    const defaultDate = new Date(Date.now() + 24 * 3600 * 1000);
+    const tzOffset = defaultDate.getTimezoneOffset() * 60000;
+    dtInput.value = new Date(defaultDate.getTime() - tzOffset).toISOString().slice(0, 16);
+
+    const closeModal = () => modal.remove();
+    modal.querySelector('#poll-modal-close-btn').addEventListener('click', closeModal);
+    modal.querySelector('#poll-btn-cancel').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    // 投票追加ボタン押下
+    modal.querySelector('#poll-btn-submit').addEventListener('click', () => {
+        const title = titleInput.value.trim();
+        const validOptions = initialOptions
+            .map((t, idx) => ({ id: idx + 1, text: t.trim() }))
+            .filter((o) => o.text.length > 0);
+
+        if (validOptions.length < 2) {
+            return showAppAlert('選択肢を2つ以上入力してください。');
+        }
+
+        let expiresAt = null;
+        if (activeDurationTab === 'relative') {
+            const relVal = modal.querySelector('#poll-relative-select').value;
+            const now = Date.now();
+            const durations = {
+                '1h': 1 * 3600 * 1000,
+                '6h': 6 * 3600 * 1000,
+                '12h': 12 * 3600 * 1000,
+                '1d': 24 * 3600 * 1000,
+                '3d': 3 * 24 * 3600 * 1000,
+                '7d': 7 * 24 * 3600 * 1000,
+            };
+            expiresAt = new Date(now + (durations[relVal] || durations['1d'])).toISOString();
+        } else if (activeDurationTab === 'absolute') {
+            const dtVal = dtInput.value;
+            if (!dtVal) return showAppAlert('期限の日時を選択してください。');
+            const targetDate = new Date(dtVal);
+            if (targetDate.getTime() <= Date.now()) {
+                return showAppAlert('未来の日時を選択してください。');
+            }
+            expiresAt = targetDate.toISOString();
+        } else {
+            expiresAt = null; // 無制限
+        }
+
+        const allowMultiple = modal.querySelector('#poll-allow-multiple').checked;
+        const allowOther = modal.querySelector('#poll-allow-other').checked;
+        const showResults = modal.querySelector('#poll-show-results').checked;
+
+        container._attachedPoll = {
+            title: title || '投票',
+            options: validOptions,
+            allow_multiple: allowMultiple,
+            allow_other: allowOther,
+            show_results_before_voting: showResults,
+            expires_at: expiresAt,
+        };
+
+        renderPollAttachmentPreview(container);
+        closeModal();
+    });
+}
+
+export function handleCtrlEnter(e) {
+    if (e.ctrlKey && e.key === 'Enter') {
+        e.target
+            .closest('.post-form')
+            ?.querySelector('button[id^="post-submit-button"]')
+            ?.click();
+    }
+}
+
+export function attachPostFormListeners(container, onPostSuccess = null) {
+    const currentUser = getCurrentUser();
+    if (currentUser) setPostingAccount(container, currentUser);
+    container.querySelector('.post-account-selector')?.addEventListener('click', () => {
+        void openPostAccountMenu(container);
+    });
+    container.querySelector('.attachment-button')?.addEventListener('click', () => {
+        container.querySelector('#file-input')?.click();
+    });
+    container.querySelector('.post-poll-button')?.addEventListener('click', () => {
+        openCreatePollModal(container);
+    });
+    container.querySelector('#file-input')?.addEventListener('change', (e) => {
+        handleFileSelection(e, container);
+    });
+    container.querySelector('.post-mask-button')?.addEventListener('click', () => {
+        handlePostMask(container);
+    });
+    container.querySelector('.post-lock-button')?.addEventListener('click', () => {
+        handlePostLock(container);
+    });
+    container.querySelector('.post-announcement-button')?.addEventListener('click', () => {
+        handlePostAnnouncement(container);
+    });
+    container.querySelector('.post-group-button')?.addEventListener('click', () => {
+        void openPostGroupMenu(container);
+    });
+    container.querySelector('.post-reply-control-button')?.addEventListener('click', () => {
+        togglePostReplyControlMenu(container);
+    });
+    container.querySelector('.post-schedule-button')?.addEventListener('click', () => {
+        togglePostScheduleMenu(container);
+    });
+    container.querySelector('.post-tools-overflow-button')?.addEventListener('click', () => {
+        togglePostToolsOverflowMenu(container);
+    });
+    setupPostToolsOverflowObserver(container);
+    container.querySelector('#post-submit-button')?.addEventListener('click', () => {
+        handlePostSubmit(container, onPostSuccess);
+    });
+
+    let editor = container.querySelector('#post-content');
+    if (editor) {
+        editor = attachMarkdownContentEditor(editor) || editor;
+        editor.addEventListener('keydown', handleCtrlEnter);
+        editor.addEventListener('paste', (event) => {
+            const imageFiles = Array.from(event.clipboardData?.items || [])
+                .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+                .map((item, index) => {
+                    const file = item.getAsFile();
+                    if (!file) return null;
+                    if (file.name) return file;
+                    const extension = item.type.split('/')[1]?.replace(/[^a-z0-9]/gi, '') || 'png';
+                    return new File(
+                        [file],
+                        `pasted-image-${Date.now()}-${index}.${extension}`,
+                        { type: item.type },
+                    );
+                })
+                .filter(Boolean);
+
+            if (imageFiles.length > 0) {
+                void handleFileSelection(
+                    { target: { files: imageFiles } },
+                    container,
+                    { append: true },
+                );
+            }
+        });
+        setupMarkdownEditorPreviewButton(container, editor);
+    }
+
+    const emojiButton = container.querySelector('.emoji-pic-button');
+    if (emojiButton) {
+        let pickerInstance = null;
+        let pickerLoading = false;
+        emojiButton.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            const existingPicker = container.querySelector('#emoji-picker');
+            if (existingPicker && !existingPicker.classList.contains('hidden')) {
+                existingPicker.classList.add('hidden');
+                return;
+            }
+            if (existingPicker && pickerInstance) {
+                existingPicker.classList.remove('hidden');
+                return;
+            }
+            if (pickerLoading) return;
+            pickerLoading = true;
+            try {
+                pickerInstance = await emoji_picker_create({
+                    triggerButton: emojiButton,
+                    onEmojiSelect: (value) => {
+                        const targetEditor = container.querySelector('#post-content');
+                        if (targetEditor && value) {
+                            insertMarkdownEditorText(targetEditor, value);
+                        }
+                        container.querySelector('#emoji-picker')?.classList.add('hidden');
+                    },
+                    onClickOutside: () => {
+                        container.querySelector('#emoji-picker')?.classList.add('hidden');
+                    },
+                });
+                const pickerPlaceholder = container.querySelector('#emoji-picker');
+                if (pickerPlaceholder) {
+                    pickerPlaceholder.replaceWith(pickerInstance);
+                    pickerInstance.classList.remove('hidden');
+                } else {
+                    container.querySelector('.post-form-actions')?.appendChild(pickerInstance);
+                }
+            } catch (error) {
+                console.error('絵文字ピッカーの初期化に失敗しました:', error);
+            } finally {
+                pickerLoading = false;
+            }
+        });
+    }
+}
+
+export async function handleFileSelection(event, container, { append = false } = {}) {
+    const previewContainer = container.querySelector('.file-preview-container');
+    if (!previewContainer) return;
+    previewContainer.innerHTML = '<div class="spinner" style="margin: 1rem;"></div>';
+
+    const files = Array.from(event.target.files);
+    const compressedFiles = [];
+
+    for (const file of files) {
+        try {
+            const compressed = await compressImage(file);
+            compressedFiles.push(compressed);
+        } catch (error) {
+            console.error('ファイル処理エラー:', error);
+            compressedFiles.push(file);
+        }
+    }
+
+    setSelectedFiles(
+        append ? [...getSelectedFiles(), ...compressedFiles] : compressedFiles,
+    );
+
+    const fileInput = container.querySelector('#file-input');
+    if (fileInput && typeof DataTransfer !== 'undefined') {
+        const selectedFileList = new DataTransfer();
+        getSelectedFiles().forEach((file) => selectedFileList.items.add(file));
+        fileInput.files = selectedFileList.files;
+    }
+
+    previewContainer.innerHTML = '';
+    getSelectedFiles().forEach((file, index) => {
+        const previewItem = document.createElement('div');
+        previewItem.className = 'file-preview-item';
+
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewItem.innerHTML = `<img src="${e.target.result}" alt="${escapeHTML(file.name)}"><button class="file-preview-remove" data-index="${index}">×</button>`;
+                previewContainer.appendChild(previewItem);
+            };
+            reader.readAsDataURL(file);
+        } else if (file.type.startsWith('video/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewItem.innerHTML = `<video src="${e.target.result}" controls></video><button class="file-preview-remove" data-index="${index}">×</button>`;
+                previewContainer.appendChild(previewItem);
+            };
+            reader.readAsDataURL(file);
+        } else if (file.type.startsWith('audio/')) {
+            previewItem.innerHTML = `<span>${getEmoji('🎵')} ${getEmoji(escapeHTML(file.name))}</span><button class="file-preview-remove" data-index="${index}">×</button>`;
+            previewContainer.appendChild(previewItem);
+        } else {
+            previewItem.innerHTML = `<span>${getEmoji('📄')} ${getEmoji(escapeHTML(file.name))}</span><button class="file-preview-remove" data-index="${index}">×</button>`;
+            previewContainer.appendChild(previewItem);
+        }
+    });
+
+    previewContainer.onclick = (e) => {
+        if (e.target.classList.contains('file-preview-remove')) {
+            const indexToRemove = parseInt(e.target.dataset.index, 10);
+            getSelectedFiles().splice(indexToRemove, 1);
+            handleFileSelection(
+                { target: { files: new DataTransfer().files } },
+                container,
+            );
+            const newFiles = new DataTransfer();
+            getSelectedFiles().forEach((file) => newFiles.items.add(file));
+            if (fileInput) fileInput.files = newFiles.files;
+        }
+    };
+}
+
+export function handlePostMask(container) {
+    const button = container.querySelector('.post-mask-button');
+    button?.classList.toggle('active');
+}
+
+export function handlePostLock(container) {
+    const button = container.querySelector('.post-lock-button');
+    if (!button) return;
+    button.classList.toggle('active');
+    button.setAttribute('aria-pressed', String(button.classList.contains('active')));
+}
+
+export function handlePostAnnouncement(container) {
+    const button = container.querySelector('.post-announcement-button');
+    if (!button) return;
+    button.classList.toggle('active');
+    button.setAttribute('aria-pressed', String(button.classList.contains('active')));
+}
+
+export async function handlePostSubmit(container, onPostSuccess = null) {
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
+    const postingAccountId = getPostingAccountId(container);
+    if (!postingAccountId) return showAppAlert('投稿アカウントを確認できません。');
+    const contentEl = container.querySelector('#post-content');
+    const content = getMarkdownEditorValue(contentEl).trim();
+    const hasAttachments = getSelectedFiles().length > 0 || Boolean(container._attachedPoll);
+    if (!content && !hasAttachments && !getQuotingPost()) {
+        return showAppAlert('内容を入力するか、ファイルまたは投票を添付してください。');
+    }
+
+    const maskActive = container.querySelector('.post-mask-button')?.classList.contains('active') || false;
+    const lockActive = container.querySelector('.post-lock-button')?.classList.contains('active') || false;
+    const announcementActive = container.querySelector('.post-announcement-button')?.classList.contains('active') || false;
+    const postingGroup = getPostingGroup(container);
+    const scheduledGroupId = postingGroup?.id || null;
+    const groupAnnouncementActive = Boolean(postingGroup && announcementActive);
+    if (postingGroup && getQuotingPost()) {
+        return showAppAlert('引用・リポストはグループ投稿として送信できません。');
+    }
+
+    const button = container.querySelector('#post-submit-button');
+    if (button) {
+        button.disabled = true;
+        button.textContent = '送信中';
+    }
+    showLoading(true);
+
+    let attachmentsData = [];
+    let uploadedFileIds = [];
+
+    try {
+        for (const file of getSelectedFiles()) {
+            const fileId = await uploadFileViaEdgeFunction(file, {
+                asUserId: postingAccountId,
+            });
+            uploadedFileIds.push(fileId);
+            const fileType = file.type.startsWith('image/')
+                ? 'image'
+                : file.type.startsWith('video/')
+                  ? 'video'
+                  : file.type.startsWith('audio/')
+                    ? 'audio'
+                    : 'file';
+            attachmentsData.push({
+                type: fileType,
+                id: fileId,
+                name: file.name,
+            });
+        }
+
+        if (container._attachedPoll) {
+            attachmentsData.push({
+                type: 'poll',
+                ...container._attachedPoll,
+            });
+        }
+
+        const { data: newPost, error: rpcError } = await api
+            .rpc('create_post_new', {
+                p_content: content,
+                p_reply_id: getReplyingTo()?.id || null,
+                p_repost_to: getQuotingPost()?.id || null,
+                p_attachments: attachmentsData.length > 0 ? attachmentsData : null,
+                p_mask: maskActive,
+                p_lock: lockActive,
+                p_announcement: Boolean(!postingGroup && announcementActive),
+                p_group_id: postingGroup?.id || null,
+                p_scheduled_at: container._scheduledAt || null,
+                p_group_announcement: groupAnnouncementActive,
+                p_reply_control: getPostingReplyControl(container),
+                p_as_user_id: postingAccountId,
+            })
+            .single();
+
+        if (rpcError) throw rpcError;
+
+        const replyTargetId = getReplyingTo()?.id || null;
+        if (replyTargetId && !container._scheduledAt) {
+            updateCachedPost(replyTargetId, (p) => {
+                const currentCount = Number(p.reply_count ?? p.replyCount) || 0;
+                p.reply_count = currentCount + 1;
+                p.replyCount = currentCount + 1;
+            });
+        }
+        invalidateTimelinePageCache();
+        invalidateProfileTabPageCache(postingAccountId, 'posts');
+        if (scheduledGroupId) {
+            invalidateProfileTabPageCache(postingAccountId, `group:${scheduledGroupId}`);
+        }
+        setSelectedFiles([]);
+        container._attachedPoll = null;
+        container._scheduledAt = null;
+        updatePostScheduleButton(container);
+        setMarkdownEditorValue(contentEl, '');
+        setPostingGroup(container, null);
+        setPostingReplyControl(container, 'everyone');
+        const previewContainer = container.querySelector('.file-preview-container');
+        if (previewContainer) previewContainer.innerHTML = '';
+
+        if (container.closest('.modal-overlay')) {
+            closePostModal();
+        }
+
+        if (typeof onPostSuccess === 'function') {
+            await onPostSuccess({ replyTargetId, newPost });
+        } else if (replyTargetId) {
+            window.location.hash = `#post/${replyTargetId}`;
+        }
+    } catch (e) {
+        console.error('ポスト送信に失敗しました:', e);
+        if (uploadedFileIds.length > 0) {
+            await deleteFilesViaEdgeFunction(uploadedFileIds, {
+                asUserId: postingAccountId,
+            });
+        }
+        showAppAlert(`投稿に失敗しました: ${e.message || '不明なエラー'}`);
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'ポスト';
+        }
+        showLoading(false);
+    }
+}
+
+function renderQuotingPostPreview(container, quotingPost) {
+    const previewContainer = container.querySelector('#quoting-preview-container');
+    if (!previewContainer || !quotingPost) return;
+
+    const author = quotingPost.author
+        || quotingPost.user
+        || getCachedUser(quotingPost.userid)
+        || { name: '不明なユーザー' };
+    const nestedPost = document.createElement('div');
+    nestedPost.className = 'nested-repost-container quoting-post-preview nui-card';
+
+    const header = document.createElement('div');
+    header.className = 'post-header';
+    const icon = document.createElement('img');
+    icon.className = 'user-icon nui-avatar';
+    icon.src = getUserIconUrl(author);
+    registerRankAvatar(icon, author);
+    icon.alt = `${author.name || '不明なユーザー'}のアイコン`;
+    header.appendChild(icon);
+
+    const authorName = document.createElement('span');
+    authorName.className = 'post-author';
+    authorName.innerHTML = getEmoji(escapeHTML(author.name || '不明なユーザー'));
+    header.appendChild(authorName);
+    nestedPost.appendChild(header);
+
+    const content = document.createElement('div');
+    content.className = 'post-content';
+    content.innerHTML = renderNyarkDown(
+        String(quotingPost.content || ''),
+        new Map(),
+        { allowMarkdown: true, allowContentDecorations: true },
+    );
+    nestedPost.appendChild(content);
+
+    if (Array.isArray(quotingPost.attachments) && quotingPost.attachments.length > 0) {
+        const attachmentInfo = document.createElement('div');
+        attachmentInfo.className = 'attachment-fileinfo';
+        attachmentInfo.textContent = `添付ファイル ${quotingPost.attachments.length}件`;
+        nestedPost.appendChild(attachmentInfo);
+    }
+
+    previewContainer.replaceChildren(nestedPost);
+}
+
+export function openPostModal(replyTo = null, quotingPost = null) {
+    setReplyingTo(replyTo);
+    setQuotingPost(quotingPost);
+
+    const postModal = DOM.postModal;
+    const modalFormContainer = postModal?.querySelector('.post-form-container-modal');
+    if (!postModal || !modalFormContainer) return;
+    postModalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    modalFormContainer.innerHTML = createPostFormHTML(true);
+    attachPostFormListeners(modalFormContainer);
+
+    if (replyTo) {
+        const replyGroupId = replyTo?.groupId || replyTo?.group_id || null;
+        if (replyGroupId) {
+            setPostingGroup(modalFormContainer, {
+                id: replyGroupId,
+                name: replyTo?.group_name || 'グループ',
+                canAnnounce: false,
+            }, { locked: true });
+            void applyPostGroupSelection(modalFormContainer, replyGroupId).catch(() => {});
+        } else {
+            setPostingGroup(modalFormContainer, null, { locked: true });
+        }
+        modalFormContainer.querySelector('.post-reply-control-button')?.classList.add('hidden');
+    }
+
+    if (replyTo?.isPrivate || replyTo?.lock) {
+        const lockButton = modalFormContainer.querySelector('.post-lock-button');
+        lockButton?.classList.add('active');
+        lockButton?.setAttribute('aria-pressed', 'true');
+    }
+
+    const replyInfo = modalFormContainer.querySelector('#reply-info');
+    if (replyTo && replyInfo) {
+        replyInfo.innerHTML = `${t('post.replying_to_label')}<strong>@${escapeHTML(replyTo.username || replyTo.name || '')}</strong>`;
+        replyInfo.classList.remove('hidden');
+    } else if (quotingPost && replyInfo) {
+        replyInfo.textContent = t('post.quote_reply_warning');
+        replyInfo.classList.remove('hidden');
+        renderQuotingPostPreview(modalFormContainer, quotingPost);
+    } else if (replyInfo) {
+        replyInfo.classList.add('hidden');
+    }
+
+    modalFormContainer.querySelector('.modal-close-btn')?.addEventListener('click', closePostModal);
+    lockPostModalScroll();
+    postModal.classList.remove('hidden');
+    document.addEventListener('keydown', handlePostModalKeydown);
+    postModal.onclick = event => {
+        if (event.target === postModal) closePostModal();
+    };
+    updatePostToolsOverflow(modalFormContainer);
+    const postEditor = modalFormContainer.querySelector('#post-content');
+    if (postEditor) {
+        autoResizeMarkdownEditor(postEditor);
+        postEditor.focus();
+    }
+}
+
+export function closePostModal() {
+    const postModal = DOM.postModal;
+    if (!postModal || postModal.classList.contains('hidden')) return;
+    postModal.classList.add('hidden');
+    unlockPostModalScroll();
+    postModal.onclick = null;
+    document.removeEventListener('keydown', handlePostModalKeydown);
+    setReplyingTo(null);
+    setQuotingPost(null);
+    if (postModalReturnFocus?.isConnected) postModalReturnFocus.focus();
+    postModalReturnFocus = null;
+}
+
+export function openRepostModal(post, triggerButton) {
+    closePostModal();
+    const modalId = `repost-menu-${post.id}`;
+    if (document.getElementById(modalId)) return;
+
+    const menu = document.createElement('div');
+    menu.id = modalId;
+    menu.className = 'post-menu is-visible';
+    menu.setAttribute('role', 'menu');
+
+    const simpleRepostBtn = document.createElement('button');
+    simpleRepostBtn.className = 'repost-btn';
+    simpleRepostBtn.setAttribute('role', 'menuitem');
+    simpleRepostBtn.textContent = t('post.repost');
+    simpleRepostBtn.onclick = (e) => {
+        e.stopPropagation();
+        handleSimpleRepost(post.id);
+        menu.remove();
+    };
+
+    const quotePostBtn = document.createElement('button');
+    quotePostBtn.className = 'quote-btn';
+    quotePostBtn.setAttribute('role', 'menuitem');
+    quotePostBtn.textContent = t('post.quote');
+    quotePostBtn.onclick = (e) => {
+        e.stopPropagation();
+        openPostModal(null, post);
+        menu.remove();
+    };
+
+    menu.appendChild(simpleRepostBtn);
+    menu.appendChild(quotePostBtn);
+    decorateMenuButtons(menu);
+
+    if (triggerButton) {
+        document.body.appendChild(menu);
+        positionElementRelativeToAnchor(menu, triggerButton, {
+            placement: 'top-start',
+            gap: 6,
+            useFixed: true,
+        });
+    }
+
+    setTimeout(() => {
+        document.addEventListener('click', () => menu.remove(), { once: true });
+    }, 0);
+}
+
+export async function handleSimpleRepost(postId, onComplete = null) {
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
+    showLoading(true);
+    try {
+        const { error: rpcError } = await api.rpc('create_post_new', {
+            p_content: null,
+            p_reply_id: null,
+            p_repost_to: postId,
+            p_attachments: null,
+            p_mask: false,
+        });
+
+        if (rpcError) throw rpcError;
+
+        updateCachedPost(postId, (p) => {
+            p.repost_count = (Number(p.repost_count ?? p.reposts) || 0) + 1;
+            p.reposts = p.repost_count;
+        });
+        invalidateTimelinePageCache();
+        if (typeof onComplete === 'function') {
+            await onComplete();
+        }
+    } catch (e) {
+        console.error(e);
+        const friendlyMessage = e.message.replace(/^Error: /, '');
+        showAppAlert(t('post.repost_failed', { message: friendlyMessage }));
+    } finally {
+        showLoading(false);
+    }
+}
+
+export function updateFollowButtonState(button, isFollowing, isLock = false) {
+    if (!button) return;
+    button.classList.toggle('follow-button-following', isFollowing);
+    button.classList.toggle('follow-button-not-following', !isFollowing);
+    button.textContent = isFollowing ? 'フォロー中' : isLock ? 'フォロー申請' : 'フォロー';
+}
+
+export function applyOptimisticPostToggle(button, postId, { activeClass, accountField }) {
+    const countSpan = button.querySelector('span:not(.icon)');
+    const originalCount = Number.parseInt(countSpan?.textContent, 10);
+    const wasActive = button.classList.contains(activeClass);
+    const isActive = !wasActive;
+    const currentUser = getCurrentUser();
+    const originalIds = Array.isArray(currentUser?.[accountField])
+        ? [...currentUser[accountField]]
+        : [];
+    const nextIds = new Set(originalIds.map(Number));
+    if (isActive) nextIds.add(Number(postId));
+    else nextIds.delete(Number(postId));
+
+    button.classList.toggle(activeClass, isActive);
+    if (countSpan && Number.isFinite(originalCount)) {
+        countSpan.textContent = String(Math.max(0, originalCount + (isActive ? 1 : -1)));
+    }
+    if (currentUser) currentUser[accountField] = [...nextIds];
+
+    return {
+        isActive,
+        restore() {
+            button.classList.toggle(activeClass, wasActive);
+            if (countSpan && Number.isFinite(originalCount)) {
+                countSpan.textContent = String(originalCount);
+            }
+            if (currentUser) currentUser[accountField] = originalIds;
+        },
+        applyServerState(serverIsActive, serverIds, serverCount) {
+            button.classList.toggle(activeClass, Boolean(serverIsActive));
+            if (countSpan && Number.isFinite(Number(serverCount))) {
+                countSpan.textContent = String(Math.max(0, Number(serverCount)));
+            }
+            if (currentUser && Array.isArray(serverIds)) currentUser[accountField] = serverIds;
+        },
+    };
+}
+
+export async function openEditPostModal(postId, onSaved = null) {
+    showLoading(true);
+    try {
+        const { data: post, error } = await api
+            .from('post')
+            .select('content, mask, attachments, reply_id, replyTo, reply_to, reply_to_post, reply_control, replyControl, lock')
+            .eq('id', postId)
+            .single();
+        if (error || !post) throw new Error('ポスト情報の取得に失敗しました。');
+
+        const isReply = Boolean(post.reply_id || post.replyTo || post.reply_to || post.reply_to_post);
+        let currentAttachments = post.attachments || [];
+        let filesToDelete = new Set();
+        let filesToAdd = [];
+
+        const renderAttachments = () => {
+            let existingHTML = '';
+            currentAttachments.forEach((attachment) => {
+                if (filesToDelete.has(attachment.id)) return;
+                existingHTML += `
+                    <div class="file-preview-item">
+                        <span>${attachment.type === 'image' ? '🖼️' : '📎'} ${escapeHTML(attachment.name)}</span>
+                        <button class="file-preview-remove" data-id="${escapeHTML(String(attachment.id))}" data-type="existing">×</button>
+                    </div>`;
+            });
+
+            let newHTML = '';
+            filesToAdd.forEach((file, index) => {
+                newHTML += `
+                    <div class="file-preview-item">
+                        <span>${file.type.startsWith('image/') ? '🖼️' : '📎'} ${escapeHTML(file.name)}</span>
+                        <button class="file-preview-remove" data-index="${index}" data-type="new">×</button>
+                    </div>`;
+            });
+            return existingHTML + newHTML;
+        };
+
+        const updatePreview = () => {
+            const container = DOM.editPostModalContent.querySelector('.file-preview-container');
+            if (container) container.innerHTML = renderAttachments();
+        };
+
+        DOM.editPostModalContent.innerHTML = `
+            <div class="post-form" style="padding: 1rem;">
+                <img ${rankAvatarAttributes(getCurrentUser())} src="${getUserIconUrl(getCurrentUser())}" class="user-icon nui-avatar" alt="your icon">
+                <button class="modal-close-btn">×</button>
+                <div class="form-content">
+                    <div class="markdown-textarea-editor post-form-textarea"><textarea id="edit-post-textarea" class="markdown-content-editor" rows="5" spellcheck="true" data-markdown-content-editor data-server-input-limit="post_content_length">${escapeHTML(String(post.content || ''))}</textarea><div class="markdown-editor-paint" aria-hidden="true"><div class="markdown-editor-placeholder"></div><div class="markdown-editor-preview hidden"></div><div class="markdown-editor-selection"></div><div class="markdown-editor-composition"></div><div class="markdown-editor-caret"></div></div></div>
+                    <div class="file-preview-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">${renderAttachments()}</div>
+                    <div class="post-form-actions" style="padding-top: 1rem;">
+                        <div class="post-form-tools-row">
+                            <button type="button" class="attachment-button" title="ファイルを追加">${ICONS.attachment}</button>
+                            <button type="button" class="emoji-pic-button" title="${t('composer.emoji')}">${ICONS.emoji}</button>
+                            <div class="post-tools-right-group post-tools-right-start">
+                                <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="プライベート" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
+                                <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="ワンクッション">${ICONS.mask}</button>
+                                ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="${t('composer.reply_control.everyone')}" aria-label="${t('composer.reply_control.everyone')}" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
+                            </div>
+                        </div>
+                        <div class="post-form-submit-row">
+                            <button id="update-post-button" class="nui-button" data-nui="button" style="padding: 0.5rem 1.5rem; border-radius: 9999px; border: none; background-color: var(--primary-color); color: white; font-weight: 700;">保存</button>
+                        </div>
+                        <input type="file" id="edit-file-input" class="hidden" multiple>
+                        <div id="emoji-picker" class="hidden"></div>
+                        <div class="post-reply-control-menu hidden" role="menu"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        setPostingReplyControl(DOM.editPostModalContent, post.reply_control || post.replyControl || 'everyone');
+        const editEmojiBtn = DOM.editPostModalContent.querySelector('.emoji-pic-button');
+        if (editEmojiBtn) {
+            let editPickerInstance = null;
+            let editPickerLoading = false;
+            editEmojiBtn.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                const existingPicker = DOM.editPostModalContent.querySelector('#emoji-picker');
+                if (existingPicker && !existingPicker.classList.contains('hidden')) {
+                    existingPicker.classList.add('hidden');
+                    return;
+                }
+                if (existingPicker && editPickerInstance) {
+                    existingPicker.classList.remove('hidden');
+                    return;
+                }
+                if (editPickerLoading) return;
+                editPickerLoading = true;
+                try {
+                    editPickerInstance = await emoji_picker_create({
+                        triggerButton: editEmojiBtn,
+                        onEmojiSelect: (value) => {
+                            const targetEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
+                            if (targetEditor && value) {
+                                insertMarkdownEditorText(targetEditor, value);
+                            }
+                            DOM.editPostModalContent.querySelector('#emoji-picker')?.classList.add('hidden');
+                        },
+                        onClickOutside: () => {
+                            DOM.editPostModalContent.querySelector('#emoji-picker')?.classList.add('hidden');
+                        },
+                    });
+                    const pickerPlaceholder = DOM.editPostModalContent.querySelector('#emoji-picker');
+                    if (pickerPlaceholder) {
+                        pickerPlaceholder.replaceWith(editPickerInstance);
+                        editPickerInstance.classList.remove('hidden');
+                    } else {
+                        DOM.editPostModalContent.querySelector('.post-form-actions')?.appendChild(editPickerInstance);
+                    }
+                } catch (error) {
+                    console.error('絵文字ピッカーの初期化に失敗しました:', error);
+                } finally {
+                    editPickerLoading = false;
+                }
+            });
+        }
+        let editPostEditor = DOM.editPostModalContent.querySelector('#edit-post-textarea');
+        editPostEditor = attachMarkdownContentEditor(editPostEditor) || editPostEditor;
+        setupMarkdownEditorPreviewButton(DOM.editPostModalContent, editPostEditor);
+        DOM.editPostModalContent.querySelector('.post-reply-control-button')?.addEventListener('click', () => {
+            togglePostReplyControlMenu(DOM.editPostModalContent);
+        });
+        DOM.editPostModalContent.querySelector('.post-mask-button')?.addEventListener('click', () => {
+            handlePostMask(DOM.editPostModalContent);
+        });
+        DOM.editPostModalContent.querySelector('.post-lock-button')?.addEventListener('click', () => {
+            handlePostLock(DOM.editPostModalContent);
+        });
+        DOM.editPostModalContent.querySelector('.post-tools-overflow-button')?.addEventListener('click', () => {
+            togglePostToolsOverflowMenu(DOM.editPostModalContent);
+        });
+        setupPostToolsOverflowObserver(DOM.editPostModalContent);
+
+        DOM.editPostModal.querySelector('#update-post-button').onclick = () =>
+            handleUpdatePost(postId, currentAttachments, filesToAdd, Array.from(filesToDelete), onSaved);
+        DOM.editPostModal.querySelector('.modal-close-btn').onclick = () =>
+            DOM.editPostModal.classList.add('hidden');
+
+        DOM.editPostModal.querySelector('.attachment-button').onclick = () => {
+            DOM.editPostModal.querySelector('#edit-file-input').click();
+        };
+
+        DOM.editPostModal.querySelector('#edit-file-input').onchange = (e) => {
+            const files = Array.from(e.target.files);
+            filesToAdd.push(...files);
+            updatePreview();
+        };
+
+        DOM.editPostModalContent.querySelector('.file-preview-container').onclick = (e) => {
+            if (e.target.classList.contains('file-preview-remove')) {
+                const type = e.target.dataset.type;
+                if (type === 'existing') {
+                    filesToDelete.add(e.target.dataset.id);
+                } else if (type === 'new') {
+                    filesToAdd.splice(parseInt(e.target.dataset.index, 10), 1);
+                }
+                updatePreview();
+            }
+        };
+
+        DOM.editPostModal.classList.remove('hidden');
+        updatePostToolsOverflow(DOM.editPostModalContent);
+        if (editPostEditor) {
+            autoResizeMarkdownEditor(editPostEditor);
+            editPostEditor.focus();
+        }
+    } catch (error) {
+        console.error(error);
+        showAppAlert(error.message || '編集モーダルの読み込みに失敗しました');
+    } finally {
+        showLoading(false);
+    }
+}
+
+export async function handleUpdatePost(postId, originalAttachments, filesToAdd, filesToDeleteIds, onSaved = null) {
+    const newContent = getMarkdownEditorValue(
+        DOM.editPostModal.querySelector('#edit-post-textarea'),
+    ).trim();
+    const maskActive = DOM.editPostModal.querySelector('.post-mask-button')?.classList.contains('active') || false;
+    const lockActive = DOM.editPostModal.querySelector('.post-lock-button')?.classList.contains('active') || false;
+    const replyControlValue = getPostingReplyControl(DOM.editPostModalContent);
+
+    if (!newContent) return showAppAlert('内容を入力するか、ファイルを添付してください。');
+
+    const button = DOM.editPostModal.querySelector('#update-post-button');
+    if (button) {
+        button.disabled = true;
+        button.textContent = '保存中';
+    }
+    showLoading(true);
+
+    try {
+        if (filesToDeleteIds.length > 0) {
+            await deleteFilesViaEdgeFunction(filesToDeleteIds);
+        }
+
+        let newUploadedAttachments = [];
+        if (filesToAdd.length > 0) {
+            for (const file of filesToAdd) {
+                const fileId = await uploadFileViaEdgeFunction(file);
+                const fileType = file.type.startsWith('image/')
+                    ? 'image'
+                    : file.type.startsWith('video/')
+                      ? 'video'
+                      : file.type.startsWith('audio/')
+                        ? 'audio'
+                        : 'file';
+                newUploadedAttachments.push({
+                    type: fileType,
+                    id: fileId,
+                    name: file.name,
+                });
+            }
+        }
+
+        let finalAttachments = originalAttachments.filter(
+            (att) => !filesToDeleteIds.includes(att.id),
+        );
+        finalAttachments.push(...newUploadedAttachments);
+
+        const { error: postUpdateError } = await api
+            .from('post')
+            .update({
+                content: newContent,
+                attachments: finalAttachments,
+                mask: maskActive,
+                lock: lockActive,
+                reply_control: replyControlValue,
+            })
+            .eq('id', postId);
+
+        if (postUpdateError) throw postUpdateError;
+
+        DOM.editPostModal.classList.add('hidden');
+        invalidateTimelinePageCache();
+        if (typeof onSaved === 'function') {
+            await onSaved();
+        }
+    } catch (e) {
+        console.error(e);
+        showAppAlert('ポストの更新に失敗しました。');
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = '保存';
+        }
+        showLoading(false);
+    }
+}
+
+export async function copyPost(postId, button) {
+    const customBase =
+        globalThis.NyaitterClientConfig?.shareUrl ||
+        globalThis.NyaitterClientConfig?.postShareUrl;
+    let postUrl;
+    if (customBase) {
+        const cleanBase = String(customBase).trim().replace(/\/+$/, '');
+        postUrl = cleanBase.includes('#')
+            ? `${cleanBase}/#post/${postId}`
+            : `${cleanBase}/posts/${postId}`;
+    } else {
+        postUrl = `${window.location.origin}${window.location.pathname}#post/${postId}`;
+    }
+    await copyTextToClipboard(postUrl);
+    if (button) {
+        button.innerText = `コピーしました!`;
+    }
+}
+
+export async function pinPost(postId) {
+    let cmessage, emessage;
+
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
+    if (!isPinnedPost(postId)) {
+        cmessage = 'このポストをピン留めしますか?';
+        emessage = 'ポストのピン留め';
+    } else {
+        cmessage = 'このポストのピン留めを解除しますか?';
+        emessage = 'ポストのピン留めの解除';
+    }
+    if (!(await showAppConfirm(cmessage))) return;
+    showLoading(true);
+    try {
+        const { data: pinId, error: fetchError } = await api.rpc('handle_pin', { p_post_id: postId });
+        if (fetchError) throw new Error(`ポストのピン留め処理に失敗: ${fetchError.message}`);
+        const normalizedPinId = normalizePostId(pinId);
+        getCurrentUser().pin = normalizedPinId;
+        const currentUserId = Number(getCurrentUser().id);
+        if (Number.isInteger(currentUserId)) {
+            getPublicProfileCache().delete(currentUserId);
+            invalidateProfileTabPageCache(currentUserId, 'posts');
+        }
+        invalidateTimelinePageCache();
+        await router();
+    } catch (e) {
+        console.error(e);
+        showAppAlert(`${emessage}に失敗しました。`);
+    } finally {
+        showLoading(false);
+    }
+}
+
+export function removePostFromTimeline(postId) {
+    const normalizedPostId = Number(postId);
+    if (!Number.isInteger(normalizedPostId) || normalizedPostId <= 0) return;
+
+    document
+        .querySelectorAll(`.post[data-post-id="${normalizedPostId}"]`)
+        .forEach((postElement) => postElement.remove());
+}
+
+export async function deletePost(postId) {
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
+    if (!(await showAppConfirm(t('post.delete_confirm')))) return;
+    showLoading(true);
+    try {
+        const currentUser = getCurrentUser();
+        if (currentUser?.admin) {
+            const { error: adminDeleteError } = await apiRequest(
+                `/server/api/posts/admin/${encodeURIComponent(String(postId))}`,
+                { method: 'DELETE' },
+            );
+            if (adminDeleteError) throw adminDeleteError;
+        } else {
+            const { error: deleteError } = await api
+                .from('post')
+                .delete()
+                .eq('id', postId);
+            if (deleteError) throw deleteError;
+        }
+
+        invalidateTimelinePageCache();
+        deleteCachedPost(postId);
+        removePostFromTimeline(postId);
+    } catch (e) {
+        console.error(e);
+        showAppAlert(t('post.delete_failed'));
+    } finally {
+        showLoading(false);
+    }
+}
+
+export function handleReplyClick(postId, username, isPrivate = false) {
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
+    openPostModal({ id: postId, name: username, isPrivate });
+}
+
+export async function handleLike(button, postId) {
+    if (!getCurrentUser() || button.disabled) return;
+    const optimistic = applyOptimisticPostToggle(button, postId, {
+        activeClass: 'liked',
+        accountField: 'like',
+    });
+    button.disabled = true;
+
+    // 楽観的にキャッシュのいいね状態とカウントを更新
+    updateCachedPost(postId, (p) => {
+        p.liked_by_me = optimistic.isActive;
+        p.liked = optimistic.isActive;
+        const currentCount = Number(p.like_count ?? p.likes) || 0;
+        const newCount = Math.max(0, currentCount + (optimistic.isActive ? 1 : -1));
+        p.like_count = newCount;
+        p.likes = newCount;
+    });
+
+    try {
+        const { data, error } = await api.rpc('handle_like', { p_post_id: postId });
+        if (error) throw error;
+
+        optimistic.applyServerState(data.liked, data.updated_likes, data.count);
+        // サーバー確定値でキャッシュを更新
+        updateCachedPost(postId, (p) => {
+            p.liked_by_me = Boolean(data.liked);
+            p.liked = Boolean(data.liked);
+            p.like_count = Number(data.count) || 0;
+            p.likes = Number(data.count) || 0;
+        });
+        invalidateTimelinePageCache();
+    } catch (e) {
+        optimistic.restore();
+        // 失敗時は元に戻す
+        updateCachedPost(postId, (p) => {
+            p.liked_by_me = !optimistic.isActive;
+            p.liked = !optimistic.isActive;
+            const currentCount = Number(p.like_count ?? p.likes) || 0;
+            const restoredCount = Math.max(0, currentCount + (!optimistic.isActive ? 1 : -1));
+            p.like_count = restoredCount;
+            p.likes = restoredCount;
+        });
+        console.error('いいね更新エラー:', e);
+        showAppAlert(t('post.like_failed'));
+    } finally {
+        button.disabled = false;
+    }
+}
+
+export async function handleStar(button, postId) {
+    if (!getCurrentUser() || button.disabled) return;
+    const optimistic = applyOptimisticPostToggle(button, postId, {
+        activeClass: 'starred',
+        accountField: 'star',
+    });
+    button.disabled = true;
+
+    // 楽観的にキャッシュのお気に入り状態とカウントを更新
+    updateCachedPost(postId, (p) => {
+        p.starred_by_me = optimistic.isActive;
+        p.starred = optimistic.isActive;
+        const currentCount = Number(p.star_count ?? p.stars) || 0;
+        const newCount = Math.max(0, currentCount + (optimistic.isActive ? 1 : -1));
+        p.star_count = newCount;
+        p.stars = newCount;
+    });
+
+    try {
+        const { data, error } = await api.rpc('handle_star', { p_post_id: postId });
+        if (error) throw error;
+
+        optimistic.applyServerState(data.starred, data.updated_stars, data.count);
+        // サーバー確定値でキャッシュを更新
+        updateCachedPost(postId, (p) => {
+            p.starred_by_me = Boolean(data.starred);
+            p.starred = Boolean(data.starred);
+            p.star_count = Number(data.count) || 0;
+            p.stars = Number(data.count) || 0;
+        });
+        invalidateTimelinePageCache();
+    } catch (e) {
+        optimistic.restore();
+        // 失敗時は元に戻す
+        updateCachedPost(postId, (p) => {
+            p.starred_by_me = !optimistic.isActive;
+            p.starred = !optimistic.isActive;
+            const currentCount = Number(p.star_count ?? p.stars) || 0;
+            const restoredCount = Math.max(0, currentCount + (!optimistic.isActive ? 1 : -1));
+            p.star_count = restoredCount;
+            p.stars = restoredCount;
+        });
+        console.error('お気に入り更新エラー:', e);
+        showAppAlert(t('post.star_failed'));
+    } finally {
+        button.disabled = false;
+    }
+}
+
+export function handleShowMaskedPost(button) {
+    button.disabled = true;
+    const postMain = button.parentElement;
+    const postMaskTitle = postMain.querySelector('.post-mask-title');
+
+    if (postMaskTitle) postMaskTitle.remove();
+    button.remove();
+
+    const postContent = postMain.querySelector('.post-content');
+    const postAttach = postMain.querySelector('.attachments-container');
+
+    if (postAttach) {
+        postAttach.classList.remove('hidden');
+
+    }
+    if (postContent) postContent.classList.remove('hidden');
+}
+
+export async function handleFollowToggle(targetUserId, button, isLock = false) {
+    if (!getCurrentUser() || button.disabled) return;
+
+    const currentUser = getCurrentUser();
+    const originalFollows = Array.isArray(currentUser.follow) ? [...currentUser.follow] : [];
+    const wasFollowing = button.classList.contains('follow-button-following');
+    const optimisticFollowing = !wasFollowing;
+    const followerCountSpan = document.querySelector('#follower-count strong');
+    const originalFollowerCount = Number.parseInt(followerCountSpan?.textContent, 10);
+
+    button.disabled = true;
+    updateFollowButtonState(button, optimisticFollowing, isLock);
+
+    const nextFollows = new Set(originalFollows.map(Number));
+    if (optimisticFollowing) nextFollows.add(Number(targetUserId));
+    else nextFollows.delete(Number(targetUserId));
+    currentUser.follow = [...nextFollows];
+
+    if (followerCountSpan && Number.isFinite(originalFollowerCount)) {
+        followerCountSpan.textContent = String(Math.max(0, originalFollowerCount + (optimisticFollowing ? 1 : -1)));
+    }
+
+    try {
+        const { data, error } = await api.rpc('handle_follow', { p_target_user_id: targetUserId });
+        if (error) throw error;
+
+        const serverFollowing = Boolean(data?.following);
+        updateFollowButtonState(button, serverFollowing, isLock);
+        if (Array.isArray(data?.updated_follows)) {
+            currentUser.follow = data.updated_follows;
+        }
+        if (followerCountSpan && Number.isFinite(Number(data?.follower_count))) {
+            followerCountSpan.textContent = String(data.follower_count);
+        }
+        invalidateTimelinePageCache();
+    } catch (e) {
+        updateFollowButtonState(button, wasFollowing, isLock);
+        currentUser.follow = originalFollows;
+        if (followerCountSpan && Number.isFinite(originalFollowerCount)) {
+            followerCountSpan.textContent = String(originalFollowerCount);
+        }
+        console.error('フォロー切り替えエラー:', e);
+        showAppAlert('フォロー状態の更新に失敗しました。');
+    }
+}
+
+export async function handleDislikePost(postId, menu = null) {
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
+    menu?.classList.remove('is-visible');
+    try {
+        const { error } = await apiRequest(`/server/api/posts/${encodeURIComponent(String(postId))}/dislike`, {
+            method: 'POST',
+        });
+        if (error) throw error;
+        // おすすめタブではサーバーが候補から完全除外するのでその場で消す。
+        // 時系列タブ（フォロー・すべて・グループ等）は再読込で戻るのでカードを残し、文面も切り分ける。
+        if (getCurrentTimelineTab() === 'foryou') {
+            removePostFromTimeline(postId);
+            showToast('このポストを表示しないようにしました。');
+        } else {
+            showToast('関連性が低いと評価しました。おすすめでの表示を減らします。');
+        }
+    } catch (e) {
+        console.error('Dislike error:', e);
+        showToast('評価の送信に失敗しました。');
+    }
+}
+
+export async function handleFollowMenuToggle(author, menu = null) {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !author?.id) return showAppAlert(t('common.login_required'));
+    menu?.classList.remove('is-visible');
+    const targetUserId = Number(author.id);
+    const isFollowing = Array.isArray(currentUser.follow) && currentUser.follow.some((id) => Number(id) === targetUserId);
+    const originalFollows = Array.isArray(currentUser.follow) ? [...currentUser.follow] : [];
+
+    const nextFollows = new Set(originalFollows.map(Number));
+    if (!isFollowing) nextFollows.add(targetUserId);
+    else nextFollows.delete(targetUserId);
+    currentUser.follow = [...nextFollows];
+
+    try {
+        const { data, error } = await api.rpc('handle_follow', { p_target_user_id: targetUserId });
+        if (error) throw error;
+        if (Array.isArray(data?.updated_follows)) {
+            currentUser.follow = data.updated_follows;
+        }
+        invalidateTimelinePageCache();
+    } catch (e) {
+        currentUser.follow = originalFollows;
+        console.error('フォロー切り替えエラー:', e);
+        showAppAlert('フォロー状態の更新に失敗しました。');
+    }
+}
+
+export async function handleBlockMenuToggle(author, menu = null) {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !author?.id) return showAppAlert(t('common.login_required'));
+    menu?.classList.remove('is-visible');
+    const targetUserId = Number(author.id);
+    const isBlocked = Array.isArray(currentUser.block) && currentUser.block.some((id) => Number(id) === targetUserId);
+
+    if (!isBlocked) {
+        if (!(await showAppConfirm(t('post.block_confirm', { name: `@${author.name || t('post.user_fallback')}` })))) {
+            return;
+        }
+    }
+
+    try {
+        const client = globalThis.NyaitterClientInstance;
+        const res = await client.users.toggleBlock(targetUserId);
+        const nowBlocked = Boolean(res?.blocked);
+        currentUser.block = Array.isArray(res?.block)
+            ? res.block
+            : (nowBlocked
+                ? [...(currentUser.block || []).filter((id) => Number(id) !== targetUserId), targetUserId]
+                : (currentUser.block || []).filter((id) => Number(id) !== targetUserId));
+        invalidateTimelinePageCache();
+        showAppAlert(nowBlocked ? t('post.blocked', { name: author.name || t('post.user_fallback') }) : t('post.unblocked', { name: author.name || t('post.user_fallback') }));
+        if (nowBlocked) {
+            document.querySelectorAll('.post[data-action-target-id]').forEach((el) => {
+                if (Number(el._nyaitterPost?.userid || el._nyaitterPost?.userId) === targetUserId) {
+                    el.style.opacity = '0.3';
+                }
+            });
+        }
+    } catch (e) {
+        console.error('ブロック切り替えエラー:', e);
+        showAppAlert(t('post.block_failed'));
+    }
+}
+
+export function openReplyControlModal(post, onUpdated = null) {
+    const existing = document.getElementById('reply-control-modal');
+    if (existing) existing.remove();
+
+    const currentControl = post.reply_control || post.replyControl || 'everyone';
+    const modal = document.createElement('div');
+    modal.id = 'reply-control-modal';
+    modal.className = 'modal-overlay nui-modal-backdrop';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.innerHTML = `
+        <div class="modal-content nui-modal" style="max-width: 440px; padding: 1.25rem;">
+            <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
+            <div style="margin-bottom: 1rem;">
+                <h3 style="margin: 0 0 0.4rem 0; font-size: 1.15rem;">返信可能なユーザーの変更</h3>
+                <p class="nui-help-text" style="margin: 0; font-size: 0.85rem; color: var(--secondary-text-color);">
+                    このポストに返信できるユーザーを選択してください。条件を満たさなくなった既存の返信は自動的に削除されます。
+                </p>
+            </div>
+            <div class="reply-control-modal-options" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
+                ${REPLY_CONTROL_OPTIONS.map((opt) => `
+                    <button type="button" class="post-reply-control-menu-item ${opt.id === currentControl ? 'active' : ''}" data-control="${opt.id}" style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 10px; width: 100%; text-align: left;">
+                        <span class="post-reply-control-menu-icon" aria-hidden="true" style="margin-right: 0.5rem;">${opt.icon}</span>
+                        <span class="post-reply-control-menu-copy">
+                            <strong>${escapeHTML(opt.title)}</strong>
+                            <small>${escapeHTML(opt.description)}</small>
+                        </span>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeModal = () => modal.remove();
+    modal.querySelector('.modal-close-btn')?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    modal.querySelectorAll('[data-control]').forEach((item) => {
+        item.addEventListener('click', async () => {
+            const nextControl = item.dataset.control;
+            if (nextControl === currentControl) {
+                closeModal();
+                return;
+            }
+            item.disabled = true;
+            try {
+                const { error } = await api
+                    .from('post')
+                    .update({
+                        content: post.content,
+                        attachments: post.attachments,
+                        mask: post.mask,
+                        lock: post.lock,
+                        reply_control: nextControl,
+                    })
+                    .eq('id', post.id);
+                if (error) throw error;
+                post.reply_control = nextControl;
+                post.replyControl = nextControl;
+                invalidateTimelinePageCache();
+                closeModal();
+                showAppAlert('返信可能なユーザーを変更しました。');
+                if (typeof onUpdated === 'function') {
+                    await onUpdated(nextControl);
+                }
+            } catch (err) {
+                console.error(err);
+                showAppAlert('返信設定の更新に失敗しました。');
+                item.disabled = false;
+            }
+        });
+    });
+}
+
+// サイドバー/プロフィールが動的ハンドラから window 経由で参照する。
+window.handleFollowToggle = handleFollowToggle;
+
+const communityNoteCache = new Map();
+const communityNoteRequests = new Map();
+const COMMUNITY_NOTE_CACHE_TTL_MS = 60_000;
+const communityNoteLazyPending = new Map();
+let communityNoteLazyObserver = null;
+
+function fetchCommunityNotes(postId, { force = false } = {}) {
+    if (!force) {
+        const hit = communityNoteCache.get(postId);
+        if (hit && hit.expiresAt > Date.now()) {
+            return Promise.resolve({ data: hit.data, error: null });
+        }
+        const pending = communityNoteRequests.get(postId);
+        if (pending) return pending;
+    }
+    const request = Promise.resolve(api.notes.get(postId)).then((result) => {
+        if (!result?.error && result?.data) {
+            if (communityNoteCache.size >= 500 && !communityNoteCache.has(postId)) {
+                communityNoteCache.delete(communityNoteCache.keys().next().value);
+            }
+            communityNoteCache.set(postId, {
+                data: result.data,
+                expiresAt: Date.now() + COMMUNITY_NOTE_CACHE_TTL_MS,
+            });
+        }
+        return result;
+    });
+    communityNoteRequests.set(postId, request);
+    request.then(
+        () => { if (communityNoteRequests.get(postId) === request) communityNoteRequests.delete(postId); },
+        () => { if (communityNoteRequests.get(postId) === request) communityNoteRequests.delete(postId); },
+    );
+    return request;
+}
+
+function deferCommunityNoteCard(post, postBody, postId) {
+    if (postBody.querySelector?.('.community-note-card')) return;
+    const pending = communityNoteLazyPending.get(postBody);
+    if (pending && pending.postId === postId) return;
+    communityNoteLazyPending.set(postBody, { post, postId });
+    if (!communityNoteLazyObserver) {
+        communityNoteLazyObserver = new IntersectionObserver((entries) => {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                const item = communityNoteLazyPending.get(entry.target);
+                communityNoteLazyPending.delete(entry.target);
+                communityNoteLazyObserver.unobserve(entry.target);
+                if (item) void renderCommunityNoteCard(item.post, entry.target, { immediate: true });
+            }
+        }, { rootMargin: '200px' });
+    }
+    communityNoteLazyObserver.observe(postBody);
+}
+
+export async function renderCommunityNoteCard(post, postBody, { immediate = false, force = false } = {}) {
+    if (!post || !postBody) return;
+    const postId = Number(post?.id);
+    if (!Number.isFinite(postId)) return;
+    // 設定でコミュニティノートを非表示にしている場合は、
+    // API 呼び出しもカード描画も行わない。
+    if (getCurrentUser()?.settings?.show_community_notes === false) return;
+
+    // 一覧では表示領域に入るまで取得を遅らせ、投稿ごとの即時取得 (N+1) を避ける。
+    if (!immediate && typeof IntersectionObserver === 'function' && postBody instanceof Element) {
+        deferCommunityNoteCard(post, postBody, postId);
+        return;
+    }
+
+    let container = null;
+    try {
+        container =
+            (typeof postBody.querySelector === 'function' &&
+                postBody.querySelector('.attachments-container')) ||
+            null;
+    } catch (e) {
+        container = null;
+    }
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'attachments-container';
+        if (typeof postBody.prepend === 'function') {
+            postBody.prepend(container);
+        } else {
+            postBody.appendChild(container);
+        }
+    }
+
+    try {
+        // posts レスポンスに集約済みのノートがあれば個別取得しない。
+        // force 時 (ノート作成・評価直後の再描画) は最新を取り直す。
+        let data;
+        if (!force && Array.isArray(post.community_notes)) {
+            data = {
+                notes: post.community_notes,
+                eligible: Boolean(post.community_notes_eligible),
+            };
+        } else {
+            const result = await fetchCommunityNotes(postId, { force });
+            if (result.error || !result.data) return;
+            data = result.data;
+        }
+        const notes = Array.isArray(data?.notes) ? data.notes : [];
+        const note =
+            notes.find((n) => String(n?.status) === 'public') || notes[0];
+        if (!note) return;
+
+        // 既存のノートカードを除去
+        container
+            .querySelectorAll('.community-note-card')
+            .forEach((el) => el.remove());
+
+        const card = document.createElement('div');
+        card.className = 'community-note-card';
+        card.dataset.noteId = String(note.id);
+
+        const header = document.createElement('div');
+        header.className = 'community-note-header';
+
+        const title = document.createElement('strong');
+        title.className = 'community-note-title';
+        const currentUser = getCurrentUser();
+        const noteAuthorId = Number(note.userId);
+        const isOwnNote = Boolean(currentUser) && Number.isFinite(noteAuthorId) &&
+            Number(currentUser.id) === noteAuthorId;
+        const noteStatus = String(note.status || '');
+        title.textContent = isOwnNote
+            ? 'あなたが追加した背景情報'
+            : noteStatus === 'public'
+                ? '他の閲覧者によって追加された背景情報'
+                : '他の閲覧者によって提案された背景情報';
+
+        header.append(title);
+
+        const contentWrap = document.createElement('div');
+        contentWrap.className = 'community-note-content';
+        const contentText = document.createElement('blockquote');
+        contentText.className = 'community-note-text';
+        const fullContent = String(note.content || '');
+        const CONTENT_LIMIT = 500;
+        let textExpanded = false;
+
+        const updateContentText = () => {
+            if (textExpanded || fullContent.length <= CONTENT_LIMIT) {
+                contentText.textContent = fullContent;
+            } else {
+                contentText.textContent = fullContent.slice(0, CONTENT_LIMIT) + '…';
+            }
+        };
+        updateContentText();
+        contentWrap.appendChild(contentText);
+
+        const readMoreWrap = document.createElement('div');
+        readMoreWrap.className = 'community-note-readmore-wrap';
+        if (fullContent.length > CONTENT_LIMIT) {
+            const readMoreBtn = document.createElement('button');
+            readMoreBtn.type = 'button';
+            readMoreBtn.className = 'community-note-readmore';
+            readMoreBtn.textContent = '続きを読む';
+            readMoreBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                textExpanded = !textExpanded;
+                updateContentText();
+                readMoreBtn.textContent = textExpanded
+                    ? '閉じる'
+                    : '続きを読む';
+            });
+            readMoreWrap.appendChild(readMoreBtn);
+        }
+
+        const reasons = Array.isArray(note.reasons) ? note.reasons : [];
+        const tagsWrap = document.createElement('div');
+        tagsWrap.className = 'community-note-tags';
+        const tagCodes = reasons.map((reason) => String(
+            (reason && (reason.code || reason.label || reason.side)) || reason || '',
+        ));
+        const tagLabels = new Map(tagCodes.map((code) => [code, code]));
+        const renderTags = () => {
+            tagsWrap.textContent = [...tagLabels.values()].join(' / ');
+            tagsWrap.hidden = tagLabels.size === 0;
+        };
+        renderTags();
+        // 定義テーブルの表示ラベルに置き換える（取得できない場合はコードのまま）。
+        if (reasons.length > 0) {
+            void Promise.all(
+                reasons.map(async (reason) => {
+                    const code = String(
+                        (reason && (reason.code || reason.label || reason.side)) ||
+                            reason ||
+                            '',
+                    );
+                    const label = await getCommunityNoteReasonLabel(code);
+                    if (label) tagLabels.set(code, label);
+                }),
+            ).then(renderTags).catch(() => {});
+        }
+
+        const ratingWrap = document.createElement('div');
+        ratingWrap.className = 'community-note-rating';
+
+        const ratingQuestion = document.createElement('span');
+        ratingQuestion.className = 'community-note-rating-question';
+        ratingQuestion.textContent = '参考になりましたか?';
+
+        const evaluateBtn = document.createElement('button');
+        evaluateBtn.type = 'button';
+        evaluateBtn.className = 'community-note-evaluate-btn';
+        evaluateBtn.textContent = 'ノートを評価';
+        let ratingChoicesVisible = false;
+
+        const helpfulBtn = document.createElement('button');
+        helpfulBtn.type = 'button';
+        helpfulBtn.className = 'community-note-rating-btn';
+        helpfulBtn.textContent = '参考になった';
+
+        const unhelpfulBtn = document.createElement('button');
+        unhelpfulBtn.type = 'button';
+        unhelpfulBtn.className = 'community-note-rating-btn';
+        unhelpfulBtn.textContent = '参考にならなかった';
+
+        const countLabel = document.createElement('span');
+        countLabel.className = 'community-note-rating-count';
+
+        const ratedLabel = document.createElement('span');
+        ratedLabel.className = 'community-note-rated-label';
+        ratedLabel.textContent = '評価済み ✓';
+        ratedLabel.hidden = true;
+
+        const canRate =
+            Boolean(currentUser) &&
+            (!Number.isFinite(noteAuthorId) ||
+                Number(currentUser.id) !== noteAuthorId);
+
+        const reasonPanel = document.createElement('div');
+        reasonPanel.className = 'community-note-reason-panel';
+        reasonPanel.hidden = true;
+        let reasonPanelSide = null;
+        const selectedReasonCodes = new Set();
+
+        const syncRating = () => {
+            const myRating = note.myRating;
+            const rated = myRating === true || myRating === false;
+            helpfulBtn.classList.toggle(
+                'is-active',
+                myRating === true,
+            );
+            unhelpfulBtn.classList.toggle(
+                'is-active',
+                myRating === false,
+            );
+            helpfulBtn.hidden = rated || !ratingChoicesVisible;
+            unhelpfulBtn.hidden = rated || !ratingChoicesVisible;
+            evaluateBtn.hidden = rated || ratingChoicesVisible;
+            ratingQuestion.hidden = rated;
+            ratedLabel.hidden = !rated;
+            if (rated) {
+                ratingChoicesVisible = false;
+                reasonPanel.hidden = true;
+                reasonPanel.innerHTML = '';
+                reasonPanelSide = null;
+                selectedReasonCodes.clear();
+            }
+            if (!canRate) {
+                evaluateBtn.disabled = true;
+                helpfulBtn.disabled = true;
+                unhelpfulBtn.disabled = true;
+                const reason = currentUser ? '自分のノートは評価できません' : '評価するにはログインしてください';
+                evaluateBtn.title = reason;
+                helpfulBtn.title = reason;
+                unhelpfulBtn.title = reason;
+            }
+            if (note.helpfulCount != null) {
+                countLabel.textContent =
+                    note.helpfulCount > 0
+                        ? '参考になった ' + String(note.helpfulCount)
+                        : '';
+            }
+        };
+        syncRating();
+
+        evaluateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!canRate) return;
+            ratingChoicesVisible = true;
+            syncRating();
+        });
+
+        const handleRate = async (helpful, reasons = []) => {
+            try {
+                const { data: rateData, error: rateError } =
+                    await api.notes.rate(note.id, { helpful, reasons });
+                if (rateError || !rateData) return false;
+                if (typeof rateData.helpfulCount !== 'undefined') {
+                    note.helpfulCount = rateData.helpfulCount;
+                }
+                if (typeof rateData.totalRatingCount !== 'undefined') {
+                    note.totalRatingCount = rateData.totalRatingCount;
+                }
+                if (typeof rateData.myRating !== 'undefined') {
+                    note.myRating = rateData.myRating;
+                } else {
+                    note.myRating = Boolean(helpful);
+                }
+                syncRating();
+                return true;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        };
+
+        const renderReasonPanel = async (helpful) => {
+            if (!canRate) return;
+            const side = helpful ? 'positive' : 'negative';
+            if (reasonPanelSide === side && !reasonPanel.hidden) {
+                reasonPanel.hidden = true;
+                reasonPanel.innerHTML = '';
+                reasonPanelSide = null;
+                selectedReasonCodes.clear();
+                return;
+            }
+            reasonPanelSide = side;
+            selectedReasonCodes.clear();
+            reasonPanel.hidden = false;
+            reasonPanel.innerHTML = '';
+
+            const loading = document.createElement('span');
+            loading.className = 'community-note-reason-loading';
+            loading.textContent = '理由を読み込み中…';
+            reasonPanel.appendChild(loading);
+
+            const { data, error } = await api.notes.reasonTags();
+            if (reasonPanelSide !== side) return;
+
+            reasonPanel.innerHTML = '';
+            const tags =
+                !error && Array.isArray(data?.tags)
+                    ? data.tags
+                          .filter((tag) => String(tag?.side) === side)
+                          .slice()
+                          .sort(
+                              (a, b) =>
+                                  (Number(a?.sortOrder) || 0) -
+                                  (Number(b?.sortOrder) || 0),
+                          )
+                    : [];
+
+            const chipWrap = document.createElement('div');
+            chipWrap.className = 'community-note-reason-chips';
+
+            const chipButtons = [];
+            // 理由の確定ボタン。syncChips から参照するため chips 生成前に宣言する。
+            const confirmBtn = document.createElement('button');
+            const syncChips = () => {
+                const atLimit = selectedReasonCodes.size >= 3;
+                chipButtons.forEach((btn) => {
+                    const code = btn.dataset.reasonCode;
+                    const selected = selectedReasonCodes.has(code);
+                    btn.classList.toggle('is-selected', selected);
+                    btn.setAttribute(
+                        'aria-pressed',
+                        selected ? 'true' : 'false',
+                    );
+                    btn.disabled = !selected && atLimit;
+                });
+                if (confirmBtn) {
+                    confirmBtn.disabled = selectedReasonCodes.size === 0;
+                }
+            };
+
+            tags.forEach((tag) => {
+                const code = String(tag?.code || '').trim();
+                if (!code) return;
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'community-note-reason-chip';
+                chip.dataset.reasonCode = code;
+                chip.textContent = String(tag?.label || code);
+                if (tag?.description) chip.title = String(tag.description);
+                chip.setAttribute('aria-pressed', 'false');
+                chip.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (selectedReasonCodes.has(code)) {
+                        selectedReasonCodes.delete(code);
+                    } else if (selectedReasonCodes.size < 3) {
+                        selectedReasonCodes.add(code);
+                    } else {
+                        showToast('理由は3つまで選択できます。');
+                    }
+                    syncChips();
+                });
+                chipButtons.push(chip);
+                chipWrap.appendChild(chip);
+            });
+
+            if (chipButtons.length > 0) {
+                reasonPanel.appendChild(chipWrap);
+            } else {
+                const empty = document.createElement('span');
+                empty.className = 'community-note-reason-loading';
+                empty.textContent =
+                    '理由を取得できませんでした。理由なしで評価できます。';
+                reasonPanel.appendChild(empty);
+            }
+
+            const actions = document.createElement('div');
+            actions.className = 'community-note-reason-actions';
+
+            confirmBtn.type = 'button';
+            confirmBtn.className =
+                'community-note-reason-confirm nui-button';
+            confirmBtn.textContent = 'この理由で評価';
+            confirmBtn.disabled = true;
+
+            const noReasonBtn = document.createElement('button');
+            noReasonBtn.type = 'button';
+            noReasonBtn.className = 'community-note-reason-skip';
+            noReasonBtn.textContent = '理由なしで評価';
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'community-note-reason-cancel';
+            cancelBtn.textContent = 'キャンセル';
+
+            const setBusy = (busy) => {
+                confirmBtn.disabled = busy || selectedReasonCodes.size === 0;
+                noReasonBtn.disabled = busy;
+                cancelBtn.disabled = busy;
+                chipButtons.forEach((btn) => {
+                    btn.disabled =
+                        busy ||
+                        (!selectedReasonCodes.has(btn.dataset.reasonCode) &&
+                            selectedReasonCodes.size >= 3);
+                });
+            };
+
+            confirmBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (selectedReasonCodes.size === 0) return;
+                setBusy(true);
+                const ok = await handleRate(helpful, [
+                    ...selectedReasonCodes,
+                ]);
+                if (!ok) {
+                    setBusy(false);
+                    showAppAlert('評価に失敗しました。');
+                }
+            });
+            noReasonBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                setBusy(true);
+                const ok = await handleRate(helpful, []);
+                if (!ok) {
+                    setBusy(false);
+                    showAppAlert('評価に失敗しました。');
+                }
+            });
+            cancelBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                reasonPanel.hidden = true;
+                reasonPanel.innerHTML = '';
+                reasonPanelSide = null;
+                selectedReasonCodes.clear();
+            });
+
+            actions.append(confirmBtn, noReasonBtn, cancelBtn);
+            reasonPanel.appendChild(actions);
+            syncChips();
+        };
+
+        helpfulBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (helpfulBtn.disabled) return;
+            renderReasonPanel(true);
+        });
+        unhelpfulBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (unhelpfulBtn.disabled) return;
+            renderReasonPanel(false);
+        });
+
+        ratingWrap.append(
+            ratingQuestion,
+            evaluateBtn,
+            helpfulBtn,
+            unhelpfulBtn,
+            ratedLabel,
+            countLabel,
+            reasonPanel,
+        );
+
+        const sources = Array.isArray(note.sources) ? note.sources : [];
+        const sourceLinks = [];
+        for (const source of sources) {
+            const rawUrl = String((source && (source.url || source)) || '').trim();
+            if (!rawUrl || sourceLinks.some((item) => item.url === rawUrl)) continue;
+            let parsed;
+            try {
+                parsed = new URL(rawUrl);
+            } catch (_) {
+                continue;
+            }
+            if (parsed.protocol !== 'https:') continue;
+            sourceLinks.push({ url: parsed.href, title: String(source?.title || '').trim() });
+        }
+        let sourcesWrap = null;
+        if (sourceLinks.length > 0) {
+            sourcesWrap = document.createElement('div');
+            sourcesWrap.className = 'community-note-sources';
+            const sourcesLabel = document.createElement('span');
+            sourcesLabel.className = 'community-note-sources-label';
+            sourcesLabel.textContent = '出典: ';
+            sourcesWrap.appendChild(sourcesLabel);
+            sourceLinks.forEach(({ url, title }, index) => {
+                if (index > 0) sourcesWrap.appendChild(document.createTextNode(' / '));
+                const link = document.createElement('a');
+                link.className = 'community-note-source-link';
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = title || url;
+                link.addEventListener('click', (e) => e.stopPropagation());
+                sourcesWrap.appendChild(link);
+            });
+        }
+
+        card.append(
+            header,
+            contentWrap,
+            readMoreWrap,
+            tagsWrap,
+            ...(sourcesWrap ? [sourcesWrap] : []),
+            ratingWrap,
+        );
+
+        if (container.firstChild) {
+            container.insertBefore(card, container.firstChild);
+        } else {
+            container.appendChild(card);
+        }
+    } catch (e) {
+        console.error('renderCommunityNoteCard error:', e);
+    }
+}
+
+export function openCommunityNoteModal(postId, post, postBody) {
+    const numericPostId = Number(postId);
+    if (!Number.isFinite(numericPostId)) return;
+
+    let existingModal = document.getElementById('community-note-create-modal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'community-note-create-modal';
+    modal.className = 'modal-overlay nui-modal-backdrop community-note-create-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+
+    modal.innerHTML = `
+        <div class="community-note-modal-content nui-modal" style="width: min(560px, calc(100vw - 2rem)); padding: 1.5rem;">
+            <button type="button" class="modal-close-btn" id="community-note-modal-close" aria-label="${t('common.close')}">×</button>
+            <div class="community-note-modal-title nui-modal-title">コミュニティノートを作成</div>
+
+            <div class="community-note-modal-field">
+                <label class="community-note-modal-label" for="community-note-content">内容・ソース</label>
+                <textarea id="community-note-content" class="community-note-modal-textarea nui-input" rows="6" maxlength="1000" placeholder="補足情報とソースを入力してください"></textarea>
+                <div class="community-note-modal-count" id="community-note-content-count">0 / 1000</div>
+            </div>
+
+            <div class="community-note-modal-field" id="community-note-reasons-field">
+                <label class="community-note-modal-label">理由</label>
+                <div class="community-note-modal-reasons" id="community-note-reasons-list">
+                    <div class="community-note-modal-reasons-loading">読み込み中…</div>
+                </div>
+            </div>
+
+            <div class="community-note-modal-actions">
+                <button type="button" class="community-note-modal-cancel nui-button-secondary" id="community-note-cancel">キャンセル</button>
+                <button type="button" class="community-note-modal-submit nui-button" id="community-note-submit">送信</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const contentTextarea = modal.querySelector('#community-note-content');
+    const contentCount = modal.querySelector('#community-note-content-count');
+    const reasonsList = modal.querySelector('#community-note-reasons-list');
+    const reasonsField = modal.querySelector('#community-note-reasons-field');
+    const closeBtn = modal.querySelector('#community-note-modal-close');
+    const cancelBtn = modal.querySelector('#community-note-cancel');
+    const submitBtn = modal.querySelector('#community-note-submit');
+
+    let createReasonTags = [];
+
+    const syncContentCount = () => {
+        const len = [...String(contentTextarea.value || '')].length;
+        contentCount.textContent = `${len} / 1000`;
+    };
+    contentTextarea.addEventListener('input', syncContentCount);
+    syncContentCount();
+
+    const renderCreateReasons = async () => {
+        const { data, error } = await api.notes.reasonTags();
+        if (!modal.isConnected) return;
+        const tags =
+            !error && Array.isArray(data?.tags)
+                ? data.tags
+                      .filter((tag) => String(tag?.side) === 'create')
+                      .slice()
+                      .sort(
+                          (a, b) =>
+                              (Number(a?.sortOrder) || 0) -
+                              (Number(b?.sortOrder) || 0),
+                      )
+                : [];
+        if (tags.length === 0) {
+            // 取得できない場合は理由欄自体を出さず、理由なしで送信できる。
+            reasonsField.style.display = 'none';
+            return;
+        }
+        createReasonTags = tags;
+        reasonsList.innerHTML = '';
+        tags.forEach((tag) => {
+            const code = String(tag?.code || '').trim();
+            if (!code) return;
+            const label = document.createElement('label');
+            label.className = 'community-note-modal-reason';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = code;
+            checkbox.dataset.reasonCode = code;
+            label.appendChild(checkbox);
+            const span = document.createElement('span');
+            span.textContent = String(tag?.label || code);
+            if (tag?.description) label.title = String(tag.description);
+            label.appendChild(span);
+            reasonsList.appendChild(label);
+        });
+        if (reasonsList.childElementCount === 0) {
+            reasonsField.style.display = 'none';
+        }
+    };
+    renderCreateReasons();
+
+    const closeModal = () => modal.remove();
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    submitBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const content = String(contentTextarea.value || '').trim();
+        const contentLen = [...content].length;
+        if (contentLen < 1 || contentLen > 1000) {
+            showAppAlert('内容は1〜1000文字で入力してください。');
+            return;
+        }
+
+        const selectedReasons = [];
+        reasonsList.querySelectorAll('input[type="checkbox"]:checked').forEach((cb) => {
+            const code = String(cb.dataset.reasonCode || '');
+            const tag = createReasonTags.find(
+                (item) => String(item?.code || '') === code,
+            );
+            if (!tag || !code) return;
+            selectedReasons.push(code);
+        });
+
+        submitBtn.disabled = true;
+        showLoading(true);
+        try {
+            const { error } = await api.notes.create(numericPostId, {
+                content,
+                reasons: selectedReasons,
+            });
+            if (error) {
+                showAppAlert(error.message || 'ノートの作成に失敗しました。');
+                return;
+            }
+            closeModal();
+            await renderCommunityNoteCard(post, postBody, { immediate: true, force: true });
+        } catch (err) {
+            console.error('create community note error:', err);
+            showAppAlert(err?.message || 'ノートの作成に失敗しました。');
+        } finally {
+            submitBtn.disabled = false;
+            showLoading(false);
+        }
+    });
+}

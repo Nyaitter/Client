@@ -1,0 +1,5 @@
+/* Compatibility entrypoint.
+   Older cached style.css files still import this path. Keep it as a thin
+   aggregator so those clients receive the current call UI styles. */
+@import './callView.css';
+@import './callTabHost.css';

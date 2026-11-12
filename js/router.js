@@ -1,0 +1,206 @@
+import { DOM } from './dom.js';
+import {
+    getCurrentUser,
+    getCurrentTimelineTab,
+    getCurrentSearchTab,
+    getPostLoadObserver,
+    setIsLoadingMore,
+} from './state.js';
+import {
+    applyInterfaceTheme,
+    applyColorTheme,
+    setupTimelinePullToRefresh,
+    updatePullToRefreshAvailability,
+} from './modules/theme.js';
+import { updateNavAndSidebars } from './modules/sidebar.js';
+import {
+    getScrollRouteKey,
+    beginScrollRouteTransition,
+    restoreScrollPosition,
+} from './modules/scroll.js';
+import { handlePendingPushNotificationOpen } from './modules/pwa.js';
+
+import { switchTimelineTab } from './screens/timelineScreen.js';
+
+// Non-timeline screens are loaded on demand (see screenRegistry.js). These
+// wrappers keep the pull-to-refresh call sites below unchanged; every call
+// site already awaits the result.
+const lazyScreen = (importer, exportName) => async (...args) => (await importer())[exportName](...args);
+const showExploreScreen = lazyScreen(() => import('./screens/exploreScreen.js'), 'showExploreScreen');
+const showSearchResults = lazyScreen(() => import('./screens/searchScreen.js'), 'showSearchResults');
+const showNotificationsScreen = lazyScreen(() => import('./screens/notificationsScreen.js'), 'showNotificationsScreen');
+const showLikesScreen = lazyScreen(() => import('./screens/likesStarsScreen.js'), 'showLikesScreen');
+const showStarsScreen = lazyScreen(() => import('./screens/likesStarsScreen.js'), 'showStarsScreen');
+const showPostDetail = lazyScreen(() => import('./screens/postDetailScreen.js'), 'showPostDetail');
+const showPostActivityScreen = lazyScreen(() => import('./screens/postActivityScreen.js'), 'showPostActivityScreen');
+const showDmScreen = lazyScreen(() => import('./screens/dmScreen.js'), 'showDmScreen');
+const refreshActiveProfileTab = lazyScreen(() => import('./screens/profileScreen.js'), 'refreshActiveProfileTab');
+const showGroupsScreen = lazyScreen(() => import('./screens/groupScreen.js'), 'showGroupsScreen');
+const showGroupDetailScreen = lazyScreen(() => import('./screens/groupScreen.js'), 'showGroupDetailScreen');
+const showAdminReportsScreen = lazyScreen(() => import('./screens/adminScreen.js'), 'showAdminReportsScreen');
+const showAdminReportDetailScreen = lazyScreen(() => import('./screens/adminScreen.js'), 'showAdminReportDetailScreen');
+const showAdminLogsScreen = lazyScreen(() => import('./screens/adminScreen.js'), 'showAdminLogsScreen');
+import { showLoading } from './utils/helpers.js';
+import { resolveRoute } from './routeTable.js';
+import { activateScreen } from './screenManager.js';
+import { renderRoute } from './screenRegistry.js';
+import { incrementRouterGeneration } from './modules/pagination.js';
+
+let routerGeneration = 0;
+let scrollRestoreVersion = 0;
+
+async function refreshPullToRefreshContext(context) {
+    if (context?.type === 'dynamic' && typeof context.handler === 'function') {
+        await context.handler(context);
+        return;
+    }
+    if (context?.type === 'timeline') {
+        await switchTimelineTab(getCurrentTimelineTab(), {
+            forceRefresh: true,
+            resetScroll: true,
+        });
+        return;
+    }
+    if (context?.type === 'profile') {
+        await refreshActiveProfileTab(context);
+        return;
+    }
+    if (context?.type === 'notifications') {
+        await showNotificationsScreen(showScreen);
+        return;
+    }
+    if (context?.type === 'post-activity') {
+        await showPostActivityScreen(context.postId, context.tab || 'quotes', { forceRefresh: true, resetScroll: true }, showScreen);
+        return;
+    }
+    if (context?.type === 'post-detail') {
+        await showPostDetail(context.postId, { forceRefresh: true }, showScreen);
+        return;
+    }
+    if (context?.type === 'dm') {
+        const activeDmIdMatch = (window.location.hash || '').match(/^#dm\/(.+)$/);
+        await showDmScreen(activeDmIdMatch ? decodeURIComponent(activeDmIdMatch[1]) : null, showScreen);
+        return;
+    }
+    if (context?.type === 'explore') {
+        await showExploreScreen(showScreen);
+        return;
+    }
+    if (context?.type === 'group') {
+        const groupMatch = (window.location.hash || '').match(/^#group\/(\d+)(?:\/([^/]+))?$/);
+        if (groupMatch) {
+            await showGroupDetailScreen(Number(groupMatch[1]), groupMatch[2] || '', showScreen);
+        } else {
+            await showGroupsScreen(showScreen);
+        }
+        return;
+    }
+    if (context?.type === 'likes') {
+        await showLikesScreen(showScreen);
+        return;
+    }
+    if (context?.type === 'stars') {
+        await showStarsScreen(showScreen);
+        return;
+    }
+    if (context?.type === 'search') {
+        await showSearchResults(context.query, getCurrentSearchTab() || 'posts', showScreen);
+        return;
+    }
+    if (context?.type === 'admin-reports') {
+        if (context.reportId) {
+            await showAdminReportDetailScreen(context.reportId, showScreen);
+        } else {
+            await showAdminReportsScreen(showScreen);
+        }
+        return;
+    }
+    if (context?.type === 'admin-logs') {
+        await showAdminLogsScreen(showScreen);
+        return;
+    }
+}
+
+export function showScreen(screenId, { restart = false } = {}) {
+    activateScreen(screenId, { restart });
+    setupTimelinePullToRefresh(refreshPullToRefreshContext);
+    updatePullToRefreshAvailability();
+    // 画面シェルを表示できた時点で、一覧データの取得完了を待たずに解除する。
+    showLoading(false);
+}
+
+export async function router() {
+    await handlePendingPushNotificationOpen();
+    const generation = ++routerGeneration;
+    incrementRouterGeneration();
+    beginScrollRouteTransition();
+    // 進行中の古い復元処理を無効化する。
+    scrollRestoreVersion += 1;
+    let routeKey = getScrollRouteKey();
+    showLoading(true);
+    setIsLoadingMore(false);
+
+    applyInterfaceTheme(getCurrentUser()?.settings?.theme || 'light');
+    applyColorTheme(getCurrentUser()?.settings || {});
+
+    // プロフィールのサブタブコンテナを削除する。
+    const existingSubTabs = document.getElementById('profile-sub-tabs-container');
+    if (existingSubTabs) existingSubTabs.remove();
+
+    await updateNavAndSidebars();
+    // hashchangeと明示的なrouter()呼び出しが重なった場合、古いルーターは
+    // 新しい遷移のDOMやスクロール状態に触れない。
+    if (generation !== routerGeneration) return;
+
+    // Check pathname or query for direct post links (/posts/123 or ?post=123)
+    let hash = window.location.hash || '#';
+    // 配信ベース (document.baseURI のディレクトリ) を pathname から差し引いてから
+    // 判定する。サブパス / リバースプロキシ配下でも直接リンク・リロードが成立する。
+    // 特定のパス形状の判定はせず、標準の相対解決のみを使う。
+    const basePath = new URL('.', document.baseURI).pathname.replace(/\/+$/, '');
+    const routePath =
+        basePath && window.location.pathname.startsWith(`${basePath}/`)
+            ? window.location.pathname.slice(basePath.length)
+            : window.location.pathname;
+    const postPathMatch = routePath.match(/^(?:\/@[^/]+)?\/posts\/(\d+)$/i);
+    if ((!hash || hash === '#') && postPathMatch) {
+        window.location.hash = `#post/${postPathMatch[1]}`;
+        return;
+    }
+    const searchParams = new URLSearchParams(window.location.search);
+    if ((!hash || hash === '#') && searchParams.has('post')) {
+        window.location.hash = `#post/${searchParams.get('post')}`;
+        return;
+    }
+
+    routeKey = getScrollRouteKey(hash);
+
+    if (getPostLoadObserver()) {
+        getPostLoadObserver().disconnect();
+    }
+
+    document.body.classList.toggle(
+        'notocoloremoji',
+        getCurrentUser()?.settings?.emoji === 'notocoloremoji',
+    );
+
+    try {
+        const route = resolveRoute(hash, getCurrentUser());
+        const routeShowScreen = (screenId) => {
+            if (generation !== routerGeneration) return;
+            showScreen(screenId, { restart: true });
+        };
+        await renderRoute(route || { name: 'main' }, routeShowScreen);
+    } catch (error) {
+        if (generation !== routerGeneration) return;
+        console.error('Routing error:', error);
+        DOM.pageHeader.innerHTML = `<h2>エラー</h2>`;
+        showScreen('main-screen');
+        DOM.timeline.innerHTML = `<p class="error-message">ページの読み込み中にエラーが発生しました。</p>`;
+    } finally {
+        if (generation !== routerGeneration) return;
+        // 復元キーは描画後の状態で確定させる（タイムラインのタブは描画中に
+        // 決まるため、遷移開始時点のキーでは別のタブの位置を復元しうる）。
+        restoreScrollPosition(getScrollRouteKey(hash));
+    }
+}

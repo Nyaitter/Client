@@ -1,0 +1,742 @@
+import { getAllUsersCache } from './state.js';
+import { cacheUser } from './modules/cache.js';
+
+const { apiUrl, userFileUrl } = globalThis.NyaitterClientConfig;
+
+// 認証系はユーザーや設定の変化で内容が変わるため、ブラウザの条件付きGETで
+// 古い値を再利用させない。
+const NO_STORE_AUTH_PATHS = [
+    '/server/auth/me',
+    '/server/auth/providers',
+    '/server/auth/linked-providers',
+    '/server/api/users/me/status',
+];
+
+export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
+    const headers = { Accept: 'application/json' };
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const isAuthStateRequest = NO_STORE_AUTH_PATHS.some((prefix) => String(path).startsWith(prefix));
+    try {
+        const response = await globalThis.NyaitterClientInstance.requestResponse(
+            method,
+            apiUrl(path),
+            {
+                headers,
+                cache: isAuthStateRequest ? 'no-store' : 'default',
+                body,
+                signal,
+            },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok)
+            return {
+                data: null,
+                error: new Error(
+                    payload?.error ||
+                        payload?.message ||
+                        `HTTP ${response.status}`,
+                ),
+            };
+        return { data: payload, error: null };
+    } catch (error) {
+        return { data: null, error };
+    }
+}
+
+// コミュニティノートの理由タグは全画面で共通のマスタデータなので、
+// モジュール内で一度だけ取得して使い回す。
+let communityNoteReasonTagsCache = null;
+let communityNoteReasonTagsRequest = null;
+
+// 理由コードから表示ラベルを引くための索引。マスタ未取得でもコードをそのまま
+// 表示できるよう、取得できた分だけをキャッシュする。
+export async function getCommunityNoteReasonLabel(code) {
+    const key = String(code || '').trim();
+    if (!key) return '';
+    const { data } = await api.notes.reasonTags();
+    const tags = Array.isArray(data?.tags) ? data.tags : [];
+    const hit = tags.find((tag) => String(tag?.code) === key);
+    return String(hit?.label || key);
+}
+
+export const api = (() => {
+    const unwrap = (result, key) => ({
+        data: key ? result.data?.[key] : result.data,
+        error: result.error,
+    });
+    const request = async (path, options, key) =>
+        unwrap(await apiRequest(path, options), key);
+
+    const query = (table) => {
+        const state = {
+            filters: [],
+            action: 'select',
+            values: null,
+            single: false,
+            limit: null,
+            signal: undefined,
+        };
+        const queryRequest = async (path, options, key) => {
+            const res = await request(path, { ...options, signal: state.signal }, key);
+            if (state.single && Array.isArray(res.data)) {
+                res.data = res.data[0] || null;
+            }
+            return res;
+        };
+        const chain = {
+            // Nyaitter RESTクエリファサードでは、update()/insert()後のselect()は返却形式の指定であり操作種別を上書きしない。
+
+            select() {
+                return chain;
+            },
+            update(values) {
+                state.action = 'update';
+                state.values = values;
+                return chain;
+            },
+            insert(values) {
+                state.action = 'insert';
+                state.values = values;
+                return chain;
+            },
+            delete() {
+                state.action = 'delete';
+                return chain;
+            },
+            eq(column, value) {
+                state.filters.push(['eq', column, value]);
+                return chain;
+            },
+            neq(column, value) {
+                state.filters.push(['neq', column, value]);
+                return chain;
+            },
+            in(column, value) {
+                state.filters.push(['in', column, value]);
+                return chain;
+            },
+            contains(column, value) {
+                state.filters.push(['contains', column, value]);
+                return chain;
+            },
+            or(value) {
+                state.filters.push(['or', '', value]);
+                return chain;
+            },
+            is(column, value) {
+                state.filters.push(['is', column, value]);
+                return chain;
+            },
+            order() {
+                return chain;
+            },
+            range(from, to) {
+                const start = Number(from);
+                const end = Number(to);
+                if (Number.isInteger(start) && start >= 0) {
+                    state.range = {
+                        from: start,
+                        to:
+                            Number.isInteger(end) && end >= start
+                                ? end
+                                : start,
+                    };
+                }
+                return chain;
+            },
+            not() {
+                return chain;
+            },
+            limit(value) {
+                state.limit = value;
+                return chain;
+            },
+            signal(value) {
+                state.signal = value;
+                return chain;
+            },
+            single() {
+                state.single = true;
+                return chain;
+            },
+            then(resolve, reject) {
+                return execute().then(resolve, reject);
+            },
+        };
+        const filter = (name, op) =>
+            state.filters.find(
+                (f) => f[1] === name && (!op || f[0] === op),
+            )?.[2];
+        async function execute() {
+            const id = filter('id', 'eq');
+            if (table === 'user') {
+                if (state.action === 'update') {
+                    const res = await queryRequest(
+                        `/server/api/users/${id || 'me'}`,
+                        { method: 'PUT', body: state.values },
+                        'user',
+                    );
+                    if (res?.data) {
+                        const user = res.data.user || res.data;
+                        if (user && Number.isInteger(Number(user.id))) {
+                            cacheUser(user);
+                        }
+                    }
+                    return res;
+                }
+                const inIds = filter('id', 'in');
+                if (inIds) {
+                    const userCache = getAllUsersCache();
+                    const requestedIds = Array.isArray(inIds) ? inIds.map(Number) : String(inIds).split(',').map(Number);
+                    const cachedUsers = [];
+                    const missingIds = [];
+                    for (const reqId of requestedIds) {
+                        if (!Number.isInteger(reqId) || reqId < 0) continue;
+                        const cached = userCache.get(reqId);
+                        if (cached && (cached.name || cached.handle) && Object.hasOwn(cached, 'display_ranks')) {
+                            cachedUsers.push(cached);
+                        } else {
+                            missingIds.push(reqId);
+                        }
+                    }
+                    if (missingIds.length === 0) {
+                        return { data: cachedUsers, error: null };
+                    }
+                    const res = await queryRequest(
+                        `/server/api/users?ids=${missingIds.join(',')}`,
+                        {},
+                        'users',
+                    );
+                    const fetched = Array.isArray(res?.data) ? res.data : [];
+                    for (const u of fetched) {
+                        if (u && Number.isInteger(Number(u.id))) {
+                            cacheUser(u);
+                        }
+                    }
+                    return {
+                        data: [...cachedUsers, ...fetched],
+                        error: res.error,
+                    };
+                }
+                if (id) {
+                    const numericId = Number(id);
+                    if (Number.isInteger(numericId) && numericId >= 0) {
+                        const cached = getAllUsersCache().get(numericId);
+                        if (cached && (cached.name || cached.handle) && Object.hasOwn(cached, 'display_ranks')) {
+                            return { data: cached, error: null };
+                        }
+                    }
+                    const res = await queryRequest(`/server/api/users/${id}`, {}, 'user');
+                    if (res?.data) {
+                        const user = res.data.user || res.data;
+                        if (user && Number.isInteger(Number(user.id))) {
+                            cacheUser(user);
+                        }
+                    }
+                    return res;
+                }
+                if (filter('uuid', 'eq')) {
+                    return queryRequest('/server/auth/me', {}, 'user');
+                }
+                const rawFilter =
+                    state.filters.find((f) => f[0] === 'or')?.[2] || '';
+                const entries = rawFilter.split(',');
+                const nameFilter = entries.find((entry) =>
+                    entry.startsWith('name.ilike.'),
+                );
+                const idFilter = entries.find((entry) =>
+                    /^id\.eq\.\d+$/.test(entry),
+                );
+                const query = nameFilter
+                    ? nameFilter.replace(/.*ilike\.%|%.*/g, '')
+                    : idFilter
+                      ? `#${idFilter.slice('id.eq.'.length)}`
+                      : '';
+                const searchParams = new URLSearchParams();
+                if (query) searchParams.set('q', query);
+                if (state.range) {
+                    searchParams.set(
+                        'limit',
+                        String(state.range.to - state.range.from + 1),
+                    );
+                    searchParams.set('offset', String(state.range.from));
+                } else if (state.limit != null) {
+                    searchParams.set('limit', String(state.limit));
+                }
+                const path = query
+                    ? `search?${searchParams.toString()}`
+                    : 'recommended';
+                const res = await queryRequest(`/server/api/users/${path}`, {}, 'users');
+                if (Array.isArray(res?.data)) {
+                    for (const u of res.data) {
+                        if (u && Number.isInteger(Number(u.id))) {
+                            cacheUser(u);
+                        }
+                    }
+                }
+                return res;
+            }
+            if (
+                table === 'post' ||
+                table === 'post_recent' ||
+                table === 'post_profile'
+            ) {
+                if (state.action === 'update')
+                    return queryRequest(
+                        `/server/api/posts/${id}`,
+                        { method: 'PUT', body: state.values },
+                        'post',
+                    );
+                if (state.action === 'delete')
+                    return queryRequest(`/server/api/posts/${id}`, {
+                        method: 'DELETE',
+                    });
+                if (id) return queryRequest(`/server/api/posts/${id}`, {}, 'post');
+                const userId = filter('userid') || filter('userId');
+                return queryRequest(
+                    userId
+                        ? `/server/api/users/${userId}/posts?limit=${state.limit || 30}`
+                        : `/server/api/posts?limit=${state.limit || 30}`,
+                    {},
+                    'posts',
+                );
+            }
+            if (table === 'dm') {
+                if (state.action === 'insert')
+                    return queryRequest(
+                        '/server/api/dm',
+                        { method: 'POST', body: state.values },
+                        'dm',
+                    );
+                if (state.action === 'update')
+                    return queryRequest(
+                        `/server/api/dm/${id}`,
+                        { method: 'PUT', body: state.values },
+                        'dm',
+                    );
+                if (state.action === 'delete')
+                    return queryRequest(`/server/api/dm/${id}`, {
+                        method: 'DELETE',
+                    });
+                return queryRequest(
+                    id ? `/server/api/dm/${id}` : '/server/api/dm',
+                    {},
+                    'dm',
+                );
+            }
+            return {
+                data: null,
+                error: new Error(`Unsupported Nyaitter resource: ${table}`),
+            };
+        }
+        return chain;
+    };
+    const rpcRoutes = {
+        get_all_unread_dm_counts: () => [
+            '/server/api/dm/unread-counts',
+            'counts',
+        ],
+        get_trending_hashtags: () => [
+            '/server/api/posts/trending-hashtags',
+            'trends',
+        ],
+        get_hydrated_posts: () => ['/server/api/posts/hydrate', 'posts'],
+        get_all_replies: (p) => [
+            `/server/api/posts/${p.root_post_id}/replies`,
+            'replies',
+        ],
+        get_post_metrics: () => ['/server/api/posts/metrics', 'metrics'],
+    };
+    const withSingle = (promise) => {
+        promise.single = async () => {
+            const result = await promise;
+            return {
+                ...result,
+                data: Array.isArray(result.data)
+                    ? result.data[0] || null
+                    : result.data,
+            };
+        };
+        return promise;
+    };
+    const mapResponse = (promise, mapper) =>
+        withSingle(
+            promise.then(({ data, error }) => ({
+                data: error ? null : mapper(data),
+                error,
+            })),
+        );
+    return {
+        from: query,
+        users: {
+            status({ signal } = {}) {
+                return request('/server/api/users/me/status', { signal });
+            },
+        },
+        rpc(name, params = {}) {
+            if (name === 'get_hydrated_posts')
+                return withSingle(
+                    request(
+                        '/server/api/posts/hydrate',
+                        {
+                            method: 'POST',
+                            body: {
+                                post_ids:
+                                    params.p_post_ids || params.post_ids || [],
+                            },
+                        },
+                        'posts',
+                    ),
+                );
+            if (name === 'get_post_metrics')
+                return withSingle(
+                    request(
+                        '/server/api/posts/metrics',
+                        {
+                            method: 'POST',
+                            body: { post_ids: params.post_ids || [] },
+                        },
+                        'metrics',
+                    ),
+                );
+            if (name === 'is_lock')
+                return mapResponse(
+                    request(
+                        `/server/api/users/${params.target_user_id}/is-lock`,
+                    ),
+                    (data) => data.lock,
+                );
+            if (name === 'get_status')
+                return mapResponse(
+                    request(`/server/api/users/${params.p_id}/status`),
+                    (data) => data.status,
+                );
+            if (name === 'get_logs_with_masked_ip')
+                return mapResponse(
+                    request(
+                        `/server/api/users/logs?limit=${params.p_limit || 30}&offset=${params.p_offset || 0}`,
+                    ),
+                    (data) => data.logs || [],
+                );
+            if (name === 'handle_pin')
+                return mapResponse(
+                    request(`/server/api/posts/${params.p_post_id}/pin`, {
+                        method: 'POST',
+                    }),
+                    (data) => data.pin_id,
+                );
+            if (
+                [
+                    'get_user_post_count',
+                    'get_user_media_count',
+                    'get_follower_count',
+                ].includes(name)
+            ) {
+                const userId = params.p_user_id || params.target_user_id;
+                const key =
+                    name === 'get_user_post_count'
+                        ? 'post_count'
+                        : name === 'get_user_media_count'
+                          ? 'media_count'
+                          : 'follower_count';
+                return mapResponse(
+                    request(`/server/api/users/${userId}/counts`),
+                    (data) => data[key],
+                );
+            }
+            if (name === 'create_post_new')
+                return withSingle(
+                    request(
+                        '/server/api/posts',
+                        {
+                            method: 'POST',
+                            body: {
+                                content: params.p_content,
+                                reply_to: params.p_reply_id,
+                                repost_to: params.p_repost_to,
+                                attachments: params.p_attachments || [],
+                                mask: params.p_mask,
+                                lock: params.p_lock,
+                                announcement: params.p_announcement,
+                                group_id: params.p_group_id,
+                                scheduled_at: params.p_scheduled_at,
+                                group_announcement: params.p_group_announcement,
+                                reply_control: params.p_reply_control,
+                                post_as_user_id: params.p_as_user_id,
+                                client_nonce: params.client_nonce || (typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`),
+                            },
+                        },
+                        'post',
+                    ),
+                );
+
+            if (name === 'handle_like')
+                return withSingle(
+                    request(
+                        `/server/api/posts/${params.p_post_id || params.post_id_in}/like`,
+                        { method: 'POST' },
+                    ),
+                );
+            if (name === 'handle_star')
+                return withSingle(
+                    request(
+                        `/server/api/posts/${params.p_post_id || params.post_id_in}/star`,
+                        { method: 'POST' },
+                    ),
+                );
+            if (name === 'handle_follow') {
+                const targetUserId =
+                    params.p_target_user_id ??
+                    params.p_target_id ??
+                    params.target_user_id;
+                const numericTargetUserId = Number(targetUserId);
+                if (
+                    !Number.isSafeInteger(numericTargetUserId) ||
+                    numericTargetUserId <= 0
+                ) {
+                    return Promise.resolve({
+                        data: null,
+                        error: new Error('Invalid follow target user ID'),
+                    });
+                }
+                return withSingle(
+                    request(
+                        `/server/api/users/${encodeURIComponent(numericTargetUserId)}/follow`,
+                        { method: 'POST' },
+                    ),
+                );
+            }
+            if (name === 'toggle_block') {
+                const targetUserId =
+                    params.p_target_user_id ??
+                    params.p_target_id ??
+                    params.target_user_id;
+                const numericTargetUserId = Number(targetUserId);
+                if (
+                    !Number.isSafeInteger(numericTargetUserId) ||
+                    numericTargetUserId <= 0
+                ) {
+                    return Promise.resolve({
+                        data: null,
+                        error: new Error('Invalid block target user ID'),
+                    });
+                }
+                return withSingle(
+                    request(
+                        `/server/api/users/${encodeURIComponent(numericTargetUserId)}/block`,
+                        { method: 'POST' },
+                    ),
+                );
+            }
+            if (name === 'append_to_dm_post')
+                return withSingle(
+                    request(
+                        `/server/api/dm/${params.dm_id_in}/messages`,
+                        {
+                            method: 'POST',
+                            body: {
+                                message: params.new_message_in,
+                                ...(params.request_id ? { request_id: params.request_id } : {}),
+                            },
+                        },
+                        'dm',
+                    ),
+                );
+            if (name === 'mark_all_dm_messages_as_read')
+                return withSingle(
+                    request(`/server/api/dm/${params.dm_id_in}/read`, {
+                        method: 'POST',
+                    }),
+                );
+            if (name === 'leave_dm')
+                return withSingle(
+                    request(`/server/api/dm/${params.dm_id_in}/leave`, {
+                        method: 'POST',
+                    }),
+                );
+            if (name === 'mark_all_notifications_as_read')
+                return withSingle(
+                    request('/server/api/notifications/read-all', {
+                        method: 'PUT',
+                    }),
+                );
+            if (name === 'mark_all_notifications_as_clicked')
+                return withSingle(
+                    request('/server/api/notifications/click-all', {
+                        method: 'PUT',
+                    }),
+                );
+            if (name === 'mark_notification_as_read')
+                return withSingle(
+                    request(
+                        `/server/api/notifications/${params.notification_id_to_update}/read`,
+                        { method: 'PUT' },
+                    ),
+                );
+            if (name === 'mark_notification_as_clicked')
+                return withSingle(
+                    request(
+                        `/server/api/notifications/${params.notification_id_to_update}/clicked`,
+                        { method: 'PUT' },
+                    ),
+                );
+            if (name === 'delete_notification')
+                return withSingle(
+                    request(
+                        `/server/api/notifications/${params.notification_id_to_delete}`,
+                        { method: 'DELETE' },
+                    ),
+                );
+            if (name === 'send_notification_with_timestamp')
+                return withSingle(
+                    request('/server/api/notifications', {
+                        method: 'POST',
+                        body: {
+                            recipient_id: params.recipient_id,
+                            type: params.type,
+                            target: params.target,
+                        },
+                    }),
+                );
+            if (name === 'admin_set_status')
+                return withSingle(
+                    request(`/server/api/users/${params.p_id}/status`, {
+                        method: 'PUT',
+                        body: { shadow: params.p_shadow },
+                    }),
+                );
+            const route = rpcRoutes[name];
+            if (!route)
+                return Promise.resolve({
+                    data: null,
+                    error: new Error(`Unsupported Nyaitter operation: ${name}`),
+                });
+            const [path, key] = route(params);
+            return withSingle(
+                request(
+                    path,
+                    {
+                        method: [
+                            'get_hydrated_posts',
+                            'get_post_metrics',
+                        ].includes(name)
+                            ? 'POST'
+                            : 'GET',
+                        body: [
+                            'get_hydrated_posts',
+                            'get_post_metrics',
+                        ].includes(name)
+                            ? params
+                            : undefined,
+                    },
+                    key,
+                ),
+            );
+        },
+        notes: {
+            get(postId) {
+                return request(`/server/api/posts/${encodeURIComponent(postId)}/notes`);
+            },
+            async reasonTags() {
+                if (communityNoteReasonTagsCache) {
+                    return {
+                        data: { tags: communityNoteReasonTagsCache },
+                        error: null,
+                    };
+                }
+                if (!communityNoteReasonTagsRequest) {
+                    communityNoteReasonTagsRequest = request(
+                        '/server/api/notes/reason-tags',
+                    );
+                }
+                const result = await communityNoteReasonTagsRequest;
+                if (result.error) {
+                    // 失敗時は次回呼び出しで再取得できるようにする。
+                    communityNoteReasonTagsRequest = null;
+                    return { data: null, error: result.error };
+                }
+                const tags = Array.isArray(result.data?.tags)
+                    ? result.data.tags
+                    : [];
+                communityNoteReasonTagsCache = tags;
+                return { data: { tags }, error: null };
+            },
+            rate(noteId, { helpful, reasons } = {}) {
+                const body = { helpful: Boolean(helpful) };
+                if (Array.isArray(reasons) && reasons.length > 0) {
+                    body.reasons = reasons.slice(0, 3).map(String);
+                }
+                return request(`/server/api/notes/${encodeURIComponent(noteId)}/ratings`, {
+                    method: 'POST',
+                    body,
+                });
+            },
+            remove(noteId) {
+                return request(`/server/api/notes/${encodeURIComponent(noteId)}`, {
+                    method: 'DELETE',
+                });
+            },
+            create(postId, { content, sources, reasons } = {}) {
+                const body = { content, sources };
+                if (Array.isArray(reasons)) {
+                    // Server は文字列コードとして照合するため、評価側と同じくコード文字列へ正規化する。
+                    body.reasons = reasons
+                        .slice(0, 3)
+                        .map((item) => String((item && (item.code || item.label)) || item || '').trim())
+                        .filter(Boolean);
+                }
+                return request(`/server/api/posts/${encodeURIComponent(postId)}/notes`, {
+                    method: 'POST',
+                    body,
+                });
+            },
+        },
+        storage: {
+            from: () => ({
+                getPublicUrl: (id) => ({
+                    data: {
+                        publicUrl: userFileUrl(id),
+                    },
+                }),
+            }),
+        },
+        functions: {
+            invoke: async (name, { body }) => {
+                if (name === 'delete-files')
+                    return apiRequest('/server/api/uploads', {
+                        method: 'DELETE',
+                        body:
+                            typeof body === 'string' ? JSON.parse(body) : body,
+                    });
+                return {
+                    data: null,
+                    error: new Error('Use the Nyaitter upload endpoint'),
+                };
+            },
+        },
+        auth: {
+            // CookieはHttpOnlyのため、存在確認は認証済みの/me応答で行う。
+            async getSession() {
+                const result = await request('/server/auth/me', {}, 'user');
+                return {
+                    data: {
+                        session: result.error ? null : { user: result.data },
+                    },
+                    error: result.error,
+                };
+            },
+            async signOut() {
+                return request('/server/auth/logout', { method: 'POST' });
+            },
+        },
+        removeChannel() {},
+        channel: () => ({
+            on() {
+                return this;
+            },
+            subscribe() {
+                return this;
+            },
+        }),
+    };
+})();

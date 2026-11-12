@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ja" data-nyaitter-ui="nui">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="robots" content="noindex, nofollow, noarchive" />
+		<meta name="referrer" content="strict-origin-when-cross-origin" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com https://pagead2.googlesyndication.com; frame-src 'self' https://challenges.cloudflare.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: https:; media-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; worker-src 'self'; manifest-src 'self'" />
+		<title>Nyaitter</title>
+		<meta name="theme-color" content="#1d9bf0" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link rel="manifest" href="./manifest.webmanifest" />
+		<link rel="icon" href="favicon.png" type="image/png" />
+		<link rel="apple-touch-icon" sizes="180x180" href="pwa-icon-192.png" />
+		<link
+			rel="stylesheet"
+			href="https://cdn.jsdelivr.net/npm/emojione@4.0.0/extras/css/emojione.min.css"
+			integrity="sha384-+JoywCPFwbtS2KrNLFu8EJHK+r5KPfqww25+fIBceLuhRk4muZy4TZR/4gXrk3qX"
+			crossorigin="anonymous"
+		/>
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Sans+JP:wght@400;500;700&display=swap" />
+		<link rel="stylesheet" href="./css/variables.css" />
+		<link rel="stylesheet" href="./css/base.css" />
+		<link rel="stylesheet" href="./css/layout.css" />
+		<link rel="stylesheet" href="./css/components.css" />
+		<link rel="stylesheet" href="./css/timeline.css" />
+		<link rel="stylesheet" href="./css/markdown.css" />
+		<link rel="stylesheet" href="./css/dm.css" />
+		<link rel="stylesheet" href="./css/notifications.css" />
+		<link rel="stylesheet" href="./css/profile.css" />
+		<link rel="stylesheet" href="./css/search.css" />
+		<link rel="stylesheet" href="./css/groups.css" />
+		<link rel="stylesheet" href="./css/calls.css" />
+		<link rel="stylesheet" href="./css/callView.css" />
+		<link rel="stylesheet" href="./css/callTabHost.css" />
+		<link rel="stylesheet" href="./css/call.css" />
+		<link rel="stylesheet" href="./css/settings.css" />
+		<link rel="stylesheet" href="./css/auth.css" />
+		<link rel="stylesheet" href="./css/docs.css" />
+		<link rel="stylesheet" href="./css/responsive.css" />
+		<link rel="stylesheet" href="./css/scale.css" />
+		<link rel="stylesheet" href="./css/header.css" />
+		<link rel="stylesheet" href="./css/rankAvatar.css" />
+		<link rel="stylesheet" href="./css/communityNotes.css" />
+		<style>
+			#loading-overlay {
+				position: fixed;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				background: var(--loading-color, rgba(255, 255, 255, 0.9));
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				z-index: 99999;
+			}
+			#loading-overlay.hidden {
+				display: none !important;
+			}
+			#loading-overlay .spinner {
+				border: 4px solid var(--spin, rgba(0, 0, 0, 0.1));
+				border-left-color: var(--nui-accent, var(--primary-color, #ff9900));
+				width: 44px;
+				height: 44px;
+				border-radius: 50%;
+				animation: spin 1s ease infinite;
+			}
+			@keyframes spin {
+				0% { transform: rotate(0deg); }
+				100% { transform: rotate(360deg); }
+			}
+		</style>
+		<script src="https://cdn.jsdelivr.net/npm/@twemoji/api@15.1.0/dist/twemoji.min.js" integrity="sha384-o28+zJO3/45GHIy+9TFKGaYnbt0KQcFRzyBrb0WSSrz7bPGwGI1d64worBiXPgXw" crossorigin="anonymous"></script>
+		<script src="./config.js"></script>
+		<script src="./i18n.js"></script>
+		<script src="./bootstrap.js"></script>
+	</head>
+	<body>
+		<!-- 初期ロード表示 -->
+		<div id="loading-overlay" role="status" aria-live="polite" aria-label="読み込み中" data-i18n-aria-label="common.loading" aria-hidden="false" aria-busy="true"><div class="spinner"></div></div>
+
+		<!-- 接続失敗エラーオーバーレイ -->
+		<div
+			id="connection-error-overlay"
+			class="modal-overlay nui-modal-backdrop hidden"
+			style="z-index: 2000"
+		>
+			<div
+				class="nui-card"
+				style="
+					background: var(--nui-bg);
+					color: var(--nui-text);
+					padding: 2rem;
+					border-radius: var(--nui-radius);
+					text-align: center;
+				"
+			>
+				<h2 style="margin-top: 0" data-i18n="error.connection.title">Nyaitterへの接続に失敗しました</h2>
+				<p data-i18n="error.connection.body">ネットワーク接続を確認して、もう一度お試しください。</p>
+				<button
+					id="retry-connection-btn"
+					class="nui-button"
+					style="
+						padding: 0.6rem 1.2rem;
+						border-radius: 9999px;
+						border: none;
+						background-color: var(--nui-accent);
+						color: white;
+						font-weight: 700;
+					"
+				>
+					<span data-i18n="common.retry">再試行</span>
+				</button>
+			</div>
+		</div>
+
+		<!-- JavaScriptエラー / 致命的障害表示オーバーレイ -->
+		<div
+			id="mainjs-error-overlay"
+			class="modal-overlay nui-modal-backdrop hidden"
+			style="z-index: 3001"
+		>
+			<div
+				class="nui-card"
+				style="
+					background: var(--nui-bg);
+					color: var(--nui-text);
+					padding: 2rem;
+					border-radius: var(--nui-radius);
+					text-align: center;
+					max-width: 400px;
+					margin: 2rem auto;
+				"
+			>
+				<h2 style="margin-top: 0; color: var(--nui-danger)" data-i18n="common.error">エラー</h2>
+				<div
+					id="mainjs-error-text"
+					style="color: var(--nui-danger); margin: 1em 0; word-break: break-all"
+				></div>
+				<p style="color: var(--nui-muted); font-size: 0.96em" data-i18n="error.app.body">
+					Nyaitterに問題が発生しました
+				</p>
+				<ul
+					style="
+						text-align: left;
+						color: var(--nui-muted);
+						margin: 1.2em 0 1.5em 0;
+						font-size: 0.98em;
+					"
+				>
+					<li data-i18n="error.app.hint_cache">キャッシュや拡張機能の影響の可能性があります</li>
+					<li data-i18n="error.app.hint_contact">
+						キャッシュの削除や拡張機能の無効化をしても直らない場合は管理者へご連絡ください
+					</li>
+				</ul>
+				<button
+					id="mainjs-error-reload-btn"
+					class="nui-button"
+					style="
+						padding: 0.7em 1.5em;
+						font-size: 1em;
+						border-radius: 9999px;
+						background: var(--nui-accent);
+						color: white;
+						border: none;
+						font-weight: 700;
+					"
+				>
+					<span data-i18n="common.reload">再読み込み</span>
+				</button>
+			</div>
+		</div>
+
+		<!-- 動的マウント先 -->
+		<div id="app-root"></div>
+
+		<!-- スクリプト -->
+	</body>
+</html>

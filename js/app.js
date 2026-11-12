@@ -1,0 +1,75 @@
+/**
+ * app.js — Application entry module.
+ *
+ * Responsibilities:
+ *   1. Load server client limits (connectivity check).
+ *   2. Register the Service Worker.
+ *   3. Bootstrap event listeners.
+ *   4. Trigger session check → router.
+ *
+ * All screen logic is delegated to modules under ./modules/ and ./screens/.
+ */
+
+import { DOM } from './dom.js';
+import { setupGlobalEventListeners } from './events.js';
+import { router } from './router.js';
+import { registerPwaServiceWorker } from './modules/pwa.js';
+import { checkSession } from './modules/auth.js';
+import { restorePageCaches } from './modules/cache.js';
+import { applyInterfaceTheme, applyColorTheme } from './modules/theme.js';
+import {
+    showAppAlert,
+    loadServerClientLimits,
+    applyServerInputLimits,
+    getServerClientLimits,
+    setServerClientLimits,
+} from './utils/helpers.js';
+
+export { loadServerClientLimits, applyServerInputLimits, getServerClientLimits, setServerClientLimits };
+
+// ---------------------------------------------------------------------------
+// Application bootstrap
+// ---------------------------------------------------------------------------
+
+/**
+ * Main entry-point called by main.js after the DOM is ready.
+ */
+export function initApp() {
+    // ── Restore cached data immediately for instant initial display ────────
+    restorePageCaches();
+
+    // ── Initial theme (prevents flash before user prefs are loaded) ─────────
+    applyInterfaceTheme('auto');
+
+    // ── Global event listeners (delegated — attached only once) ─────────────
+    setupGlobalEventListeners();
+
+    // ── Hide overlays that are shown during preload ──────────────────────────
+    DOM.freezeOverlay?.classList.add('hidden');
+    DOM.connectionErrorOverlay?.classList.add('hidden');
+
+    // ── Service Worker registration (non-blocking) ───────────────────────────
+    void registerPwaServiceWorker();
+
+    // ── Primary startup sequence ─────────────────────────────────────────────
+    void (async () => {
+        try {
+            // 1. Confirm server is reachable and load input limits.
+            const ok = await loadServerClientLimits();
+            if (!ok) {
+                DOM.loadingOverlay?.classList.add('hidden');
+                return;
+            }
+
+            // 2. セッションを確認してルーティングする。
+            //    プッシュ通知からのディープリンク(push_open_type など)は router() 内で
+            //    セッション確定後に処理する。ここで先に処理すると getCurrentUser() が
+            //    まだ null のため、コール通知が通話参加前画面ではなくDMへ飛んでしまう。
+            await checkSession();
+        } catch (err) {
+            console.error('[startup] app initialization failed:', err);
+            DOM.loadingOverlay?.classList.add('hidden');
+            DOM.connectionErrorOverlay?.classList.remove('hidden');
+        }
+    })();
+}

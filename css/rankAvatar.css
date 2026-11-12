@@ -1,0 +1,121 @@
+.rank-avatar-wrap {
+    position: relative;
+    display: inline-flex;
+    line-height: 0;
+}
+
+.rank-avatar-layer {
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+}
+
+.rank-avatar-tooltip[hidden] {
+    display: none;
+}
+
+.rank-avatar-rings {
+    position: absolute;
+    inset: -3px;
+    width: calc(100% + 6px);
+    height: calc(100% + 6px);
+    overflow: visible;
+    pointer-events: none;
+}
+
+.rank-avatar-segment {
+    transform-origin: 50px 50px;
+    transition: transform 120ms ease;
+}
+
+.rank-avatar-segment:hover,
+.rank-avatar-segment:focus-within {
+    transform: scale(1.03);
+}
+
+.rank-avatar-line,
+.rank-avatar-hit {
+    fill: none;
+    vector-effect: non-scaling-stroke;
+}
+
+.rank-avatar-line {
+    stroke: currentColor;
+    stroke-width: 2px;
+    pointer-events: none;
+}
+
+.rank-avatar-hit {
+    stroke: transparent;
+    stroke-width: 8px;
+    pointer-events: stroke;
+    cursor: help;
+    outline: none;
+    touch-action: manipulation;
+}
+
+.rank-avatar-segment:focus-within .rank-avatar-line {
+    stroke-width: 4px;
+    filter: drop-shadow(0 0 2px CanvasText);
+}
+
+.rank-avatar-tooltip,
+.rank-avatar-panel {
+    position: fixed;
+    z-index: 2100;
+    box-sizing: border-box;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    overflow: auto;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color, #888888);
+    border-radius: 8px;
+    color: var(--text-color, #333333);
+    background: var(--main-bg-color, #ffffff);
+    font: 14px/1.5 sans-serif;
+    overflow-wrap: anywhere;
+    box-shadow: 0 2px 8px #0003;
+}
+
+.rank-avatar-tooltip {
+    pointer-events: auto;
+}
+
+.rank-avatar-panel ul {
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+}
+
+.rank-avatar-panel button {
+    min-width: 44px;
+    min-height: 44px;
+    color: inherit;
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.rank-avatar-panel button:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rank-avatar-segment {
+        transition: none;
+    }
+
+    .rank-avatar-segment:hover,
+    .rank-avatar-segment:focus-within {
+        transform: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .rank-avatar-line {
+        stroke: CanvasText;
+    }
+}

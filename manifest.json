@@ -1,0 +1,22 @@
+{
+  "name": "NyaitterClient",
+  "display_name": "Nyaitter",
+  "manufacturer": "Nyaitter",
+  "author": "NyaitterTeam",
+  "creator": "NyaitterTeam",
+  "repository": "https://github.com/Nyaitter/Client",
+  "api_url": "/server",
+  "client_version": "1.1.9",
+  "default_language": "ja",
+  "language_packs": {
+    "ja": "/langs/ja.json",
+    "en": "/langs/en.json"
+  },
+  "advertising": {
+    "enabled": false,
+    "interval": 10,
+    "provider": "adsense",
+    "client": "",
+    "slot": ""
+  }
+}

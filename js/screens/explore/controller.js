@@ -1,0 +1,101 @@
+import { bindAdvancedSearch } from '../search/advancedSearch.js';
+import { DOM } from '../../dom.js';
+import { apiRequest } from '../../api.js';
+import { initTabGroup } from '../../modules/tabSwipe.js';
+import { getActiveScreenContext } from '../../screenManager.js';
+import { renderError, renderHeader, renderInitial, renderTrends } from './view.js';
+import { trackSearchComposition } from '../../utils/searchIme.js';
+
+let activeExploreTab = 'tags';
+let trendsCache = null;
+let trendsRequest = null;
+let trendsGeneration = 0;
+const TRENDS_CACHE_TTL_MS = 60 * 1000;
+
+export function invalidateExploreTrends() {
+    trendsCache = null;
+    trendsRequest = null;
+    trendsGeneration += 1;
+}
+
+function renderTrendTabs(tabsContainer, trendsContainer, context, trends) {
+    const renderCurrentTab = (tab) => {
+        activeExploreTab = tab;
+        renderTrends(trendsContainer, trends, tab);
+    };
+    if (tabsContainer) {
+        const tabController = initTabGroup({
+            container: tabsContainer,
+            tabSelector: '.tab-button',
+            contentContainer: trendsContainer,
+            getTabKey: (button) => button.dataset.exploreTab,
+            onTabChange: renderCurrentTab,
+        });
+        context?.addCleanup(() => tabController.destroy());
+    }
+    renderCurrentTab(activeExploreTab);
+}
+
+export async function mountExploreScreen(showScreenFn) {
+    renderHeader();
+    if (typeof showScreenFn === 'function') showScreenFn('explore-screen');
+
+    const context = getActiveScreenContext();
+    const signal = context?.signal;
+    bindAdvancedSearch(DOM.pageHeader, context);
+    const searchInput = document.getElementById('search-input');
+    const isComposing = searchInput && trackSearchComposition(searchInput);
+    searchInput?.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' || isComposing(event)) return;
+        const query = searchInput.value.trim();
+        if (query) window.location.hash = `#search/${encodeURIComponent(query)}`;
+    });
+
+    renderInitial(activeExploreTab);
+    const tabsContainer = document.getElementById('explore-tabs');
+    const trendsContainer = document.getElementById('explore-trends-container');
+    if (!trendsContainer) return;
+
+    const generation = trendsGeneration;
+    const cached = trendsCache && trendsCache.expiresAt > Date.now()
+        ? trendsCache.value
+        : null;
+    if (cached) {
+        renderTrendTabs(tabsContainer, trendsContainer, context, cached);
+        return;
+    }
+
+    try {
+        if (!trendsRequest) {
+            const request = apiRequest('/server/api/posts/trending-hashtags?limit=30')
+                .then(({ data: responseData, error }) => {
+                    if (error) throw error;
+                    const allTrends = Array.isArray(responseData?.trends)
+                        ? responseData.trends
+                        : (Array.isArray(responseData) ? responseData : []);
+                    const hashtags = Array.isArray(responseData?.hashtags) && responseData.hashtags.length > 0
+                        ? responseData.hashtags
+                        : allTrends.filter((item) => String(item.tag_name || '').startsWith('#'));
+                    const tags = Array.isArray(responseData?.tags) && responseData.tags.length > 0
+                        ? responseData.tags
+                        : allTrends.filter((item) => !String(item.tag_name || '').startsWith('#'));
+                    return { hashtags, tags };
+                })
+                .finally(() => {
+                    if (trendsRequest === request) trendsRequest = null;
+                });
+            trendsRequest = request;
+        }
+        const trends = await trendsRequest;
+        if (signal?.aborted || generation !== trendsGeneration) return;
+        trendsCache = {
+            value: trends,
+            expiresAt: Date.now() + TRENDS_CACHE_TTL_MS,
+        };
+        renderTrendTabs(tabsContainer, trendsContainer, context, trends);
+    } catch (error) {
+        if (error?.name === 'AbortError' || signal?.aborted) return;
+        console.error('トレンドの取得に失敗:', error);
+        renderError(trendsContainer);
+    }
+}
