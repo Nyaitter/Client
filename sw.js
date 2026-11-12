@@ -10,15 +10,7 @@ const configReady = self.NyaitterClientConfig.ready.then(() => {
   userFileEndpointPath = getSameOriginEndpointPath(self.NyaitterClientConfig.userFileEndpoint || '');
 });
 
-// bootstrap.js と同じ規則で nyaitter.js の読み込み先を決める。
-// URL が指定されていればそれを、そうでなければ nyaitter_js (既定 latest) を
-// jsDelivr のバージョンとして使う。
-function resolveNyaitterJsUrl(value) {
-  const source = String(value || '').trim();
-  if (/^(?:https?:)?\/\//i.test(source)) return source;
-  const version = source || 'latest';
-  return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(version)}/dist/nyaitter.js`;
-}
+const NYAITTER_JS_URL = './nap_modules/nyaitter/nyaitter.js/dist/nyaitter.js';
 
 // configReady 解決後に Nyaitter.js SDK を importScripts で読み込み、
 // NyaitterClient を遅延生成して使い回す。既に読み込み済みなら再ロードしない。
@@ -28,7 +20,7 @@ function getSdkClient() {
     sdkClientPromise = (async () => {
       await configReady;
       if (!globalThis.Nyaitter?.NyaitterClient) {
-        importScripts(resolveNyaitterJsUrl(self.NyaitterClientConfig.nyaitterJs));
+        importScripts(NYAITTER_JS_URL);
       }
       const NyaitterClient = globalThis.Nyaitter?.NyaitterClient;
       if (!NyaitterClient) throw new Error('Nyaitter.js SDK の読み込みに失敗しました。');

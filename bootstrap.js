@@ -7,25 +7,13 @@
     // 配信ベース配下 (任意のリバースプロキシ接頭辞) でもルート直下の静的アセットを壊さないよう、
     // ページの配信ベース (このスクリプト自身の位置) を基準に相対解決する。
     const pageBaseUrl = new URL('.', document.currentScript?.src || document.baseURI).href;
-    const localNyaitterUiUrl = new URL('nyaitter-ui/nyaitter-ui.js', pageBaseUrl).href;
 
-    function getNyaitterJsUrl(value) {
-        const source = String(value || '').trim();
-        if (/^(?:https?:)?\/\//i.test(source)) return source;
-        const version = source || 'latest';
-        return `https://cdn.jsdelivr.net/npm/nyaitter.js@${encodeURIComponent(version)}/dist/nyaitter.js`;
+    function getNyaitterJsUrl() {
+        return new URL('nap_modules/nyaitter/nyaitter.js/dist/nyaitter.js', pageBaseUrl).href;
     }
 
-    function getNyaitterUiUrls(value) {
-        const source = String(value || '').trim();
-        if (/^(?:https?:)?\/\//i.test(source)) return [source, localNyaitterUiUrl];
-        const version = source || 'latest';
-        const cdnUrl = `https://cdn.jsdelivr.net/npm/nyaitter-ui@${encodeURIComponent(version)}/dist/nyaitter-ui.js`;
-        // 方針 (Tasks.md / HANDOFF.md): NyaitterUI は npm CDN を優先し、CDN に
-        // 到達できない場合だけ開発用のローカルビルドへフォールバックする。
-        // 版指定 (latest を含む) によらずこの順序を変えない。ローカル配信が
-        // 存在しない環境で毎回 404 を踏むのを避けるため。
-        return [cdnUrl, localNyaitterUiUrl];
+    function getNyaitterUiUrls() {
+        return [new URL('nap_modules/nyaitter/nyaitterui/dist/nyaitter-ui.js', pageBaseUrl).href];
     }
 
     function loadScript(src) {
@@ -70,7 +58,7 @@
 
     // CSS は実際に読み込めた JS と同じ配布元/版から選ぶ。CSS失敗はアプリ起動を妨げない。
     function loadNyaitterUi() {
-        const scriptUrls = getNyaitterUiUrls(config.nyaitterUi);
+        const scriptUrls = getNyaitterUiUrls();
         return loadFirst(scriptUrls)
             .then((scriptUrl) => loadStylesheet(getNyaitterUiCssUrls([scriptUrl])[0]))
             .catch((error) => {
@@ -79,7 +67,7 @@
     }
 
     config.ready
-        .then(() => loadScript(getNyaitterJsUrl(config.nyaitterJs)))
+        .then(() => loadScript(getNyaitterJsUrl()))
         .then(() => {
             const endpoint = new URL(config.apiEndpoint, window.location.href);
             const client = new globalThis.Nyaitter.NyaitterClient({

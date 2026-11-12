@@ -1,0 +1,20 @@
+{
+  "name": "nyaitter-client",
+  "include": [
+    "**"
+  ],
+  "composition": [
+    {
+      "name": "nyaitter/nyaitter.js",
+      "version": "cb8edbbce94bc3dd8b9f278579b85220f3dafaa6c0662e5538292ce4ceebe2f2"
+    },
+    {
+      "name": "nyaitter/nyaitterui",
+      "version": "a3a5a9e117393c85a43af9fd77869fbb8a08a8630d3c9890037889183d247540"
+    },
+    {
+      "name": "nyaitter/nyaitterime",
+      "version": "b6e45bdfc06d0f647044da4a2b35ac994a8ac68e9202a99a022da414cf885e67"
+    }
+  ]
+}

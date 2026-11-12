@@ -6,9 +6,6 @@
   "creator": "NyaitterTeam",
   "repository": "https://github.com/Nyaitter/Client",
   "api_url": "/server",
-  "nyaitter_js": "0.2.0",
-  "nyaitter_ui": "0.2.0",
-  "nyaitter_ime": "0.1.4",
   "client_version": "1.1.9",
   "default_language": "ja",
   "language_packs": {

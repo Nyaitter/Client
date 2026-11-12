@@ -6,17 +6,14 @@ import { ICONS } from '../icons.js';
 let nyaitterImeReadyPromise = null;
 let nyaitterIme = null;
 const NYAITTER_IME_STORAGE_KEY = 'nyaitter-ime-enabled';
-// NyaitterIME is not bundled with the client. The manifest key nyaitter_ime
-// picks the build: a URL is used as-is, a path resolves under the page base,
-// and a bare version loads the pinned official build from the jsDelivr GH
-// CDN. When the configured source fails, the build the server keeps outside
-// page/ is next, then the pinned upstream build as a last resort.
-// The 18MB generated dictionary stays on the CDN either way.
-const NYAITTER_IME_DEFAULT_PATH = 'nyaitter-ime/nyaitter-ime.min.js';
-const NYAITTER_IME_CDN_SCRIPT_URL =
-    'https://cdn.jsdelivr.net/gh/nyaitter/NyaitterIME@5578455f5acb6d0a580d0dfc56e1346671e8f698/dist/nyaitter-ime.min.js';
-const NYAITTER_IME_DICTIONARY_URL =
-    'https://cdn.jsdelivr.net/gh/nyaitter/NyaitterIME@5578455f5acb6d0a580d0dfc56e1346671e8f698/data/nyaitter-ime-core.bin.gz';
+const NYAITTER_IME_SCRIPT_URL = new URL(
+    'nap_modules/nyaitter/nyaitterime/dist/nyaitter-ime.min.js',
+    new URL('../../', import.meta.url).href,
+).href;
+const NYAITTER_IME_DICTIONARY_URL = new URL(
+    'nap_modules/nyaitter/nyaitterime/data/nyaitter-ime-core.bin.gz',
+    new URL('../../', import.meta.url).href,
+).href;
 
 function readNyaitterImePreference() {
     try { return localStorage.getItem(NYAITTER_IME_STORAGE_KEY) === 'true'; }
@@ -29,20 +26,7 @@ function saveNyaitterImePreference(enabled) {
 }
 
 function getNyaitterImeScriptUrls() {
-    const pageBaseUrl = new URL('../../', import.meta.url).href;
-    const defaultUrl = new URL(NYAITTER_IME_DEFAULT_PATH, pageBaseUrl).href;
-    const source = String(globalThis.NyaitterClientConfig?.nyaitterIme || '').trim();
-    let primary = defaultUrl;
-    if (/^(?:https?:)?\/\//i.test(source)) {
-        primary = source;
-    } else if (source.includes('/')) {
-        primary = new URL(source.replace(/^\/+/, ''), pageBaseUrl).href;
-    } else if (source) {
-        primary = `https://cdn.jsdelivr.net/gh/nyaitter/NyaitterIME@${encodeURIComponent(source)}/dist/nyaitter-ime.min.js`;
-    }
-    // The pinned upstream build is only a last resort, for when the configured
-    // source and the server-kept build are both unreachable.
-    return [...new Set([primary, defaultUrl, NYAITTER_IME_CDN_SCRIPT_URL])];
+    return [NYAITTER_IME_SCRIPT_URL];
 }
 
 function loadNyaitterImeScript(urls) {
@@ -74,13 +58,6 @@ function ensureNyaitterImeReady() {
     if (nyaitterImeReadyPromise) return nyaitterImeReadyPromise;
     nyaitterImeReadyPromise = (async () => {
         globalThis.NYAITTER_IME_DICTIONARY_URL = NYAITTER_IME_DICTIONARY_URL;
-        // Wait for the manifest so the nyaitter_ime choice is readable. A
-        // missing config helper just means the defaults apply.
-        try {
-            await globalThis.NyaitterClientConfig?.ready;
-        } catch (_) {
-            // Defaults apply when the manifest cannot be read.
-        }
         const ime = await loadNyaitterImeScript(getNyaitterImeScriptUrls());
         nyaitterIme = ime;
         return ime;
