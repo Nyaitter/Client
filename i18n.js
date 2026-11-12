@@ -9,7 +9,11 @@
 
     const STORAGE_KEY = 'nyaitter-language';
     const FALLBACK_LANGUAGE = 'ja';
-    const LANGUAGE_NAMES = Object.freeze({ ja: '日本語', en: 'English' });
+    const LANGUAGE_NAMES = Object.freeze({
+        ja: '日本語', en: 'English', ko: '한국어', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文',
+        es: 'Español', fr: 'Français', de: 'Deutsch', pt: 'Português', it: 'Italiano',
+        ru: 'Русский', ar: 'العربية', emoji: 'Emoji',
+    });
 
     const config = globalThis.NyaitterClientConfig;
 

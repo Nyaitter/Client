@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { createNapPage } from '../../nap_modules/nyaitter/nap/client/nap-page.js';
 
 const UPDATE_TIMEOUT_MS = 15000;
@@ -127,7 +128,7 @@ function buildVersionRow({ versionId, title, sub, label, server, description, da
     if (server) {
         const chip = document.createElement('span');
         chip.className = 'settings-client-version-label';
-        chip.textContent = 'サーバーの版';
+        chip.textContent = t('settings.client.server_version');
         side.appendChild(chip);
     }
     if (date) {
@@ -139,7 +140,7 @@ function buildVersionRow({ versionId, title, sub, label, server, description, da
     if (current) {
         const marker = document.createElement('span');
         marker.className = 'settings-client-version-current';
-        marker.textContent = '使用中';
+        marker.textContent = t('settings.client.in_use');
         side.appendChild(marker);
     }
     button.appendChild(side);
@@ -164,9 +165,9 @@ async function switchToVersion(entry) {
         if (!entry) {
             await clearNapVersionCaches();
             await askServiceWorker({ type: 'nyaitter:client-update' }, UPDATE_TIMEOUT_MS);
-            setStatus('サーバーの版に切り替えました。再読み込みします…');
+            setStatus(t('settings.client.switched_to_server'));
         } else {
-            setStatus('ダウンロードしています…');
+            setStatus(t('settings.client.downloading'));
             if (row) {
                 row.classList.add('settings-client-version-row--downloading');
                 row.style.setProperty('--version-progress', '0%');
@@ -185,7 +186,7 @@ async function switchToVersion(entry) {
                 onProgress: (progress) => {
                     if (progress.phase === 'unpack') {
                         phaseIndex = 1;
-                        setStatus('展開しています…');
+                        setStatus(t('settings.client.unpacking'));
                         setOverallProgress(progress.total ? progress.fetched / progress.total : 0);
                         return;
                     }
@@ -194,14 +195,14 @@ async function switchToVersion(entry) {
                         const label = `${(progress.bytes / 1048576).toFixed(1)} MB / ${(progress.bytesTotal / 1048576).toFixed(1)} MB`;
                         if (label !== lastSizeLabel) {
                             lastSizeLabel = label;
-                            setStatus(`ダウンロードしています… ${label}`);
+                            setStatus(t('settings.client.downloading_size', { size: label }));
                         }
                         setOverallProgress(progress.bytes / progress.bytesTotal);
                     } else if (progress.bytes) {
                         const label = `${(progress.bytes / 1048576).toFixed(1)} MB`;
                         if (label !== lastSizeLabel) {
                             lastSizeLabel = label;
-                            setStatus(`ダウンロードしています… ${label}`);
+                            setStatus(t('settings.client.downloading_size', { size: label }));
                         }
                     } else if (progress.total) {
                         setStatus('ダウンロードしています…');
@@ -210,7 +211,7 @@ async function switchToVersion(entry) {
                 },
             });
             phaseIndex = 2;
-            setStatus('保存しています…');
+            setStatus(t('settings.client.saving'));
             await page.store(version, {
                 onProgress: ({ done, total }) => {
                     if (total) setOverallProgress(done / total);
@@ -218,12 +219,12 @@ async function switchToVersion(entry) {
             });
             if (row) row.style.setProperty('--version-progress', '100%');
             await page.activate(version.versionId);
-            setStatus('切り替えました。再読み込みします…');
+            setStatus(t('settings.client.switched'));
         }
         window.setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
     } catch (_) {
         switching = false;
-        setStatus('切り替えできませんでした。通信状態を確認して、もう一度お試しください。');
+        setStatus(t('settings.client.switch_failed'));
         void loadClientVersionList();
     }
 }
@@ -233,15 +234,15 @@ async function runLoad({ announce = false } = {}) {
     if (!list) return;
     const page = getNapPage();
     if (!page) {
-        setStatus('クライアントの配布元が設定されていません。');
+        setStatus(t('settings.client.no_source'));
         return;
     }
-    if (announce) setStatus('更新を確認しています…');
+    if (announce) setStatus(t('settings.client.checking'));
     let entries = [];
     try {
         entries = await page.versions();
     } catch (_) {
-        setStatus('サーバーに接続できませんでした。オフラインの可能性があります。');
+        setStatus(t('settings.client.offline'));
         return;
     }
     const supported = await isClientUpdateSupported();
@@ -275,7 +276,7 @@ async function runLoad({ announce = false } = {}) {
         }));
     }
     if (!supported) {
-        setStatus('この環境ではクライアントの更新に対応していません。');
+        setStatus(t('settings.client.unsupported'));
     } else if (announce) {
         setStatus('');
     }
