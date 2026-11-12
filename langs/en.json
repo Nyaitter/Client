@@ -1569,5 +1569,7 @@
   "callview.chat_empty": "No messages yet",
   "settings.menu.bar_empty": "No items are shown in the bar",
   "settings.menu.more_empty": "No other grouped items",
-  "stage.role_guest": "Guest"
+  "stage.role_guest": "Guest",
+  "settings.client.show_more": "Show more",
+  "settings.client.latest_version": "Latest version"
 }

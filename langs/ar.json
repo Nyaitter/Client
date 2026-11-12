@@ -1569,5 +1569,7 @@
   "callview.chat_empty": "لا توجد رسائل بعد",
   "settings.menu.bar_empty": "لا توجد عناصر في الشريط",
   "settings.menu.more_empty": "لا توجد عناصر مجمعة أخرى",
-  "stage.role_guest": "ضيف"
+  "stage.role_guest": "ضيف",
+  "settings.client.show_more": "عرض المزيد",
+  "settings.client.latest_version": "أحدث إصدار"
 }

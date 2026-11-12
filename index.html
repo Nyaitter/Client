@@ -56,6 +56,15 @@
 				background: var(--nui-accent, var(--primary-color, #ff9900));
 				transition: width 0.2s ease;
 			}
+			.boot-retry {
+				padding: 0.6rem 1.2rem;
+				border-radius: 9999px;
+				border: none;
+				background: var(--nui-accent, var(--primary-color, #ff9900));
+				color: white;
+				font-weight: 700;
+				cursor: pointer;
+			}
 			#loading-overlay.hidden {
 				display: none !important;
 			}
@@ -79,7 +88,7 @@
 	</head>
 	<body>
 		<!-- 初期ロード表示 -->
-		<div id="loading-overlay" role="status" aria-live="polite" aria-label="読み込み中" data-i18n-aria-label="common.loading" aria-hidden="false" aria-busy="true"><div class="spinner"></div><div id="boot-status" class="boot-status"></div><div id="boot-progress" class="boot-progress" hidden><div id="boot-progress-bar" class="boot-progress-bar"></div></div></div>
+		<div id="loading-overlay" role="status" aria-live="polite" aria-label="読み込み中" data-i18n-aria-label="common.loading" aria-hidden="false" aria-busy="true"><div class="spinner"></div><div id="boot-status" class="boot-status"></div><div id="boot-progress" class="boot-progress" hidden><div id="boot-progress-bar" class="boot-progress-bar"></div></div><button id="boot-retry-btn" class="boot-retry" hidden><span data-i18n="common.retry">再試行</span></button></div>
 
 		<!-- 動的マウント先 -->
 		<div id="app-root"></div>

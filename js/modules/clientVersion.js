@@ -1,12 +1,13 @@
 import { t } from './i18n.js';
 import { createNapPage } from '../../nap_modules/nyaitter/nap/client/nap-page.js';
 
-const UPDATE_TIMEOUT_MS = 15000;
 const RELOAD_DELAY_MS = 400;
+const PAGE_SIZE = 20;
 let bound = false;
 let loadInFlight = null;
 let napPage = null;
 let switching = false;
+let listView = null;
 
 function serviceWorkerApiAvailable() {
     return typeof navigator !== 'undefined' && 'serviceWorker' in navigator && !!navigator.serviceWorker;
@@ -30,28 +31,6 @@ function getNapPage() {
     return napPage;
 }
 
-function askServiceWorker(message, timeoutMs = 8000) {
-    return new Promise((resolve) => {
-        const controller = navigator.serviceWorker?.controller;
-        if (!controller) {
-            resolve(null);
-            return;
-        }
-        const channel = new MessageChannel();
-        const timer = setTimeout(() => resolve(null), timeoutMs);
-        channel.port1.onmessage = (event) => {
-            clearTimeout(timer);
-            resolve(event.data || null);
-        };
-        try {
-            controller.postMessage(message, [channel.port2]);
-        } catch (_) {
-            clearTimeout(timer);
-            resolve(null);
-        }
-    });
-}
-
 async function getCurrentVersionId() {
     const page = getNapPage();
     if (!page || typeof caches === 'undefined') return '';
@@ -65,30 +44,6 @@ async function getCurrentVersionId() {
     }
 }
 
-async function clearNapVersionCaches() {
-    const page = getNapPage();
-    if (!page || typeof caches === 'undefined') return;
-    try {
-        const prefix = page.cacheName('');
-        const keys = await caches.keys();
-        await Promise.all(keys.filter((key) => key.startsWith(prefix)).map((key) => caches.delete(key)));
-    } catch (_) {}
-}
-
-const SERVER_VERSION_KEY = 'nyaitter-client-server';
-
-function markServerVersion() {
-    try {
-        window.localStorage.setItem(SERVER_VERSION_KEY, '1');
-    } catch (_) {}
-}
-
-function unmarkServerVersion() {
-    try {
-        window.localStorage.removeItem(SERVER_VERSION_KEY);
-    } catch (_) {}
-}
-
 function setStatus(text) {
     const element = document.getElementById('settings-client-status');
     if (element) element.textContent = text || '';
@@ -100,7 +55,7 @@ function formatDate(value) {
     return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
-function buildVersionRow({ versionId, title, sub, label, server, description, date, current, disabled, onSelect }) {
+function buildVersionRow({ versionId, title, sub, label, latest, description, date, current, disabled, onSelect }) {
     const item = document.createElement('li');
     item.className = 'settings-client-version-row nui-list-item' + (current ? ' settings-client-version-row--current' : '');
     item.setAttribute('data-nui', 'list-item');
@@ -139,10 +94,10 @@ function buildVersionRow({ versionId, title, sub, label, server, description, da
         chip.textContent = label;
         side.appendChild(chip);
     }
-    if (server) {
+    if (latest) {
         const chip = document.createElement('span');
         chip.className = 'settings-client-version-label';
-        chip.textContent = t('settings.client.server_version');
+        chip.textContent = t('settings.client.latest_version');
         side.appendChild(chip);
     }
     if (date) {
@@ -164,7 +119,7 @@ function buildVersionRow({ versionId, title, sub, label, server, description, da
 }
 
 async function switchToVersion(entry) {
-    if (switching) return;
+    if (switching || !entry) return;
     switching = true;
     const page = getNapPage();
     const list = document.getElementById('settings-client-versions');
@@ -172,76 +127,115 @@ async function switchToVersion(entry) {
         list.querySelectorAll('button').forEach((button) => { button.disabled = true; });
     }
     let row = null;
-    if (entry && list) {
+    if (list) {
         row = [...list.children].find((item) => item.dataset.versionId === entry.id) || null;
     }
     try {
-        if (!entry) {
-            markServerVersion();
-            await clearNapVersionCaches();
-            await askServiceWorker({ type: 'nyaitter:client-update' }, UPDATE_TIMEOUT_MS);
-            setStatus(t('settings.client.switched_to_server'));
-        } else {
-            unmarkServerVersion();
-            setStatus(t('settings.client.downloading'));
-            if (row) {
-                row.classList.add('settings-client-version-row--downloading');
-                row.style.setProperty('--version-progress', '0%');
-            }
-            const ref = entry.tag ? `${entry.id}-${entry.tag}` : entry.id;
-            const PHASE_COUNT = 3;
-            let phaseIndex = 0;
-            const setOverallProgress = (fraction) => {
-                if (!row) return;
-                const clamped = Math.min(1, Math.max(0, fraction || 0));
-                const percent = Math.min(100, Math.round(((phaseIndex + clamped) / PHASE_COUNT) * 100));
-                row.style.setProperty('--version-progress', `${percent}%`);
-            };
-            let lastSizeLabel = '';
-            const version = await page.fetchVersion(ref, {
-                onProgress: (progress) => {
-                    if (progress.phase === 'unpack') {
-                        phaseIndex = 1;
-                        setStatus(t('settings.client.unpacking'));
-                        setOverallProgress(progress.total ? progress.fetched / progress.total : 0);
-                        return;
-                    }
-                    phaseIndex = 0;
-                    if (progress.bytesTotal) {
-                        const label = `${(progress.bytes / 1048576).toFixed(1)} MB / ${(progress.bytesTotal / 1048576).toFixed(1)} MB`;
-                        if (label !== lastSizeLabel) {
-                            lastSizeLabel = label;
-                            setStatus(t('settings.client.downloading_size', { size: label }));
-                        }
-                        setOverallProgress(progress.bytes / progress.bytesTotal);
-                    } else if (progress.bytes) {
-                        const label = `${(progress.bytes / 1048576).toFixed(1)} MB`;
-                        if (label !== lastSizeLabel) {
-                            lastSizeLabel = label;
-                            setStatus(t('settings.client.downloading_size', { size: label }));
-                        }
-                    } else if (progress.total) {
-                        setStatus(t('settings.client.downloading'));
-                        setOverallProgress((progress.fetched + progress.cached) / progress.total);
-                    }
-                },
-            });
-            phaseIndex = 2;
-            setStatus(t('settings.client.saving'));
-            await page.store(version, {
-                onProgress: ({ done, total }) => {
-                    if (total) setOverallProgress(done / total);
-                },
-            });
-            if (row) row.style.setProperty('--version-progress', '100%');
-            await page.activate(version.versionId);
-            setStatus(t('settings.client.switched'));
+        setStatus(t('settings.client.downloading'));
+        if (row) {
+            row.classList.add('settings-client-version-row--downloading');
+            row.style.setProperty('--version-progress', '0%');
         }
+        const ref = entry.tag ? `${entry.id}-${entry.tag}` : entry.id;
+        const PHASE_COUNT = 3;
+        let phaseIndex = 0;
+        const setOverallProgress = (fraction) => {
+            if (!row) return;
+            const clamped = Math.min(1, Math.max(0, fraction || 0));
+            const percent = Math.min(100, Math.round(((phaseIndex + clamped) / PHASE_COUNT) * 100));
+            row.style.setProperty('--version-progress', `${percent}%`);
+        };
+        let lastSizeLabel = '';
+        const version = await page.fetchVersion(ref, {
+            onProgress: (progress) => {
+                if (progress.phase === 'unpack') {
+                    phaseIndex = 1;
+                    setStatus(t('settings.client.unpacking'));
+                    setOverallProgress(progress.total ? progress.fetched / progress.total : 0);
+                    return;
+                }
+                phaseIndex = 0;
+                if (progress.bytesTotal) {
+                    const label = `${(progress.bytes / 1048576).toFixed(1)} MB / ${(progress.bytesTotal / 1048576).toFixed(1)} MB`;
+                    if (label !== lastSizeLabel) {
+                        lastSizeLabel = label;
+                        setStatus(t('settings.client.downloading_size', { size: label }));
+                    }
+                    setOverallProgress(progress.bytes / progress.bytesTotal);
+                } else if (progress.bytes) {
+                    const label = `${(progress.bytes / 1048576).toFixed(1)} MB`;
+                    if (label !== lastSizeLabel) {
+                        lastSizeLabel = label;
+                        setStatus(t('settings.client.downloading_size', { size: label }));
+                    }
+                } else if (progress.total) {
+                    setStatus(t('settings.client.downloading'));
+                    setOverallProgress((progress.fetched + progress.cached) / progress.total);
+                }
+            },
+        });
+        phaseIndex = 2;
+        setStatus(t('settings.client.saving'));
+        await page.store(version, {
+            onProgress: ({ done, total }) => {
+                if (total) setOverallProgress(done / total);
+            },
+        });
+        if (row) row.style.setProperty('--version-progress', '100%');
+        await page.activate(version.versionId);
+        setStatus(t('settings.client.switched'));
         window.setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
     } catch (_) {
         switching = false;
         setStatus(t('settings.client.switch_failed'));
         void loadClientVersionList();
+    }
+}
+
+function showListLoading(list) {
+    list.textContent = '';
+    const item = document.createElement('li');
+    item.className = 'settings-client-version-loading';
+    const spinner = document.createElement('span');
+    spinner.className = 'spinner';
+    item.appendChild(spinner);
+    list.appendChild(item);
+}
+
+function appendVersionRows() {
+    const list = document.getElementById('settings-client-versions');
+    if (!list || !listView) return;
+    list.querySelector('.settings-client-version-more')?.remove();
+    const { ordered, latestEntry, currentId, supported } = listView;
+    const start = listView.rendered;
+    const end = Math.min(start + PAGE_SIZE, ordered.length);
+    for (let i = start; i < end; i++) {
+        const entry = ordered[i];
+        const isCurrent = !!currentId && entry.id === currentId;
+        list.appendChild(buildVersionRow({
+            versionId: entry.id,
+            title: entry.code || entry.id.slice(0, 12),
+            sub: entry.code ? entry.id.slice(0, 12) : '',
+            label: entry.tag || '',
+            latest: !!latestEntry && entry.id === latestEntry.id,
+            description: entry.description || '',
+            date: formatDate(entry.at),
+            current: isCurrent,
+            disabled: !supported || switching || isCurrent,
+            onSelect: () => void switchToVersion(entry),
+        }));
+    }
+    listView.rendered = end;
+    if (end < ordered.length) {
+        const item = document.createElement('li');
+        item.className = 'settings-client-version-more';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'settings-client-version-more-button nui-button-secondary';
+        button.textContent = t('settings.client.show_more');
+        button.addEventListener('click', appendVersionRows);
+        item.appendChild(button);
+        list.appendChild(item);
     }
 }
 
@@ -254,43 +248,28 @@ async function runLoad({ announce = false } = {}) {
         return;
     }
     if (announce) setStatus(t('settings.client.checking'));
+    showListLoading(list);
     let entries = [];
     try {
         entries = await page.versions();
     } catch (_) {
+        list.textContent = '';
         setStatus(t('settings.client.offline'));
         return;
     }
     const supported = await isClientUpdateSupported();
     const currentId = await getCurrentVersionId();
-    const descriptions = new Map();
-    if (typeof page.describe === 'function') {
-        await Promise.all(entries.map(async (entry) => {
-            const ref = entry.tag ? `${entry.id}-${entry.tag}` : entry.id;
-            const text = await page.describe(ref);
-            if (text) descriptions.set(entry.id, text);
-        }));
-    }
     const formal = entries.filter((entry) => !entry.tag);
-    const serverEntry = formal.length ? formal[formal.length - 1] : null;
+    const latestEntry = formal.length ? formal[formal.length - 1] : null;
+    listView = {
+        ordered: [...entries].reverse(),
+        latestEntry,
+        currentId,
+        supported,
+        rendered: 0,
+    };
     list.textContent = '';
-    const ordered = [...entries].reverse();
-    for (const entry of ordered) {
-        const isServer = !!serverEntry && entry.id === serverEntry.id;
-        const isCurrent = currentId ? entry.id === currentId : isServer;
-        list.appendChild(buildVersionRow({
-            versionId: entry.id,
-            title: entry.code || entry.id.slice(0, 12),
-            sub: entry.code ? entry.id.slice(0, 12) : '',
-            label: entry.tag || '',
-            server: isServer,
-            description: descriptions.get(entry.id) || '',
-            date: formatDate(entry.at),
-            current: isCurrent,
-            disabled: !supported || switching || isCurrent,
-            onSelect: isServer ? () => void switchToVersion(null) : () => void switchToVersion(entry),
-        }));
-    }
+    appendVersionRows();
     if (!supported) {
         setStatus(t('settings.client.unsupported'));
     } else if (announce) {

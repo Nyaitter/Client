@@ -37,9 +37,7 @@
         'css/communityNotes.css',
     ];
 
-    const SERVER_VERSION_KEY = 'nyaitter-client-server';
-    const BOOT_FAILURE_KEY = 'nyaitter-client-bootstrap-failed';
-    const BOOT_FAILURE_COOLDOWN_MS = 60 * 60 * 1000;
+    const RELOAD_GUARD_KEY = 'nyaitter-client-boot-reloaded';
     const SW_READY_TIMEOUT_MS = 10000;
 
     function getNyaitterJsUrl() {
@@ -127,17 +125,17 @@
         bar.style.width = `${Math.round(clamped * 100)}%`;
     }
 
-    function storageGet(key) {
+    function guardGet(key) {
         try {
-            return window.localStorage.getItem(key);
+            return window.sessionStorage.getItem(key);
         } catch (_) {
             return null;
         }
     }
 
-    function storageSet(key, value) {
+    function guardSet(key, value) {
         try {
-            window.localStorage.setItem(key, value);
+            window.sessionStorage.setItem(key, value);
         } catch (_) {}
     }
 
@@ -167,27 +165,34 @@
     }
 
     // 起動できる版がキャッシュにあるかを確認し、無ければ最新の正式版を取得して格納する。
-    // 'fetched' のときは格納した版で読み直す。'server' のときはサーバー配信のファイルで起動する。
+    // 'fetched' と 'reloading' のときは読み直す。'failed' のときは版を取得できなかった。
     async function ensureStoredVersion() {
         const source = String(config.clientNap || '').trim();
-        if (!source) return 'server';
-        if (storageGet(SERVER_VERSION_KEY) === '1') return 'server';
-        if (typeof caches === 'undefined') return 'server';
+        if (!source) return 'failed';
+        if (typeof caches === 'undefined') return 'failed';
         let page;
         try {
             const mod = await import(new URL('nap_modules/nyaitter/nap/client/nap-page.js', pageBaseUrl).href);
             page = mod.createNapPage({ source });
         } catch (_) {
-            return 'server';
+            return 'failed';
         }
+        let stored = [];
         try {
-            const stored = await page.storedVersions();
-            if (stored.length) return 'ready';
+            stored = await page.storedVersions();
         } catch (_) {
-            return 'server';
+            return 'failed';
         }
-        const failedAt = Number(storageGet(BOOT_FAILURE_KEY) || 0);
-        if (failedAt && Date.now() - failedAt < BOOT_FAILURE_COOLDOWN_MS) return 'server';
+        if (stored.length) {
+            // 格納済みの版があっても、このページが Service Worker に制御されていないと
+            // 版からは配信されない。登録して一度だけ読み直す。
+            if (!navigator.serviceWorker?.controller && guardGet(RELOAD_GUARD_KEY) !== '1') {
+                guardSet(RELOAD_GUARD_KEY, '1');
+                await registerShellServiceWorker();
+                return 'reloading';
+            }
+            return 'ready';
+        }
         await registerShellServiceWorker();
         const PHASE_COUNT = 3;
         let phaseIndex = 0;
@@ -231,10 +236,19 @@
             setBootProgress(1);
             return 'fetched';
         } catch (_) {
-            storageSet(BOOT_FAILURE_KEY, String(Date.now()));
             setBootStatus('');
             setBootProgress(null);
-            return 'server';
+            return 'failed';
+        }
+    }
+
+    function showBootFailure() {
+        setBootProgress(null);
+        setBootStatus(lt('error.connection.body'));
+        const button = document.getElementById('boot-retry-btn');
+        if (button) {
+            button.hidden = false;
+            button.addEventListener('click', () => window.location.reload(), { once: true });
         }
     }
 
@@ -256,8 +270,12 @@
     config.ready
         .then(() => ensureStoredVersion())
         .then((mode) => {
-            if (mode === 'fetched') {
+            if (mode === 'fetched' || mode === 'reloading') {
                 window.location.reload();
+                return new Promise(() => {});
+            }
+            if (mode === 'failed') {
+                showBootFailure();
                 return new Promise(() => {});
             }
             return startApp();

@@ -1569,5 +1569,7 @@
   "callview.chat_empty": "Сообщений пока нет",
   "settings.menu.bar_empty": "В панели нет элементов",
   "settings.menu.more_empty": "Других сгруппированных элементов нет",
-  "stage.role_guest": "Гость"
+  "stage.role_guest": "Гость",
+  "settings.client.show_more": "Показать ещё",
+  "settings.client.latest_version": "Последняя версия"
 }

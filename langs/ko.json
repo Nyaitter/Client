@@ -1569,5 +1569,7 @@
   "callview.chat_empty": "아직 메시지가 없습니다",
   "settings.menu.bar_empty": "바에 표시된 항목이 없습니다",
   "settings.menu.more_empty": "그 외 묶인 항목이 없습니다",
-  "stage.role_guest": "게스트"
+  "stage.role_guest": "게스트",
+  "settings.client.show_more": "더 보기",
+  "settings.client.latest_version": "최신 버전"
 }
