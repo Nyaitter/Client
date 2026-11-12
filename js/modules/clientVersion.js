@@ -166,20 +166,43 @@ async function switchToVersion(entry) {
             await askServiceWorker({ type: 'nyaitter:client-update' }, UPDATE_TIMEOUT_MS);
             setStatus('サーバーの版に切り替えました。再読み込みします…');
         } else {
-            setStatus('版を取得しています…');
+            setStatus('ダウンロードしています…');
             if (row) {
                 row.classList.add('settings-client-version-row--downloading');
                 row.style.setProperty('--version-progress', '0%');
             }
             const ref = entry.tag ? `${entry.id}-${entry.tag}` : entry.id;
+            let lastSizeLabel = '';
             const version = await page.fetchVersion(ref, {
-                onProgress: ({ fetched, cached, total }) => {
-                    if (!row || !total) return;
-                    const percent = Math.min(100, Math.round(((fetched + cached) / total) * 100));
-                    row.style.setProperty('--version-progress', `${percent}%`);
+                onProgress: (progress) => {
+                    if (!row) return;
+                    if (progress.phase === 'unpack') {
+                        setStatus('展開しています…');
+                        if (progress.total) {
+                            const percent = Math.min(100, Math.round((progress.fetched / progress.total) * 100));
+                            row.style.setProperty('--version-progress', `${percent}%`);
+                        }
+                        return;
+                    }
+                    if (progress.bytesTotal) {
+                        setStatus('ダウンロードしています…');
+                        const percent = Math.min(100, Math.round((progress.bytes / progress.bytesTotal) * 100));
+                        row.style.setProperty('--version-progress', `${percent}%`);
+                    } else if (progress.bytes) {
+                        const sizeLabel = `${(progress.bytes / 1048576).toFixed(1)} MB`;
+                        if (sizeLabel !== lastSizeLabel) {
+                            lastSizeLabel = sizeLabel;
+                            setStatus(`ダウンロードしています… ${sizeLabel}`);
+                        }
+                    } else if (progress.total) {
+                        setStatus('ダウンロードしています…');
+                        const percent = Math.min(100, Math.round(((progress.fetched + progress.cached) / progress.total) * 100));
+                        row.style.setProperty('--version-progress', `${percent}%`);
+                    }
                 },
             });
             if (row) row.style.setProperty('--version-progress', '100%');
+            setStatus('保存しています…');
             await page.store(version);
             await page.activate(version.versionId);
             setStatus('切り替えました。再読み込みします…');

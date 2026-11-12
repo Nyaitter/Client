@@ -1759,7 +1759,7 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     min-height: 0;
 }
 
-.settings-client-version-list {
+.settings-client-version-list.nui-list--flush {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
