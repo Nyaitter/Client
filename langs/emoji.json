@@ -1569,5 +1569,7 @@
   "callview.chat_empty": "💬🚫",
   "settings.menu.bar_empty": "📊🚫",
   "settings.menu.more_empty": "📦🚫",
-  "stage.role_guest": "👻"
+  "stage.role_guest": "👻",
+  "settings.client.show_more": "⬇️➕",
+  "settings.client.latest_version": "🆕"
 }

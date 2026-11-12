@@ -1569,5 +1569,7 @@
   "callview.chat_empty": "Noch keine Nachrichten",
   "settings.menu.bar_empty": "Keine Elemente in der Leiste",
   "settings.menu.more_empty": "Keine weiteren gruppierten Elemente",
-  "stage.role_guest": "Gast"
+  "stage.role_guest": "Gast",
+  "settings.client.show_more": "Mehr anzeigen",
+  "settings.client.latest_version": "Neueste Version"
 }

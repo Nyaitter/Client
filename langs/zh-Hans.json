@@ -1569,5 +1569,7 @@
   "callview.chat_empty": "暂无消息",
   "settings.menu.bar_empty": "栏中没有显示的项目",
   "settings.menu.more_empty": "没有其他分组项目",
-  "stage.role_guest": "访客"
+  "stage.role_guest": "访客",
+  "settings.client.show_more": "显示更多",
+  "settings.client.latest_version": "最新版本"
 }

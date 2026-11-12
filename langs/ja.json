@@ -1569,5 +1569,7 @@
   "callview.chat_empty": "まだメッセージはありません",
   "settings.menu.bar_empty": "バーに表示されている項目はありません",
   "settings.menu.more_empty": "他にまとめた項目はありません",
-  "stage.role_guest": "ゲスト"
+  "stage.role_guest": "ゲスト",
+  "settings.client.show_more": "さらに表示",
+  "settings.client.latest_version": "最新版"
 }
