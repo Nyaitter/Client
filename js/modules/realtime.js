@@ -21,6 +21,7 @@ function notifyCallConnectionClosed() {
         .then((module) => module.callConnectionClosed())
         .catch(() => {});
 }
+import { t } from './i18n.js';
 import { apiRequest } from '../api.js';
 import { trackRealtimeUsage } from './networkUsage.js';
 import {
@@ -270,7 +271,7 @@ export function handleRealtimeEvent(event) {
                             meta.appendChild(readStatus);
                         }
                     }
-                    readStatus.textContent = '既読';
+                    readStatus.textContent = t('dm.read_status');
                 }
             });
         }
@@ -342,7 +343,7 @@ export function waitForRealtimeOpen(timeoutMs = 8000) {
     const socket = getRealtimeChannel();
     if (socket?.readyState === WebSocket.OPEN) return Promise.resolve();
     if (isDataSaverEnabled()) {
-        return Promise.reject(new Error('データセーバーが有効なため通話に接続できません。'));
+        return Promise.reject(new Error(t('realtime.datasaver_blocked')));
     }
     setRealtimeShouldReconnect(true);
     if (socket?.readyState !== WebSocket.CONNECTING) {
@@ -355,7 +356,7 @@ export function waitForRealtimeOpen(timeoutMs = 8000) {
             const current = getRealtimeChannel();
             if (current?.readyState === WebSocket.OPEN) return resolve();
             if (Date.now() - startedAt > timeoutMs) {
-                return reject(new Error('接続が切れました。再接続してください。'));
+                return reject(new Error(t('call.disconnected')));
             }
             setTimeout(poll, 100);
         };
@@ -373,9 +374,9 @@ export function connectGuestRealtime() {
         const startedAt = Date.now();
         const poll = () => {
             const socket = getRealtimeChannel();
-            if (!guestRealtime) return reject(new Error('ゲスト通話の接続を中止しました。'));
+            if (!guestRealtime) return reject(new Error(t('realtime.guest_aborted')));
             if (socket?.readyState === WebSocket.OPEN) return resolve();
-            if (Date.now() - startedAt > 10000) return reject(new Error('ゲスト通話に接続できませんでした。'));
+            if (Date.now() - startedAt > 10000) return reject(new Error(t('realtime.guest_failed')));
             setTimeout(poll, 100);
         };
         poll();

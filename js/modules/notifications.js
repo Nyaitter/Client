@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { api } from '../api.js';
 import { getCurrentUser } from '../state.js';
 import { formatPostTimestamp } from '../utils/helpers.js';
@@ -79,51 +80,51 @@ export function notificationActorLabel(notification) {
     if (Number.isInteger(Number(notification?.from?.id))) {
         return `@#${String(notification.from.id).padStart(4, '0')}`;
     }
-    return '誰か';
+    return t('notification.someone');
 }
 
 export function getNotificationMessageSuffix(notification) {
     switch (notification?.type) {
         case 'post':
-            return ' さんが新しいポストを投稿しました。';
+            return t('notification.suffix_posted');
         case 'reply':
-            return ' さんがあなたのポストに返信しました。';
+            return t('notification.suffix_replied');
         case 'quote':
-            return ' さんがあなたのポストを引用しました。';
+            return t('notification.suffix_quoted');
         case 'repost':
-            return ' さんがあなたのポストをリポストしました。';
+            return t('notification.suffix_reposted');
         case 'mention':
-            return ' さんがあなたをメンションしました。';
+            return t('notification.suffix_mentioned');
         case 'like':
-            return ' さんがあなたのポストにいいねしました。';
+            return t('notification.suffix_liked');
         case 'star':
-            return ' さんがあなたのポストをお気に入りに追加しました。';
+            return t('notification.suffix_starred');
         case 'follow':
-            return ' さんがあなたをフォローしました。';
+            return t('notification.suffix_followed');
         case 'dm':
-            return ' さんからDMが届きました。';
+            return t('notification.suffix_dm_received');
         case 'dm_invite':
-            return ' さんがあなたをDMに招待しました。';
+            return t('notification.suffix_dm_invited');
         case 'dm_removed':
-            return ' さんによってDMから削除されました。';
+            return t('notification.suffix_dm_removed');
         case 'dm_host_transfer':
-            return ' さんからDMの管理者権限を受け取りました。';
+            return t('notification.suffix_dm_host');
         case 'dm_call':
-            return ' さんからコールされました。';
+            return t('notification.suffix_called');
         case 'group_call':
-            return ' さんがグループコールを開始しました。';
+            return t('notification.suffix_group_call');
         case 'group_invite':
-            return ' さんからグループ招待が届いています。';
+            return t('notification.suffix_group_invite');
         case 'group_join_request':
-            return ' さんからグループへの参加申請が届いています。';
+            return t('notification.suffix_group_request');
         case 'group_announcement':
-            return ' さんがグループアナウンスを投稿しました。';
+            return t('notification.suffix_group_announcement');
         case 'poll_ended':
-            return ' さんの投票が終了しました。結果を確認しましょう！';
+            return t('notification.suffix_poll_ended');
         case 'admin_notice':
-            return ' さんからお知らせがあります。';
+            return t('notification.suffix_notice');
         case 'scheduled_post':
-            return '予約投稿を公開しました。';
+            return t('notification.scheduled_published');
         default:
             return '';
     }
@@ -131,44 +132,44 @@ export function getNotificationMessageSuffix(notification) {
 
 export function getNotificationDisplayText(notification) {
     const structured = normalizeStructuredNotification(notification);
-    if (!structured) return '新しい通知があります。';
+    if (!structured) return t('notification.generic');
 
     if (structured.message?.trim()) return structured.message.trim();
     if (structured.type === 'login_approval') {
-        return '不明な場所からのログイン承認が必要です。';
+        return t('notification.login_approval_needed');
     }
     if (structured.type === 'account_recovery') {
-        return '不明な場所からアカウントアクセスの復旧依頼が届いています。心当たりがある場合は承認し、心当たりがない場合はブロックしてください。';
+        return t('notification.recovery_request');
     }
     if (structured.type === 'moderation_assignment') {
-        return '新しいリクエストが割り当てられました。';
+        return t('notification.request_assigned');
     }
     if (structured.type === 'moderation_action_taken') {
-        return 'あなたが報告したコンテンツは、審査により不適切であると判定されました。コミュニティの健全化へのご協力に感謝します。';
+        return t('notification.report_upheld');
     }
     if (structured.type === 'moderation_no_action') {
-        return 'あなたが報告したコンテンツは、審査の結果、適切だと判定されたため対応されません。';
+        return t('notification.report_rejected');
     }
     if (structured.type === 'moderation_action') {
-        return '運営による審査の結果、あなたのポストの公開範囲が変更されました。';
+        return t('notification.post_visibility_changed');
     }
     if (structured.type === 'appeal_approved') {
-        return '異議申し立てが承認され、アカウントの凍結が解除されました。';
+        return t('notification.appeal_approved');
     }
     if (structured.type === 'appeal_rejected') {
-        return '異議申し立ては審査の結果、承認されませんでした。';
+        return t('notification.appeal_rejected');
     }
     if (structured.type === 'verification_approved') {
-        return '認証申請が承認されました。プロフィールに認証バッジが表示されます。';
+        return t('notification.verification_approved');
     }
     if (structured.type === 'verification_rejected') {
-        return '認証申請は審査の結果、承認されませんでした。';
+        return t('notification.verification_rejected');
     }
 
     const suffix = getNotificationMessageSuffix(structured);
     return suffix
         ? `${notificationActorLabel(structured)}${suffix}`
-        : '新しい通知があります。';
+        : t('notification.generic');
 }
 
 export function appendNotificationDisplay(container, notification) {
@@ -177,7 +178,7 @@ export function appendNotificationDisplay(container, notification) {
     const structured = normalizeStructuredNotification(notification);
     container.replaceChildren();
     if (!structured) {
-        container.textContent = '新しい通知があります。';
+        container.textContent = t('notification.generic');
         return;
     }
 

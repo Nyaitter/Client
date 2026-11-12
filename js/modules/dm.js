@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { api, apiRequest } from '../api.js';
@@ -92,7 +93,7 @@ export async function renderDmMessage(msg, dmId = null, visibleMessages = []) {
                 getAttachmentImagePreviewUrl(safeAttachmentUrl),
             );
             const attachmentName = escapeHTML(
-                String(attachment.name || '添付ファイル').slice(0, 255),
+                String(attachment.name || t('post.attachment_fallback')).slice(0, 255),
             );
 
             let itemHTML = '<div class="attachment-item">';
@@ -119,28 +120,28 @@ export async function renderDmMessage(msg, dmId = null, visibleMessages = []) {
     const target = msg.reply_to && visibleMessages.find((item) => String(item.id) === String(msg.reply_to));
     const canDescribeTarget = target && target.type === 'user' && !target.e2e && !target.deleted && !target.deleted_at
         && !getCurrentUser()?.block?.includes(Number(target.userid));
-    const targetName = canDescribeTarget ? (getAllUsersCache().get(target.userid)?.name || '不明') : '';
+    const targetName = canDescribeTarget ? (getAllUsersCache().get(target.userid)?.name || t('dm.unknown_name')) : '';
     const targetContent = canDescribeTarget ? String(target.content || target.message || '').replace(/\s+/g, ' ').trim().slice(0, 80) : '';
     const replyInner = canDescribeTarget
-        ? `<span class="dm-reply-reference-icon" aria-hidden="true">${ICONS.reply}</span><span class="dm-reply-reference-name">${escapeHTML(targetName)}</span><span class="dm-reply-reference-text">${escapeHTML(targetContent || 'メッセージ')}</span>`
-        : `<span class="dm-reply-reference-icon" aria-hidden="true">${ICONS.reply}</span><span class="dm-reply-reference-text">メッセージへの返信</span>`;
+        ? `<span class="dm-reply-reference-icon" aria-hidden="true">${ICONS.reply}</span><span class="dm-reply-reference-name">${escapeHTML(targetName)}</span><span class="dm-reply-reference-text">${escapeHTML(targetContent || t('dm.message_fallback'))}</span>`
+        : `<span class="dm-reply-reference-icon" aria-hidden="true">${ICONS.reply}</span><span class="dm-reply-reference-text">${t('dm.reply_reference')}</span>`;
     const replyHtml = msg.reply_to
-        ? `<button type="button" class="dm-reply-reference" data-reply-target-id="${escapeHTML(String(msg.reply_to))}" title="返信先のメッセージへ移動">${replyInner}</button>`
+        ? `<button type="button" class="dm-reply-reference" data-reply-target-id="${escapeHTML(String(msg.reply_to))}" title="${t('dm.jump_to_original')}">${replyInner}</button>`
         : '';
 
     if (sent) {
         const readCount = Number(msg.read_count || 0);
         const readStatusHtml = readCount > 0
-            ? `<span class="dm-message-read-status">既読${readCount > 1 ? ` ${readCount}` : ''}</span>`
+            ? `<span class="dm-message-read-status">${t('dm.read_status')}${readCount > 1 ? ` ${readCount}` : ''}</span>`
             : '';
 
         return `<div class="dm-message-container sent" data-message-id="${escapeHTML(msg.id)}">
             <div class="dm-message-wrapper">
                 <div class="dm-message-bubble-row">
-                    <button type="button" class="dm-message-menu-btn" title="メッセージメニュー" aria-label="メッセージメニュー">${ICONS.more}</button>
+                    <button type="button" class="dm-message-menu-btn" title="${t('dm.message_menu')}" aria-label="${t('dm.message_menu')}">${ICONS.more}</button>
                     <div class="post-menu">
-                        ${msg.type === 'user' && !msg.e2e && !msg.deleted && !msg.deleted_at ? '<button class="edit-dm-msg-btn">編集</button>' : ''}
-                        <button class="delete-dm-msg-btn delete-btn">削除</button>
+                        ${msg.type === 'user' && !msg.e2e && !msg.deleted && !msg.deleted_at ? `<button class="edit-dm-msg-btn">${t('post.edit')}</button>` : ''}
+                        <button class="delete-dm-msg-btn delete-btn">${t('post.delete')}</button>
                     </div>
                     <div class="dm-message">${replyHtml}<div class="dm-message-content">${formattedContent}</div>${attachmentsHTML}</div>
                 </div>
@@ -158,12 +159,12 @@ export async function renderDmMessage(msg, dmId = null, visibleMessages = []) {
             </a>
             <div class="dm-message-wrapper">
                 <div class="dm-message-meta">
-                    <a href="#profile/${user.id}" class="dm-user-link dm-user-name">${getEmoji(escapeHTML(user.name || '不明'))}</a>
-                    <span class="dm-message-time">・${time}</span>
-                    <button type="button" class="dm-message-menu-btn" title="メッセージメニュー" aria-label="メッセージメニュー">${ICONS.more}</button>
-                    ${msg.type === 'user' && !msg.deleted && !msg.deleted_at ? '<button type="button" class="reply-dm-msg-btn">返信</button>' : ''}
+                    <a href="#profile/${user.id}" class="dm-user-link dm-user-name">${getEmoji(escapeHTML(user.name || t('dm.unknown_name')))}</a>
+                    <span class="dm-message-time">${t('dm.time_text', { time })}</span>
+                    <button type="button" class="dm-message-menu-btn" title="${t('dm.message_menu')}" aria-label="${t('dm.message_menu')}">${ICONS.more}</button>
+                    ${msg.type === 'user' && !msg.deleted && !msg.deleted_at ? `<button type="button" class="reply-dm-msg-btn">${t('dm.reply_button')}</button>` : ''}
                     <div class="post-menu">
-                        <button class="report-dm-message-btn" data-dm-id="${escapeHTML(String(dmId || ''))}" data-message-id="${escapeHTML(String(msg.id || ''))}">報告する</button>
+                        <button class="report-dm-message-btn" data-dm-id="${escapeHTML(String(dmId || ''))}" data-message-id="${escapeHTML(String(msg.id || ''))}">${t('dm.report_button')}</button>
                     </div>
                 </div>
                 <div class="dm-message-bubble-row">
@@ -185,11 +186,11 @@ export function attachDmMessageClamp(messageEl) {
     const toggleBtn = document.createElement('button');
     toggleBtn.type = 'button';
     toggleBtn.className = 'dm-clamp-toggle';
-    toggleBtn.textContent = '続きを表示';
+    toggleBtn.textContent = t('post.show_more');
     toggleBtn.setAttribute('aria-expanded', 'false');
     toggleBtn.addEventListener('click', () => {
         const expanded = contentEl.classList.toggle('dm-message-content-expanded');
-        toggleBtn.textContent = expanded ? '閉じる' : '続きを表示';
+        toggleBtn.textContent = expanded ? t('common.close') : t('post.show_more');
         toggleBtn.setAttribute('aria-expanded', String(expanded));
         toggleBtn.classList.toggle('expanded', expanded);
     });
@@ -435,7 +436,7 @@ function trimDmEditLoad(load) {
     invalidateDmCaches(load.dmId);
     if (dmEditLoad !== load || load.trimNotified) return;
     load.trimNotified = true;
-    showAppAlert('更新が多いため、この会話の最新の内容を取得しています。');
+    showAppAlert(t('dm.refreshing_latest'));
     load.onStale?.();
 }
 
@@ -565,13 +566,13 @@ export async function flushRealtimeDmMessages(dmId) {
 }
 
 export async function handleDmButtonClick(targetUserId, onOpenConversation = null) {
-    if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
     showLoading(true);
 
     try {
         const normalizedTargetUserId = Number(targetUserId);
         if (!Number.isInteger(normalizedTargetUserId) || normalizedTargetUserId < 0) {
-            throw new Error('DMの相手を確認できませんでした');
+            throw new Error(t('dm.partner_check_failed'));
         }
 
         const { data, error } = await apiRequest('/server/api/dm', {
@@ -580,7 +581,7 @@ export async function handleDmButtonClick(targetUserId, onOpenConversation = nul
         });
         const dmId = data?.dm?.id || data?.id || null;
 
-        if (error || !dmId) throw new Error(error?.message || 'DMの開始に失敗しました');
+        if (error || !dmId) throw new Error(error?.message || t('dm.start_failed'));
 
         if (typeof onOpenConversation === 'function') {
             onOpenConversation(dmId);
@@ -589,14 +590,14 @@ export async function handleDmButtonClick(targetUserId, onOpenConversation = nul
         }
     } catch (e) {
         console.error('DM開始エラー:', e);
-        showAppAlert(e.message || 'DMを開始できませんでした。');
+        showAppAlert(e.message || t('dm.could_not_start'));
     } finally {
         showLoading(false);
     }
 }
 
 export async function sendDmMessage(dmId, messageText, attachments = [], onComplete = null) {
-    if (!getCurrentUser()) return showAppAlert('ログインが必要です。');
+    if (!getCurrentUser()) return showAppAlert(t('common.login_required'));
     const text = messageText.trim();
     if (!text && attachments.length === 0) return;
 
@@ -652,7 +653,7 @@ export async function sendDmMessage(dmId, messageText, attachments = [], onCompl
                 body: { fileIds: uploadedFileIds },
             }).catch(() => {});
         }
-        showAppAlert(`DMの送信に失敗しました: ${e.message || '不明なエラー'}`);
+        showAppAlert(t('dm.send_failed', { message: e.message || t('post.unknown_error') }));
     } finally {
         showLoading(false);
     }
@@ -669,7 +670,7 @@ export async function handleUpdateDmTitle(dmId, newTitle, onComplete = null) {
         if (titleEl) titleEl.innerHTML = getEmoji(escapeHTML(title));
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert(e.message || 'タイトルの更新に失敗しました');
+        showAppAlert(e.message || t('dm.title_update_failed'));
     }
 }
 
@@ -688,7 +689,7 @@ export async function handleRemoveDmMember(dmId, memberId, onComplete = null) {
         await openDmManageModal(dmId, onComplete);
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert(e.message || 'メンバーの削除に失敗しました');
+        showAppAlert(e.message || t('dm.member_remove_failed'));
     }
 }
 
@@ -702,21 +703,21 @@ export async function handleSetHostDmMember(dmId, memberId, onComplete = null) {
         await openDmManageModal(dmId, onComplete);
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert(e.message || 'ホストの変更に失敗しました');
+        showAppAlert(e.message || t('dm.host_change_failed'));
     }
 }
 
 export async function handleAddDmMember(dmId, newMemberId, onComplete = null) {
     const numericId = Number(newMemberId);
     if (!Number.isSafeInteger(numericId) || numericId <= 0) {
-        return showAppAlert('有効なNyaitterIDを入力してください');
+        return showAppAlert(t('dm.valid_id_required'));
     }
     try {
         const { data: dm } = await api.from('dm').eq('id', dmId).single();
         if (!dm) return;
         const currentMembers = (dm.member || dm.users || []).map(Number);
         if (currentMembers.includes(numericId)) {
-            return showAppAlert('このユーザーは既に参加しています');
+            return showAppAlert(t('dm.already_member'));
         }
         const newMembers = Array.from(new Set([...currentMembers, numericId]));
         const { error } = await api.from('dm').update({ member: newMembers }).eq('id', dmId);
@@ -728,12 +729,12 @@ export async function handleAddDmMember(dmId, newMemberId, onComplete = null) {
         await openDmManageModal(dmId, onComplete);
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert(e.message || 'メンバーの追加に失敗しました');
+        showAppAlert(e.message || t('dm.member_add_failed'));
     }
 }
 
 export async function handleLeaveDm(dmId, onComplete = null) {
-    const confirm = await showAppConfirm('このDMグループから退出しますか？');
+    const confirm = await showAppConfirm(t('dm.leave_group_confirm'));
     if (!confirm) return;
     try {
         const { error } = await api.rpc('leave_dm', { dm_id_in: dmId });
@@ -746,12 +747,12 @@ export async function handleLeaveDm(dmId, onComplete = null) {
         await router();
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert(e.message || 'グループからの退出に失敗しました');
+        showAppAlert(e.message || t('dm.leave_group_failed'));
     }
 }
 
 export async function handleDisbandDm(dmId, onComplete = null) {
-    const confirm = await showAppConfirm('このDMグループを解散して削除しますか？この操作は取り消せません。');
+    const confirm = await showAppConfirm(t('dm.disband_confirm'));
     if (!confirm) return;
     try {
         const { error } = await api.from('dm').delete().eq('id', dmId);
@@ -763,7 +764,7 @@ export async function handleDisbandDm(dmId, onComplete = null) {
         await router();
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert(e.message || 'グループの解散に失敗しました');
+        showAppAlert(e.message || t('dm.disband_failed'));
     }
 }
 
@@ -775,7 +776,7 @@ export async function openDmManageModal(dmId, onComplete = null) {
 
     try {
         const { data: dm, error } = await api.from('dm').eq('id', dmId).single();
-        if (error || !dm) throw new Error('DM情報の取得に失敗しました');
+        if (error || !dm) throw new Error(t('dm.info_fetch_failed'));
 
         const currentUserId = getCurrentUser()?.id;
         const isHost = Number(dm.host_id ?? dm.host) === Number(currentUserId);
@@ -787,30 +788,30 @@ export async function openDmManageModal(dmId, onComplete = null) {
         content.innerHTML = `
             <div class="dm-modal-body nui-modal-body">
                 <div class="modal-heading">
-                    <h3 id="dm-manage-modal-title" class="nui-modal-title">DM管理</h3>
+                    <h3 id="dm-manage-modal-title" class="nui-modal-title">${t('dm.manage_title')}</h3>
                 </div>
                 <div class="dm-manage-section">
-                    <label class="dm-manage-label" for="dm-manage-title-input">グループ名</label>
+                    <label class="dm-manage-label" for="dm-manage-title-input">${t('dm.group_name_label')}</label>
                     <div class="dm-manage-inline-row">
-                        <input id="dm-manage-title-input" class="dm-modal-input nui-input" type="text" value="${escapeHTML(dm.title || '')}" ${!isHost ? 'disabled' : ''} placeholder="未設定">
-                        ${isHost ? '<button type="button" id="dm-manage-title-save-btn" class="settings-primary-button dm-manage-btn-sm nui-button" data-nui="button">変更</button>' : ''}
+                        <input id="dm-manage-title-input" class="dm-modal-input nui-input" type="text" value="${escapeHTML(dm.title || '')}" ${!isHost ? 'disabled' : ''} placeholder="${t('dm.title_unset_placeholder')}">
+                        ${isHost ? `<button type="button" id="dm-manage-title-save-btn" class="settings-primary-button dm-manage-btn-sm nui-button" data-nui="button">${t('dm.change_button')}</button>` : ''}
                     </div>
                 </div>
                 <div class="dm-manage-section">
-                    <h4 class="dm-manage-section-title nui-section-title">参加メンバー (${memberIds.length})</h4>
+                    <h4 class="dm-manage-section-title nui-section-title">${t('dm.members_heading', { count: memberIds.length })}</h4>
                     <div class="dm-manage-member-list nui-list" data-nui="list"></div>
                 </div>
                 ${isHost ? `
                 <div class="dm-manage-section">
-                    <label class="dm-manage-label" for="dm-manage-add-input">メンバーを追加</label>
+                    <label class="dm-manage-label" for="dm-manage-add-input">${t('dm.add_member_label')}</label>
                     <div class="dm-manage-inline-row">
-                        <input id="dm-manage-add-input" class="dm-modal-input nui-input" type="number" placeholder="NyaitterID (数字)">
-                        <button type="button" id="dm-manage-add-btn" class="settings-primary-button dm-manage-btn-sm nui-button" data-nui="button">追加</button>
+                        <input id="dm-manage-add-input" class="dm-modal-input nui-input" type="number" placeholder="${t('dm.id_placeholder')}">
+                        <button type="button" id="dm-manage-add-btn" class="settings-primary-button dm-manage-btn-sm nui-button" data-nui="button">${t('dm.add_button')}</button>
                     </div>
                 </div>` : ''}
                 <div class="dm-manage-actions-footer">
-                    <button type="button" id="dm-manage-leave-btn" class="settings-danger-button nui-button-danger" data-nui="button-danger">グループから退出</button>
-                    ${isHost ? '<button type="button" id="dm-manage-disband-btn" class="settings-danger-button nui-button-danger" data-nui="button-danger">グループを解散</button>' : ''}
+                    <button type="button" id="dm-manage-leave-btn" class="settings-danger-button nui-button-danger" data-nui="button-danger">${t('dm.leave_group_button')}</button>
+                    ${isHost ? `<button type="button" id="dm-manage-disband-btn" class="settings-danger-button nui-button-danger" data-nui="button-danger">${t('dm.disband_button')}</button>` : ''}
                 </div>
             </div>
         `;
@@ -828,12 +829,12 @@ export async function openDmManageModal(dmId, onComplete = null) {
                     <img ${rankAvatarAttributes(user)} src="${getUserIconUrl(user)}" class="user-icon dm-manage-member-icon nui-avatar" alt="">
                     <span class="dm-manage-member-name nui-list-title">${getEmoji(escapeHTML(user.name))}</span>
                     <span class="dm-manage-member-handle nui-list-meta">${getNyaitterId(user)}</span>
-                    ${isUserHost ? '<span class="dm-manage-host-badge nui-badge nui-badge-accent">ホスト</span>' : ''}
+                    ${isUserHost ? `<span class="dm-manage-host-badge nui-badge nui-badge-accent">${t('dm.host_badge')}</span>` : ''}
                 </div>
                 <div class="dm-manage-member-actions">
                     ${isHost && !isMe ? `
-                        <button type="button" class="set-host-btn group-ui-secondary-button nui-button-secondary" data-nui="button-secondary" data-uid="${uid}">ホストにする</button>
-                        <button type="button" class="remove-member-btn settings-session-revoke-button nui-button-danger" data-nui="button-danger" data-uid="${uid}">削除</button>
+                        <button type="button" class="set-host-btn group-ui-secondary-button nui-button-secondary" data-nui="button-secondary" data-uid="${uid}">${t('dm.make_host_button')}</button>
+                        <button type="button" class="remove-member-btn settings-session-revoke-button nui-button-danger" data-nui="button-danger" data-uid="${uid}">${t('post.delete')}</button>
                     ` : ''}
                 </div>
             `;
@@ -876,7 +877,7 @@ export async function openDmManageModal(dmId, onComplete = null) {
 
         modal.classList.remove('hidden');
     } catch (e) {
-        showAppAlert(e.message || 'DM管理モーダルの表示に失敗しました');
+        showAppAlert(e.message || t('dm.manage_show_failed'));
     } finally {
         showLoading(false);
     }
@@ -899,21 +900,21 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
         if (!message) {
             const { data: dmResult, error } = await api.from('dm').eq('id', dmId).single();
             if (!isActiveDmConversation(dmId)) return;
-            if (error || !dmResult) throw new Error('DMメッセージの取得に失敗しました');
+            if (error || !dmResult) throw new Error(t('dm.messages_fetch_failed'));
             const fetchedDm = Array.isArray(dmResult) ? dmResult[0] : dmResult;
             const fetchedPosts = Array.isArray(fetchedDm?.post) ? fetchedDm.post : (Array.isArray(fetchedDm?.messages) ? fetchedDm.messages : []);
             message = fetchedPosts.find((m) => String(m.id) === String(messageId));
         }
 
-        if (!message) throw new Error('メッセージが見つかりませんでした');
+        if (!message) throw new Error(t('dm.message_not_found'));
         if (Number(message.userid) !== Number(getCurrentUser()?.id) || message.type !== 'user' || message.e2e || message.deleted || message.deleted_at) {
-            throw new Error('このメッセージは編集できません');
+            throw new Error(t('dm.message_not_editable'));
         }
 
         content.innerHTML = `
             <div class="dm-modal-body nui-modal-body">
                 <div class="modal-heading">
-                    <h3 id="edit-dm-modal-title" class="nui-modal-title">メッセージを編集</h3>
+                    <h3 id="edit-dm-modal-title" class="nui-modal-title">${t('dm.edit_message_title')}</h3>
                 </div>
                 <div class="dm-edit-content">
                     <div class="markdown-textarea-editor dm-edit-editor">
@@ -928,12 +929,12 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
                     </div>
                     <div class="dm-edit-footer">
                         <div class="dm-edit-tools">
-                            <button type="button" class="emoji-pic-button dm-edit-tool-btn" title="絵文字を選択">${ICONS.emoji}</button>
+                            <button type="button" class="emoji-pic-button dm-edit-tool-btn" title="${t('dm.emoji_select_title')}">${ICONS.emoji}</button>
                             <div id="emoji-picker" class="hidden"></div>
                         </div>
                         <div class="dm-edit-actions">
-                            <button type="button" class="login-secondary-button dm-edit-cancel-btn nui-button-secondary" data-nui="button-secondary">キャンセル</button>
-                            <button type="button" id="update-dm-btn" class="settings-primary-button nui-button" data-nui="button">保存</button>
+                            <button type="button" class="login-secondary-button dm-edit-cancel-btn nui-button-secondary" data-nui="button-secondary">${t('common.cancel')}</button>
+                            <button type="button" id="update-dm-btn" class="settings-primary-button nui-button" data-nui="button">${t('common.save')}</button>
                         </div>
                     </div>
                 </div>
@@ -991,7 +992,7 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
 
         content.querySelector('#update-dm-btn')?.addEventListener('click', async () => {
             const updatedText = getMarkdownEditorValue(content.querySelector('#edit-dm-textarea')).trim();
-            if (!updatedText) return showAppAlert('メッセージを入力してください');
+            if (!updatedText) return showAppAlert(t('dm.message_required'));
             modal.classList.add('hidden');
             await handleUpdateDmMessage(dmId, messageId, updatedText, onComplete);
         });
@@ -1006,7 +1007,7 @@ export async function openDmEditModal(dmId, messageId, onComplete = null) {
 
         modal.classList.remove('hidden');
     } catch (e) {
-        showAppAlert(e.message || '編集モーダルの読み込みに失敗しました');
+        showAppAlert(e.message || t('post.edit_load_failed'));
     } finally {
         showLoading(false);
     }
@@ -1027,14 +1028,14 @@ export async function handleUpdateDmMessage(dmId, messageId, newText, onComplete
         }
     } catch (e) {
         console.error('DM更新エラー:', e);
-        showAppAlert(e.message || 'メッセージの更新に失敗しました');
+        showAppAlert(e.message || t('dm.message_update_failed'));
     } finally {
         showLoading(false);
     }
 }
 
 export async function handleDeleteDmMessage(dmId, messageId, onComplete = null) {
-    const confirm = await showAppConfirm('このメッセージを削除しますか？');
+    const confirm = await showAppConfirm(t('dm.message_delete_confirm'));
     if (!confirm) return;
     showLoading(true);
 
@@ -1050,7 +1051,7 @@ export async function handleDeleteDmMessage(dmId, messageId, onComplete = null) 
         }
     } catch (e) {
         console.error('DM削除エラー:', e);
-        showAppAlert(e.message || 'メッセージの削除に失敗しました');
+        showAppAlert(e.message || t('dm.message_delete_failed'));
     } finally {
         showLoading(false);
     }
@@ -1067,14 +1068,14 @@ export async function handleAcceptDmRequest(dmId, onComplete = null) {
         invalidateDmCaches(dmId);
         if (typeof onComplete === 'function') await onComplete();
     } catch (e) {
-        showAppAlert(e.message || 'DMの承認に失敗しました');
+        showAppAlert(e.message || t('dm.approve_failed'));
     } finally {
         showLoading(false);
     }
 }
 
 export async function handleDeclineDmRequest(dmId, onComplete = null) {
-    const confirm = await showAppConfirm('このメッセージリクエストを削除しますか？');
+    const confirm = await showAppConfirm(t('dm.request_delete_confirm'));
     if (!confirm) return;
     showLoading(true);
 
@@ -1088,7 +1089,7 @@ export async function handleDeclineDmRequest(dmId, onComplete = null) {
         if (typeof onComplete === 'function') await onComplete();
         else window.location.hash = '#dm';
     } catch (e) {
-        showAppAlert(e.message || 'メッセージリクエストの削除に失敗しました');
+        showAppAlert(e.message || t('dm.request_delete_failed'));
     } finally {
         showLoading(false);
     }

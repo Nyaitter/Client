@@ -1,3 +1,4 @@
+import { t } from '../modules/i18n.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { getCurrentUser, getServerClientLimits, setServerClientLimits } from '../state.js';
@@ -265,10 +266,10 @@ function showNextAppDialog() {
 
     isAppDialogActive = true;
     appDialog.title.textContent = isAlert
-        ? '通知'
+        ? t('nav.notifications')
         : isConfirm
-          ? '確認'
-          : '入力';
+          ? t('helpers.dialog_confirm')
+          : t('helpers.dialog_input');
     appDialog.message.textContent = String(message || '');
 
     if (isPrompt) {
@@ -282,7 +283,7 @@ function showNextAppDialog() {
     }
 
     appDialog.cancelButton?.classList.toggle('hidden', isAlert);
-    appDialog.submitButton.textContent = isAlert ? '閉じる' : 'OK';
+    appDialog.submitButton.textContent = isAlert ? t('common.close') : 'OK';
 
     let cleanup = null;
     const closeDialog = (value) => {
@@ -417,7 +418,7 @@ export function getPostTimestampFormat() {
 export function formatPostTimestamp(post, format = getPostTimestampFormat()) {
     const value = post?.created_at;
     const date = value ? new Date(value) : null;
-    if (!date || Number.isNaN(date.getTime())) return '日時不明';
+    if (!date || Number.isNaN(date.getTime())) return t('settings.common.unknown_date');
 
     const pad = (number) => String(number).padStart(2, '0');
     const year = date.getFullYear();
@@ -431,7 +432,7 @@ export function formatPostTimestamp(post, format = getPostTimestampFormat()) {
         return `${year}/${month}/${day} ${pad(hour)}:${minute}:${second}`;
     }
     if (format === 'absolute_12') {
-        const period = hour < 12 ? '午前' : '午後';
+        const period = hour < 12 ? t('helpers.am') : t('helpers.pm');
         const hour12 = hour % 12 || 12;
         return `${year}/${month}/${day} ${period} ${pad(hour12)}:${minute}:${second}`;
     }
@@ -442,12 +443,12 @@ export function formatPostTimestamp(post, format = getPostTimestampFormat()) {
     );
     let remaining = elapsedSeconds;
     const units = [
-        ['年', 365 * 24 * 60 * 60],
-        ['ヶ月', 30 * 24 * 60 * 60],
-        ['日', 24 * 60 * 60],
-        ['時間', 60 * 60],
-        ['分', 60],
-        ['秒', 1],
+        [t('helpers.unit_years'), 365 * 24 * 60 * 60],
+        [t('helpers.unit_months'), 30 * 24 * 60 * 60],
+        [t('helpers.unit_days'), 24 * 60 * 60],
+        [t('helpers.unit_hours'), 60 * 60],
+        [t('helpers.unit_minutes'), 60],
+        [t('helpers.unit_seconds'), 1],
     ];
     const parts = [];
     for (const [label, seconds] of units) {
@@ -458,12 +459,12 @@ export function formatPostTimestamp(post, format = getPostTimestampFormat()) {
             if (format === 'relative') break;
         }
     }
-    return `${parts.length > 0 ? parts.join('') : '0秒'}前`;
+    return t('helpers.time_ago', { duration: parts.length > 0 ? parts.join('') : t('helpers.zero_seconds') });
 }
 
 export function formatSecurityTimestamp(value) {
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '不明な日時';
+    if (Number.isNaN(date.getTime())) return t('helpers.unknown_datetime');
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -474,9 +475,9 @@ export function formatSecurityTimestamp(value) {
 }
 
 export function formatModerationDate(value) {
-    if (!value) return '日時不明';
+    if (!value) return t('settings.common.unknown_date');
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? '日時不明' : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? t('settings.common.unknown_date') : date.toLocaleString();
 }
 
 export function escapeHTML(str) {
@@ -852,7 +853,7 @@ export function getGroupBadgesHtml(user, { maxCount = 5 } = {}) {
         .slice(0, maxCount);
     if (validBadges.length === 0) return '';
     return `<span class="user-group-badges">${validBadges
-        .map((b) => `<a href="#group/${encodeURIComponent(b.id)}" class="user-group-badge-link" title="${escapeHTML(b.name || '参加グループ')}" onclick="event.stopPropagation();">${getGroupIconUrl(b) ? `<img src="${escapeHTML(getGroupIconUrl(b))}" class="user-group-badge" alt="${escapeHTML(b.name || 'グループ')}">` : `<span class="user-group-badge user-group-badge-default" aria-label="${escapeHTML(b.name || 'グループ')}">${ICONS.group}</span>`}</a>`)
+        .map((b) => `<a href="#group/${encodeURIComponent(b.id)}" class="user-group-badge-link" title="${escapeHTML(b.name || t('helpers.joined_group'))}" onclick="event.stopPropagation();">${getGroupIconUrl(b) ? `<img src="${escapeHTML(getGroupIconUrl(b))}" class="user-group-badge" alt="${escapeHTML(b.name || t('nav.groups'))}">` : `<span class="user-group-badge user-group-badge-default" aria-label="${escapeHTML(b.name || t('nav.groups'))}">${ICONS.group}</span>`}</a>`)
         .join('')}</span>`;
 }
 
@@ -872,14 +873,14 @@ export function renderGroupBadgesElement(user, { maxCount = 5 } = {}) {
         const link = document.createElement('a');
         link.href = `#group/${encodeURIComponent(b.id)}`;
         link.className = 'user-group-badge-link';
-        link.title = b.name || '参加グループ';
+        link.title = b.name || t('helpers.joined_group');
         link.addEventListener('click', (e) => {
             e.stopPropagation();
         });
         const img = document.createElement('img');
         img.src = getGroupIconUrl(b);
         img.className = 'user-group-badge';
-        img.alt = b.name || 'グループ';
+        img.alt = b.name || t('nav.groups');
         link.appendChild(img);
         span.appendChild(link);
     });

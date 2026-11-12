@@ -1,3 +1,4 @@
+import { t } from './modules/i18n.js';
 import { mountAppShell } from './appShell.js';
 import { getSafeHttpUrl } from './utils/helpers.js';
 
@@ -263,7 +264,7 @@ export function showMainJsError(message) {
     const overlay = document.getElementById('mainjs-error-overlay');
     const text = document.getElementById('mainjs-error-text');
     if (!overlay || !text) return;
-    text.textContent = String(message || '不明なエラー').slice(0, 2000);
+    text.textContent = String(message || t('post.unknown_error')).slice(0, 2000);
     overlay.classList.remove('hidden');
 }
 
@@ -289,13 +290,13 @@ window.addEventListener('error', (event) => {
         console.warn('[nyaitter] Ignored third-party / non-fatal error:', event.message);
         return;
     }
-    showMainJsError(`JavaScriptエラー: ${event.message || '不明なエラー'}`);
+    showMainJsError(t('dom.js_error', { message: event.message || t('post.unknown_error') }));
 });
 window.addEventListener('unhandledrejection', (event) => {
     const reason =
         event.reason instanceof Error
             ? event.reason.message
-            : String(event.reason || '不明なエラー');
+            : String(event.reason || t('post.unknown_error'));
     if (
         reason.includes('startTime') ||
         reason.includes('reportAllChanges') ||
@@ -306,7 +307,7 @@ window.addEventListener('unhandledrejection', (event) => {
         return;
     }
     console.error('[nyaitter] Unhandled promise rejection:', event.reason);
-    showMainJsError(`未処理のPromise例外: ${reason}`);
+    showMainJsError(t('dom.unhandled_promise', { reason }));
 });
 document
     .getElementById('mainjs-error-reload-btn')

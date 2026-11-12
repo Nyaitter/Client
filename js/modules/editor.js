@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { getCurrentUser } from '../state.js';
 import { customEmojiPromise, renderNyarkDown } from './nyarkdown.js';
 import { applyServerInputLimits, scheduleNextFrame } from '../utils/helpers.js';
@@ -33,7 +34,7 @@ function loadNyaitterImeScript(urls) {
     return new Promise((resolve, reject) => {
         const attempt = (index) => {
             if (index >= urls.length) {
-                reject(new Error('NyaitterIMEを読み込めませんでした'));
+                reject(new Error(t('editor.ime_load_failed')));
                 return;
             }
             const script = document.createElement('script');
@@ -352,7 +353,7 @@ function decorateNyaitterImeComposition(editor) {
 function updateNyaitterImeButton(button, enabled) {
     button.classList.toggle('active', enabled);
     button.setAttribute('aria-pressed', String(enabled));
-    button.title = enabled ? 'Nyaitter IME: オン' : 'Nyaitter IME: オフ';
+    button.title = enabled ? t('editor.ime_on') : t('editor.ime_off');
     button.setAttribute('aria-label', button.title);
 }
 
@@ -472,7 +473,7 @@ function handleNyaitterImeBeforeInput(editor, event) {
                 ?.parentElement?.querySelector('.nyaitter-ime-button');
             if (button) {
                 updateNyaitterImeButton(button, false);
-                button.title = 'NyaitterIMEを読み込めませんでした';
+                button.title = t('editor.ime_load_failed');
                 button.setAttribute('aria-label', button.title);
             }
             renderDirectContentEditor(editor);
@@ -1057,7 +1058,7 @@ export function toggleMarkdownEditorPreview(editor) {
     const button = toolbarContainer?.querySelector('.markdown-preview-button');
     if (button) {
         button.classList.toggle('active', previewEnabled);
-        button.title = previewEnabled ? '編集に戻る' : 'プレビューを表示';
+        button.title = previewEnabled ? t('editor.back_to_edit') : t('editor.show_preview');
         button.setAttribute('aria-label', button.title);
         button.setAttribute('aria-pressed', String(previewEnabled));
     }
@@ -1081,8 +1082,8 @@ export function setupMarkdownEditorPreviewButton(container, editor) {
         previewButton.type = 'button';
         previewButton.className = 'markdown-preview-button float-left';
         previewButton.innerHTML = ICONS.preview;
-        previewButton.title = 'プレビューを表示';
-        previewButton.setAttribute('aria-label', 'プレビューを表示');
+        previewButton.title = t('editor.show_preview');
+        previewButton.setAttribute('aria-label', t('editor.show_preview'));
         previewButton.setAttribute('aria-pressed', 'false');
         const emojiButton = container.querySelector('.emoji-pic-button');
         if (emojiButton) {
@@ -1126,7 +1127,7 @@ export function setupMarkdownEditorPreviewButton(container, editor) {
         } catch (_) {
             editor._nyaitterImeEnabled = false;
             updateNyaitterImeButton(imeButton, false);
-            imeButton.title = 'NyaitterIMEを読み込めませんでした';
+            imeButton.title = t('editor.ime_load_failed');
             imeButton.setAttribute('aria-label', imeButton.title);
         } finally {
             imeButton.removeAttribute('aria-busy');

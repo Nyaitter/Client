@@ -1,3 +1,4 @@
+import { t } from '../../modules/i18n.js';
 import { api } from '../../api.js';
 
 const RANK_TYPES = Object.freeze(['trust']);
@@ -25,7 +26,7 @@ export function bindSettingsDisplayRanks(root, context, requestSave) {
         }
         if (failed && message) {
             message.hidden = false;
-            message.textContent = '表示ランクを保存できませんでした。';
+            message.textContent = t('displayranks.save_failed');
         }
     }, { signal: controller.signal });
 
@@ -42,10 +43,10 @@ export function bindSettingsDisplayRanks(root, context, requestSave) {
         container.replaceChildren();
         const heading = document.createElement('h4');
         heading.className = 'nui-section-title';
-        heading.textContent = '表示するランク';
+        heading.textContent = t('displayranks.heading');
         const help = document.createElement('p');
         help.className = 'settings-help-text nui-help-text';
-        help.textContent = '見た目だけを変更します。';
+        help.textContent = t('displayranks.help');
         message = document.createElement('p');
         message.className = 'settings-help-text nui-help-text';
         message.setAttribute('role', 'status');
@@ -62,7 +63,7 @@ export function bindSettingsDisplayRanks(root, context, requestSave) {
             select.dataset.displayRankSetting = type;
             const actualOption = document.createElement('option');
             actualOption.value = 'null';
-            actualOption.textContent = `本来のランク（${rankIdLabel(type, data[type].rank)}）`;
+            actualOption.textContent = t('displayranks.actual_rank', { label: rankIdLabel(type, data[type].rank) });
             select.append(actualOption);
             for (const rank of data.display_rank_options[type]) {
                 const option = document.createElement('option');

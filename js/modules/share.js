@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { copyTextToClipboard, showToast } from '../utils/helpers.js';
 
 const kindPath = { group: 'groups', stage: 'stages' };
@@ -16,13 +17,13 @@ function shareBase() {
 
 export function entityShareUrl(kind, id) {
     const path = kindPath[kind];
-    if (!path) throw new Error('共有URLを作成できません。');
+    if (!path) throw new Error(t('share.url_failed'));
     return `${shareBase()}/${path}/${encodeURIComponent(String(id))}`;
 }
 
 export async function copyEntityUrl(kind, id) {
     const url = entityShareUrl(kind, id);
     await copyTextToClipboard(url);
-    showToast('コピーしました');
+    showToast(t('share.copied'));
     return url;
 }

@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { api, apiRequest } from '../api.js';
 import { ICONS } from '../icons.js';
 import { escapeHTML, showAppConfirm } from '../utils/helpers.js';
@@ -14,7 +15,7 @@ export function endStage(stageId, { signal } = {}) {
     const id = String(stageId);
     if (endingStages.has(id)) return endingStages.get(id);
     const ending = (async () => {
-        if (!await showAppConfirm('ステージを終了しますか？ 参加者全員が退出します。')) return null;
+        if (!await showAppConfirm(t('stagemanage.end_confirm'))) return null;
         if (signal?.aborted) return null;
         return request(`/stages/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status: 'ended' }, signal });
     })();
@@ -23,30 +24,30 @@ export function endStage(stageId, { signal } = {}) {
     return ending;
 }
 
-const inviteFields = (prefix, { buttonLabel = '招待する', note = '候補を選んでから招待します。' } = {}) => `
-    <label for="${prefix}-search">ユーザーIDまたはハンドル</label>
-    <input id="${prefix}-search" class="nui-input" type="search" autocomplete="off" placeholder="#1234 または @handle" data-invite-input>
-    <div class="user-invite-suggestions" data-invite-suggestions role="listbox" aria-label="ユーザー候補"></div>
+const inviteFields = (prefix, { buttonLabel = t('stage.invite_button_default'), note = t('stage.invite_note_default') } = {}) => `
+    <label for="${prefix}-search">${t('stage.invite_id_label')}</label>
+    <input id="${prefix}-search" class="nui-input" type="search" autocomplete="off" placeholder="${t('group.invite_id_placeholder')}" data-invite-input>
+    <div class="user-invite-suggestions" data-invite-suggestions role="listbox" aria-label="${t('group.invite_suggestions_label')}"></div>
     <div class="user-invite-selected" data-invite-selected aria-live="polite"></div>
     <div class="user-invite-actions"><p class="stage-field-help nui-help-text">${escapeHTML(note)}</p><button class="settings-secondary-button nui-button-secondary" type="submit" data-invite-submit>${escapeHTML(buttonLabel)}</button></div>`;
 
 function stageManageMarkup(stage) {
     return `<section class="stage-manage-section">
-        <h3 class="stage-manage-heading">${ICONS.activity}<span>ステージの状態</span></h3>
-        <div class="stage-manage-row"><p>${stage.status === 'live' ? '開催中' : stage.status === 'ended' ? '終了' : '開始前'}</p>${stage.status === 'scheduled' ? '<button type="button" class="settings-primary-button nui-button" data-stage-status="live">開始する</button>' : ''}</div>
+        <h3 class="stage-manage-heading">${ICONS.activity}<span>${t('stagemanage.status_heading')}</span></h3>
+        <div class="stage-manage-row"><p>${stage.status === 'live' ? t('stage.status_live') : stage.status === 'ended' ? t('post.poll_ended') : t('stagemanage.status_upcoming')}</p>${stage.status === 'scheduled' ? `<button type="button" class="settings-primary-button nui-button" data-stage-status="live">${t('stage.submit_start')}</button>` : ''}</div>
     </section>
-    <label class="stage-guest-toggle nui-toggle"><span class="stage-guest-toggle-copy">ゲストユーザーの参加を許可<span class="stage-field-help nui-help-text">ゲストは視聴のみで、コメントやスピーカーへの昇格はできません。</span></span><input type="checkbox" data-stage-guest-toggle ${stage.allow_guest_join ? 'checked' : ''}><span class="settings-toggle-track" aria-hidden="true"></span></label>
+    <label class="stage-guest-toggle nui-toggle"><span class="stage-guest-toggle-copy">${t('stage.guest_toggle_label')}<span class="stage-field-help nui-help-text">${t('stage.guest_toggle_help')}</span></span><input type="checkbox" data-stage-guest-toggle ${stage.allow_guest_join ? 'checked' : ''}><span class="settings-toggle-track" aria-hidden="true"></span></label>
     <form class="stage-manage-section user-invite-form" data-stage-manage-invite>
-        <h3 class="stage-manage-heading">${ICONS.mention}<span>参加者を招待</span></h3>
+        <h3 class="stage-manage-heading">${ICONS.mention}<span>${t('stage.invite_section')}</span></h3>
         ${inviteFields('stage-manage-invite')}
     </form>
     <form class="stage-manage-section user-invite-form" data-stage-manage-speakers>
-        <h3 class="stage-manage-heading">${ICONS.microphone}<span>スピーカー</span></h3>
-        ${inviteFields('stage-manage-speaker', { buttonLabel: '発言権を更新', note: '一覧から外した人はリスナーになります。' })}
+        <h3 class="stage-manage-heading">${ICONS.microphone}<span>${t('callview.role_speaker')}</span></h3>
+        ${inviteFields('stage-manage-speaker', { buttonLabel: t('stagemanage.speaker_update_button'), note: t('stagemanage.speaker_note') })}
     </form>
     <section class="stage-manage-section">
-        <h3 class="stage-manage-heading">${ICONS.phoneEnd}<span>ステージを終了</span></h3>
-        <div class="stage-manage-row"><p>参加者全員が退出します。</p><button type="button" class="settings-secondary-button nui-button-secondary stage-end-button" data-stage-status="ended">終了する</button></div>
+        <h3 class="stage-manage-heading">${ICONS.phoneEnd}<span>${t('stagemanage.end_heading')}</span></h3>
+        <div class="stage-manage-row"><p>${t('stagemanage.end_note')}</p><button type="button" class="settings-secondary-button nui-button-secondary stage-end-button" data-stage-status="ended">${t('stagemanage.end_button')}</button></div>
     </section>
     <p data-stage-manage-error class="stage-feedback" role="status"></p>`;
 }
@@ -59,7 +60,7 @@ function bindStageManage(root, stage, stageId, { signal, onUpdated } = {}) {
     };
     let busy = false;
     const update = async payload => {
-        if (busy) throw new Error('処理中です。');
+        if (busy) throw new Error(t('stagemanage.busy'));
         busy = true;
         try {
             const data = payload.status === 'ended'
@@ -111,7 +112,7 @@ function bindStageManage(root, stage, stageId, { signal, onUpdated } = {}) {
             suggestions: speakerForm.querySelector('[data-invite-suggestions]'),
             selected: speakerForm.querySelector('[data-invite-selected]'),
             signal,
-            emptyText: 'スピーカーにするユーザーを検索してください。',
+            emptyText: t('stagemanage.speaker_empty'),
         });
         const ids = (stage.speaker_ids || []).map(Number);
         if (submit) submit.disabled = true;
@@ -146,10 +147,10 @@ export async function openStageManageModal(stageId, { onUpdated } = {}) {
     dialog.innerHTML = `<div class="stage-manage-card">
         <header class="stage-manage-header">
             <div class="stage-manage-heading">
-                <h2 id="stage-manage-title">${ICONS.sliders}<span>ステージを管理</span></h2>
-                <p>開始・終了や参加者を設定できます。</p>
+                <h2 id="stage-manage-title">${ICONS.sliders}<span>${t('stage.manage_button')}</span></h2>
+                <p>${t('stagemanage.subtitle')}</p>
             </div>
-            <button type="button" class="stage-manage-close" aria-label="閉じる">${ICONS.close}</button>
+            <button type="button" class="stage-manage-close" aria-label="${t('common.close')}">${ICONS.close}</button>
         </header>
         <div class="stage-manage-body" data-stage-manage-body><div class="spinner"></div></div>
     </div>`;

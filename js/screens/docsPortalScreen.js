@@ -1,3 +1,4 @@
+import { t } from '../modules/i18n.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { escapeHTML, getSafeConfiguredFileUrl, showLoading } from '../utils/helpers.js';
@@ -28,7 +29,7 @@ function renderPortalList(documents) {
     if (filtered.length === 0) {
         listContainer.innerHTML = `
             <div class="docs-empty nui-empty-text">
-                <p>該当するドキュメントが見つかりませんでした。</p>
+                <p>${t('docsportal.no_documents')}</p>
             </div>
         `;
         return;
@@ -62,10 +63,10 @@ function renderPortalList(documents) {
 export async function showDocsPortalScreen(showScreenFn) {
     DOM.pageHeader.innerHTML = `
         <div style="display: flex; align-items: center; gap: 0.8rem;">
-            <button type="button" class="back-button" onclick="history.back()" title="戻る" style="border:none; background:none; cursor:pointer; color:var(--text-color); display:flex; align-items:center; justify-content:center; padding:0.4rem; border-radius:50%;">
+            <button type="button" class="back-button" onclick="history.back()" title="${t('admin.back_label')}" style="border:none; background:none; cursor:pointer; color:var(--text-color); display:flex; align-items:center; justify-content:center; padding:0.4rem; border-radius:50%;">
                 ${ICONS.back}
             </button>
-            <h2 style="margin: 0; font-size: 1.25rem;">ドキュメント</h2>
+            <h2 style="margin: 0; font-size: 1.25rem;">${t('docsportal.title')}</h2>
         </div>
     `;
 
@@ -88,10 +89,10 @@ export async function showDocsPortalScreen(showScreenFn) {
         }
 
         const categories = [
-            { id: 'all', label: 'すべて' },
+            { id: 'all', label: t('timeline.tab.all') },
             ...[...new Set(cachedDocuments.map((d) => d.category).filter(Boolean))].map((cat) => ({
                 id: cat,
-                label: cat === 'developer' ? '開発者・API' : cat === 'guidelines' ? '規約・ガイド' : cat,
+                label: cat === 'developer' ? t('docsportal.cat_developer') : cat === 'guidelines' ? t('docsportal.cat_guidelines') : cat,
             })),
         ];
 
@@ -99,7 +100,7 @@ export async function showDocsPortalScreen(showScreenFn) {
             <div class="docs-controls">
                 <div class="docs-search-wrapper">
                     <span class="docs-search-icon">${ICONS.search}</span>
-                    <input type="search" id="docs-portal-search-input" class="docs-search-input" placeholder="検索" value="${escapeHTML(currentSearchQuery)}" />
+                    <input type="search" id="docs-portal-search-input" class="docs-search-input" placeholder="${t('settings.account.search_button')}" value="${escapeHTML(currentSearchQuery)}" />
                 </div>
                 ${categories.length > 2 ? `
                     <div class="docs-category-tags" role="tablist">
@@ -137,7 +138,7 @@ export async function showDocsPortalScreen(showScreenFn) {
         console.error('[docs] Failed to load documents from server:', err);
         contentDiv.innerHTML = `
             <div class="docs-empty nui-empty-text">
-                <p class="error-message">ドキュメント情報の読み込みに失敗しました。</p>
+                <p class="error-message">${t('docsportal.load_failed')}</p>
             </div>
         `;
     } finally {

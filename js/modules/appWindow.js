@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { ICONS } from '../icons.js';
 
 // Tab-compatible replacement for the original floating AppWindow. The original
@@ -18,7 +19,7 @@ export class AppWindow {
 
         this.controls = document.createElement('div');
         this.controls.className = 'app-window-controls';
-        this.controls.innerHTML = `<button type="button" data-window-action="close" aria-label="閉じる" title="閉じる">${ICONS.close}</button>`;
+        this.controls.innerHTML = `<button type="button" data-window-action="close" aria-label="${t('common.close')}" title="${t('common.close')}">${ICONS.close}</button>`;
         this.controls.querySelector('[data-window-action="close"]')?.addEventListener('click', () => this.close());
         header?.append(this.controls);
 

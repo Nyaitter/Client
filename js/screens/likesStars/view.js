@@ -1,3 +1,4 @@
+import { t } from '../../modules/i18n.js';
 import { DOM } from '../../dom.js';
 import { escapeHTML } from '../../utils/helpers.js';
 
@@ -7,7 +8,7 @@ export function renderHeader(title) {
 
 export function renderLoggedOut(content) {
     if (content) {
-        content.innerHTML = '<p class="list-empty-message nui-empty-text">ログインが必要です。</p>';
+        content.innerHTML = `<p class="list-empty-message nui-empty-text">${t('common.login_required')}</p>`;
     }
 }
 

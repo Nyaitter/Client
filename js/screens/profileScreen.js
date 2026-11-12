@@ -1,3 +1,4 @@
+import { t } from '../modules/i18n.js';
 import { DOM } from '../dom.js';
 import { ICONS, decorateMenuButtons } from '../icons.js';
 import { api, apiRequest } from '../api.js';
@@ -334,12 +335,12 @@ function openProfileTimelineModeMenu(button, user, tab) {
           ? getProfileGroupOrder(user.id, groupId)
           : getProfileTimelineMode(user.id, tab);
     const options = (tab === 'posts' || isGroupTab) ? [
-        { value: 'latest', label: '最新', icon: 'post' },
-        { value: 'oldest', label: '最古', icon: 'post' },
-        { value: 'recommended', label: 'おすすめ', icon: 'stars' },
+        { value: 'latest', label: t('profile.sort_latest'), icon: 'post' },
+        { value: 'oldest', label: t('profile.sort_oldest'), icon: 'post' },
+        { value: 'recommended', label: t('timeline.tab.recommended'), icon: 'stars' },
     ] : [
-        { value: 'posts_only', label: 'ポスト', icon: 'post' },
-        { value: 'replies_only', label: '返信', icon: 'reply' },
+        { value: 'posts_only', label: t('composer.submit'), icon: 'post' },
+        { value: 'replies_only', label: t('dm.reply_button'), icon: 'reply' },
     ];
     menu.innerHTML = options.map((option) => `<button type="button" class="${option.value === mode ? 'active' : ''}" data-profile-timeline-mode="${option.value}"><span class="menu-item-icon" aria-hidden="true">${ICONS[option.icon]}</span><span class="menu-item-label">${option.label}</span></button>`).join('');
     document.body.appendChild(menu);
@@ -361,7 +362,7 @@ function closeProfileMediaModeMenu() {
 function updateProfileMediaLabel(user) {
     const pageTitleSub = document.getElementById('page-title-sub');
     if (!pageTitleSub) return;
-    pageTitleSub.textContent = `${user.mediaCount || 0} 件の画像と動画`;
+    pageTitleSub.textContent = t('profile.media_subtitle', { count: user.mediaCount || 0 });
 }
 
 function openProfileMediaModeMenu(button, user) {
@@ -370,9 +371,9 @@ function openProfileMediaModeMenu(button, user) {
     menu.className = 'group-timeline-mode-menu profile-media-mode-menu';
     const mode = getProfileMediaMode(user.id);
     const options = [
-        { value: 'all', label: 'すべて', icon: 'home' },
-        { value: 'image', label: '画像', icon: 'attachment' },
-        { value: 'video', label: '動画', icon: 'preview' },
+        { value: 'all', label: t('timeline.tab.all'), icon: 'home' },
+        { value: 'image', label: t('profile.media_image'), icon: 'attachment' },
+        { value: 'video', label: t('profile.media_video'), icon: 'preview' },
     ];
     menu.innerHTML = options.map((option) => `<button type="button" class="${option.value === mode ? 'active' : ''}" data-profile-media-mode="${option.value}"><span class="menu-item-icon" aria-hidden="true">${ICONS[option.icon]}</span><span class="menu-item-label">${option.label}</span></button>`).join('');
     document.body.appendChild(menu);
@@ -518,7 +519,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         const userResult = await getPublicProfile(userId);
         const { data: user, error } = userResult;
         if (error || !user) {
-            profileHeader.innerHTML = '<h2>ユーザーが見つかりません</h2>';
+            profileHeader.innerHTML = `<h2>${t('profile.user_not_found')}</h2>`;
             showLoading(false);
             return;
         }
@@ -550,8 +551,8 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                 menuButton.type = 'button';
                 menuButton.className = 'profile-menu-button dm-button';
                 menuButton.innerHTML = ICONS.more;
-                menuButton.title = '管理者メニュー';
-                menuButton.setAttribute('aria-label', '管理者メニュー');
+                menuButton.title = t('profile.admin_menu');
+                menuButton.setAttribute('aria-label', t('profile.admin_menu'));
                 menuButton.onclick = (event) => {
                     event.stopPropagation();
                     openProfileMenu(user, menuButton);
@@ -560,7 +561,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
             }
             const freezeNotice = document.createElement('div');
             freezeNotice.className = 'freeze-notice';
-            freezeNotice.innerHTML = `このユーザーは<a href="rule" target="_blank" rel="noopener noreferrer">Nyaitterルール</a>に違反したため凍結されています。`;
+            freezeNotice.innerHTML = t('profile.frozen_notice', { link: `<a href="rule" target="_blank" rel="noopener noreferrer">${t('profile.rules_link_text')}</a>` });
             profileTabs.innerHTML = '';
             profileTabs.insertAdjacentElement('afterend', freezeNotice);
 
@@ -571,17 +572,17 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         let blockNoticeHtml = '';
         if (getCurrentUser() && !isCurrentUserProfile(user)) {
             if (userIdListIncludes(getCurrentUser().block, user.id)) {
-                blockNoticeHtml += `<div class="freeze-notice">あなたはこのユーザーをブロックしています。ポスト/メッセージは表示されません。</div>`;
+                blockNoticeHtml += `<div class="freeze-notice">${t('profile.blocking_notice')}</div>`;
             }
             if (user.relationship?.profile_blocks_viewer) {
-                blockNoticeHtml += `<div class="freeze-notice">このユーザーはあなたをブロックしています。ポスト/メッセージは表示されません。</div>`;
+                blockNoticeHtml += `<div class="freeze-notice">${t('profile.blocked_by_notice')}</div>`;
             }
             if (user.lock) {
-                blockNoticeHtml += `<div class="freeze-notice">このユーザーはポストを非公開に設定しています。表示するには相互フォロー状態になってください。</div>`;
+                blockNoticeHtml += `<div class="freeze-notice">${t('profile.private_posts_mutual_notice')}</div>`;
             }
         } else if (!getCurrentUser()) {
             if (user.lock) {
-                blockNoticeHtml += `<div class="freeze-notice">このユーザーはポストを非公開に設定しています。</div>`;
+                blockNoticeHtml += `<div class="freeze-notice">${t('profile.private_posts_notice')}</div>`;
             }
         }
         if (blockNoticeHtml) {
@@ -594,7 +595,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         profileHeader.classList.toggle('has-profile-banner', Boolean(headerImageUrl));
         document.body.classList.toggle('profile-has-banner', Boolean(headerImageUrl));
         const profileBannerHtml = headerImageUrl
-            ? `<div class="profile-banner nui-cover"><img src="${escapeHTML(headerImageUrl)}" alt="${escapeHTML(user.name)}のヘッダー画像"></div>`
+            ? `<div class="profile-banner nui-cover"><img src="${escapeHTML(headerImageUrl)}" alt="${t('profile.header_image_alt', { name: escapeHTML(user.name) })}"></div>`
             : '';
 
         profileHeader.classList.add('profile-hero');
@@ -606,14 +607,14 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                 <div class="profile-info profile-hero-copy">
                     <div class="profile-identity"><h2>
                         ${getEmoji(escapeHTML(user.name))}
-                        ${user.admin ? `<img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">` : user.verify ? `<img src="icons/verify.png" class="verify-badge" title="認証済み">` : ''}
-                        ${user.is_imposter ? '<span class="imposter-badge" title="偽のNyaitterID">インポスター</span>' : ''}
+                        ${user.admin ? `<img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">` : user.verify ? `<img src="icons/verify.png" class="verify-badge" title="${t('settings.verification.verified')}">` : ''}
+                        ${user.is_imposter ? `<span class="imposter-badge" title="${t('profile.imposter_title')}">${t('post.imposter_badge')}</span>` : ''}
                     </h2>
                     <div class="user-id" title="Nyaitter ID">${getNyaitterId(user)} ${user.visibility?.scid === 'public' && user.scid ? `(<a href="https://scratch.mit.edu/users/${user.scid}" class="scidlink" target="_blank" rel="noopener noreferrer">@${user.scid}</a>)` : ''}</div>
                     </div>
                     ${getGroupBadgesHtml(user, { maxCount: Infinity })}
                     <p class="user-me">${userMeHtml}</p>
-                    <div class="profile-joined" aria-label="アカウント作成日">
+                    <div class="profile-joined" aria-label="${t('profile.joined_label')}">
                         <svg class="calendar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                             <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -624,7 +625,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                             const value = user.created_at;
                             const d = value ? new Date(value) : null;
                             if (!d || Number.isNaN(d.getTime())) {
-                                return 'Nyaitterを利用しています';
+                                return t('profile.using_nyaitter');
                             }
                             const parts = new Intl.DateTimeFormat('ja-JP', {
                                 timeZone: 'Asia/Tokyo',
@@ -633,12 +634,12 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                                 day: 'numeric',
                             }).formatToParts(d);
                             const get = (type) => parts.find((part) => part.type === type)?.value;
-                            return `${get('year')}年${get('month')}月${get('day')}日よりNyaitterを利用しています`;
+                            return t('profile.using_since', { year: get('year'), month: get('month'), day: get('day') });
                         })()}</span>
                     </div>
                     <div class="user-stats">
-                        <a href="#profile/${user.id}/following"><strong>${user.following_count || 0}</strong> フォロー中</a>
-                        <a href="#profile/${user.id}/followers" id="follower-count"><strong>${followerCount}</strong> フォロワー</a>
+                        <a href="#profile/${user.id}/following"><strong>${user.following_count || 0}</strong> ${t('timeline.tab.following')}</a>
+                        <a href="#profile/${user.id}/followers" id="follower-count"><strong>${followerCount}</strong> ${t('profile.followers_label')}</a>
                     </div>
                 </div>
                 <div id="profile-actions" class="profile-actions profile-hero-actions"></div>
@@ -660,7 +661,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
 
                 const dmButton = document.createElement('button');
                 dmButton.className = 'dm-button';
-                dmButton.title = 'メッセージを送信';
+                dmButton.title = t('profile.dm_send_title');
                 dmButton.innerHTML = ICONS.dm;
                 dmButton.onclick = () => handleDmButtonClick(userId);
                 actionsContainer.appendChild(dmButton);
@@ -677,8 +678,8 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                 menuButton.type = 'button';
                 menuButton.className = 'profile-menu-button dm-button';
                 menuButton.innerHTML = ICONS.more;
-                menuButton.title = 'プロフィールメニュー';
-                menuButton.setAttribute('aria-label', 'プロフィールメニュー');
+                menuButton.title = t('profile.menu_title');
+                menuButton.setAttribute('aria-label', t('profile.menu_title'));
                 menuButton.onclick = (e) => {
                     e.stopPropagation();
                     openProfileMenu(user, menuButton);
@@ -745,7 +746,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
         restoreScrollPosition(getScrollRouteKey(currentHash));
         updateProfileScrollProgress();
     } catch (err) {
-        profileHeader.innerHTML = '<h2>プロフィールの読み込みに失敗しました</h2>';
+        profileHeader.innerHTML = `<h2>${t('profile.load_failed')}</h2>`;
         console.error(err);
     } finally {
         showLoading(false);
@@ -775,9 +776,9 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
     if (isFollowListActive) {
         pageTitleSub.textContent = `${getNyaitterId(user)}`;
     } else if (subpage === 'media') {
-        pageTitleSub.textContent = `${user.mediaCount || 0} 件の画像と動画`;
+        pageTitleSub.textContent = t('profile.media_subtitle', { count: user.mediaCount || 0 });
     } else {
-        pageTitleSub.textContent = `${user.postCount || 0} 件のポスト`;
+        pageTitleSub.textContent = t('profile.posts_subtitle', { count: user.postCount || 0 });
     }
 
     const existingSubTabs = document.getElementById('profile-sub-tabs-container');
@@ -790,8 +791,8 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
         subTabsContainer.id = 'profile-sub-tabs-container';
         subTabsContainer.innerHTML = `
             <div class="profile-sub-tabs nui-tabs" data-nui="tabs">
-                <button class="tab-button nui-tab ${subpage === 'following' ? 'active is-active' : ''}" data-sub-tab="following">フォロー中</button>
-                <button class="tab-button nui-tab ${subpage === 'followers' ? 'active is-active' : ''}" data-sub-tab="followers">フォロワー</button>
+                <button class="tab-button nui-tab ${subpage === 'following' ? 'active is-active' : ''}" data-sub-tab="following">${t('timeline.tab.following')}</button>
+                <button class="tab-button nui-tab ${subpage === 'followers' ? 'active is-active' : ''}" data-sub-tab="followers">${t('profile.followers_label')}</button>
             </div>`;
 
         DOM.pageHeader.parentNode.insertBefore(
@@ -845,7 +846,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'likes':
                 if (user.visibility?.likes !== 'public') {
                     contentDiv.innerHTML =
-                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">🔒 このユーザーのいいねは非公開です。</p>';
+                        `<p class="nui-empty-text" style="padding: 2rem; text-align:center;">${t('profile.likes_private')}</p>`;
                     break;
                 }
                 await loadPostsWithPagination(contentDiv, 'likes', {
@@ -857,7 +858,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'stars':
                 if (user.visibility?.stars !== 'public') {
                     contentDiv.innerHTML =
-                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">🔒 このユーザーのお気に入りは非公開です。</p>';
+                        `<p class="nui-empty-text" style="padding: 2rem; text-align:center;">${t('profile.stars_private')}</p>`;
                     break;
                 }
                 await loadPostsWithPagination(contentDiv, 'stars', {
@@ -869,7 +870,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'following':
                 if (user.visibility?.following !== 'public') {
                     contentDiv.innerHTML =
-                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">🔒 このユーザーのフォローリストは非公開です。</p>';
+                        `<p class="nui-empty-text" style="padding: 2rem; text-align:center;">${t('profile.following_private')}</p>`;
                     break;
                 }
                 await loadUsersWithPagination(contentDiv, 'follows', {
@@ -883,7 +884,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'followers':
                 if (user.visibility?.followers !== 'public') {
                     contentDiv.innerHTML =
-                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">🔒 このユーザーのフォロワーリストは非公開です。</p>';
+                        `<p class="nui-empty-text" style="padding: 2rem; text-align:center;">${t('profile.followers_private')}</p>`;
                     break;
                 }
                 await loadUsersWithPagination(contentDiv, 'followers', {
@@ -902,7 +903,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             case 'scheduled': {
                 if (!isCurrentUserProfile(user)) {
                     contentDiv.innerHTML =
-                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">予約済みのポストはありません。</p>';
+                        `<p class="nui-empty-text" style="padding: 2rem; text-align:center;">${t('profile.no_scheduled_posts')}</p>`;
                     break;
                 }
                 const { data, error } = await apiRequest(
@@ -913,7 +914,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                 const scheduledPosts = data?.posts || [];
                 if (scheduledPosts.length === 0) {
                     contentDiv.innerHTML =
-                        '<p class="nui-empty-text" style="padding: 2rem; text-align:center;">予約済みのポストはありません。</p>';
+                        `<p class="nui-empty-text" style="padding: 2rem; text-align:center;">${t('profile.no_scheduled_posts')}</p>`;
                     break;
                 }
                 for (const post of scheduledPosts) {
@@ -925,7 +926,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
             default:
                 if (String(subpage).startsWith('group:')) {
                     const groupId = String(subpage).slice('group:'.length);
-                    if (!groupId) throw new Error('グループIDが正しくありません。');
+                    if (!groupId) throw new Error(t('profile.group_id_invalid'));
                     const order = getProfileGroupOrder(user.id, groupId);
                     await loadPostsWithPagination(contentDiv, 'group_posts', {
                         groupId,
@@ -940,7 +941,7 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                 break;
         }
     } catch (err) {
-        contentDiv.innerHTML = `<p class="error-message">コンテンツの読み込みに失敗しました。</p>`;
+        contentDiv.innerHTML = `<p class="error-message">${t('profile.content_load_failed')}</p>`;
         console.error('loadProfileTabContent error:', err);
     }
 }
@@ -1008,7 +1009,7 @@ export async function loadMediaGrid(container, options = {}) {
 
             if (error) {
                 console.error('メディアの読み込みに失敗:', error);
-                trigger.innerHTML = '読み込みに失敗しました。';
+                trigger.innerHTML = t('profile.load_failed_short');
             } else {
                 if (mediaItems && mediaItems.length > 0) {
                     for (const item of mediaItems) {
@@ -1029,7 +1030,7 @@ export async function loadMediaGrid(container, options = {}) {
                                 { id: item.file_id },
                                 publicUrl,
                             );
-                            image.alt = '投稿メディア';
+                            image.alt = t('profile.post_media_alt');
                             itemLink.appendChild(image);
                         } else if (item.file_type === 'video') {
                             const video = document.createElement('video');
@@ -1054,8 +1055,8 @@ export async function loadMediaGrid(container, options = {}) {
                 if (!hasMore) {
                     trigger.innerHTML =
                         gridContainer.querySelectorAll('.media-grid-item').length === 0
-                            ? '<p class="nui-empty-text" style="padding:2rem;text-align:center;">まだメディアはありません。</p>'
-                            : 'すべてのメディアを読み込みました';
+                            ? `<p class="nui-empty-text" style="padding:2rem;text-align:center;">${t('profile.no_media')}</p>`
+                            : t('profile.all_media_loaded');
                     mediaObserver?.disconnect();
                 } else {
                     trigger.innerHTML = '';
@@ -1100,10 +1101,10 @@ export function openProfileMenu(targetUser, triggerElement) {
             userIdListIncludes(getCurrentUser().block, targetUser.id);
         const blockBtn = document.createElement('button');
         blockBtn.className = 'block-menu-btn';
-        blockBtn.textContent = isBlocked ? 'ブロック解除' : 'ブロック';
+        blockBtn.textContent = isBlocked ? t('profile.unblock') : t('profile.block');
         blockBtn.onclick = async () => {
-            const actionLabel = isBlocked ? 'ブロックを解除' : 'ブロック';
-            if (!(await showAppConfirm(`このユーザーを${actionLabel}しますか？`))) return;
+            const actionLabel = isBlocked ? t('profile.unblock_action') : t('profile.block_action');
+            if (!(await showAppConfirm(t('profile.block_confirm', { action: actionLabel })))) return;
 
             blockBtn.disabled = true;
             const currentUser = getCurrentUser();
@@ -1129,7 +1130,7 @@ export function openProfileMenu(targetUser, triggerElement) {
                 await router();
             } catch (e) {
                 console.error('ブロック操作失敗:', e);
-                showAppAlert('ブロック操作に失敗しました');
+                showAppAlert(t('profile.block_failed'));
                 blockBtn.disabled = false;
             }
         };
@@ -1137,12 +1138,12 @@ export function openProfileMenu(targetUser, triggerElement) {
 
         const reportBtn = document.createElement('button');
         reportBtn.className = 'report-btn';
-        reportBtn.textContent = '報告する';
+        reportBtn.textContent = t('report.title');
         reportBtn.onclick = () => {
             openReportModal({
                 targetKind: 'user',
                 targetId: targetUser.id,
-                targetLabel: `ユーザー @${targetUser.scid || targetUser.id}`,
+                targetLabel: t('profile.report_target_user', { id: targetUser.scid || targetUser.id }),
             });
             menu.remove();
         };
@@ -1152,23 +1153,23 @@ export function openProfileMenu(targetUser, triggerElement) {
     if (getCurrentUser()?.admin) {
         const verifyBtn = document.createElement('button');
         verifyBtn.className = 'verify-btn';
-        verifyBtn.textContent = targetUser.verify ? '認証を取り消す' : 'このユーザーを認証';
+        verifyBtn.textContent = targetUser.verify ? t('profile.verify_remove') : t('profile.verify_user');
         verifyBtn.onclick = () => void adminToggleVerify(targetUser);
 
         const sendNoticeBtn = document.createElement('button');
         sendNoticeBtn.className = 'notice-btn';
-        sendNoticeBtn.textContent = '通知を送信';
+        sendNoticeBtn.textContent = t('profile.send_notice');
         sendNoticeBtn.onclick = () => void adminSendNotice(targetUser.id);
 
         const shadowBtn = document.createElement('button');
         shadowBtn.className = 'delete-btn shadow-btn';
-        shadowBtn.textContent = targetUser.shadow ? '検索除外を解除' : '検索除外';
+        shadowBtn.textContent = targetUser.shadow ? t('profile.shadow_remove') : t('profile.shadow_add');
         shadowBtn.onclick = () => void adminToggleShadow(targetUser);
 
         const isFrozen = targetUser.account_state === 'frozen' || Boolean(targetUser.freeze);
         const freezeBtn = document.createElement('button');
         freezeBtn.className = isFrozen ? 'freeze-btn' : 'delete-btn freeze-btn';
-        freezeBtn.textContent = isFrozen ? '凍結を解除' : 'アカウントを凍結';
+        freezeBtn.textContent = isFrozen ? t('profile.unfreeze') : t('admin.action_freeze_title');
         freezeBtn.onclick = () => {
             if (isFrozen) {
                 void adminUnfreezeAccount(targetUser.id);
@@ -1205,10 +1206,10 @@ export function updateNotifyButtonState(button, mode = 'none') {
     const isActive = mode && mode !== 'none';
     button.classList.toggle('is-active', isActive);
 
-    let title = '通知設定: 通知しない';
-    if (mode === 'important') title = '通知設定: 重要なポストを通知';
-    else if (mode === 'media') title = '通知設定: メディアを通知';
-    else if (mode === 'all') title = '通知設定: 全てのポストを通知';
+    let title = t('profile.notify_none_title');
+    if (mode === 'important') title = t('profile.notify_important_title');
+    else if (mode === 'media') title = t('profile.notify_media_title');
+    else if (mode === 'all') title = t('profile.notify_all_title');
 
     button.title = title;
     button.setAttribute('aria-label', title);
@@ -1228,10 +1229,10 @@ export function openNotificationMenu(targetUser, trigger) {
     menu.className = 'post-menu profile-notify-menu is-visible';
 
     const options = [
-        { mode: 'none', title: '通知しない', desc: '', icon: 'notifications' },
-        { mode: 'important', title: '重要なポストを通知', desc: '見出しの含まれるポストを通知', icon: 'megaphone' },
-        { mode: 'media', title: 'メディアを通知', desc: '添付ファイルのあるポストを通知', icon: 'attachment' },
-        { mode: 'all', title: '全てのポストを通知', desc: '返信は対象外', icon: 'reply' },
+        { mode: 'none', title: t('profile.notify_none'), desc: '', icon: 'notifications' },
+        { mode: 'important', title: t('profile.notify_important'), desc: t('profile.notify_important_desc'), icon: 'megaphone' },
+        { mode: 'media', title: t('profile.notify_media'), desc: t('profile.notify_media_desc'), icon: 'attachment' },
+        { mode: 'all', title: t('profile.notify_all'), desc: t('profile.notify_all_desc'), icon: 'reply' },
     ];
 
     options.forEach((opt) => {
@@ -1323,6 +1324,6 @@ async function setUserNotificationMode(targetUser, mode, trigger) {
         updateAccountData(getCurrentUser());
         updateNotifyButtonState(trigger, mode);
     } else {
-        showAppAlert('通知設定の保存に失敗しました');
+        showAppAlert(t('profile.notify_save_failed'));
     }
 }

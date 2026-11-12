@@ -1,3 +1,4 @@
+import { t } from './modules/i18n.js';
 import { DOM } from './dom.js';
 import {
     getCurrentUser,
@@ -194,9 +195,9 @@ export async function router() {
     } catch (error) {
         if (generation !== routerGeneration) return;
         console.error('Routing error:', error);
-        DOM.pageHeader.innerHTML = `<h2>エラー</h2>`;
+        DOM.pageHeader.innerHTML = `<h2>${t('router.error_title')}</h2>`;
         showScreen('main-screen');
-        DOM.timeline.innerHTML = `<p class="error-message">ページの読み込み中にエラーが発生しました。</p>`;
+        DOM.timeline.innerHTML = `<p class="error-message">${t('router.load_error')}</p>`;
     } finally {
         if (generation !== routerGeneration) return;
         // 復元キーは描画後の状態で確定させる（タイムラインのタブは描画中に

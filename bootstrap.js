@@ -1,5 +1,6 @@
 (() => {
     'use strict';
+    const lt = (key, params) => globalThis.NyaitterI18n?.t(key, params) ?? String(key || '');
 
     const config = globalThis.NyaitterClientConfig;
     if (!config) return;
@@ -21,7 +22,7 @@
             const script = document.createElement('script');
             script.src = src;
             script.onload = resolve;
-            script.onerror = () => reject(new Error(`${src} の読み込みに失敗しました。`));
+            script.onerror = () => reject(new Error(lt('bootstrap.load_failed', { src })));
             document.head.appendChild(script);
         });
     }
@@ -30,7 +31,7 @@
     function loadFirst(urls) {
         let index = 0;
         const attempt = () => {
-            if (index >= urls.length) return Promise.reject(new Error('読み込める URL がありませんでした。'));
+            if (index >= urls.length) return Promise.reject(new Error(lt('bootstrap.no_url')));
             const url = urls[index++];
             return loadScript(url).then(() => url, attempt);
         };
@@ -50,7 +51,7 @@
             link.onload = () => resolve();
             link.onerror = () => {
                 link.remove();
-                reject(new Error(`${link.href} の読み込みに失敗しました。`));
+                reject(new Error(lt('bootstrap.load_failed', { src: link.href })));
             };
             document.head.appendChild(link);
         });

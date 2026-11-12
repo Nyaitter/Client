@@ -1,3 +1,4 @@
+import { t } from '../modules/i18n.js';
 import { apiRequest } from '../api.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
@@ -18,23 +19,23 @@ async function request(path, options = {}) {
 }
 
 function visibilityLabel(stage) {
-    if (stage.visibility === 'group') return 'グループ限定';
-    if (stage.visibility === 'private') return '招待した人のみ';
-    return '公開';
+    if (stage.visibility === 'group') return t('stage.visibility_group_only');
+    if (stage.visibility === 'private') return t('stage.visibility_invited');
+    return t('group.visibility.open');
 }
 
 function stageTime(stage) {
-    if (stage.status === 'live') return '開催中';
-    if (stage.status === 'ended') return '終了';
+    if (stage.status === 'live') return t('stage.status_live');
+    if (stage.status === 'ended') return t('post.poll_ended');
     return new Date(stage.scheduled_at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function inviteBlock(prefix, { submit = false, heading = null, buttonLabel = '招待する', note = '候補を選んでから招待します。' } = {}) {
+function inviteBlock(prefix, { submit = false, heading = null, buttonLabel = t('stage.invite_button_default'), note = t('stage.invite_note_default') } = {}) {
     return `
         ${heading ? `<h4 id="${prefix}-invite-heading" class="nui-section-title">${escapeHTML(heading)}</h4>` : ''}
-        <label for="${prefix}-invite-search">ユーザーIDまたはハンドル</label>
-        <input id="${prefix}-invite-search" class="nui-input" type="search" autocomplete="off" placeholder="#1234 または @handle" data-invite-input>
-        <div class="user-invite-suggestions" data-invite-suggestions role="listbox" aria-label="ユーザー候補"></div>
+        <label for="${prefix}-invite-search">${t('stage.invite_id_label')}</label>
+        <input id="${prefix}-invite-search" class="nui-input" type="search" autocomplete="off" placeholder="${t('group.invite_id_placeholder')}" data-invite-input>
+        <div class="user-invite-suggestions" data-invite-suggestions role="listbox" aria-label="${t('group.invite_suggestions_label')}"></div>
         <div class="user-invite-selected" data-invite-selected aria-live="polite"></div>
         <div class="user-invite-actions"><p class="stage-field-help nui-help-text">${escapeHTML(note)}</p>${submit ? `<button class="settings-secondary-button nui-button-secondary" type="submit" data-invite-submit>${escapeHTML(buttonLabel)}</button>` : ''}</div>`;
 }
@@ -56,32 +57,32 @@ function createStageDialog(context) {
     dialog.className = 'stage-create-dialog nui-modal';
     dialog.setAttribute('aria-labelledby', 'stage-create-title');
     dialog.innerHTML = `
-        <header class="stage-dialog-header"><h2 id="stage-create-title" class="nui-modal-title">ステージを作成</h2><button type="button" class="stage-close-button" data-stage-close aria-label="閉じる">×</button></header>
+        <header class="stage-dialog-header"><h2 id="stage-create-title" class="nui-modal-title">${t('stage.create_title')}</h2><button type="button" class="stage-close-button" data-stage-close aria-label="${t('common.close')}">×</button></header>
         <form data-stage-create class="group-ui-form stage-create-form nui-form" data-nui="form">
             <div class="stage-dialog-body">
                 <section class="stage-form-section nui-section" aria-labelledby="stage-section-basic" data-nui="section">
-                    <h3 class="stage-form-section-title nui-section-title" id="stage-section-basic">基本情報</h3>
-                    <label for="stage-create-name">ステージ名<input id="stage-create-name" name="name" class="nui-input" maxlength="50" placeholder="どんな話をしますか？" required></label>
-                    <label for="stage-create-description">説明<textarea id="stage-create-description" name="description" class="nui-input" maxlength="2000" rows="3" placeholder="話したいことや参加する人への案内（任意）"></textarea></label>
+                    <h3 class="stage-form-section-title nui-section-title" id="stage-section-basic">${t('stage.basic_info')}</h3>
+                    <label for="stage-create-name">${t('stage.name_label')}<input id="stage-create-name" name="name" class="nui-input" maxlength="50" placeholder="${t('stage.name_placeholder')}" required></label>
+                    <label for="stage-create-description">${t('report.description_label')}<textarea id="stage-create-description" name="description" class="nui-input" maxlength="2000" rows="3" placeholder="${t('stage.description_placeholder')}"></textarea></label>
                 </section>
                 <section class="stage-form-section nui-section" aria-labelledby="stage-section-visibility" data-nui="section">
-                    <h3 class="stage-form-section-title nui-section-title" id="stage-section-visibility">公開範囲</h3>
-                    <label for="stage-create-visibility">公開範囲<select id="stage-create-visibility" name="visibility" class="nui-input"><option value="public">公開</option><option value="private">招待した人のみ</option><option value="group">グループ</option></select></label>
-                    <label for="stage-create-group" data-stage-group-field hidden>対象グループ<select id="stage-create-group" name="group_id" class="nui-input"></select><span class="stage-field-help nui-help-text">選択したグループのメンバーだけが閲覧・参加できます。</span></label>
-                    <label class="stage-guest-toggle nui-toggle"><span class="stage-guest-toggle-copy">ゲストユーザーの参加を許可<span class="stage-field-help nui-help-text">ゲストは視聴のみで、コメントやスピーカーへの昇格はできません。</span></span><input type="checkbox" name="allow_guest_join"><span class="settings-toggle-track" aria-hidden="true"></span></label>
+                    <h3 class="stage-form-section-title nui-section-title" id="stage-section-visibility">${t('group.visibility_label')}</h3>
+                    <label for="stage-create-visibility">${t('group.visibility_label')}<select id="stage-create-visibility" name="visibility" class="nui-input"><option value="public">${t('group.visibility.open')}</option><option value="private">${t('stage.visibility_invited')}</option><option value="group">${t('nav.groups')}</option></select></label>
+                    <label for="stage-create-group" data-stage-group-field hidden>${t('stage.group_field_label')}<select id="stage-create-group" name="group_id" class="nui-input"></select><span class="stage-field-help nui-help-text">${t('stage.group_field_help')}</span></label>
+                    <label class="stage-guest-toggle nui-toggle"><span class="stage-guest-toggle-copy">${t('stage.guest_toggle_label')}<span class="stage-field-help nui-help-text">${t('stage.guest_toggle_help')}</span></span><input type="checkbox" name="allow_guest_join"><span class="settings-toggle-track" aria-hidden="true"></span></label>
                 </section>
                 <section class="stage-form-section nui-section" aria-labelledby="stage-section-schedule" data-nui="section">
-                    <h3 class="stage-form-section-title nui-section-title" id="stage-section-schedule">開始</h3>
-                    <label for="stage-create-scheduled">開始日時<input id="stage-create-scheduled" name="scheduled_at" type="datetime-local" class="nui-input"><span class="stage-field-help nui-help-text">未指定ならすぐに開始します。</span></label>
+                    <h3 class="stage-form-section-title nui-section-title" id="stage-section-schedule">${t('stage.schedule_section')}</h3>
+                    <label for="stage-create-scheduled">${t('stage.scheduled_label')}<input id="stage-create-scheduled" name="scheduled_at" type="datetime-local" class="nui-input"><span class="stage-field-help nui-help-text">${t('stage.scheduled_help')}</span></label>
                 </section>
                 <details class="stage-form-options">
-                    <summary class="stage-form-section-title nui-section-title">参加者を招待</summary>
+                    <summary class="stage-form-section-title nui-section-title">${t('stage.invite_section')}</summary>
                     <div class="user-invite-form" data-stage-invite>${inviteBlock('create')}</div>
                 </details>
             </div>
             <div class="stage-dialog-footer">
                 <p class="stage-feedback" data-stage-create-error role="alert"></p>
-                <div class="stage-dialog-actions"><button type="button" class="settings-secondary-button nui-button-secondary" data-stage-close>キャンセル</button><button type="submit" class="settings-primary-button nui-button" data-nui="button" data-stage-submit>開始する</button></div>
+                <div class="stage-dialog-actions"><button type="button" class="settings-secondary-button nui-button-secondary" data-stage-close>${t('common.cancel')}</button><button type="submit" class="settings-primary-button nui-button" data-nui="button" data-stage-submit>${t('stage.submit_start')}</button></div>
             </div>
         </form>`;
     document.body.append(dialog);
@@ -96,18 +97,18 @@ function createStageDialog(context) {
     const loadGroups = async () => {
         if (groupsLoaded) return;
         groupsLoaded = true;
-        groupSelect.innerHTML = '<option value="">読み込み中…</option>';
+        groupSelect.innerHTML = `<option value="">${t('post.loading_ellipsis')}</option>`;
         try {
             const { data, error } = await apiRequest('/server/api/groups/mine?limit=200', { signal: context.signal });
             if (error) throw error;
             const groups = Array.isArray(data?.groups) ? data.groups : [];
             groupSelect.innerHTML = groups.length
-                ? groups.map(group => `<option value="${escapeHTML(String(group.id))}">${escapeHTML(group.name || 'グループ')}</option>`).join('')
-                : '<option value="">参加中のグループがありません</option>';
+                ? groups.map(group => `<option value="${escapeHTML(String(group.id))}">${escapeHTML(group.name || t('nav.groups'))}</option>`).join('')
+                : `<option value="">${t('stage.no_joined_groups_option')}</option>`;
         } catch (error) {
             if (!context.signal.aborted) {
                 groupsLoaded = false;
-                groupSelect.innerHTML = '<option value="">読み込みに失敗しました</option>';
+                groupSelect.innerHTML = `<option value="">${t('stage.groups_load_failed_option')}</option>`;
             }
         }
     };
@@ -118,14 +119,14 @@ function createStageDialog(context) {
     };
     form.elements.visibility.onchange = syncVisibility;
     syncVisibility();
-    form.elements.scheduled_at.oninput = () => { form.querySelector('[data-stage-submit]').textContent = form.elements.scheduled_at.value ? '予約する' : '開始する'; };
+    form.elements.scheduled_at.oninput = () => { form.querySelector('[data-stage-submit]').textContent = form.elements.scheduled_at.value ? t('stage.submit_schedule') : t('stage.submit_start'); };
     form.onsubmit = async event => {
         event.preventDefault();
         const button = form.querySelector('[data-stage-submit]');
         const feedback = form.querySelector('[data-stage-create-error]');
         feedback.textContent = '';
         if (form.elements.visibility.value === 'group' && !groupSelect.value) {
-            feedback.textContent = '対象のグループを選択してください。';
+            feedback.textContent = t('stage.group_required');
             return;
         }
         button.disabled = true;
@@ -151,29 +152,29 @@ export async function showStagesScreen(stageId, showScreenFn) {
     const context = getActiveScreenContext();
     const container = document.getElementById('stages-content');
     DOM.pageHeader.innerHTML = stageId
-        ? `<div class="header-with-back-button"><a href="#stages" class="header-back-btn" aria-label="ステージ一覧へ">${ICONS.back}</a><h2 id="page-title">ステージ</h2></div>`
-        : `<div class="header-with-action-button"><h2 id="page-title">ステージ</h2>${getCurrentUser() ? '<button type="button" class="header-action-btn" data-nui-feature="stageCreate" data-stage-open-create>作成</button>' : ''}</div>`;
-    container.innerHTML = '<div class="stage-loading"><div class="spinner" aria-label="読み込み中"></div></div>';
+        ? `<div class="header-with-back-button"><a href="#stages" class="header-back-btn" aria-label="${t('stage.back_to_list_label')}">${ICONS.back}</a><h2 id="page-title">${t('stage.page_title')}</h2></div>`
+        : `<div class="header-with-action-button"><h2 id="page-title">${t('stage.page_title')}</h2>${getCurrentUser() ? `<button type="button" class="header-action-btn" data-nui-feature="stageCreate" data-stage-open-create>${t('common.create')}</button>` : ''}</div>`;
+    container.innerHTML = `<div class="stage-loading"><div class="spinner" aria-label="${t('common.loading')}"></div></div>`;
     try {
         if (stageId) await showDetail(stageId, container, context);
         else await showList(container, context);
     } catch (error) {
-        if (!context.signal.aborted) container.innerHTML = `<div class="stage-empty nui-empty-text"><p role="alert">${escapeHTML(error.message)}</p><a href="#stages" class="settings-secondary-button nui-button-secondary stage-back-link">ステージ一覧へ</a></div>`;
+        if (!context.signal.aborted) container.innerHTML = `<div class="stage-empty nui-empty-text"><p role="alert">${escapeHTML(error.message)}</p><a href="#stages" class="settings-secondary-button nui-button-secondary stage-back-link">${t('stage.back_to_list_label')}</a></div>`;
     }
 }
 
 async function showList(container, context) {
     container.innerHTML = `
         <main class="nui-page stage-ui-page" data-nui="page">
-        <div class="stage-tabs nui-tabs" role="tablist" aria-label="ステージの表示">
-            <button type="button" class="tab-button nui-tab active" data-stage-filter="all" aria-pressed="true">すべて</button>
-            <button type="button" class="tab-button nui-tab" data-stage-filter="live" aria-pressed="false">開催中</button>
-            <button type="button" class="tab-button nui-tab" data-stage-filter="scheduled" aria-pressed="false">予約</button>
+        <div class="stage-tabs nui-tabs" role="tablist" aria-label="${t('stage.tabs_label')}">
+            <button type="button" class="tab-button nui-tab active" data-stage-filter="all" aria-pressed="true">${t('timeline.tab.all')}</button>
+            <button type="button" class="tab-button nui-tab" data-stage-filter="live" aria-pressed="false">${t('stage.status_live')}</button>
+            <button type="button" class="tab-button nui-tab" data-stage-filter="scheduled" aria-pressed="false">${t('stage.tab_scheduled')}</button>
         </div>
-        <form data-stage-search class="stage-search nui-toolbar"><div class="header-search-bar">${ICONS.explore}<input type="search" name="query" aria-label="ステージを検索" placeholder="ステージを検索"></div><button class="settings-secondary-button nui-button-secondary" type="submit">検索</button></form>
+        <form data-stage-search class="stage-search nui-toolbar"><div class="header-search-bar">${ICONS.explore}<input type="search" name="query" aria-label="${t('stage.search_label')}" placeholder="${t('stage.search_label')}"></div><button class="settings-secondary-button nui-button-secondary" type="submit">${t('settings.account.search_button')}</button></form>
         <p data-stage-error class="stage-feedback" role="status" aria-live="polite"></p>
         <div data-stage-list class="stage-list nui-list"></div>
-        <div class="stage-list-footer"><button type="button" class="settings-secondary-button nui-button-secondary" data-stage-more hidden>さらに表示</button></div>
+        <div class="stage-list-footer"><button type="button" class="settings-secondary-button nui-button-secondary" data-stage-more hidden>${t('stage.more_button')}</button></div>
         </main>`;
     const dialog = getCurrentUser() ? createStageDialog(context) : null;
     DOM.pageHeader.querySelector('[data-stage-open-create]')?.addEventListener('click', () => dialog?.showModal());
@@ -187,10 +188,10 @@ async function showList(container, context) {
         const visible = [...stages.values()].filter(stage => filter === 'all' || stage.status === filter);
         list.innerHTML = visible.length ? visible.map(stage => `
             <article class="stage-list-item nui-list-item" data-nui="list-item"><a href="#stage/${encodeURIComponent(stage.id)}" class="stage-list-link nui-list-link">
-                <div class="stage-list-copy nui-list-copy"><div class="stage-list-meta"><span class="${stage.status === 'live' ? 'stage-live-label' : ''}">${escapeHTML(stageTime(stage))}</span><span class="nui-badge">${escapeHTML(visibilityLabel(stage))}</span>${stage.allow_guest_join ? '<span class="nui-badge nui-badge-accent">ゲスト参加可</span>' : ''}</div>
+                <div class="stage-list-copy nui-list-copy"><div class="stage-list-meta"><span class="${stage.status === 'live' ? 'stage-live-label' : ''}">${escapeHTML(stageTime(stage))}</span><span class="nui-badge">${escapeHTML(visibilityLabel(stage))}</span>${stage.allow_guest_join ? `<span class="nui-badge nui-badge-accent">${t('stage.guest_ok_badge')}</span>` : ''}</div>
                     <h3 class="nui-list-title">${escapeHTML(stage.name)}</h3>${stage.description ? `<p class="nui-list-meta">${escapeHTML(stage.description)}</p>` : ''}</div>
                 <span class="stage-list-arrow nui-icon" aria-hidden="true">›</span>
-            </a></article>`).join('') : `<div class="stage-empty nui-empty-text"><h3>${filter === 'live' ? '開催中のステージはありません' : filter === 'scheduled' ? '予約されたステージはありません' : 'ステージはまだありません'}</h3></div>`;
+            </a></article>`).join('') : `<div class="stage-empty nui-empty-text"><h3>${filter === 'live' ? t('stage.empty_live') : filter === 'scheduled' ? t('stage.empty_scheduled') : t('stage.empty_none')}</h3></div>`;
     }
     async function search(append = false) {
         const version = ++searchGeneration;
@@ -226,13 +227,13 @@ async function showDetail(id, container, context) {
     const stage = data.stage;
     const isHost = stage.owner_id === Number(getCurrentUser()?.id);
     container.innerHTML = `<div class="nui-page stage-ui-page stage-detail">
-        <section class="stage-detail-main nui-card" data-nui="card"><div class="stage-list-meta"><span class="${stage.status === 'live' ? 'stage-live-label' : ''}">${escapeHTML(stageTime(stage))}</span><span class="nui-badge">${escapeHTML(visibilityLabel(stage))}</span>${stage.allow_guest_join ? '<span class="nui-badge nui-badge-accent">ゲスト参加可</span>' : ''}</div>
+        <section class="stage-detail-main nui-card" data-nui="card"><div class="stage-list-meta"><span class="${stage.status === 'live' ? 'stage-live-label' : ''}">${escapeHTML(stageTime(stage))}</span><span class="nui-badge">${escapeHTML(visibilityLabel(stage))}</span>${stage.allow_guest_join ? `<span class="nui-badge nui-badge-accent">${t('stage.guest_ok_badge')}</span>` : ''}</div>
             <h3>${escapeHTML(stage.name)}</h3>${stage.description ? `<p class="stage-description">${escapeHTML(stage.description)}</p>` : ''}
-            <a class="stage-host-link" href="#profile/${stage.owner_id}"><span class="stage-host-avatar" aria-hidden="true"><img ${rankAvatarAttributes(data.host)} src="${escapeHTML(getUserIconUrl({ id: stage.owner_id }))}" alt=""></span><span><strong>${escapeHTML(data.host?.name || 'ホスト')}</strong><small>ホスト</small></span></a>
-            <div class="stage-join-row"><button type="button" class="settings-primary-button nui-button" data-nui="button" data-stage-join ${stage.status === 'ended' ? 'disabled' : ''}>${stage.status === 'ended' ? '終了しました' : stage.status === 'scheduled' && data.role === 'audience' ? '開始を待つ' : stage.status === 'scheduled' ? 'ステージを開く' : '参加する'}</button><button type="button" class="settings-secondary-button nui-button-secondary" data-stage-share title="共有URLをコピー">${ICONS.share}<span>共有</span></button><span class="nui-badge">${data.guest ? 'ゲスト' : data.role === 'host' ? 'ホスト' : data.role === 'speaker' ? 'スピーカー' : 'リスナー'}</span></div>
+            <a class="stage-host-link" href="#profile/${stage.owner_id}"><span class="stage-host-avatar" aria-hidden="true"><img ${rankAvatarAttributes(data.host)} src="${escapeHTML(getUserIconUrl({ id: stage.owner_id }))}" alt=""></span><span><strong>${escapeHTML(data.host?.name || t('dm.host_badge'))}</strong><small>${t('dm.host_badge')}</small></span></a>
+            <div class="stage-join-row"><button type="button" class="settings-primary-button nui-button" data-nui="button" data-stage-join ${stage.status === 'ended' ? 'disabled' : ''}>${stage.status === 'ended' ? t('stage.join_ended') : stage.status === 'scheduled' && data.role === 'audience' ? t('stage.join_wait') : stage.status === 'scheduled' ? t('stage.join_open') : t('group.join_button')}</button><button type="button" class="settings-secondary-button nui-button-secondary" data-stage-share title="${t('group.share_title')}">${ICONS.share}<span>${t('group.share_text')}</span></button><span class="nui-badge">${data.guest ? t('stage.role_guest') : data.role === 'host' ? t('dm.host_badge') : data.role === 'speaker' ? t('callview.role_speaker') : t('callview.role_audience')}</span></div>
             <p data-stage-error class="stage-feedback" role="status" aria-live="polite"></p>
         </section>
-        ${isHost && stage.status !== 'ended' ? `<section class="stage-host-section"><button type="button" class="stage-manage-open" data-stage-manage-open>${ICONS.sliders}<span>ステージを管理</span></button></section>` : ''}
+        ${isHost && stage.status !== 'ended' ? `<section class="stage-host-section"><button type="button" class="stage-manage-open" data-stage-manage-open>${ICONS.sliders}<span>${t('stage.manage_button')}</span></button></section>` : ''}
     </div>`;
     const report = error => { if (!context.signal.aborted) container.querySelector('[data-stage-error]').textContent = error.message; };
     const stageJoinButton = container.querySelector('[data-stage-join]');
@@ -247,7 +248,7 @@ async function showDetail(id, container, context) {
     const shareButton = container.querySelector('[data-stage-share]');
     if (shareButton) shareButton.onclick = () => {
         void copyEntityUrl('stage', id).catch(error => {
-            if (!context.signal.aborted) container.querySelector('[data-stage-error]').textContent = error.message || '共有URLをコピーできませんでした。';
+            if (!context.signal.aborted) container.querySelector('[data-stage-error]').textContent = error.message || t('group.share_failed');
         });
     };
     const manageButton = container.querySelector('[data-stage-manage-open]');

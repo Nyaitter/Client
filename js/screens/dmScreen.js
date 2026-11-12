@@ -629,9 +629,9 @@ export async function showDmConversation(dmId, { unreadBefore = null, refreshAtt
                         </div>
                     </div>
                     <div class="dm-form-actions">
-                        <button type="button" id="dm-attachment-btn" class="attachment-button dm-action-btn" title="ファイルを添付">${ICONS.attachment}</button>
+                        <button type="button" id="dm-attachment-btn" class="attachment-button dm-action-btn" title="${t('composer.attach')}">${ICONS.attachment}</button>
                         <input type="file" id="dm-file-input" class="hidden" multiple>
-                        <button type="button" id="send-dm-btn" class="dm-send-action-btn" title="送信 (Ctrl+Enter)">${ICONS.send}</button>
+                        <button type="button" id="send-dm-btn" class="dm-send-action-btn" title="${t('dmscreen.send_title')}">${ICONS.send}</button>
                     </div>
                 </div>
             `;
@@ -744,7 +744,7 @@ export async function showDmConversation(dmId, { unreadBefore = null, refreshAtt
                 const filesToSend = [...dmSelectedFiles];
                 const content = getMarkdownEditorValue(messageInput).trim();
                 if ((!content && filesToSend.length === 0) || content.length > 2000) {
-                    if (content.length > 2000) showAppAlert('DMの内容は2000文字以下にしてください。');
+                    if (content.length > 2000) showAppAlert(t('dmscreen.content_too_long'));
                     return;
                 }
                 dmSelectedFiles = [];
@@ -823,7 +823,7 @@ export async function showDmConversation(dmId, { unreadBefore = null, refreshAtt
                             return;
                         }
                         console.error('過去メッセージの読み込みエラー:', err);
-                        loadMoreBtn.textContent = '読み込みに失敗しました (再試行)';
+                        loadMoreBtn.textContent = t('dmscreen.load_failed_retry');
                     } finally {
                         isLoadingMoreHistory = false;
                     }
@@ -875,7 +875,7 @@ export async function showDmConversation(dmId, { unreadBefore = null, refreshAtt
             }, { once: true });
             return;
         }
-        container.innerHTML = '<p class="error-message">メッセージの読み込みに失敗しました。</p>';
+        container.innerHTML = `<p class="error-message">${t('dmscreen.messages_load_failed')}</p>`;
     } finally {
         if (isCurrentDmEditLoad(editLoad)) showLoading(false);
     }
@@ -886,7 +886,7 @@ async function sendDirectMessage(dmId, conversationTitle, files = [], replyTo = 
     const content = getMarkdownEditorValue(input).trim();
     if (!content && files.length === 0) return;
     if (content.length > 2000) {
-        showAppAlert('DMの内容は2000文字以下にしてください。');
+        showAppAlert(t('dmscreen.content_too_long'));
         return;
     }
 
@@ -986,7 +986,7 @@ async function sendDirectMessage(dmId, conversationTitle, files = [], replyTo = 
         console.error('DM送信エラー:', e);
         if (optimisticEl) {
             optimisticEl.classList.add('dm-message-send-error');
-            optimisticEl.title = sendStarted ? '送信結果を確認できませんでした' : '送信できませんでした';
+            optimisticEl.title = sendStarted ? t('dmscreen.send_unconfirmed_title') : t('dmscreen.send_failed_title');
         }
         deleteScreenDataCache(getDmCacheKey('conversation', String(dmId)));
         deleteScreenDataCache(getDmCacheKey('list'));
@@ -996,10 +996,10 @@ async function sendDirectMessage(dmId, conversationTitle, files = [], replyTo = 
         if (!sendStarted && input?.isConnected && !getMarkdownEditorValue(input)) {
             setMarkdownEditorValue(input, content);
         }
-        const conversation = `「${conversationTitle}」（会話ID: ${dmId}）`;
+        const conversation = t('dmscreen.conversation_label', { title: conversationTitle, id: dmId });
         showAppAlert(sendStarted
-            ? `${conversation}へのDMの送信結果を確認できませんでした。この会話を更新して確認してください。再送すると重複する場合があります。`
-            : `${conversation}へのDMを送信できませんでした: ${e.message || '不明なエラー'}`);
+            ? t('dmscreen.send_unconfirmed_body', { conversation })
+            : t('dmscreen.send_failed_body', { conversation, error: e.message || t('post.unknown_error') }));
         return sendStarted ? 'unknown' : 'not-sent';
     } finally {
         if (input) input.disabled = false;
@@ -1012,11 +1012,11 @@ export function openCreateDmModal() {
     DOM.createDmModalContent.innerHTML = `
         <div class="dm-modal-body nui-modal-body">
             <div class="modal-heading">
-                <h3 id="create-dm-modal-title" class="nui-modal-title">新しいメッセージ</h3>
-                <p class="settings-help-text nui-help-text">ユーザー名またはNyaitterIDで検索してDMを開始します。</p>
+                <h3 id="create-dm-modal-title" class="nui-modal-title">${t('dmscreen.new_message_title')}</h3>
+                <p class="settings-help-text nui-help-text">${t('dmscreen.new_message_help')}</p>
             </div>
             <div class="dm-modal-search-box">
-                <input type="text" id="dm-user-search" class="dm-modal-search-input dm-search-input nui-input" placeholder="ユーザー名またはNyaitterIDで検索" autofocus>
+                <input type="text" id="dm-user-search" class="dm-modal-search-input dm-search-input nui-input" placeholder="${t('dmscreen.search_placeholder')}" autofocus>
             </div>
             <div id="dm-user-search-results" class="dm-search-results nui-list" data-nui="list"></div>
         </div>
@@ -1061,7 +1061,7 @@ export function openCreateDmModal() {
                         )
                         .join('');
                 } else {
-                    resultsContainer.innerHTML = `<div class="dm-search-empty nui-empty-text">一致するユーザーが見つかりません。</div>`;
+                    resultsContainer.innerHTML = `<div class="dm-search-empty nui-empty-text">${t('dmscreen.no_matching_users')}</div>`;
                 }
             }
         }, 250);

@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { apiRequest } from '../api.js';
 import {
     getCurrentUser,
@@ -51,7 +52,7 @@ export function registerPwaServiceWorker() {
 
 export function setPushSettingsUi({
     status = '',
-    actionLabel = 'この環境では利用できません',
+    actionLabel = t('pwa.unavailable'),
     actionDisabled = true,
 } = {}) {
     const statusEl = document.getElementById('push-notification-status');
@@ -66,14 +67,14 @@ export function setPushSettingsUi({
 export async function loadPushSettingsState() {
     if (!supportsWebPush()) {
         setPushSettingsUi({
-            status: 'この環境はWeb Push通知に対応していません。',
+            status: t('pwa.push_unsupported'),
         });
         return null;
     }
 
     setPushSettingsUi({
-        status: '通知の状態を確認しています',
-        actionLabel: '読み込み中',
+        status: t('settings.notifications.checking'),
+        actionLabel: t('common.loading'),
     });
     try {
         const [registration, configResult] = await Promise.all([
@@ -82,8 +83,8 @@ export async function loadPushSettingsState() {
         ]);
         if (!registration) {
             setPushSettingsUi({
-                status: 'サービスワーカーを登録できませんでした。',
-                actionLabel: '利用できません',
+                status: t('pwa.sw_failed'),
+                actionLabel: t('pwa.action_unavailable'),
             });
             return null;
         }
@@ -93,8 +94,8 @@ export async function loadPushSettingsState() {
             !configResult.data?.vapid_public_key
         ) {
             setPushSettingsUi({
-                status: 'このサーバーではプッシュ通知がまだ設定されていません。',
-                actionLabel: 'サーバー設定待ち',
+                status: t('pwa.server_not_configured'),
+                actionLabel: t('pwa.action_waiting_server'),
             });
             return null;
         }
@@ -103,8 +104,8 @@ export async function loadPushSettingsState() {
         const permission = Notification.permission;
         if (permission === 'denied') {
             setPushSettingsUi({
-                status: 'ブラウザで通知が拒否されています。ブラウザ設定から許可してください。',
-                actionLabel: '通知が拒否されています',
+                status: t('pwa.permission_denied'),
+                actionLabel: t('pwa.action_denied'),
             });
             return {
                 registration,
@@ -116,11 +117,11 @@ export async function loadPushSettingsState() {
 
         setPushSettingsUi({
             status: subscription
-                ? 'この端末でプッシュ通知を購読中です。'
-                : 'この端末ではプッシュ通知を購読していません。',
+                ? t('pwa.subscribed')
+                : t('pwa.not_subscribed'),
             actionLabel: subscription
-                ? 'この端末の購読を解除'
-                : 'この端末で通知を有効化',
+                ? t('pwa.action_unsubscribe')
+                : t('pwa.action_subscribe'),
             actionDisabled: false,
         });
         return {
@@ -132,8 +133,8 @@ export async function loadPushSettingsState() {
     } catch (error) {
         console.error('Failed to load push notification state:', error);
         setPushSettingsUi({
-            status: '通知設定を取得できませんでした。',
-            actionLabel: 'もう一度試す',
+            status: t('pwa.settings_fetch_failed'),
+            actionLabel: t('pwa.action_retry'),
             actionDisabled: false,
         });
         return null;
@@ -152,7 +153,7 @@ export async function togglePushSubscription() {
             const endpoint = state.subscription.endpoint;
             const unsubscribed = await state.subscription.unsubscribe();
             if (!unsubscribed) {
-                throw new Error('ブラウザ側の購読解除に失敗しました。');
+                throw new Error(t('pwa.unsubscribe_failed'));
             }
             const { error } = await apiRequest('/server/api/push/subscriptions', {
                 method: 'DELETE',
@@ -190,8 +191,8 @@ export async function togglePushSubscription() {
     } catch (error) {
         console.error('Failed to toggle push notifications:', error);
         setPushSettingsUi({
-            status: `通知設定を更新できませんでした: ${error.message || '不明なエラー'}`,
-            actionLabel: 'もう一度試す',
+            status: t('pwa.update_failed', { error: error.message || t('post.unknown_error') }),
+            actionLabel: t('pwa.action_retry'),
             actionDisabled: false,
         });
     }

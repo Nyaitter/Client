@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { getCurrentUser, getAllUsersCache } from '../state.js';
 import { attachRankAvatar } from './rankAvatar.js';
 import { getRankAppearance, RANK_TYPES } from './rankAppearance.js';
@@ -87,7 +88,7 @@ function syncImage(image, record) {
             ? candidate : container?.querySelector('.dm-user-name[href]') || container;
         const options = {
             enabled: true, isSelf: false, ranks, focusTarget,
-            label: `ユーザー #${id}の表示ランク`,
+            label: t('rankavatarintegration.user_rank_label', { id }),
         };
         if (record.handle) record.handle.update(options);
         else record.handle = attachRankAvatar(image, options);

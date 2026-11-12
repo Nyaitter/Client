@@ -1,3 +1,4 @@
+import { t } from '../modules/i18n.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { escapeHTML, showLoading } from '../utils/helpers.js';
@@ -9,14 +10,14 @@ let activeTag = 'all';
 let currentSearchQuery = '';
 
 function renderAuthBadge(badge) {
-    if (!badge) return '<span class="docs-api-auth-tag nui-badge">認証不要</span>';
+    if (!badge) return `<span class="docs-api-auth-tag nui-badge">${t('docsapi.auth_not_required')}</span>`;
     const typeClass = badge.type === 'required' ? 'docs-api-auth-required'
         : badge.type === 'admin' ? 'docs-api-auth-admin'
         : '';
     const nuiTone = badge.type === 'required' ? ' nui-badge-danger'
         : badge.type === 'admin' ? ' nui-badge-accent'
         : '';
-    return `<span class="docs-api-auth-tag nui-badge${nuiTone} ${typeClass}">${escapeHTML(badge.label || '認証不要')}</span>`;
+    return `<span class="docs-api-auth-tag nui-badge${nuiTone} ${typeClass}">${escapeHTML(badge.label || t('docsapi.auth_not_required'))}</span>`;
 }
 
 function renderEndpointsList(endpoints) {
@@ -39,13 +40,13 @@ function renderEndpointsList(endpoints) {
 
     const countBadge = document.getElementById('docs-api-count-badge');
     if (countBadge) {
-        countBadge.textContent = `${filtered.length} 件のエンドポイント`;
+        countBadge.textContent = t('docsapi.endpoint_count', { count: filtered.length });
     }
 
     if (filtered.length === 0) {
         listContainer.innerHTML = `
             <div class="docs-empty nui-empty-text">
-                <p>該当する API エンドポイントが見つかりませんでした。</p>
+                <p>${t('docsapi.no_endpoints')}</p>
             </div>
         `;
         return;
@@ -72,21 +73,21 @@ function renderEndpointsList(endpoints) {
                 </div>
                 <div class="docs-api-item-body">
                     ${ep.description ? `<p style="margin:0 0 0.75rem; color:var(--text-color);">${escapeHTML(ep.description)}</p>` : ''}
-                    <div class="docs-api-section-title nui-section-title">カテゴリー</div>
+                    <div class="docs-api-section-title nui-section-title">${t('docsapi.category')}</div>
                     <p style="margin:0 0 0.5rem; font-weight:600;">${escapeHTML(tagLabel)} (<code>${escapeHTML(ep.tag)}</code>)</p>
 
                     ${sdkSnippet ? `
-                        <div class="docs-api-section-title nui-section-title">Nyaitter.js SDK コード例</div>
+                        <div class="docs-api-section-title nui-section-title">${t('docsapi.sdk_example')}</div>
                         <div class="docs-api-code-block">
-                            <button type="button" class="docs-api-copy-btn nui-button-secondary" data-copy="${escapeHTML(sdkSnippet)}">コピー</button>
+                            <button type="button" class="docs-api-copy-btn nui-button-secondary" data-copy="${escapeHTML(sdkSnippet)}">${t('docsapi.copy')}</button>
                             <pre><code>${escapeHTML(sdkSnippet)}</code></pre>
                         </div>
                     ` : ''}
 
                     ${curlSnippet ? `
-                        <div class="docs-api-section-title nui-section-title">cURL リクエスト例</div>
+                        <div class="docs-api-section-title nui-section-title">${t('docsapi.curl_example')}</div>
                         <div class="docs-api-code-block">
-                            <button type="button" class="docs-api-copy-btn nui-button-secondary" data-copy="${escapeHTML(curlSnippet)}">コピー</button>
+                            <button type="button" class="docs-api-copy-btn nui-button-secondary" data-copy="${escapeHTML(curlSnippet)}">${t('docsapi.copy')}</button>
                             <pre><code>${escapeHTML(curlSnippet)}</code></pre>
                         </div>
                     ` : ''}
@@ -117,7 +118,7 @@ function renderEndpointsList(endpoints) {
             try {
                 await navigator.clipboard.writeText(text);
                 const originalText = btn.textContent;
-                btn.textContent = 'コピー完了';
+                btn.textContent = t('docsapi.copied');
                 setTimeout(() => { btn.textContent = originalText; }, 1500);
             } catch (err) {
                 console.error('Copy failed:', err);
@@ -130,12 +131,12 @@ export async function showDocsApiScreen(showScreenFn) {
     DOM.pageHeader.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
             <div style="display: flex; align-items: center; gap: 0.8rem;">
-                <button type="button" class="back-button" onclick="history.back()" title="戻る" style="border:none; background:none; cursor:pointer; color:var(--text-color); display:flex; align-items:center; justify-content:center; padding:0.4rem; border-radius:50%;">
+                <button type="button" class="back-button" onclick="history.back()" title="${t('admin.back_label')}" style="border:none; background:none; cursor:pointer; color:var(--text-color); display:flex; align-items:center; justify-content:center; padding:0.4rem; border-radius:50%;">
                     ${ICONS.back}
                 </button>
-                <h2 style="margin: 0; font-size: 1.25rem;">API ドキュメント</h2>
+                <h2 style="margin: 0; font-size: 1.25rem;">${t('docsapi.title')}</h2>
             </div>
-            <a href="${escapeHTML(globalThis.NyaitterClientConfig.apiUrl('/api/spec'))}" target="_blank" rel="noopener noreferrer" download="nyaitter-openapi.json" class="docs-btn-outline" title="OpenAPI 3.0 仕様 JSON をダウンロード">
+            <a href="${escapeHTML(globalThis.NyaitterClientConfig.apiUrl('/api/spec'))}" target="_blank" rel="noopener noreferrer" download="nyaitter-openapi.json" class="docs-btn-outline" title="${t('docsapi.download_title')}">
                 ${ICONS.download}
             </a>
         </div>
@@ -166,12 +167,12 @@ export async function showDocsApiScreen(showScreenFn) {
             <div class="docs-controls">
                 <div class="docs-search-wrapper">
                     <span class="docs-search-icon">${ICONS.search}</span>
-                    <input type="search" id="docs-api-search-input" class="docs-search-input" placeholder="検索" value="${escapeHTML(currentSearchQuery)}" />
+                    <input type="search" id="docs-api-search-input" class="docs-search-input" placeholder="${t('settings.account.search_button')}" value="${escapeHTML(currentSearchQuery)}" />
                 </div>
                 <div class="docs-category-tags" role="tablist">
                     ${tags.map((tag) => `
                         <button type="button" class="docs-tag-btn ${tag === activeTag ? 'active' : ''}" data-tag="${escapeHTML(tag)}">
-                            ${escapeHTML(tag === 'all' ? 'すべて' : (cachedTagLabels[tag] || tag))}
+                            ${escapeHTML(tag === 'all' ? t('timeline.tab.all') : (cachedTagLabels[tag] || tag))}
                         </button>
                     `).join('')}
                 </div>
@@ -202,7 +203,7 @@ export async function showDocsApiScreen(showScreenFn) {
         console.error('[docs] Failed to load API spec:', err);
         contentDiv.innerHTML = `
             <div class="docs-empty nui-empty-text">
-                <p class="error-message">API 仕様の読み込みに失敗しました。</p>
+                <p class="error-message">${t('docsapi.spec_load_failed')}</p>
             </div>
         `;
     } finally {

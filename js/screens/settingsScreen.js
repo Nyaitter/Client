@@ -486,22 +486,22 @@ export async function showSettingsScreen(
                         <div class="side-menu-zone nui-section" id="side-menu-pc-bar" data-outlet="pc" data-zone="bar">
                             <h4 class="side-menu-zone-title nui-section-title">${t('settings.menu.show_in_bar')}</h4>
                             <p class="settings-help-text nui-help-text">${t('settings.menu.order_hint_menu')}</p>
-                            <div class="side-menu-list nui-list" data-nui="list" data-zone="bar"></div>
+                            <div class="side-menu-list nui-list" data-nui="list" data-zone="bar" data-empty-text="${t('settings.menu.bar_empty')}"></div>
                         </div>
                         <div class="side-menu-zone nui-section" id="side-menu-pc-more" data-outlet="pc" data-zone="more">
                             <h4 class="side-menu-zone-title nui-section-title">${t('settings.menu.move_to_more')}</h4>
                             <p class="settings-help-text nui-help-text">${t('settings.menu.moved_hint_menu')}</p>
-                            <div class="side-menu-list nui-list" data-nui="list" data-zone="more"></div>
+                            <div class="side-menu-list nui-list" data-nui="list" data-zone="more" data-empty-text="${t('settings.menu.more_empty')}"></div>
                         </div>
                         <div class="side-menu-zone nui-section" id="side-menu-mobile-bar" data-outlet="mobile" data-zone="bar" hidden>
                             <h4 class="side-menu-zone-title nui-section-title">${t('settings.menu.show_in_bar')}</h4>
                             <p class="settings-help-text nui-help-text">${t('settings.menu.order_hint_bar')}</p>
-                            <div class="side-menu-list nui-list" data-nui="list" data-zone="bar"></div>
+                            <div class="side-menu-list nui-list" data-nui="list" data-zone="bar" data-empty-text="${t('settings.menu.bar_empty')}"></div>
                         </div>
                         <div class="side-menu-zone nui-section" id="side-menu-mobile-more" data-outlet="mobile" data-zone="more" hidden>
                             <h4 class="side-menu-zone-title nui-section-title">${t('settings.menu.move_to_more')}</h4>
                             <p class="settings-help-text nui-help-text">${t('settings.menu.moved_hint_drawer')}</p>
-                            <div class="side-menu-list nui-list" data-nui="list" data-zone="more"></div>
+                            <div class="side-menu-list nui-list" data-nui="list" data-zone="more" data-empty-text="${t('settings.menu.more_empty')}"></div>
                         </div>
                         <button type="button" id="side-menu-reset-btn" class="settings-secondary-button nui-button-secondary" style="align-self: flex-start;">${t('settings.menu.reset_order')}</button>
                     </div>

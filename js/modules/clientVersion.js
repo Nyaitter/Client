@@ -205,7 +205,7 @@ async function switchToVersion(entry) {
                             setStatus(t('settings.client.downloading_size', { size: label }));
                         }
                     } else if (progress.total) {
-                        setStatus('ダウンロードしています…');
+                        setStatus(t('settings.client.downloading'));
                         setOverallProgress((progress.fetched + progress.cached) / progress.total);
                     }
                 },

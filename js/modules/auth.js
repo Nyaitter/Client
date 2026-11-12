@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { DOM } from '../dom.js';
 import { api, apiRequest } from '../api.js';
 import {
@@ -58,7 +59,7 @@ window.addEventListener('nyaitter:login-success', () => {
 export async function handleLogout(onLogoutComplete) {
     const currentUser = getCurrentUser();
     if (currentUser?.is_imposter || currentUser?.auth_provider === 'imposter' || currentUser?.settings?.imposter?.parent_id) {
-        await showAppAlert('インポスターアカウントから直接ログアウトすることはできません。アカウント切替をご利用ください。');
+        await showAppAlert(t('auth.imposter_logout_forbidden'));
         await openAccountSwitcherModal();
         return;
     }
@@ -191,26 +192,26 @@ export function updateFreezeAppealStatus(appeal) {
     if (!appeal) {
         appealStatus.classList.add('hidden');
         appealStatus.textContent = '';
-        openAppealBtn.textContent = '異議申し立てを行う';
+        openAppealBtn.textContent = t('auth.appeal_open');
         openAppealBtn.classList.remove('hidden');
         return;
     }
 
     appealStatus.classList.remove('hidden');
     if (appeal.status === 'pending') {
-        appealStatus.textContent = '現在、管理者が異議申し立てを確認しています。';
+        appealStatus.textContent = t('auth.appeal_status_reviewing');
         openAppealBtn.classList.add('hidden');
         return;
     }
     if (appeal.status === 'approved') {
-        appealStatus.textContent = '異議申し立てが承認されました。アカウントの状態を再確認してください。';
+        appealStatus.textContent = t('auth.appeal_status_approved');
         openAppealBtn.classList.add('hidden');
         return;
     }
     if (appeal.status === 'rejected') {
         const note = appeal.resolution_note ? `` : '';
-        appealStatus.textContent = `異議申し立ては却下されました${note}`;
-        openAppealBtn.textContent = '再審査を申し立てる';
+        appealStatus.textContent = t('auth.appeal_status_rejected', { note });
+        openAppealBtn.textContent = t('auth.appeal_reopen');
         openAppealBtn.classList.remove('hidden');
     }
 }
@@ -264,14 +265,14 @@ export function setupFreezeAppealUi() {
                 body: { description },
             });
             if (error || !data) {
-                throw new Error(error?.message || '異議申し立ての送信に失敗しました');
+                throw new Error(error?.message || t('auth.appeal_send_failed'));
             }
             closeFreezeAppealModal();
             updateFreezeAppealStatus(data.appeal);
-            await showAppAlert('異議申し立てを送信しました。管理者が確認するまでお待ちください。');
+            await showAppAlert(t('auth.appeal_sent'));
         } catch (err) {
             if (errorEl) {
-                errorEl.textContent = err.message || '送信に失敗しました';
+                errorEl.textContent = err.message || t('auth.send_failed');
                 errorEl.classList.remove('hidden');
             }
         }
@@ -295,9 +296,9 @@ export async function openAccountSwitcherModal() {
         if (event.target === modal) closeModal();
     };
     content.innerHTML = `
-        <button type="button" class="account-switcher-add-btn nui-button">＋ アカウント追加</button>
+        <button type="button" class="account-switcher-add-btn nui-button">${t('auth.account_add')}</button>
         <ul class="account-switcher-list">
-            <li class="account-switcher-empty"><div class="spinner" aria-label="アカウント一覧を読み込み中"></div></li>
+            <li class="account-switcher-empty"><div class="spinner" aria-label="${t('auth.accounts_loading_label')}"></div></li>
         </ul>
     `;
     content.querySelector('.account-switcher-add-btn').onclick = openLoginFromSwitcher;
@@ -317,7 +318,7 @@ export async function openAccountSwitcherModal() {
     );
 
     content.innerHTML = `
-        <button type="button" class="account-switcher-add-btn nui-button">＋ アカウント追加</button>
+        <button type="button" class="account-switcher-add-btn nui-button">${t('auth.account_add')}</button>
         <ul class="account-switcher-list">
             ${
                 accounts.length > 0
@@ -335,15 +336,15 @@ export async function openAccountSwitcherModal() {
                     <li class="account-switcher-item${isThisAccCurrent ? ' active' : ''}" data-id="${escapeHTML(String(acc.id))}" data-automatic-imposter="${acc.automatic_imposter ? 'true' : 'false'}" data-imposter="${isAccImposter ? 'true' : 'false'}">
                         <span class="switcher-user-info">
                             <img class="switcher-user-icon" src="${escapeHTML(getUserIconUrl(acc))}" alt="${escapeHTML(acc.name || '')}">
-                            <span>${getEmoji(escapeHTML(acc.name || '不明なユーザー'))}</span>
+                            <span>${getEmoji(escapeHTML(acc.name || t('composer.account_unknown')))}</span>
                             <span style="color:var(--secondary-text-color); font-size:0.95em;">${formatNyaitterId(acc)}</span>
-                            ${isAccImposter ? '<span class="settings-session-current">インポスター</span>' : ''}
+                            ${isAccImposter ? `<span class="settings-session-current">${t('post.imposter_badge')}</span>` : ''}
                         </span>
-                        ${acc.automatic_imposter || isAccImposter ? '' : '<button type="button" class="switcher-delete-btn" title="この端末からアカウントを解除">×</button>'}
+                        ${acc.automatic_imposter || isAccImposter ? '' : `<button type="button" class="switcher-delete-btn" title="${t('auth.account_remove_title')}">×</button>`}
                     </li>`;
                           })
                           .join('')
-                    : '<li class="account-switcher-empty">アカウントがありません。</li>'
+                    : `<li class="account-switcher-empty">${t('auth.accounts_none')}</li>`
             }
         </ul>
     `;
@@ -358,7 +359,7 @@ export async function openAccountSwitcherModal() {
             if (!isImposter && event.target.closest('.switcher-delete-btn')) {
                 if (
                     !(await showAppConfirm(
-                        'この端末からアカウントを解除しますか？',
+                        t('auth.account_remove_confirm'),
                     ))
                 )
                     return;
@@ -369,7 +370,7 @@ export async function openAccountSwitcherModal() {
                     );
                 if (removeError) {
                     await showAppAlert(
-                        `アカウントの解除に失敗しました: ${removeError.message}`,
+                        t('auth.account_remove_failed', { message: removeError.message }),
                     );
                     return;
                 }
@@ -392,7 +393,7 @@ export async function openAccountSwitcherModal() {
                         );
                         if (switchError) {
                             await showAppAlert(
-                                `アカウントの切替に失敗しました: ${switchError.message}`,
+                                t('auth.account_switch_failed', { message: switchError.message }),
                             );
                         }
                     }
@@ -430,7 +431,7 @@ export async function openAccountSwitcherModal() {
                         refreshAccounts: false,
                     });
                     if (!switchedUser) {
-                        switchError = new Error('切替後のアカウント情報を確認できませんでした。');
+                        switchError = new Error(t('auth.account_switch_verify_failed'));
                     } else {
                         setRecommendedUsersCache(null);
                         invalidateTimelinePageCache();
@@ -441,7 +442,7 @@ export async function openAccountSwitcherModal() {
             } catch (error) {
                 switchError = error instanceof Error
                     ? error
-                    : new Error('アカウントの切替中に通信エラーが発生しました。');
+                    : new Error(t('auth.account_switch_network_error'));
             } finally {
                 accountSwitchInFlight = null;
                 releaseLoadingScreen();
@@ -449,7 +450,7 @@ export async function openAccountSwitcherModal() {
 
             if (switchError) {
                 await showAppAlert(
-                    `アカウントの切替に失敗しました: ${switchError.message}`,
+                    t('auth.account_switch_failed', { message: switchError.message }),
                 );
             }
         };
@@ -469,13 +470,13 @@ export async function openLoginApprovalModal(approvalRequest) {
             `/server/auth/login-approvals/${encodeURIComponent(approvalId)}`,
         );
         if (error || !data?.approval) {
-            await showAppAlert(error?.message || 'ログイン承認依頼を取得できませんでした。');
+            await showAppAlert(error?.message || t('auth.approval_fetch_failed'));
             return;
         }
         requestData = data.approval;
     }
     if (!requestData?.id) {
-        await showAppAlert('ログイン承認依頼が無効です。');
+        await showAppAlert(t('auth.approval_invalid'));
         return;
     }
 
@@ -491,16 +492,16 @@ export async function openLoginApprovalModal(approvalRequest) {
     };
 
     body.innerHTML = `
-        <h3 id="login-approval-modal-title" class="nui-modal-title">新しい端末からのログイン確認</h3>
-        <p class="settings-help-text nui-help-text">以下の端末からログインの許可がリクエストされています。</p>
+        <h3 id="login-approval-modal-title" class="nui-modal-title">${t('auth.approval_title')}</h3>
+        <p class="settings-help-text nui-help-text">${t('auth.approval_desc')}</p>
         <div class="login-approval-details">
-            <p><strong>IPアドレス:</strong> ${escapeHTML(requestData.ip_masked || requestData.ip || '不明')}</p>
-            <p><strong>端末情報:</strong> ${escapeHTML(requestData.user_agent || '不明')}</p>
-            <p><strong>リクエスト日時:</strong> ${new Date(requestData.created_at).toLocaleString()}</p>
+            <p><strong>${t('auth.ip_address_label')}</strong> ${escapeHTML(requestData.ip_masked || requestData.ip || t('dm.unknown_name'))}</p>
+            <p><strong>${t('auth.device_info_label')}</strong> ${escapeHTML(requestData.user_agent || t('dm.unknown_name'))}</p>
+            <p><strong>${t('auth.request_date_label')}</strong> ${new Date(requestData.created_at).toLocaleString()}</p>
         </div>
         <div class="login-approval-actions">
-            <button type="button" class="login-secondary-button login-approval-deny-btn nui-button-secondary">拒否</button>
-            <button type="button" class="settings-primary-button login-approval-approve-btn nui-button">ログインを許可</button>
+            <button type="button" class="login-secondary-button login-approval-deny-btn nui-button-secondary">${t('auth.deny_button')}</button>
+            <button type="button" class="settings-primary-button login-approval-approve-btn nui-button">${t('auth.approve_login_button')}</button>
         </div>
     `;
 
@@ -518,7 +519,7 @@ export async function openLoginApprovalModal(approvalRequest) {
             closeModal();
         } catch (error) {
             console.error('ログイン許可の送信に失敗:', error);
-            await showAppAlert('処理に失敗しました。');
+            await showAppAlert(t('auth.process_failed'));
         } finally {
             showLoading(false);
         }
@@ -531,11 +532,11 @@ export async function openLoginApprovalModal(approvalRequest) {
 
 function accountRecoveryStatusLabel(status) {
     switch (status) {
-        case 'waiting': return '待機期間中';
-        case 'approved': return '承認済み';
-        case 'blocked': return 'ブロック済み';
-        case 'consumed': return '使用済み';
-        default: return '不明';
+        case 'waiting': return t('auth.status_waiting');
+        case 'approved': return t('auth.status_approved');
+        case 'blocked': return t('auth.status_blocked');
+        case 'consumed': return t('auth.status_consumed');
+        default: return t('dm.unknown_name');
     }
 }
 
@@ -552,13 +553,13 @@ export async function openAccountRecoveryModal(recoveryRequest) {
             `/server/auth/account-recovery/${encodeURIComponent(recoveryId)}`,
         );
         if (error || !data?.recovery) {
-            await showAppAlert(error?.message || '復旧依頼を取得できませんでした。');
+            await showAppAlert(error?.message || t('auth.recovery_fetch_failed'));
             return;
         }
         requestData = data.recovery;
     }
     if (!requestData?.id) {
-        await showAppAlert('復旧依頼が無効です。');
+        await showAppAlert(t('auth.recovery_invalid'));
         return;
     }
 
@@ -576,45 +577,45 @@ export async function openAccountRecoveryModal(recoveryRequest) {
     const providerName =
         requestData.auth_provider_display_name ||
         requestData.auth_provider ||
-        '不明なログイン方法';
+        t('auth.unknown_provider');
     const status = String(requestData.status || '');
     const pending = status === 'waiting';
     const isCurrentIp = requestData.is_your_current_ip === true;
     const formatDate = value => {
         const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? '不明' : date.toLocaleString();
+        return Number.isNaN(date.getTime()) ? t('dm.unknown_name') : date.toLocaleString();
     };
 
     body.innerHTML = `
-        <h3 id="account-recovery-modal-title" class="nui-modal-title">アカウントアクセスの復旧依頼</h3>
-        <p class="settings-help-text nui-help-text">心当たりのない場所から、アカウントへのアクセス復旧が求められています。</p>
+        <h3 id="account-recovery-modal-title" class="nui-modal-title">${t('auth.recovery_title')}</h3>
+        <p class="settings-help-text nui-help-text">${t('auth.recovery_desc')}</p>
         <dl class="account-recovery-facts">
-            <div><dt>接続元</dt><dd>${escapeHTML(requestData.ip_masked || '不明')}</dd></div>
-            <div><dt>端末</dt><dd>${escapeHTML(requestData.user_agent || '不明')}</dd></div>
-            <div><dt>ログイン方法</dt><dd>${escapeHTML(providerName)}</dd></div>
-            <div><dt>依頼日時</dt><dd>${escapeHTML(formatDate(requestData.started_at))}</dd></div>
-            ${pending ? `<div><dt>待機期間の終了</dt><dd>${escapeHTML(formatDate(requestData.wait_until))}</dd></div>` : ''}
+            <div><dt>${t('auth.recovery_source_label')}</dt><dd>${escapeHTML(requestData.ip_masked || t('dm.unknown_name'))}</dd></div>
+            <div><dt>${t('auth.recovery_device_label')}</dt><dd>${escapeHTML(requestData.user_agent || t('dm.unknown_name'))}</dd></div>
+            <div><dt>${t('auth.recovery_method_label')}</dt><dd>${escapeHTML(providerName)}</dd></div>
+            <div><dt>${t('auth.recovery_date_label')}</dt><dd>${escapeHTML(formatDate(requestData.started_at))}</dd></div>
+            ${pending ? `<div><dt>${t('auth.recovery_wait_end_label')}</dt><dd>${escapeHTML(formatDate(requestData.wait_until))}</dd></div>` : ''}
         </dl>
-        ${isCurrentIp ? '<p class="account-recovery-warning" role="alert">この依頼は、いま使っている場所から送信されています。ブロックすると、この端末からログインできなくなります。</p>' : ''}
+        ${isCurrentIp ? `<p class="account-recovery-warning" role="alert">${t('auth.recovery_current_ip_warning')}</p>` : ''}
         ${pending ? `
-            <p class="settings-help-text nui-help-text">自分で依頼した場合は「承認」を、心当たりがない場合は「ブロック」を選んでください。</p>
+            <p class="settings-help-text nui-help-text">${t('auth.recovery_choose_hint')}</p>
             <div class="login-approval-actions">
-                <button type="button" class="login-secondary-button account-recovery-block-btn nui-button-secondary">ブロック</button>
-                <button type="button" class="settings-primary-button account-recovery-approve-btn nui-button">承認</button>
+                <button type="button" class="login-secondary-button account-recovery-block-btn nui-button-secondary">${t('profile.block')}</button>
+                <button type="button" class="settings-primary-button account-recovery-approve-btn nui-button">${t('group.approve')}</button>
             </div>
             <details class="account-recovery-more">
-                <summary>ブロックするとどうなりますか？</summary>
-                <p>依頼元の場所からログインできなくなります。ログイン方法が2つ以上ある場合は、依頼に使われた方法の連携も解除されます。</p>
+                <summary>${t('auth.recovery_block_summary')}</summary>
+                <p>${t('auth.recovery_block_explain')}</p>
             </details>
-        ` : `<p class="settings-help-text nui-help-text">この依頼はすでに処理されています（${escapeHTML(accountRecoveryStatusLabel(status))}）。</p>`}
+        ` : `<p class="settings-help-text nui-help-text">${t('auth.recovery_already_processed', { status: escapeHTML(accountRecoveryStatusLabel(status)) })}</p>`}
     `;
 
     const decide = async (action) => {
         if (action === 'block') {
             const confirmed = await showAppConfirm(
                 isCurrentIp
-                    ? 'この依頼をブロックしますか？いま使っている場所からもログインできなくなります。'
-                    : 'この依頼をブロックしますか？依頼元の場所からログインできなくなります。',
+                    ? t('auth.recovery_block_confirm_current')
+                    : t('auth.recovery_block_confirm'),
             );
             if (!confirmed) return;
         }
@@ -627,15 +628,15 @@ export async function openAccountRecoveryModal(recoveryRequest) {
             if (error) throw error;
             closeModal();
             if (action === 'approve') {
-                await showAppAlert('復旧依頼を承認しました。依頼元の場所からログインできるようになりました。');
+                await showAppAlert(t('auth.recovery_approved'));
             } else if (data?.current_ip_blocked) {
-                await showAppAlert('復旧依頼をブロックしました。この端末も、別のネットワークに切り替えるまでログインできません。解除は 設定 → セッション から行えます。');
+                await showAppAlert(t('auth.recovery_blocked_current'));
             } else {
-                await showAppAlert('復旧依頼をブロックしました。');
+                await showAppAlert(t('auth.recovery_blocked'));
             }
         } catch (error) {
             console.error('復旧依頼の処理に失敗:', error);
-            await showAppAlert('処理に失敗しました。');
+            await showAppAlert(t('auth.process_failed'));
         } finally {
             showLoading(false);
         }
@@ -681,7 +682,7 @@ export async function checkSession({
 
         if (userData.freeze) {
             if (DOM.freezeReason) {
-                DOM.freezeReason.textContent = userData.freeze_reason || (typeof userData.freeze === 'string' ? userData.freeze : '利用規約違反のため');
+                DOM.freezeReason.textContent = userData.freeze_reason || (typeof userData.freeze === 'string' ? userData.freeze : t('auth.freeze_reason_default'));
             }
             DOM.freezeOverlay?.classList.remove('hidden');
             setupFreezeAppealUi();

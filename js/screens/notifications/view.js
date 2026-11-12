@@ -1,22 +1,23 @@
+import { t } from '../../modules/i18n.js';
 import { DOM } from '../../dom.js';
 import { appendNotificationDisplay } from '../../modules/notifications.js';
 
 export function renderHeader() {
     DOM.pageHeader.innerHTML = `
         <div class="header-with-action-button">
-            <h2 id="page-title">通知</h2>
-            <button id="mark-all-read-btn" class="header-action-btn nui-button-secondary" data-nui="button-secondary">すべて既読</button>
+            <h2 id="page-title">${t('nav.notifications')}</h2>
+            <button id="mark-all-read-btn" class="header-action-btn nui-button-secondary" data-nui="button-secondary">${t('notifview.mark_all_read')}</button>
         </div>`;
 }
 
 export function renderLoggedOut() {
     if (DOM.notificationsContent) {
-        DOM.notificationsContent.innerHTML = '<p class="notifications-empty-message nui-empty-text">通知を見るにはログインが必要です。</p>';
+        DOM.notificationsContent.innerHTML = `<p class="notifications-empty-message nui-empty-text">${t('notifview.login_required')}</p>`;
     }
 }
 
 export function renderLoading(content) {
-    if (content) content.innerHTML = '<div class="spinner" aria-label="読み込み中"></div>';
+    if (content) content.innerHTML = `<div class="spinner" aria-label="${t('common.loading')}"></div>`;
 }
 
 export function createNotificationElement(notification) {
@@ -34,7 +35,7 @@ export function createNotificationElement(notification) {
     const deleteButton = document.createElement('button');
     deleteButton.className = 'notification-delete-btn nui-button-danger';
     deleteButton.textContent = '×';
-    deleteButton.title = '通知を削除';
+    deleteButton.title = t('notifview.delete_title');
     notice.append(content, deleteButton);
     return notice;
 }
@@ -42,19 +43,19 @@ export function createNotificationElement(notification) {
 export function renderEmptyState(trigger, hasNotifications) {
     if (trigger) {
         trigger.textContent = hasNotifications
-            ? 'すべての通知を読み込みました'
-            : '通知はまだありません。';
+            ? t('notifview.all_loaded')
+            : t('notifview.empty');
     }
 }
 
 export function renderLoadError(trigger, hasNotifications) {
     if (trigger) {
         trigger.textContent = hasNotifications
-            ? '通知の追加読み込みに失敗しました。'
-            : '通知の読み込みに失敗しました。';
+            ? t('notifview.load_more_failed')
+            : t('notifview.load_failed');
     }
 }
 
 export function renderError(content) {
-    if (content) content.innerHTML = '<p class="error-message">通知の読み込みに失敗しました。</p>';
+    if (content) content.innerHTML = `<p class="error-message">${t('notifview.load_failed')}</p>`;
 }

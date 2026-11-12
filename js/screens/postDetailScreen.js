@@ -1,3 +1,4 @@
+import { t } from '../modules/i18n.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { apiRequest } from '../api.js';
@@ -16,7 +17,7 @@ import { showScreenCompat } from '../screenManager.js';
 export async function showPostDetail(postId, options = {}, maybeShowScreenFn = null) {
     const normalizedPostId = Number(postId);
     if (!Number.isInteger(normalizedPostId) || normalizedPostId <= 0) {
-        throw new Error('無効なポストIDです。');
+        throw new Error(t('activity.invalid_post_id'));
     }
 
     let showScreenFn = maybeShowScreenFn;
@@ -31,7 +32,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
     DOM.pageHeader.innerHTML = `
         <div class="header-with-back-button">
             <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
-            <h2 id="page-title">ポスト</h2>
+            <h2 id="page-title">${t('composer.submit')}</h2>
         </div>`;
 
     showScreenCompat('post-detail-screen', showScreenFn);
@@ -57,7 +58,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
             ? threadPayload.replies
             : [];
         if (threadError || !mainPost) {
-            throw threadError || new Error('ポストの取得に失敗しました。');
+            throw threadError || new Error(t('postdetail.fetch_failed'));
         }
 
         if (mainPost.repost_to && !mainPost.content) {
@@ -122,7 +123,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         // ── 返信セクション ─────────────────────────────────────────────
         const repliesHeader = document.createElement('h3');
         repliesHeader.className = 'nui-section-title';
-        repliesHeader.textContent = '返信';
+        repliesHeader.textContent = t('dm.reply_button');
         repliesHeader.style.cssText =
             'padding: 1rem; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); margin-top: 1rem; margin-bottom: 0; font-size: 1.2rem;';
         contentDiv.appendChild(repliesHeader);
@@ -323,7 +324,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                     const showMoreBtn = document.createElement('button');
                     showMoreBtn.type = 'button';
                     showMoreBtn.className = 'thread-show-more-btn nui-button-secondary';
-                    showMoreBtn.textContent = `続きを表示 (他 ${remainingDescendants.length} 件の返信)`;
+                    showMoreBtn.textContent = t('postdetail.show_more_replies', { count: remainingDescendants.length });
 
                     showMoreBtn.addEventListener('click', () => {
                         collapsedContainer.classList.remove('hidden');
@@ -344,8 +345,8 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
 
             if (!pagination.hasMore) {
                 trigger.textContent = repliesContainer.hasChildNodes()
-                    ? 'すべての返信を読み込みました'
-                    : 'まだ返信はありません。';
+                    ? t('postdetail.all_replies_loaded')
+                    : t('pagination.empty_replies');
                 if (repliesLoadObserver) repliesLoadObserver.disconnect();
             } else {
                 trigger.innerHTML = '';
@@ -385,7 +386,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                 await loadMoreReplies();
             }
         } else {
-            trigger.textContent = 'まだ返信はありません。';
+            trigger.textContent = t('pagination.empty_replies');
         }
 
         if (pagination.hasMore) repliesLoadObserver.observe(trigger);
@@ -405,7 +406,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
         }
     } catch (e) {
         console.error('ポスト詳細表示エラー:', e);
-        contentDiv.innerHTML = `<p class="error-message nui-empty-text">ポストの読み込みに失敗しました。</p>`;
+        contentDiv.innerHTML = `<p class="error-message nui-empty-text">${t('pagination.post_load_failed')}</p>`;
     } finally {
         showLoading(false);
     }

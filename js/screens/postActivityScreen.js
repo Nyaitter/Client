@@ -1,3 +1,4 @@
+import { t } from '../modules/i18n.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { apiRequest } from '../api.js';
@@ -13,7 +14,7 @@ import {
 export async function showPostActivityScreen(postId, initialTab = 'quotes', options = {}, maybeShowScreenFn = null) {
     const normalizedPostId = Number(postId);
     if (!Number.isInteger(normalizedPostId) || normalizedPostId <= 0) {
-        throw new Error('無効なポストIDです。');
+        throw new Error(t('activity.invalid_post_id'));
     }
 
     let showScreenFn = maybeShowScreenFn;
@@ -32,7 +33,7 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
     DOM.pageHeader.innerHTML = `
         <div class="header-with-back-button">
             <button class="header-back-btn" data-action="history-back">${ICONS.back}</button>
-            <h2 id="page-title">ポストアクティビティ</h2>
+            <h2 id="page-title">${t('activity.title')}</h2>
         </div>`;
 
     showScreenCompat('post-activity-screen', showScreenFn);
@@ -50,7 +51,7 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
         if (cached) return cached;
         const { data, error } = await apiRequest(endpoint);
         if (error || !data) {
-            throw new Error(error || 'データの取得に失敗しました');
+            throw new Error(error || t('activity.fetch_failed'));
         }
         setScreenDataCache(cacheKey, data);
         return data;
@@ -68,10 +69,10 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
         const tabs = [
             {
                 key: 'quotes',
-                label: '引用',
+                label: t('advsearch.kind_quote'),
                 count: summaryData.counts?.quotes ?? (Array.isArray(summaryData.quotes) ? summaryData.quotes.length : undefined),
                 type: 'posts',
-                emptyText: '引用ポストはまだありません',
+                emptyText: t('activity.empty_quotes'),
                 fetch: async (shouldForce) => {
                     const d = await fetchTabItems(
                         `/server/api/posts/${normalizedPostId}/quotes`,
@@ -83,10 +84,10 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
             },
             {
                 key: 'reposts',
-                label: 'リポスト',
+                label: t('post.repost'),
                 count: summaryData.counts?.reposts ?? (Array.isArray(summaryData.reposts) ? summaryData.reposts.length : undefined),
                 type: 'users',
-                emptyText: 'リポストしたユーザーはいません',
+                emptyText: t('activity.empty_reposts'),
                 fetch: async (shouldForce) => {
                     const d = await fetchTabItems(
                         `/server/api/posts/${normalizedPostId}/reposts`,
@@ -101,10 +102,10 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
         if (isAuthor) {
             tabs.push({
                 key: 'likes',
-                label: 'いいね',
+                label: t('nav.likes'),
                 count: summaryData.counts?.likes ?? (Array.isArray(summaryData.likes) ? summaryData.likes.length : undefined),
                 type: 'users',
-                emptyText: 'いいねしたユーザーはいません',
+                emptyText: t('activity.empty_likes'),
                 fetch: async (shouldForce) => {
                     const d = await fetchTabItems(
                         `/server/api/posts/${normalizedPostId}/likes`,
@@ -137,7 +138,7 @@ export async function showPostActivityScreen(postId, initialTab = 'quotes', opti
         });
     } catch (err) {
         console.error('[postActivityScreen] error:', err);
-        contentDiv.innerHTML = `<div class="tab-empty-state nui-empty-text" style="padding: 3rem 1rem; text-align: center; color: var(--secondary-text-color);"><p>${escapeHTML(err?.message || 'アクティビティの取得に失敗しました')}</p></div>`;
+        contentDiv.innerHTML = `<div class="tab-empty-state nui-empty-text" style="padding: 3rem 1rem; text-align: center; color: var(--secondary-text-color);"><p>${escapeHTML(err?.message || t('activity.load_failed'))}</p></div>`;
     } finally {
         showLoading(false);
     }

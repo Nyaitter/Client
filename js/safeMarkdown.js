@@ -1,3 +1,4 @@
+import { t } from './modules/i18n.js';
 function escapeHtml(value) {
     return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -69,7 +70,7 @@ function renderInlineMarkdown(
         } else if (match[10] !== undefined) {
             output += `${renderSyntax('++')}<ins>${renderText(match[10])}</ins>${renderSyntax('++')}`;
         } else if (match[11] !== undefined) {
-            output += `${renderSyntax('||')}<span class="markdown-spoiler" role="button" tabindex="0" aria-expanded="false" aria-label="ネタバレを表示"><span class="markdown-spoiler-content" aria-hidden="true">${renderText(match[11])}</span></span>${renderSyntax('||')}`;
+            output += `${renderSyntax('||')}<span class="markdown-spoiler" role="button" tabindex="0" aria-expanded="false" aria-label="${t('safemarkdown.spoiler_label')}"><span class="markdown-spoiler-content" aria-hidden="true">${renderText(match[11])}</span></span>${renderSyntax('||')}`;
         } else if (match[12] !== undefined) {
             output += `${renderSyntax('^')}<sup>${renderText(match[12])}</sup>${renderSyntax('^')}`;
         } else if (match[13] !== undefined) {

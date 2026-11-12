@@ -1,3 +1,4 @@
+import { t } from '../modules/i18n.js';
 import { DOM } from '../dom.js';
 import { getCurrentUser } from '../state.js';
 import { getAuxiliaryPostPageCache } from '../modules/cache.js';
@@ -7,7 +8,7 @@ import { clearContent, renderHeader, renderLoggedOut } from './likesStars/view.j
 import { showScreenCompat } from '../screenManager.js';
 
 export async function showLikesScreen(showScreenFn = null) {
-    renderHeader('いいね');
+    renderHeader(t('nav.likes'));
     showScreenCompat('likes-screen', showScreenFn);
 
     clearContent(DOM.likesContent);
@@ -29,7 +30,7 @@ export async function showLikesScreen(showScreenFn = null) {
 }
 
 export async function showStarsScreen(showScreenFn = null) {
-    renderHeader('お気に入り');
+    renderHeader(t('nav.stars'));
     showScreenCompat('stars-screen', showScreenFn);
 
     clearContent(DOM.starsContent);
