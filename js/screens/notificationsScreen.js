@@ -14,17 +14,55 @@ import { createViewportObserver } from '../utils/viewport.js';
 import { getNotificationsPerPage, setupTimelinePullToRefresh } from '../modules/theme.js';
 import { showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
 import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
-import {
-    createNotificationElement,
-    renderEmptyState,
-    renderError,
-    renderHeader,
-    renderLoadError,
-    renderLoading,
-    renderLoggedOut,
-} from './notifications/view.js';
-
 export async function showNotificationsScreen(showScreenFn = null) {
+    function renderNotificationsHeader() {
+        DOM.pageHeader.innerHTML = `
+            <div class="header-with-action-button">
+                <h2 id="page-title">${t('notifications.title')}</h2>
+                <button type="button" class="header-action-btn nui-button-secondary" data-nui="button-secondary" data-action="mark-all-read">${t('notifications.mark_all')}</button>
+            </div>`;
+    }
+
+    function renderLoggedOut() {
+        DOM.notificationsContent.innerHTML = `<p class="nui-empty-text">${t('notifications.login_required')}</p>`;
+    }
+
+    function renderLoading(content) {
+        if (content) content.innerHTML = '<div class="spinner"></div>';
+    }
+
+    function createNotificationElement(notification) {
+        const element = document.createElement('div');
+        element.className = 'notification-item';
+        element.dataset.notificationId = notification.id;
+        const iconData = notification.icon_data || notification.avatar_data;
+        element.innerHTML = `
+            <div class="notification-icon"></div>
+            <div class="notification-content"></div>
+            <div class="notification-meta"></div>`;
+        const iconCell = element.querySelector('.notification-icon');
+        const contentCell = element.querySelector('.notification-content');
+        const metaCell = element.querySelector('.notification-meta');
+        const { icon, title, body } = normalizeStructuredNotification(notification);
+        if (iconCell) iconCell.innerHTML = icon || '';
+        if (contentCell) contentCell.innerHTML = `<div class="notification-title">${escapeHTML(title || '')}</div><div class="notification-body">${body || ''}</div>`;
+        if (metaCell) metaCell.innerHTML = `<span class="notification-timestamp">${escapeHTML(notification.created_at_formatted || '')}</span>`;
+        return element;
+    }
+
+    function renderEmptyState(trigger, hasNotifications) {
+        const text = hasNotifications ? t('notifications.no_filtered') : t('notifications.empty');
+        if (trigger) trigger.innerHTML = `<p class="nui-empty-text">${text}</p>`;
+    }
+
+    function renderLoadError(trigger, hasNotifications) {
+        const text = hasNotifications ? t('notifications.load_more_error') : t('notifications.load_error');
+        if (trigger) trigger.innerHTML = `<p class="error-message">${text}</p>`;
+    }
+
+    function renderError(content) {
+        if (content) content.innerHTML = `<p class="error-message">${t('notifications.load_error')}</p>`;
+    }
     if (!getCurrentUser()) {
         DOM.pageHeader.innerHTML = `<h2 id="page-title">${t('notifications.title')}</h2>`;
         showScreenCompat('notifications-screen', showScreenFn);
@@ -33,7 +71,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
         return;
     }
 
-    renderHeader();
+    renderNotificationsHeader();
 
     showScreenCompat('notifications-screen', showScreenFn);
 

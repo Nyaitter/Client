@@ -1,7 +1,7 @@
 import { t } from './i18n.js';
 import { getCurrentUser, getAllUsersCache } from '../state.js';
 import { attachRankAvatar } from './rankAvatar.js';
-import { getRankAppearance, RANK_TYPES } from './rankAppearance.js';
+import { getRankAppearance, RANK_TYPES } from './rankAvatar.js';
 
 const SELECTOR = 'img[data-rank-avatar]';
 const PORTAL = '.rank-avatar-layer, .rank-avatar-tooltip, .rank-avatar-panel';

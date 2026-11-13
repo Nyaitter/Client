@@ -1,4 +1,227 @@
 /* ==========================================================================
+   Nyaitter - base.css
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family:
+        'Noto Sans JP',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+    margin: 0;
+    overflow-x: hidden;
+    background-color: var(--main-bg-color);
+    color: var(--text-color);
+}
+
+input,
+textarea {
+    font-family:
+        'Noto Sans JP',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+}
+
+/* テキスト選択はポスト本文とプロフィールだけに許可する。 */
+body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.post-content,
+.user-me,
+.me {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+}
+
+input,
+textarea,
+select,
+[contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* キーボード操作のときだけ現在位置を示す枠を出す。
+   各要素が自前のスタイルを持つ場合はそれを邪魔しないよう、詳細度を 0 にする。 */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--nui-accent, var(--primary-color));
+    outline-offset: 2px;
+}
+
+::selection {
+    background: color-mix(in srgb, var(--primary-color) 26%, transparent);
+}
+
+/* 動きを減らす設定の端末では、演出をほぼ即時に終える。 */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+img.emojione {
+    width: 1.1rem;
+    height: auto;
+}
+
+img.emoji {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    padding-right: 1px;
+    vertical-align: -0.1em;
+}
+
+.notocoloremoji {
+    font-family:
+        'Noto Sans JP',
+        'Noto Color Emoji',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+}
+
+.nyaitter-emoji {
+    background-color: var(--emoji-bg-color);
+}
+
+.attachment-button,
+.post-poll-button,
+.emoji-pic-button,
+.markdown-preview-button,
+.nyaitter-ime-button,
+.post-mask-button,
+.post-lock-button,
+.post-announcement-button,
+.post-group-button,
+.post-reply-control-button,
+.post-schedule-button,
+.post-tools-overflow-button,
+.post-tools-group .post-tool-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    color: var(--text-color);
+    line-height: 1;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.attachment-button:hover,
+.post-poll-button:hover,
+.emoji-pic-button:hover,
+.markdown-preview-button:hover,
+.nyaitter-ime-button:hover,
+.post-mask-button:hover,
+.post-lock-button:hover,
+.post-announcement-button:hover,
+.post-group-button:hover,
+.post-reply-control-button:hover,
+.post-schedule-button:hover,
+.post-tools-overflow-button:hover,
+.post-tools-group .post-tool-btn:hover {
+    background-color: var(--bg-color);
+}
+
+.post-schedule-button {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    border: 1px solid transparent;
+    box-sizing: border-box;
+}
+
+.post-schedule-button svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.post-schedule-button.active,
+.post-schedule-button[aria-expanded="true"] {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    background: transparent;
+}
+
+.post-schedule-button.active:hover,
+.post-schedule-button[aria-expanded="true"]:hover {
+    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+}
+
+.emoji-pic-button svg {
+    stroke: none;
+    fill: var(--text-color);
+}
+
+textarea.markdown-content-editor {
+    font: inherit;
+    line-height: inherit;
+    resize: none;
+}
+
+textarea.markdown-content-editor::placeholder {
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+}
+
+#emoji-picker {
+    position: fixed;
+    z-index: 100;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+em-emoji-picker {
+    --rgb-background: var(--emoji-mart);
+}
+
+.user-icon {
+    border-radius: 50%;
+    object-fit: cover; /* アイコンが潰れるのを防ぐ */
+}
+/* ==========================================================================
    Nyaitter - layout.css
    ========================================================================== */
 

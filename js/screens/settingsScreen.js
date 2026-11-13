@@ -64,7 +64,7 @@ import {
     DEFAULT_SIDEBAR,
     getSavedSideMenu,
     writeSideMenuMirror,
-} from '../modules/sidebarItems.js';
+} from '../modules/sidebar.js';
 import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
 import { uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
 import {
@@ -397,6 +397,10 @@ function reconcileRankDisplaySettings(form, settings, submitted, failed = false)
     form.dispatchEvent(new CustomEvent('settings-rank-display-save', {
         detail: { settings, submitted, failed },
     }));
+}
+
+export async function mountSettingsScreen(showScreenFn, context = {}) {
+    return showSettingsScreen({ group: context.group }, showScreenFn, context);
 }
 
 export async function showSettingsScreen(
