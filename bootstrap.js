@@ -167,6 +167,7 @@
     // 起動できる版がキャッシュにあるかを確認し、無ければ最新の正式版を取得して格納する。
     // 'fetched' と 'reloading' のときは読み直す。'failed' のときは版を取得できなかった。
     async function ensureStoredVersion() {
+        setBootStatus(lt('common.loading'));
         const source = String(config.clientNap || '').trim();
         if (!source) return 'failed';
         if (typeof caches === 'undefined') return 'failed';
@@ -275,6 +276,7 @@
     }
 
     config.ready
+        .then(() => globalThis.NyaitterI18n?.ready)
         .then(() => ensureStoredVersion())
         .then((mode) => {
             if (mode === 'fetched' || mode === 'reloading') {
