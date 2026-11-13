@@ -4,10 +4,33 @@ import { renderNyarkDown } from '../../modules/nyarkdown.js';
 import { getAllUsersCache } from '../../state.js';
 import { getActiveScreenContext } from '../../screenManager.js';
 import { showLoading } from '../../utils/helpers.js';
-import { renderError, renderHeader, renderLoading, renderRules } from './view.js';
+export function renderRuleHeader(pageHeader) {
+    if (!pageHeader) return;
+    pageHeader.innerHTML = `
+        <h2 id="page-title">${t('settings.rule')}</h2>
+        <p class="page-subtitle">${t('rule.last_updated')}</p>`;
+}
+
+export function renderLoading(content) {
+    if (content) content.innerHTML = `<div class="spinner"></div>`;
+}
+
+export function renderRules(content, renderedHtml, updatedAt) {
+    if (!content) return;
+    const updatedText = updatedAt
+        ? `${t('rule.last_updated')}: ${new Date(updatedAt).toLocaleString()}`
+        : '';
+    content.innerHTML = `
+        <div class="rule-content">${renderedHtml}</div>
+        ${updatedText ? `<p class="rule-updated-at">${updatedText}</p>` : ''}`;
+}
+
+export function renderError(content) {
+    if (content) content.innerHTML = `<p class="error-message">${t('rule.load_error')}</p>`;
+}
 
 export async function mountRuleScreen(showScreenFn) {
-    renderHeader(DOM.pageHeader);
+    renderRuleHeader(DOM.pageHeader);
     if (typeof showScreenFn === 'function') {
         showScreenFn('rule-screen');
     }

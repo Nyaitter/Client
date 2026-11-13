@@ -67,7 +67,7 @@ const screenHandlers = {
     dm: (params, showScreenFn) => showDmScreen(params.dmId, showScreenFn),
     settings: async (params, showScreenFn) => {
         const [{ mountSettingsScreen }, { getSettingsGroupFromHash }] = await Promise.all([
-            import('./screens/settings/controller.js'),
+            import('./screens/settingsScreen.js'),
             import('./screens/settings/config.js'),
         ]);
         return mountSettingsScreen(
