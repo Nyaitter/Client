@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "المعلومات الأساسية مثل اسم المستخدم والأيقونة",
   "settings.profile.username_required": "اسم المستخدم مطلوب.",
   "settings.account.logout": "تسجيل الخروج",
+  "settings.account.search_button": "بحث",
   "settings.security.login_safety": "أمان تسجيل الدخول",
   "settings.providers.modal_unavailable": "حوار تسجيل الدخول غير متاح. أعد تحميل الصفحة.",
   "settings.home_tabs.available_hint": "اسحب إلى علامات التبويب النشطة أدناه أو انقر زر + للإضافة.",

@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "Основная информация, например имя пользователя и иконка",
   "settings.profile.username_required": "Имя пользователя обязательно.",
   "settings.account.logout": "Выйти",
+  "settings.account.search_button": "Поиск",
   "settings.security.login_safety": "Безопасность входа",
   "settings.providers.modal_unavailable": "Диалог входа недоступен. Перезагрузите страницу.",
   "settings.home_tabs.available_hint": "Перетащите на активные вкладки ниже или нажмите кнопку +, чтобы добавить.",

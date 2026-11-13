@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "Informações básicas, como nome de utilizador e ícone",
   "settings.profile.username_required": "O nome de utilizador é obrigatório.",
   "settings.account.logout": "Terminar sessão",
+  "settings.account.search_button": "Pesquisar",
   "settings.security.login_safety": "Segurança do início de sessão",
   "settings.providers.modal_unavailable": "O diálogo de início de sessão não está disponível. Recarregue a página.",
   "settings.home_tabs.available_hint": "Arraste para os separadores ativos abaixo ou clique no botão + para adicionar.",

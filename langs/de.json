@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "Grundinformationen wie Nutzername und Symbol",
   "settings.profile.username_required": "Ein Nutzername ist erforderlich.",
   "settings.account.logout": "Abmelden",
+  "settings.account.search_button": "Suchen",
   "settings.security.login_safety": "Anmeldesicherheit",
   "settings.providers.modal_unavailable": "Der Anmeldedialog ist nicht verfügbar. Lade die Seite neu.",
   "settings.home_tabs.available_hint": "Ziehe auf die aktiven Tabs unten oder drücke die +-Schaltfläche zum Hinzufügen.",

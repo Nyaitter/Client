@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "Basic information such as username and icon",
   "settings.profile.username_required": "Username is required.",
   "settings.account.logout": "Log out",
+  "settings.account.search_button": "Search",
   "settings.security.login_safety": "Sign-in safety",
   "settings.providers.modal_unavailable": "The sign-in dialog isn't available. Reload the page.",
   "settings.home_tabs.available_hint": "Drag onto the active tabs below, or press the + button to add.",

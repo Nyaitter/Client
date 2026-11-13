@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "👤 🏷️ 🖼️ 📋",
   "settings.profile.username_required": "👤 🏷️ ❗",
   "settings.account.logout": "🚪",
+  "settings.account.search_button": "🔍",
   "settings.security.login_safety": "🔓 🛡️",
   "settings.providers.modal_unavailable": "🔓 💬 🚫 · 🔄 📄",
   "settings.home_tabs.available_hint": "🖱️ ⬇️ ▶️ 🗂️ · ➕ 👆",

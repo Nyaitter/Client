@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "Informazioni di base come nome utente e icona",
   "settings.profile.username_required": "Il nome utente è obbligatorio.",
   "settings.account.logout": "Esci",
+  "settings.account.search_button": "Cerca",
   "settings.security.login_safety": "Sicurezza dell'accesso",
   "settings.providers.modal_unavailable": "La finestra di accesso non è disponibile. Ricarica la pagina.",
   "settings.home_tabs.available_hint": "Trascina sulle schede attive qui sotto o fai clic sul pulsante + per aggiungere.",

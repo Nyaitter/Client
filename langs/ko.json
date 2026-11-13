@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "사용자 이름, 아이콘 등 기본 정보",
   "settings.profile.username_required": "사용자 이름은 필수입니다.",
   "settings.account.logout": "로그아웃",
+  "settings.account.search_button": "검색",
   "settings.security.login_safety": "로그인 보안",
   "settings.providers.modal_unavailable": "로그인 창을 사용할 수 없습니다. 페이지를 새로고침하세요.",
   "settings.home_tabs.available_hint": "아래 활성 탭으로 드래그하거나 + 버튼을 눌러 추가할 수 있습니다.",
