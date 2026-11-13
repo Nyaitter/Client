@@ -221,7 +221,6 @@
     }
 
     async function ensureStoredVersion() {
-        setBootStatus(lt('common.loading'));
         const source = String(config.clientNap || '').trim();
         if (!source) return 'failed';
         if (typeof caches === 'undefined') return 'failed';
@@ -253,7 +252,7 @@
                     if (latestFormal && storedFormal && !stored.includes(latestFormal.id)) {
                         await registerShellServiceWorker();
                         if (await fetchLatestAndStore(page)) return 'fetched';
-                        setBootStatus(lt('common.loading'));
+                        setBootStatus('');
                     }
                 }
             }
