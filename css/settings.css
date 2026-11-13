@@ -1855,12 +1855,3 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     list-style: none;
 }
 
-.settings-client-version-more {
-    padding: 0.5rem;
-    list-style: none;
-}
-
-.settings-client-version-more-button {
-    width: 100%;
-    padding: 0.6rem;
-}
