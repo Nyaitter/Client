@@ -71,43 +71,7 @@ import {
     getGroupBadgesHtml,
     matchesMedia,
 } from '../utils/helpers.js';
-export function renderProfileHeader() {
-    DOM.pageHeader.innerHTML = `
-        <div class="header-with-back-button">
-            <button class="header-back-btn" data-action="history-back" aria-label="${t('admin.back_label')}">${ICONS.back}</button>
-            <h2 id="page-title">
-                <div id="page-title-main">${t('nav.profile')}</div>
-                <small id="page-title-sub"></small>
-            </h2>
-        </div>`;
-}
 
-export function renderProfileTabs(container, user, activeTab) {
-    if (!container) return;
-    const sharedGroups = Array.isArray(user?.groups) ? user.groups : [];
-    const tabs = [
-        { key: 'posts', name: t('composer.submit') },
-        { key: 'replies', name: t('dm.reply_button') },
-        { key: 'media', name: t('profileview.tab_media') },
-        { key: 'likes', name: t('nav.likes') },
-        { key: 'stars', name: t('nav.stars') },
-        ...(isCurrentUserProfile(user)
-            ? [{ key: 'scheduled', name: t('profileview.tab_scheduled') }]
-            : []),
-        ...sharedGroups.map((group) => ({
-            key: `group:${group.id}`,
-            name: group.name || t('nav.groups'),
-            className: 'profile-group-tab',
-            title: group.name || t('nav.groups'),
-        })),
-    ];
-    container.classList.add('nui-tabs');
-    container.setAttribute('data-nui', 'tabs');
-    container.innerHTML = tabs.map((tab) => (
-        `<button class="tab-button nui-tab ${tab.className || ''} ${tab.key === activeTab ? 'active is-active' : ''}" data-tab="${escapeHTML(tab.key)}" title="${escapeHTML(tab.title || tab.name)}">${escapeHTML(tab.name)}</button>`
-    )).join('');
-    return tabs;
-}
 import {
     getActiveScreenContext,
     onScreenCleanup,
@@ -536,7 +500,7 @@ export async function refreshActiveProfileTab({ userId, subpage } = {}) {
 
 export async function showProfileScreen(userId, subpage = 'posts', showScreenFn = null) {
     incrementRouterGeneration();
-    renderProfileHeader();
+    renderHeader();
 
     showScreenCompat('profile-screen', showScreenFn);
     setupProfileScrollTracking();
@@ -736,7 +700,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
             return;
         }
 
-        renderProfileTabs(profileTabs, user, subpage);
+        renderTabs(profileTabs, user, subpage);
 
         profileTabs.querySelectorAll('.tab-button').forEach((button) => {
             const tab = button.dataset.tab;
@@ -1362,4 +1326,42 @@ async function setUserNotificationMode(targetUser, mode, trigger) {
     } else {
         showAppAlert(t('profile.notify_save_failed'));
     }
+}
+
+export function renderHeader() {
+    DOM.pageHeader.innerHTML = `
+        <div class="header-with-back-button">
+            <button class="header-back-btn" data-action="history-back" aria-label="${t('admin.back_label')}">${ICONS.back}</button>
+            <h2 id="page-title">
+                <div id="page-title-main">${t('nav.profile')}</div>
+                <small id="page-title-sub"></small>
+            </h2>
+        </div>`;
+}
+
+export function renderTabs(container, user, activeTab) {
+    if (!container) return;
+    const sharedGroups = Array.isArray(user?.groups) ? user.groups : [];
+    const tabs = [
+        { key: 'posts', name: t('composer.submit') },
+        { key: 'replies', name: t('dm.reply_button') },
+        { key: 'media', name: t('profileview.tab_media') },
+        { key: 'likes', name: t('nav.likes') },
+        { key: 'stars', name: t('nav.stars') },
+        ...(isCurrentUserProfile(user)
+            ? [{ key: 'scheduled', name: t('profileview.tab_scheduled') }]
+            : []),
+        ...sharedGroups.map((group) => ({
+            key: `group:${group.id}`,
+            name: group.name || t('nav.groups'),
+            className: 'profile-group-tab',
+            title: group.name || t('nav.groups'),
+        })),
+    ];
+    container.classList.add('nui-tabs');
+    container.setAttribute('data-nui', 'tabs');
+    container.innerHTML = tabs.map((tab) => (
+        `<button class="tab-button nui-tab ${tab.className || ''} ${tab.key === activeTab ? 'active is-active' : ''}" data-tab="${escapeHTML(tab.key)}" title="${escapeHTML(tab.title || tab.name)}">${escapeHTML(tab.name)}</button>`
+    )).join('');
+    return tabs;
 }
