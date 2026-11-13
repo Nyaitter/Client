@@ -205,7 +205,6 @@ function showListLoading(list) {
 function appendVersionRows() {
     const list = document.getElementById('settings-client-versions');
     if (!list || !listView) return;
-    list.querySelector('.settings-client-version-more')?.remove();
     const { ordered, latestEntry, currentId, supported } = listView;
     const start = listView.rendered;
     const end = Math.min(start + PAGE_SIZE, ordered.length);
@@ -226,16 +225,19 @@ function appendVersionRows() {
         }));
     }
     listView.rendered = end;
-    if (end < ordered.length) {
-        const item = document.createElement('li');
-        item.className = 'settings-client-version-more';
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'settings-client-version-more-button nui-button-secondary';
-        button.textContent = t('settings.client.show_more');
-        button.addEventListener('click', appendVersionRows);
-        item.appendChild(button);
-        list.appendChild(item);
+}
+
+// 最下部近くまで表示されたら、次の分を自動で読み込む。
+function fillVersionList() {
+    const list = document.getElementById('settings-client-versions');
+    if (!list || !listView || !list.clientHeight) return;
+    let guard = 0;
+    while (
+        listView.rendered < listView.ordered.length &&
+        list.scrollHeight - list.scrollTop - list.clientHeight < 80 &&
+        guard++ < 100
+    ) {
+        appendVersionRows();
     }
 }
 
@@ -270,6 +272,11 @@ async function runLoad({ announce = false } = {}) {
     };
     list.textContent = '';
     appendVersionRows();
+    if (!list.dataset.autoloadBound) {
+        list.dataset.autoloadBound = '1';
+        list.addEventListener('scroll', fillVersionList, { passive: true });
+    }
+    fillVersionList();
     if (!supported) {
         setStatus(t('settings.client.unsupported'));
     } else if (announce) {
