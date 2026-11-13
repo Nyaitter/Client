@@ -167,7 +167,7 @@ export async function showNyaitterAuthScreen(showScreenFn) {
                                     <div class="nyauth-account-details">
                                         <div class="nyauth-account-name">
                                             <strong>${escapeHTML(acc.name || t('composer.account_unknown'))}</strong>
-                                            ${acc.is_imposter ? `<span class="settings-session-current nui-badge" style="font-size:0.7rem; padding: 0.1rem 0.3rem;">${t('profile.imposter_badge')}</span>` : ''}
+                                            ${acc.is_imposter ? `<span class="settings-session-current nui-badge" style="font-size:0.7rem; padding: 0.1rem 0.3rem;">${t('post.imposter_badge')}</span>` : ''}
                                         </div>
                                         <span class="nyauth-account-id">${formatNyaitterId(acc)}</span>
                                     </div>

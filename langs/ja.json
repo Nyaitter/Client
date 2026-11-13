@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "ユーザー名、アイコンなどの基本情報",
   "settings.profile.username_required": "ユーザー名は必須です。",
   "settings.account.logout": "ログアウト",
+  "settings.account.search_button": "検索",
   "settings.security.login_safety": "ログインのセーフティ",
   "settings.providers.modal_unavailable": "ログインモーダルを利用できません。ページを再読み込みしてください。",
   "settings.home_tabs.available_hint": "下側の有効なタブにドラッグするか、「＋」ボタンを押して追加できます。",

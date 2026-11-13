@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "Informations de base comme le nom d'utilisateur et l'icône",
   "settings.profile.username_required": "Le nom d'utilisateur est requis.",
   "settings.account.logout": "Se déconnecter",
+  "settings.account.search_button": "Rechercher",
   "settings.security.login_safety": "Sécurité de connexion",
   "settings.providers.modal_unavailable": "La boîte de dialogue de connexion n'est pas disponible. Rechargez la page.",
   "settings.home_tabs.available_hint": "Glissez sur les onglets actifs ci-dessous, ou appuyez sur le bouton + pour ajouter.",

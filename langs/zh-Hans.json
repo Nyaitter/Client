@@ -403,6 +403,7 @@
   "settings.apps.scope.basic_info": "用户名、头像等基本信息",
   "settings.profile.username_required": "用户名为必填项。",
   "settings.account.logout": "退出登录",
+  "settings.account.search_button": "搜索",
   "settings.security.login_safety": "登录安全",
   "settings.providers.modal_unavailable": "登录对话框不可用。请重新加载页面。",
   "settings.home_tabs.available_hint": "拖到下方已启用的标签上，或按 + 按钮添加。",
