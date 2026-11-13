@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "Выберите, что происходит, когда другой пользователь приглашает вас в ЛС.",
   "common.create": "Создать",
   "settings.client.description": "Выберите, какую версию клиента использовать.",
+  "settings.client.always_latest": "Всегда использовать последнюю версию",
   "settings.api.name_placeholder": "Например: Бот для постов, Скрипт уведомлений",
   "common.save": "Сохранить",
   "common.saving": "Сохранение",

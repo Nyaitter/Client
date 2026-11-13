@@ -6,63 +6,15 @@ import {
     getPostLoadObserver,
     setPostLoadObserver,
 } from '../state.js';
-import {
-    normalizeStructuredNotification,
-} from '../modules/notifications.js';
+import { normalizeStructuredNotification, appendNotificationDisplay } from '../modules/notifications.js';
 import { updateNavAndSidebars } from '../modules/sidebar.js';
 import { createViewportObserver } from '../utils/viewport.js';
 import { getNotificationsPerPage, setupTimelinePullToRefresh } from '../modules/theme.js';
 import { showLoading, showAppAlert, showAppConfirm } from '../utils/helpers.js';
 import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
+
+
 export async function showNotificationsScreen(showScreenFn = null) {
-    function renderNotificationsHeader() {
-        DOM.pageHeader.innerHTML = `
-            <div class="header-with-action-button">
-                <h2 id="page-title">${t('notifications.title')}</h2>
-                <button type="button" class="header-action-btn nui-button-secondary" data-nui="button-secondary" data-action="mark-all-read">${t('notifications.mark_all')}</button>
-            </div>`;
-    }
-
-    function renderLoggedOut() {
-        DOM.notificationsContent.innerHTML = `<p class="nui-empty-text">${t('notifications.login_required')}</p>`;
-    }
-
-    function renderLoading(content) {
-        if (content) content.innerHTML = '<div class="spinner"></div>';
-    }
-
-    function createNotificationElement(notification) {
-        const element = document.createElement('div');
-        element.className = 'notification-item';
-        element.dataset.notificationId = notification.id;
-        const iconData = notification.icon_data || notification.avatar_data;
-        element.innerHTML = `
-            <div class="notification-icon"></div>
-            <div class="notification-content"></div>
-            <div class="notification-meta"></div>`;
-        const iconCell = element.querySelector('.notification-icon');
-        const contentCell = element.querySelector('.notification-content');
-        const metaCell = element.querySelector('.notification-meta');
-        const { icon, title, body } = normalizeStructuredNotification(notification);
-        if (iconCell) iconCell.innerHTML = icon || '';
-        if (contentCell) contentCell.innerHTML = `<div class="notification-title">${escapeHTML(title || '')}</div><div class="notification-body">${body || ''}</div>`;
-        if (metaCell) metaCell.innerHTML = `<span class="notification-timestamp">${escapeHTML(notification.created_at_formatted || '')}</span>`;
-        return element;
-    }
-
-    function renderEmptyState(trigger, hasNotifications) {
-        const text = hasNotifications ? t('notifications.no_filtered') : t('notifications.empty');
-        if (trigger) trigger.innerHTML = `<p class="nui-empty-text">${text}</p>`;
-    }
-
-    function renderLoadError(trigger, hasNotifications) {
-        const text = hasNotifications ? t('notifications.load_more_error') : t('notifications.load_error');
-        if (trigger) trigger.innerHTML = `<p class="error-message">${text}</p>`;
-    }
-
-    function renderError(content) {
-        if (content) content.innerHTML = `<p class="error-message">${t('notifications.load_error')}</p>`;
-    }
     if (!getCurrentUser()) {
         DOM.pageHeader.innerHTML = `<h2 id="page-title">${t('notifications.title')}</h2>`;
         showScreenCompat('notifications-screen', showScreenFn);
@@ -71,7 +23,7 @@ export async function showNotificationsScreen(showScreenFn = null) {
         return;
     }
 
-    renderNotificationsHeader();
+    renderHeader();
 
     showScreenCompat('notifications-screen', showScreenFn);
 
@@ -281,4 +233,62 @@ export async function showNotificationsScreen(showScreenFn = null) {
     } finally {
         if (!signal?.aborted) showLoading(false);
     }
+}
+
+export function renderHeader() {
+    DOM.pageHeader.innerHTML = `
+        <div class="header-with-action-button">
+            <h2 id="page-title">${t('nav.notifications')}</h2>
+            <button id="mark-all-read-btn" class="header-action-btn nui-button-secondary" data-nui="button-secondary">${t('notifview.mark_all_read')}</button>
+        </div>`;
+}
+
+export function renderLoggedOut() {
+    if (DOM.notificationsContent) {
+        DOM.notificationsContent.innerHTML = `<p class="notifications-empty-message nui-empty-text">${t('notifview.login_required')}</p>`;
+    }
+}
+
+export function renderLoading(content) {
+    if (content) content.innerHTML = `<div class="spinner" aria-label="${t('common.loading')}"></div>`;
+}
+
+export function createNotificationElement(notification) {
+    const notice = document.createElement('div');
+    notice.className = 'widget-item notification-item nui-list-item';
+    if (!notification.clicked) notice.classList.add('notification-new');
+    if (notification.clicked) notice.classList.add('notification-clicked');
+    notice.dataset.notificationId = notification.id;
+    notice.dataset.notificationClicked = String(notification.clicked);
+
+    const content = document.createElement('div');
+    content.className = 'notification-item-content nui-list-copy';
+    appendNotificationDisplay(content, notification);
+
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'notification-delete-btn nui-button-danger';
+    deleteButton.textContent = '×';
+    deleteButton.title = t('notifview.delete_title');
+    notice.append(content, deleteButton);
+    return notice;
+}
+
+export function renderEmptyState(trigger, hasNotifications) {
+    if (trigger) {
+        trigger.textContent = hasNotifications
+            ? t('notifview.all_loaded')
+            : t('notifview.empty');
+    }
+}
+
+export function renderLoadError(trigger, hasNotifications) {
+    if (trigger) {
+        trigger.textContent = hasNotifications
+            ? t('notifview.load_more_failed')
+            : t('notifview.load_failed');
+    }
+}
+
+export function renderError(content) {
+    if (content) content.innerHTML = `<p class="error-message">${t('notifview.load_failed')}</p>`;
 }

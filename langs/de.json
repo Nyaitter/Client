@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "Wähle, was passiert, wenn dich ein anderer Nutzer zu einer DM einlädt.",
   "common.create": "Erstellen",
   "settings.client.description": "Wähle, welche Client-Version verwendet werden soll.",
+  "settings.client.always_latest": "Immer die neueste Version verwenden",
   "settings.api.name_placeholder": "Beispiel: Posting-Bot, Benachrichtigungs-Skript",
   "common.save": "Speichern",
   "common.saving": "Wird gespeichert",

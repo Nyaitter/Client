@@ -3,23 +3,12 @@ import { DOM } from '../dom.js';
 import { getCurrentUser } from '../state.js';
 import { getAuxiliaryPostPageCache } from '../modules/cache.js';
 import { loadPostsWithPagination } from '../modules/pagination.js';
-import { showLoading } from '../utils/helpers.js';
+import { showLoading, escapeHTML } from '../utils/helpers.js';
+
 import { showScreenCompat } from '../screenManager.js';
 
-export function renderLikesStarsHeader(title) {
-    DOM.pageHeader.innerHTML = `<h2 id="page-title">${title}</h2>`;
-}
-
-export function renderLoggedOut(content) {
-    if (content) content.innerHTML = `<p class="nui-empty-text">${t('likesstars.login_required')}</p>`;
-}
-
-export function clearContent(content) {
-    if (content) content.innerHTML = '';
-}
-
 export async function showLikesScreen(showScreenFn = null) {
-    renderLikesStarsHeader(t('nav.likes'));
+    renderHeader(t('nav.likes'));
     showScreenCompat('likes-screen', showScreenFn);
 
     clearContent(DOM.likesContent);
@@ -41,7 +30,7 @@ export async function showLikesScreen(showScreenFn = null) {
 }
 
 export async function showStarsScreen(showScreenFn = null) {
-    renderLikesStarsHeader(t('nav.stars'));
+    renderHeader(t('nav.stars'));
     showScreenCompat('stars-screen', showScreenFn);
 
     clearContent(DOM.starsContent);
@@ -60,4 +49,18 @@ export async function showStarsScreen(showScreenFn = null) {
         ),
     });
     showLoading(false);
+}
+
+export function renderHeader(title) {
+    DOM.pageHeader.innerHTML = `<h2 id="page-title" class="nui-heading">${escapeHTML(title)}</h2>`;
+}
+
+export function renderLoggedOut(content) {
+    if (content) {
+        content.innerHTML = `<p class="list-empty-message nui-empty-text">${t('common.login_required')}</p>`;
+    }
+}
+
+export function clearContent(content) {
+    content?.replaceChildren();
 }

@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "اختر ما يحدث عندما يدعوك مستخدم آخر إلى رسالة مباشرة.",
   "common.create": "إنشاء",
   "settings.client.description": "اختر إصدار العميل الذي تريد استخدامه.",
+  "settings.client.always_latest": "استخدام أحدث إصدار دائمًا",
   "settings.api.name_placeholder": "مثال: بوت النشر، نص الإشعارات",
   "common.save": "حفظ",
   "common.saving": "جارٍ الحفظ",

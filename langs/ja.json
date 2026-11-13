@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "他のユーザーからDMに招待されたときの動作を設定します。",
   "common.create": "作成",
   "settings.client.description": "使うクライアントの版を選べます。",
+  "settings.client.always_latest": "常に最新版を使用",
   "settings.api.name_placeholder": "例: 投稿Bot, 自動通知スクリプト",
   "common.save": "保存する",
   "common.saving": "保存中",

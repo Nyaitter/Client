@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "다른 사용자가 DM에 초대했을 때의 동작을 설정합니다.",
   "common.create": "만들기",
   "settings.client.description": "사용할 클라이언트 버전을 선택합니다.",
+  "settings.client.always_latest": "항상 최신 버전 사용",
   "settings.api.name_placeholder": "예: 게시 봇, 자동 알림 스크립트",
   "common.save": "저장",
   "common.saving": "저장 중",

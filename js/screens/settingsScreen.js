@@ -58,13 +58,7 @@ import { rebuildSettings, bindSettingsDiscovery, showSettingsSaveStatus, bindSet
 import { bindSettingsStatus } from './settings/status.js';
 import { bindSettingsDisplayRanks } from './settings/displayRanks.js';
 import { ALL_HOME_TABS, DEFAULT_HOME_TABS, getSavedHomeTabs } from './settings/homeTabs.js';
-import {
-    ALL_SIDEBAR_ITEMS,
-    SIDEBAR_ITEM_KEYS,
-    DEFAULT_SIDEBAR,
-    getSavedSideMenu,
-    writeSideMenuMirror,
-} from '../modules/sidebar.js';
+import { ALL_SIDEBAR_ITEMS, SIDEBAR_ITEM_KEYS, DEFAULT_SIDEBAR, getSavedSideMenu, writeSideMenuMirror } from '../modules/sidebar.js';
 import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
 import { uploadFileViaEdgeFunction, deleteFilesViaEdgeFunction } from '../modules/posts.js';
 import {
@@ -397,10 +391,6 @@ function reconcileRankDisplaySettings(form, settings, submitted, failed = false)
     form.dispatchEvent(new CustomEvent('settings-rank-display-save', {
         detail: { settings, submitted, failed },
     }));
-}
-
-export async function mountSettingsScreen(showScreenFn, context = {}) {
-    return showSettingsScreen({ group: context.group }, showScreenFn, context);
 }
 
 export async function showSettingsScreen(
@@ -742,6 +732,9 @@ export async function showSettingsScreen(
                     <section class="nui-section settings-client" aria-labelledby="settings-client-title">
                         <h4 class="nui-section-title" id="settings-client-title">${t('settings.group.client.title')}</h4>
                         <p class="settings-help-text nui-help-text">${t('settings.client.description')}</p>
+                        <div class="settings-client-option">
+                            <label><input type="checkbox" id="settings-client-always-latest"> ${t('settings.client.always_latest')}</label>
+                        </div>
                         <ul id="settings-client-versions" class="settings-client-version-list nui-list nui-list--flush"></ul>
                         <p id="settings-client-status" class="settings-help-text nui-help-text" role="status" aria-live="polite"></p>
                         <div class="settings-client-actions">
@@ -2496,4 +2489,18 @@ export async function showSettingsScreen(
 
     applyDataSaverButtonState();
     showLoading(false);
+}
+
+const renderSettingsScreen = showSettingsScreen;
+
+/**
+ * Settings screen controller boundary.
+ *
+ * Owns the settings route and its public hash URLs; feature sections live in
+ * separate modules and are wired in from here.
+ */
+
+
+export async function mountSettingsScreen(showScreenFn, context = {}) {
+    return renderSettingsScreen({ group: context.group }, showScreenFn, context);
 }

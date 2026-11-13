@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "Elige qué ocurre cuando otro usuario te invita a un MD.",
   "common.create": "Crear",
   "settings.client.description": "Elige qué versión del cliente usar.",
+  "settings.client.always_latest": "Usar siempre la versión más reciente",
   "settings.api.name_placeholder": "Ejemplo: Bot de publicaciones, Script de notificaciones",
   "common.save": "Guardar",
   "common.saving": "Guardando",
