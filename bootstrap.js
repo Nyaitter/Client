@@ -27,6 +27,7 @@
     ];
 
     const RELOAD_GUARD_KEY = 'nyaitter-client-boot-reloaded';
+    const ALWAYS_LATEST_KEY = 'nyaitter-always-latest';
     const SW_READY_TIMEOUT_MS = 10000;
 
     function getNyaitterJsUrl() {
@@ -155,35 +156,15 @@
 
     // 起動できる版がキャッシュにあるかを確認し、無ければ最新の正式版を取得して格納する。
     // 'fetched' と 'reloading' のときは読み直す。'failed' のときは版を取得できなかった。
-    async function ensureStoredVersion() {
-        setBootStatus(lt('common.loading'));
-        const source = String(config.clientNap || '').trim();
-        if (!source) return 'failed';
-        if (typeof caches === 'undefined') return 'failed';
-        let page;
+    function alwaysUseLatest() {
         try {
-            const mod = await import(new URL('nap_modules/nyaitter/nap/client/nap-page.js', pageBaseUrl).href);
-            page = mod.createNapPage({ source });
+            return window.localStorage.getItem(ALWAYS_LATEST_KEY) !== '0';
         } catch (_) {
-            return 'failed';
+            return true;
         }
-        let stored = [];
-        try {
-            stored = await page.storedVersions();
-        } catch (_) {
-            return 'failed';
-        }
-        if (stored.length) {
-            // 格納済みの版があっても、このページが Service Worker に制御されていないと
-            // 版からは配信されない。登録して一度だけ読み直す。
-            if (!navigator.serviceWorker?.controller && guardGet(RELOAD_GUARD_KEY) !== '1') {
-                guardSet(RELOAD_GUARD_KEY, '1');
-                await registerShellServiceWorker();
-                return 'reloading';
-            }
-            return 'ready';
-        }
-        await registerShellServiceWorker();
+    }
+
+    async function fetchLatestAndStore(page) {
         const PHASE_COUNT = 3;
         let phaseIndex = 0;
         let lastSizeLabel = '';
@@ -231,12 +212,63 @@
             });
             setBootProgress(1);
             await page.activate(result.versionId);
-            return 'fetched';
+            return true;
         } catch (_) {
             setBootStatus('');
             setBootProgress(null);
+            return false;
+        }
+    }
+
+    async function ensureStoredVersion() {
+        setBootStatus(lt('common.loading'));
+        const source = String(config.clientNap || '').trim();
+        if (!source) return 'failed';
+        if (typeof caches === 'undefined') return 'failed';
+        let page;
+        try {
+            const mod = await import(new URL('nap_modules/nyaitter/nap/client/nap-page.js', pageBaseUrl).href);
+            page = mod.createNapPage({ source });
+        } catch (_) {
             return 'failed';
         }
+        let stored = [];
+        try {
+            stored = await page.storedVersions();
+        } catch (_) {
+            return 'failed';
+        }
+        if (stored.length) {
+            if (alwaysUseLatest()) {
+                let entries = null;
+                try {
+                    entries = await page.versions();
+                } catch (_) {
+                    entries = null;
+                }
+                if (entries) {
+                    const formal = entries.filter((entry) => !entry.tag);
+                    const latestFormal = formal.length ? formal[formal.length - 1] : null;
+                    const storedFormal = formal.some((entry) => stored.includes(entry.id));
+                    if (latestFormal && storedFormal && !stored.includes(latestFormal.id)) {
+                        await registerShellServiceWorker();
+                        if (await fetchLatestAndStore(page)) return 'fetched';
+                        setBootStatus(lt('common.loading'));
+                    }
+                }
+            }
+            // 格納済みの版があっても、このページが Service Worker に制御されていないと
+            // 版からは配信されない。登録して一度だけ読み直す。
+            if (!navigator.serviceWorker?.controller && guardGet(RELOAD_GUARD_KEY) !== '1') {
+                guardSet(RELOAD_GUARD_KEY, '1');
+                await registerShellServiceWorker();
+                return 'reloading';
+            }
+            return 'ready';
+        }
+        await registerShellServiceWorker();
+        if (await fetchLatestAndStore(page)) return 'fetched';
+        return 'failed';
     }
 
     function showBootFailure() {

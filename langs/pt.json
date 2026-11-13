@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "Escolha o que acontece quando outro utilizador o convida para uma mensagem direta.",
   "common.create": "Criar",
   "settings.client.description": "Escolha a versão do cliente que quer utilizar.",
+  "settings.client.always_latest": "Usar sempre a versão mais recente",
   "settings.api.name_placeholder": "Ex.: Bot de publicações, Script de notificações",
   "common.save": "Guardar",
   "common.saving": "A guardar",

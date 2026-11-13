@@ -63,6 +63,32 @@
         }
     }
 
+    // 端末の言語から、翻訳のある言語を選ぶ。合う言語が無ければ英語にする。
+    function detectLanguage() {
+        const candidates = [];
+        if (typeof navigator !== 'undefined') {
+            if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
+            if (navigator.language) candidates.push(navigator.language);
+        }
+        for (const raw of candidates) {
+            const tag = String(raw || '').trim();
+            if (!tag) continue;
+            if (languagePacks[tag]) return tag;
+            const lower = tag.toLowerCase();
+            if (lower === 'zh' || lower.startsWith('zh-')) {
+                if (/(tw|hk|mo|hant)/.test(lower) && languagePacks['zh-Hant']) return 'zh-Hant';
+                if (languagePacks['zh-Hans']) return 'zh-Hans';
+                continue;
+            }
+            const base = lower.split('-')[0];
+            const match = Object.keys(languagePacks).find(
+                (code) => code.toLowerCase() === base || code.toLowerCase().startsWith(`${base}-`),
+            );
+            if (match) return match;
+        }
+        return languagePacks.en ? 'en' : defaultLanguage;
+    }
+
     function applyStaticTranslations() {
         if (typeof document === 'undefined') return;
         document.querySelectorAll('[data-i18n]').forEach((element) => {
@@ -97,7 +123,14 @@
         }
 
         const saved = readSavedLanguage();
-        currentLanguage = saved && languagePacks[saved] ? saved : defaultLanguage;
+        if (saved && languagePacks[saved]) {
+            currentLanguage = saved;
+        } else {
+            currentLanguage = detectLanguage();
+            try {
+                localStorage.setItem(STORAGE_KEY, currentLanguage);
+            } catch (_) {}
+        }
         if (typeof document !== 'undefined') {
             document.documentElement.lang = currentLanguage;
         }

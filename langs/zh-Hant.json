@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "設定其他使用者邀請你加入私訊時的處理方式。",
   "common.create": "建立",
   "settings.client.description": "選擇要使用的用戶端版本。",
+  "settings.client.always_latest": "始終使用最新版本",
   "settings.api.name_placeholder": "例：發文機器人、自動通知腳本",
   "common.save": "儲存",
   "common.saving": "儲存中",

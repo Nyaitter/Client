@@ -9,6 +9,22 @@ let napPage = null;
 let switching = false;
 let listView = null;
 
+const ALWAYS_LATEST_KEY = 'nyaitter-always-latest';
+
+function readAlwaysLatest() {
+    try {
+        return window.localStorage.getItem(ALWAYS_LATEST_KEY) !== '0';
+    } catch (_) {
+        return true;
+    }
+}
+
+function writeAlwaysLatest(enabled) {
+    try {
+        window.localStorage.setItem(ALWAYS_LATEST_KEY, enabled ? '1' : '0');
+    } catch (_) {}
+}
+
 function serviceWorkerApiAvailable() {
     return typeof navigator !== 'undefined' && 'serviceWorker' in navigator && !!navigator.serviceWorker;
 }
@@ -298,6 +314,13 @@ export function bindClientSettings() {
     document.getElementById('settings-client-check')?.addEventListener('click', () => {
         void loadClientVersionList({ announce: true });
     });
+    const alwaysLatestToggle = document.getElementById('settings-client-always-latest');
+    if (alwaysLatestToggle) {
+        alwaysLatestToggle.checked = readAlwaysLatest();
+        alwaysLatestToggle.addEventListener('change', () => {
+            writeAlwaysLatest(alwaysLatestToggle.checked);
+        });
+    }
     navigator.serviceWorker?.addEventListener('controllerchange', () => {
         void loadClientVersionList();
     });

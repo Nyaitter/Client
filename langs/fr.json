@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "Choisissez ce qui se passe lorsqu'un autre utilisateur vous invite en MP.",
   "common.create": "Créer",
   "settings.client.description": "Choisissez la version du client à utiliser.",
+  "settings.client.always_latest": "Toujours utiliser la dernière version",
   "settings.api.name_placeholder": "Exemple : Bot de publication, Script de notification",
   "common.save": "Enregistrer",
   "common.saving": "Enregistrement",

@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "👆 👤 📩 ✉️ ❓",
   "common.create": "➕ 🆕",
   "settings.client.description": "👆 📦 💻",
+  "settings.client.always_latest": "🔁 🆕 ▶️",
   "settings.api.name_placeholder": "🤖 📝 · 📜 🔔",
   "common.save": "💾",
   "common.saving": "💾 ⏳",

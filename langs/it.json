@@ -412,6 +412,7 @@
   "settings.privacy.dm_invitation_hint": "Scegli cosa succede quando un altro utente ti invita a un messaggio diretto.",
   "common.create": "Crea",
   "settings.client.description": "Scegli la versione del client che vuoi usare.",
+  "settings.client.always_latest": "Usa sempre la versione più recente",
   "settings.api.name_placeholder": "Es.: Bot per i post, Script notifiche",
   "common.save": "Salva",
   "common.saving": "Salvataggio",
