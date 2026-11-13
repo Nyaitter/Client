@@ -220,7 +220,14 @@
                             setBootStatus(lt('settings.client.downloading_size', { size: label }));
                         }
                         setOverall(progress.bytes / progress.bytesTotal);
+                    } else if (progress.bytes) {
+                        const label = `${(progress.bytes / 1048576).toFixed(1)} MB`;
+                        if (label !== lastSizeLabel) {
+                            lastSizeLabel = label;
+                            setBootStatus(lt('settings.client.downloading_size', { size: label }));
+                        }
                     } else if (progress.total) {
+                        setBootStatus(lt('settings.client.downloading'));
                         setOverall((progress.fetched + progress.cached) / progress.total);
                     }
                 },
@@ -232,8 +239,8 @@
                     if (total) setOverall(done / total);
                 },
             });
-            await page.activate(result.versionId);
             setBootProgress(1);
+            await page.activate(result.versionId);
             return 'fetched';
         } catch (_) {
             setBootStatus('');
