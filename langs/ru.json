@@ -390,7 +390,7 @@
   "settings.privacy.dm": "Личные сообщения",
   "settings.apps.scope.dm_send_long": "Отправка личных сообщений",
   "settings.apps.scope.dm_read_long": "Чтение личных сообщений",
-  "settings.profile.reset_default": "Сбросить по умолчанию",
+  "settings.profile.reset_default": "Сбросить значок по умолчанию",
   "settings.menu.reset_order": "Сбросить к порядку по умолчанию",
   "settings.home_tabs.active_hint": "Перетаскивайте, чтобы переупорядочить, или удаляйте кнопкой ×.",
   "settings.menu.order_hint_menu": "Перетаскивайте или используйте кнопки ↑↓, чтобы изменить порядок в меню.",

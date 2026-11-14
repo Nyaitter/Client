@@ -18,6 +18,7 @@ import {
 } from './cache.js';
 import {
     renderPost,
+    finalizePostSizes,
     filterBlockedPosts,
     ensureMentionedUsersCached,
 } from './posts.js';
@@ -326,6 +327,7 @@ function insertRenderedPosts(trigger, posts, state) {
         }
     }
     if (fragment.childNodes.length > 0) trigger.before(fragment);
+    for (const post of posts) finalizePostSizes(post);
 }
 
 export async function loadPostsWithPagination(container, type, options = {}) {
@@ -465,39 +467,16 @@ export async function loadPostsWithPagination(container, type, options = {}) {
                         return true;
                     });
 
-                if (isLoadedFromCache) {
-                    // キャッシュからの復元時は遅延なしで即時一括描画する
-                    const renderedPosts = await Promise.all(regularPosts.map((post) => renderPost(post, post.author, {
-                        userCache: getAllUsersCache(),
-                        metricsPromise,
-                        clampHeight: true,
-                        hideGroupIndicator: Boolean(options.hideGroupIndicator),
-                    })));
-                    if (!isActivePaginationLoader(container, currentTrigger, options)) {
-                        return false;
-                    }
-                    insertRenderedPosts(currentTrigger, renderedPosts, advertisingState);
-                } else {
-                    // ネットワーク経由の初回フェッチ時は段階的に描画して制御を返す
-                    const RENDER_CHUNK_SIZE = 6;
-                    for (let start = 0; start < regularPosts.length; start += RENDER_CHUNK_SIZE) {
-                        if (!isActivePaginationLoader(container, currentTrigger, options)) {
-                            return false;
-                        }
-                        const renderedPosts = await Promise.all(regularPosts
-                            .slice(start, start + RENDER_CHUNK_SIZE)
-                            .map((post) => renderPost(post, post.author, {
-                                userCache: getAllUsersCache(),
-                                metricsPromise,
-                                clampHeight: true,
-                                hideGroupIndicator: Boolean(options.hideGroupIndicator),
-                            })));
-                        insertRenderedPosts(currentTrigger, renderedPosts, advertisingState);
-                        if (start + RENDER_CHUNK_SIZE < regularPosts.length) {
-                            await new Promise((resolve) => requestAnimationFrame(resolve));
-                        }
-                    }
+                const renderedPosts = await Promise.all(regularPosts.map((post) => renderPost(post, post.author, {
+                    userCache: getAllUsersCache(),
+                    metricsPromise,
+                    clampHeight: true,
+                    hideGroupIndicator: Boolean(options.hideGroupIndicator),
+                })));
+                if (!isActivePaginationLoader(container, currentTrigger, options)) {
+                    return false;
                 }
+                insertRenderedPosts(currentTrigger, renderedPosts, advertisingState);
             }
 
             if (pageNumber === 0 && type === 'timeline') {

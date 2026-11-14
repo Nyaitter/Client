@@ -2370,7 +2370,7 @@ export async function showSettingsScreen(
         setResetIconToDefault(true);
         setNewIconDataUrl(null);
         if (iconInput) iconInput.value = '';
-        if (iconPreview) iconPreview.src = getUserIconUrl(getCurrentUser());
+        if (iconPreview) iconPreview.src = getUserIconUrl({ id: getCurrentUser()?.id });
         requestSettingsSave(document.getElementById('settings-form'));
     });
 

@@ -29,6 +29,7 @@ import {
     ensureMentionedUsersCached,
     updateFollowButtonState,
     renderPost,
+    finalizePostSizes,
 } from '../modules/posts.js';
 import { handleDmButtonClick } from '../modules/dm.js';
 import {
@@ -934,7 +935,10 @@ export async function loadProfileTabContent(user, subpage, options = {}) {
                 }
                 for (const post of scheduledPosts) {
                     const postEl = await renderPost(post, post.author, { forceDetailedDate: true });
-                    if (postEl) contentDiv.appendChild(postEl);
+                    if (postEl) {
+                        contentDiv.appendChild(postEl);
+                        finalizePostSizes(postEl);
+                    }
                 }
                 break;
             }

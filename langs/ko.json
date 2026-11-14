@@ -390,7 +390,7 @@
   "settings.privacy.dm": "다이렉트 메시지",
   "settings.apps.scope.dm_send_long": "다이렉트 메시지 보내기",
   "settings.apps.scope.dm_read_long": "다이렉트 메시지 읽기",
-  "settings.profile.reset_default": "기본값으로 되돌리기",
+  "settings.profile.reset_default": "아이콘을 기본값으로 되돌리기",
   "settings.menu.reset_order": "기본 순서로 되돌리기",
   "settings.home_tabs.active_hint": "드래그하여 순서를 바꾸거나 × 버튼으로 삭제할 수 있습니다.",
   "settings.menu.order_hint_menu": "드래그하거나 ↑↓ 버튼으로 메뉴 순서를 바꿀 수 있습니다.",

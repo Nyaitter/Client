@@ -390,7 +390,7 @@
   "settings.privacy.dm": "Direktnachrichten",
   "settings.apps.scope.dm_send_long": "Direktnachrichten senden",
   "settings.apps.scope.dm_read_long": "Direktnachrichten lesen",
-  "settings.profile.reset_default": "Auf Standard zurücksetzen",
+  "settings.profile.reset_default": "Symbol auf Standard zurücksetzen",
   "settings.menu.reset_order": "Auf Standardreihenfolge zurücksetzen",
   "settings.home_tabs.active_hint": "Ziehe zum Sortieren oder entferne mit der ×-Schaltfläche.",
   "settings.menu.order_hint_menu": "Ziehe oder nutze die ↑↓-Schaltflächen, um die Reihenfolge im Menü zu ändern.",
