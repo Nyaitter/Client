@@ -1921,6 +1921,10 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     gap: 0.5rem;
 }
 
+.profile-edit-actions[hidden] {
+    display: none;
+}
+
 #setting-username.profile-edit-name,
 #setting-me.profile-edit-bio {
     border: none !important;

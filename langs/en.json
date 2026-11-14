@@ -263,6 +263,7 @@
   "settings.profile.post_badge_show_title": "Show on posts",
   "settings.profile.post_badge_hide": "Hide",
   "settings.profile.post_badge_hide_title": "Hide from posts",
+  "settings.profile.post_badges_reset": "Reset to default",
   "settings.rank": "Ranks",
   "settings.save_retry": "Retry save",
   "settings.search.label": "Find a setting",

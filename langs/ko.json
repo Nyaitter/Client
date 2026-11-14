@@ -263,6 +263,7 @@
   "settings.profile.post_badge_show_title": "게시물에 표시",
   "settings.profile.post_badge_hide": "숨기기",
   "settings.profile.post_badge_hide_title": "게시물에서 숨기기",
+  "settings.profile.post_badges_reset": "기본값으로 재설정",
   "settings.rank": "랭크",
   "settings.save_retry": "저장 다시 시도",
   "settings.search.label": "설정 찾기",

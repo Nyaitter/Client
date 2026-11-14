@@ -871,34 +871,63 @@ export async function renderPost(post, author, options = {}) {
             const useShrink = getCurrentUser()?.settings?.large_post_display === 'shrink';
 
             if (useShrink) {
-                let shrinkClassApplied = false;
+                postEl.dataset.shrinkContent = '1';
+                let fitted = false;
+                let fittedContentHeight = 0;
+                let fitting = false;
                 const measure = () => {
                     if (!postEl.isConnected || !targetEl.isConnected) return null;
-                    if (shrinkClassApplied) return true;
+                    if (fitting) return true;
 
-                    const scrollHeight = targetEl.scrollHeight || 0;
-                    if (!scrollHeight) return false;
+                    const contentHeight = targetEl.scrollHeight || 0;
+                    if (!contentHeight) return false;
+                    if (fitted && contentHeight === fittedContentHeight) return true;
+
+                    let inner = targetEl.querySelector(':scope > .post-scale-inner');
+                    if (!inner) {
+                        inner = document.createElement('div');
+                        inner.className = 'post-scale-inner';
+                        while (targetEl.firstChild) inner.appendChild(targetEl.firstChild);
+                        targetEl.appendChild(inner);
+                    }
+
+                    fitting = true;
+                    targetEl.style.height = '';
+                    inner.style.transform = '';
+                    inner.style.transformOrigin = '';
+                    inner.style.width = '';
 
                     const isNested = Boolean(postEl.closest('.nested-repost-container'));
                     const heightLimit = isNested ? 180 : 240;
-                    if (scrollHeight <= heightLimit) return true;
-
-                    const ratio = scrollHeight / heightLimit;
-                    if (ratio <= 1.5) {
-                        postEl.classList.add('post-shrink-1');
-                    } else if (ratio <= 2.5) {
-                        postEl.classList.add('post-shrink-2');
-                    } else {
-                        postEl.classList.add('post-shrink-3');
+                    const naturalHeight = inner.scrollHeight || 0;
+                    if (naturalHeight <= heightLimit) {
+                        fitted = true;
+                        fittedContentHeight = targetEl.scrollHeight || 0;
+                        fitting = false;
+                        return true;
                     }
-                    shrinkClassApplied = true;
+
+                    let scale = heightLimit / naturalHeight;
+                    let laidOutHeight = naturalHeight;
+                    for (let i = 0; i < 3; i++) {
+                        inner.style.width = `${100 / scale}%`;
+                        laidOutHeight = inner.scrollHeight || 0;
+                        const visualHeight = laidOutHeight * scale;
+                        if (visualHeight <= heightLimit + 1) break;
+                        scale *= heightLimit / visualHeight;
+                    }
+                    inner.style.transformOrigin = 'top left';
+                    inner.style.transform = `scale(${scale})`;
+                    targetEl.style.height = `${Math.min(laidOutHeight * scale, heightLimit)}px`;
+                    fitted = true;
+                    fittedContentHeight = targetEl.scrollHeight || 0;
+                    fitting = false;
                     return true;
                 };
 
                 if (typeof ResizeObserver !== 'undefined') {
                     let rafId = null;
                     const ro = new ResizeObserver(() => {
-                        if (shrinkClassApplied) return;
                         if (rafId) cancelAnimationFrame(rafId);
                         rafId = requestAnimationFrame(() => {
                             rafId = null;

@@ -997,6 +997,7 @@ function bindGroupProfileForm(group) {
         document.getElementById('page-title')?.replaceChildren(document.createTextNode(savedName || t('nav.groups')));
         const heading = document.querySelector('.group-ui-page-heading h3');
         if (heading) heading.textContent = t('group.manage_heading', { name: savedName, tab: document.querySelector('[data-group-manage-tab].active')?.dataset.groupManageTitle || t('group.manage_fallback') });
+        syncManageHeadingHeight();
     };
 
     const saveProfile = async () => {
@@ -1130,11 +1131,19 @@ function bindGroupProfileForm(group) {
     });
 }
 
+function syncManageHeadingHeight() {
+    const page = document.querySelector('.group-ui-manage-page');
+    const heading = page?.querySelector(':scope > .group-ui-page-heading');
+    if (!page || !heading) return;
+    page.style.setProperty('--manage-heading-h', `${heading.offsetHeight}px`);
+}
+
 function bindGroupManageEvents(group) {
     const headingTitle = document.querySelector('.group-ui-page-heading h3');
     const headingDescription = document.querySelector('.group-ui-page-heading .settings-group-description');
     const tabsContainer = document.querySelector('.settings-group-list');
     const manageDetail = document.querySelector('.group-ui-manage-detail');
+    syncManageHeadingHeight();
 
     if (tabsContainer) {
         groupManageTabGroupController?.destroy();
@@ -1149,6 +1158,7 @@ function bindGroupManageEvents(group) {
                 });
                 if (headingTitle) headingTitle.textContent = t('group.manage_heading', { name: group.name || '', tab: button.dataset.groupManageTitle || t('group.manage_fallback') });
                 if (headingDescription) headingDescription.textContent = button.dataset.groupManageDescription || '';
+                syncManageHeadingHeight();
             },
         });
     }

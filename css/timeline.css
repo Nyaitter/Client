@@ -641,7 +641,8 @@
 .post[data-clamp-content] .post-body,
 .post[data-clamp-content]:not(:has(.post-body)) .post-content {
     max-height: 240px;
-    overflow: hidden;
+    overflow: clip;
+    contain: layout paint;
 }
 
 .post[data-clamp-content] .post-body.post-content-expanded,
@@ -669,22 +670,21 @@
     max-height: none !important;
 }
 
-.post.post-shrink-1 .post-content,
-.post.post-shrink-2 .post-content,
-.post.post-shrink-3 .post-content {
-    line-height: 1.35;
+.post[data-shrink-content] .post-body,
+.post[data-shrink-content]:not(:has(.post-body)) .post-content {
+    max-height: 240px;
+    overflow: clip;
+    contain: layout paint;
 }
 
-.post.post-shrink-1 .post-content {
-    font-size: 0.88em;
+.post[data-shrink-content] .post-content {
+    width: 100%;
 }
 
-.post.post-shrink-2 .post-content {
-    font-size: 0.78em;
-}
-
-.post.post-shrink-3 .post-content {
-    font-size: 0.68em;
+.nested-repost-container .post[data-shrink-content] .post-body,
+.nested-repost-container .post[data-shrink-content]:not(:has(.post-body)) .post-content {
+    max-height: 180px;
+    overflow: hidden;
 }
 
 .post-clamp-toggle {

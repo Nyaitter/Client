@@ -263,6 +263,7 @@
   "settings.profile.post_badge_show_title": "Exibir nas publicações",
   "settings.profile.post_badge_hide": "Ocultar",
   "settings.profile.post_badge_hide_title": "Ocultar das publicações",
+  "settings.profile.post_badges_reset": "Redefinir para o padrão",
   "settings.rank": "Classificações",
   "settings.save_retry": "Tentar guardar novamente",
   "settings.search.label": "Pesquisar uma definição",

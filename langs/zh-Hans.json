@@ -263,6 +263,7 @@
   "settings.profile.post_badge_show_title": "在帖子中显示",
   "settings.profile.post_badge_hide": "不显示",
   "settings.profile.post_badge_hide_title": "在帖子中不显示",
+  "settings.profile.post_badges_reset": "恢复默认",
   "settings.rank": "等级",
   "settings.save_retry": "重试保存",
   "settings.search.label": "查找设置",

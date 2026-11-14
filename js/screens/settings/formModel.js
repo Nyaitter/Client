@@ -9,9 +9,12 @@ export function readSettingsForm(form, currentSettings = {}) {
         displayRanks[control.dataset.displayRankSetting] = JSON.parse(control.value);
     });
     const badgeShownList = form.querySelector('[data-badge-shown-list]');
-    const displayGroupBadges = badgeShownList
-        ? [...badgeShownList.querySelectorAll(':scope > [data-badge-id]')].map(item => JSON.parse(item.dataset.badgeId))
-        : currentSettings.display_group_badges;
+    const badgeMode = badgeShownList?.dataset.badgeMode;
+    const displayGroupBadges = !badgeShownList || !badgeMode
+        ? currentSettings.display_group_badges
+        : badgeMode === 'custom'
+            ? [...badgeShownList.querySelectorAll(':scope > [data-badge-id]')].map(item => JSON.parse(item.dataset.badgeId))
+            : null;
     return {
         name: form.querySelector('#setting-username')?.value.trim(),
         me: form.querySelector('#setting-me')?.value.trim(),
