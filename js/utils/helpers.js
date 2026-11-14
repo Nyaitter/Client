@@ -852,8 +852,8 @@ function groupBadgesFor(user, all) {
     if (Array.isArray(user.post_group_badges)) return user.post_group_badges;
     if (Array.isArray(user.postGroupBadges)) return user.postGroupBadges;
     return Array.isArray(user.group_badges)
-        ? user.group_badges
-        : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
+        ? user.group_badges.slice(0, 5)
+        : (Array.isArray(user.groupBadges) ? user.groupBadges.slice(0, 5) : []);
 }
 
 export function getGroupBadgesHtml(user, { maxCount = 5, all = false } = {}) {
