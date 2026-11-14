@@ -1,6 +1,6 @@
 import { getCustomColorsFromInputs, normalizeColorTheme } from '../../modules/theme.js';
 import { normalizePostTimestampFormat } from '../../utils/helpers.js';
-import { normalizeDmInvitation } from './config.js';
+import { normalizeDmInvitation, normalizeLargePostDisplay } from './config.js';
 
 export function readSettingsForm(form, currentSettings = {}) {
     const ngWordsInput = form.querySelector('#setting-ng-words');
@@ -8,6 +8,10 @@ export function readSettingsForm(form, currentSettings = {}) {
     form.querySelectorAll('[data-display-rank-setting]').forEach(control => {
         displayRanks[control.dataset.displayRankSetting] = JSON.parse(control.value);
     });
+    const badgeShownList = form.querySelector('[data-badge-shown-list]');
+    const displayGroupBadges = badgeShownList
+        ? [...badgeShownList.querySelectorAll(':scope > [data-badge-id]')].map(item => JSON.parse(item.dataset.badgeId))
+        : currentSettings.display_group_badges;
     return {
         name: form.querySelector('#setting-username')?.value.trim(),
         me: form.querySelector('#setting-me')?.value.trim(),
@@ -15,6 +19,7 @@ export function readSettingsForm(form, currentSettings = {}) {
             ...currentSettings,
             show_ranks: form.querySelector('#setting-show-ranks')?.checked ?? (currentSettings.show_ranks === true),
             display_ranks: displayRanks,
+            display_group_badges: displayGroupBadges,
             lock: form.querySelector('#setting-lock')?.checked || false,
             show_like: form.querySelector('#setting-show-like')?.checked || false,
             show_follow: form.querySelector('#setting-show-follow')?.checked || false,
@@ -23,6 +28,7 @@ export function readSettingsForm(form, currentSettings = {}) {
             show_scid: form.querySelector('#setting-show-scid')?.checked || false,
             reject_unknown_login: form.querySelector('#setting-reject-unknown-login')?.checked ?? false,
             dm_invitation: normalizeDmInvitation(form.querySelector('#setting-dm-invitation')?.value),
+            large_post_display: normalizeLargePostDisplay(form.querySelector('#setting-large-post-display')?.value),
             post_timestamp_format: normalizePostTimestampFormat(form.querySelector('#setting-post-timestamp-format')?.value),
             emoji: form.querySelector('#setting-emoji-kind')?.value || 'twemoji',
             content_editor: form.querySelector('#setting-content-editor')?.value === 'nyaitter' ? 'nyaitter' : 'textarea',

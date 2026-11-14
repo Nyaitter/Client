@@ -19,7 +19,10 @@ const TRUST_COLORS = {
 export function bindSettingsStatus(root, context) {
     const group = root.querySelector('[data-settings-panel="status"]');
     if (!group) return () => {};
-    group.innerHTML = `
+    group.querySelector('.settings-status-root')?.remove();
+    const statusRoot = document.createElement('div');
+    statusRoot.className = 'settings-status-root';
+    statusRoot.innerHTML = `
         <div class="settings-status-tabs-container">
             <div class="settings-status-tabs nui-tabs" role="tablist" aria-label="${t('status.tabs_label')}" data-nui="tabs">
                 ${STATUS_TABS.map(([key, label], index) => `
@@ -29,6 +32,7 @@ export function bindSettingsStatus(root, context) {
         </div>
         <p class="settings-help-text nui-help-text" role="status" aria-live="polite" id="settings-status-message"></p>
         ${STATUS_TABS.map(([key]) => `<section class="settings-status-category" id="settings-status-panel-${key}" role="tabpanel" aria-labelledby="settings-status-tab-${key}" tabindex="0" hidden></section>`).join('')}`;
+    group.prepend(statusRoot);
 
     const tabs = [...group.querySelectorAll('[role="tab"]')];
     const panels = [...group.querySelectorAll('[role="tabpanel"]')];

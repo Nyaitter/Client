@@ -96,12 +96,6 @@ function isGroupOwner(group) {
     return Number(group?.owner_id) === Number(getCurrentUser()?.id);
 }
 
-function visibilityOptions(selected = 'open') {
-    return Object.entries(VISIBILITY_LABELS)
-        .map(([value, label]) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`)
-        .join('');
-}
-
 function getGroupImageUrl(value) {
     const image = typeof value === 'string' ? value.trim() : '';
     if (!image) return '';
@@ -153,7 +147,8 @@ function showScreen(showScreenFn) {
 
 function renderGroupSection(title, content, description = '', options = {}) {
     const feature = options.feature ? ` data-nui-feature="${escapeHTML(options.feature)}"` : '';
-    return `<section class="nui-section" data-nui="section"${feature}>
+    const className = options.className ? ` ${escapeHTML(options.className)}` : '';
+    return `<section class="nui-section${className}" data-nui="section"${feature}>
         <div class="nui-section-heading">
             <div><h4 class="nui-section-title">${escapeHTML(title)}</h4>${description ? `<p class="nui-help-text">${escapeHTML(description)}</p>` : ''}</div>
         </div>
@@ -232,27 +227,19 @@ function openGroupModal(group = null) {
         <button type="button" class="modal-close-btn" aria-label="${t('common.close')}">×</button>
         <form id="group-modal-form" class="nui-form group-modal-form">
             <header class="group-modal-heading"><h3 id="group-modal-title" class="nui-modal-title">${editing ? t('group.edit_title') : t('group.create_title')}</h3><p class="nui-help-text">${editing ? t('group.modal_help_edit') : t('group.modal_help_create')}</p></header>
-            <div class="group-modal-images">
-                <div class="group-modal-image-field">
-                    <span class="group-modal-image-label">${t('settings.profile.icon')}</span>
-                    <div class="group-modal-image-actions">
-                        <button type="button" class="group-modal-icon-preview" id="group-icon-picker" title="${t('group.icon_select_title')}"></button>
-                        <input type="file" id="group-icon-input" accept="image/*" class="hidden">
-                        ${editing ? `<button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-icon">${t('group.icon_delete')}</button>` : ''}
-                    </div>
-                </div>
-                <div class="group-modal-image-field group-modal-header-field">
-                    <span class="group-modal-image-label">${t('settings.profile.header')}</span>
-                    <div class="group-modal-image-actions">
-                        <button type="button" class="group-modal-header-preview" id="group-header-picker" title="${t('group.header_select_title')}"></button>
-                        <input type="file" id="group-header-input" accept="image/*" class="hidden">
-                        ${editing ? `<button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-header">${t('group.header_delete')}</button>` : ''}
-                    </div>
+            <div class="group-edit-hero">
+                <button type="button" class="group-edit-banner" id="group-header-picker" title="${t('group.header_select_title')}"></button>
+                <input type="file" id="group-header-input" accept="image/*" class="hidden">
+                <div class="group-edit-main">
+                    <button type="button" class="group-edit-avatar" id="group-icon-picker" title="${t('group.icon_select_title')}"></button>
+                    <input type="file" id="group-icon-input" accept="image/*" class="hidden">
+                    <input name="name" class="group-edit-name" maxlength="100" required value="${escapeHTML(group?.name || '')}" placeholder="${t('group.name_label')}" aria-label="${t('group.name_label')}">
                 </div>
             </div>
-            <label>${t('group.name_label')}<input name="name" class="nui-input" maxlength="100" required value="${escapeHTML(group?.name || '')}" placeholder="${t('group.name_label')}"></label>
+            ${editing ? `<div class="group-edit-actions"><button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-icon">${t('group.icon_delete')}</button><button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-header">${t('group.header_delete')}</button></div>` : ''}
             <label>${t('report.description_label')}<textarea name="description" class="nui-input" maxlength="2000" rows="4" placeholder="${t('group.description_placeholder')}">${escapeHTML(group?.description || '')}</textarea></label>
-            <label>${t('group.visibility_label')}<select name="visibility" class="settings-select nui-input">${visibilityOptions(group?.visibility || 'open')}</select></label>
+            <label>${t('group.visibility_label')}</label>
+            ${renderVisibilityCards(group?.visibility || 'open')}
             <div class="settings-save-row"><button type="button" class="nui-button-secondary group-ui-secondary-button group-modal-cancel-button" data-nui="button-secondary" data-close-group-modal>${t('common.cancel')}</button><button type="submit" class="nui-button settings-primary-button" data-nui="button">${editing ? t('group.role_save') : t('common.create')}</button></div>
         </form>
     </div>`;
@@ -303,6 +290,13 @@ function openGroupModal(group = null) {
         } catch (error) {
             showAppAlert(error.message || t('group.header_select_failed'));
         }
+    });
+    form?.querySelectorAll('input[name="visibility"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            form.querySelectorAll('.group-visibility-card').forEach((card) => {
+                card.classList.toggle('is-selected', card.dataset.visibilityCard === radio.value);
+            });
+        });
     });
     modal.querySelector('#reset-group-icon')?.addEventListener('click', () => {
         resetIcon = true;
@@ -381,6 +375,41 @@ function openGroupModal(group = null) {
     requestAnimationFrame(() => form?.querySelector('[name="name"]')?.focus());
 }
 
+const PUBLIC_GROUP_PAGE_SIZE = 30;
+
+function setupPublicGroupScroll(content, joinedIds, initialCount) {
+    if (initialCount < PUBLIC_GROUP_PAGE_SIZE) return;
+    const list = content.querySelector('#group-public-list');
+    if (!list) return;
+    let offset = initialCount;
+    let loading = false;
+    let done = false;
+    const nearBottom = () => list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+    const loadMore = async () => {
+        if (loading || done || !list.isConnected) return;
+        loading = true;
+        try {
+            const data = await request(`/server/api/groups?limit=${PUBLIC_GROUP_PAGE_SIZE}&offset=${offset}`);
+            const more = Array.isArray(data.groups) ? data.groups : [];
+            offset += more.length;
+            if (more.length) {
+                list.insertAdjacentHTML('beforeend', more.map((group) => renderGroupCard(group, { joined: joinedIds.has(String(group.id)) })).join(''));
+            }
+            done = more.length < PUBLIC_GROUP_PAGE_SIZE;
+        } catch {
+            // 失敗したページは、次に末尾へ寄ったときに取り直す
+        } finally {
+            loading = false;
+        }
+        // リストに余白が残っている間は続けて読み込む
+        if (!done && nearBottom()) void loadMore();
+    };
+    list.addEventListener('scroll', () => {
+        if (nearBottom()) void loadMore();
+    }, { passive: true });
+    if (nearBottom()) void loadMore();
+}
+
 export async function showGroupsScreen(showScreenFn = null) {
     if (!getCurrentUser()) {
         window.location.hash = '#';
@@ -394,23 +423,24 @@ export async function showGroupsScreen(showScreenFn = null) {
     try {
         const [mineData, publicData, inviteData] = await Promise.all([
             request('/server/api/groups/mine?limit=200'),
-            request('/server/api/groups?limit=100'),
+            request(`/server/api/groups?limit=${PUBLIC_GROUP_PAGE_SIZE}&offset=0`),
             request('/server/api/groups/invites/mine'),
         ]);
         const joinedGroups = Array.isArray(mineData.groups) ? mineData.groups : [];
         const publicGroups = Array.isArray(publicData.groups) ? publicData.groups : [];
         const invites = Array.isArray(inviteData.invites) ? inviteData.invites : [];
         const joinedIds = new Set(joinedGroups.map((group) => String(group.id)));
-        content.innerHTML = `<main class="nui-page group-ui-page" data-nui="page">
+        content.innerHTML = `<main class="nui-page group-ui-page group-ui-index-page" data-nui="page">
             <header class="nui-page-heading settings-detail-heading group-ui-page-heading" data-nui="page-heading">
                 <div><h3>${t('nav.groups')}</h3><p class="nui-help-text settings-group-description">${t('group.list_description')}</p></div>
                 <button type="button" class="nui-button settings-primary-button" data-nui="button" id="open-create-group" data-nui-feature="groupCreate">${t('group.create_title')}</button>
             </header>
-            ${invites.length ? renderGroupSection(t('group.invites_section'), `<div class="nui-list">${invites.map((invite) => `<article class="nui-list-item nui-row" data-nui="list-item"><div class="nui-list-copy"><span class="nui-list-title">${escapeHTML(invite.group?.name || t('nav.groups'))}</span><p class="nui-list-meta">${t('group.invite_received_text')}</p></div><div class="nui-actions"><button type="button" class="nui-button settings-primary-button" data-nui="button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="accept">${t('group.join_short')}</button><button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="decline">${t('group.decline')}</button></div></article>`).join('')}</div>`, '', { feature: 'groupInvites' }) : ''}
-            ${renderGroupSection(t('group.joined_section'), joinedGroups.length ? `<div class="nui-list">${joinedGroups.map((group) => renderGroupCard(group, { joined: true })).join('')}</div>` : `<p class="nui-empty-text">${t('group.no_joined_groups')}</p>`)}
-            ${renderGroupSection(t('group.public_section'), publicGroups.length ? `<div class="nui-list">${publicGroups.map((group) => renderGroupCard(group, { joined: joinedIds.has(String(group.id)) })).join('')}</div>` : `<p class="nui-empty-text">${t('group.no_public_groups')}</p>`, '', { feature: 'groupDiscovery' })}
+            ${invites.length ? renderGroupSection(t('group.invites_section'), `<div class="nui-list">${invites.map((invite) => `<article class="nui-list-item nui-row" data-nui="list-item"><div class="nui-list-copy"><span class="nui-list-title">${escapeHTML(invite.group?.name || t('nav.groups'))}</span><p class="nui-list-meta">${t('group.invite_received_text')}</p></div><div class="nui-actions"><button type="button" class="nui-button settings-primary-button" data-nui="button" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="accept">${t('group.join_short')}</button><button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" data-group-invite="${escapeHTML(String(invite.id))}" data-decision="decline">${t('group.decline')}</button></div></article>`).join('')}</div>`, '', { feature: 'groupInvites', className: 'group-invites-section' }) : ''}
+            ${renderGroupSection(t('group.joined_section'), joinedGroups.length ? `<div class="nui-list">${joinedGroups.map((group) => renderGroupCard(group, { joined: true })).join('')}</div>` : `<p class="nui-empty-text">${t('group.no_joined_groups')}</p>`, '', { className: 'group-joined-section' })}
+            ${renderGroupSection(t('group.public_section'), publicGroups.length ? `<div class="nui-list group-public-list" id="group-public-list">${publicGroups.map((group) => renderGroupCard(group, { joined: joinedIds.has(String(group.id)) })).join('')}</div>` : `<p class="nui-empty-text">${t('group.no_public_groups')}</p>`, '', { feature: 'groupDiscovery', className: 'group-public-section' })}
         </main>`;
         bindGroupsIndexEvents();
+        setupPublicGroupScroll(content, joinedIds, publicGroups.length);
     } catch (error) {
         content.innerHTML = `<p class="nui-empty-text">${t('group.load_failed')}${escapeHTML(error.message || '')}</p>`;
     } finally {
@@ -438,6 +468,7 @@ export async function showGroupDetailScreen(groupId, section = 'overview', showS
         window.location.hash = '#';
         return;
     }
+    stopGroupMembersScroll();
     showScreen(showScreenFn);
     const content = groupsContent();
     if (!content) return;
@@ -457,9 +488,22 @@ export async function showGroupDetailScreen(groupId, section = 'overview', showS
     }
 }
 
+function roleDisplayName(role) {
+    if (!role) return '';
+    const type = getDefaultRoleType(role);
+    const name = String(role.name || '').trim();
+    if (type && DEFAULT_ROLE_LABELS[type] && (!name || name === type)) return DEFAULT_ROLE_LABELS[type];
+    return name || t('group.role_untitled');
+}
+
+function groupPanelHeading(title) {
+    return `<div class="nui-section-heading"><h4 class="nui-section-title">${escapeHTML(title)}</h4></div>`;
+}
+
 function renderGroupOverview(content, group, pendingJoinRequest = null) {
     const membership = group.membership;
     const isActive = membership?.status === 'active';
+    const myRole = isActive ? getRole(group) : null;
     const hasPendingJoinRequest = Boolean(pendingJoinRequest);
     const isApprovalRequired = group.visibility === 'open_invite' || group.visibility === 'invite';
     const canJoin = !membership || (membership.status === 'pending' && !isApprovalRequired);
@@ -471,7 +515,7 @@ function renderGroupOverview(content, group, pendingJoinRequest = null) {
             ${groupHeader(group)}
             <div class="profile-hero-main">
                 ${groupAvatar(group, 'nui-avatar profile-hero-avatar')}
-                <div class="profile-hero-copy"><h3>${escapeHTML(group.name || '')}</h3><p class="nui-help-text settings-group-description">${groupMeta(group)}</p><p>${escapeHTML(group.description || t('group.no_description'))}</p></div>
+                <div class="profile-hero-copy"><h3>${escapeHTML(group.name || '')}</h3><p class="nui-help-text settings-group-description">${groupMeta(group)}</p><p>${escapeHTML(group.description || t('group.no_description'))}</p>${myRole ? `<p class="group-my-role"><span class="nui-badge nui-badge-accent">${escapeHTML(roleDisplayName(myRole))}</span></p>` : ''}</div>
                 <div class="profile-hero-actions">
                     ${canJoin && !hasPendingJoinRequest ? `<button type="button" class="nui-button settings-primary-button" data-nui="button" id="join-group-btn">${joinBtnText}</button>` : ''}
                     ${hasPendingJoinRequest ? `<button type="button" class="nui-button settings-primary-button" data-nui="button" disabled aria-disabled="true">${t('group.pending_approval')}</button>` : ''}
@@ -542,25 +586,21 @@ const VISIBILITY_CONFIG = [
     {
         id: 'open',
         label: t('group.visibility.open'),
-        badge: t('group.visibility.open_badge'),
         description: t('group.visibility.open_desc'),
     },
     {
         id: 'open_invite',
         label: t('group.visibility.open_invite'),
-        badge: t('group.visibility.open_invite_badge'),
         description: t('group.visibility.open_invite_desc'),
     },
     {
         id: 'private',
         label: t('group.visibility.private'),
-        badge: t('group.visibility.private_badge'),
         description: t('group.visibility.private_desc'),
     },
     {
         id: 'invite',
         label: t('group.visibility.invite'),
-        badge: t('group.visibility.invite_badge'),
         description: t('group.visibility.invite_desc'),
     },
 ];
@@ -573,7 +613,6 @@ function renderVisibilityCards(currentVisibility = 'open') {
                 <input type="radio" name="visibility" value="${vis.id}" ${isSelected ? 'checked' : ''}>
                 <div class="group-visibility-card-header">
                     <span>${escapeHTML(vis.label)}</span>
-                    <span class="group-visibility-card-badge">${escapeHTML(vis.badge)}</span>
                 </div>
                 <p class="group-visibility-card-desc">${escapeHTML(vis.description)}</p>
             </label>`;
@@ -586,20 +625,19 @@ function renderGroupProfileForm(group) {
     const headerUrl = getGroupImageUrl(group?.header_image);
     const currentVis = group?.visibility || 'open';
     return `<form id="group-profile-form" class="nui-form group-profile-form" data-nui="form">
-        <label for="group-profile-name">${t('group.name_label')}</label>
-        <input id="group-profile-name" name="name" class="nui-input" maxlength="100" required value="${escapeHTML(group?.name || '')}">
-        <label for="group-profile-icon-input">${t('settings.profile.icon')}</label>
-        <div class="group-profile-image-actions">
-            <button type="button" class="group-profile-icon-preview" id="group-profile-icon-picker" title="${t('group.image_picker_title')}">${iconUrl ? `<img src="${escapeHTML(iconUrl)}" alt="${t('group.icon_preview_alt')}">` : `<span aria-hidden="true">${ICONS.group}</span>`}</button>
-            <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-profile-icon">${t('group.icon_delete')}</button>
+        <div class="group-edit-hero">
+            <button type="button" class="group-edit-banner ${headerUrl ? '' : 'is-empty'}" id="group-profile-header-picker" title="${t('group.image_picker_title')}">${headerUrl ? `<img src="${escapeHTML(headerUrl)}" alt="${t('group.header_preview_alt')}">` : `<span>${t('group.header_select')}</span>`}</button>
+            <input type="file" id="group-profile-header-input" accept="image/*" class="hidden">
+            <div class="group-edit-main">
+                <button type="button" class="group-edit-avatar" id="group-profile-icon-picker" title="${t('group.image_picker_title')}">${iconUrl ? `<img src="${escapeHTML(iconUrl)}" alt="${t('group.icon_preview_alt')}">` : `<span aria-hidden="true">${ICONS.group}</span>`}</button>
+                <input type="file" id="group-profile-icon-input" accept="image/*" class="hidden">
+                <input id="group-profile-name" name="name" class="group-edit-name" maxlength="100" required value="${escapeHTML(group?.name || '')}" aria-label="${t('group.name_label')}">
+            </div>
         </div>
-        <input type="file" id="group-profile-icon-input" accept="image/*" class="hidden">
-        <label for="group-profile-header-input">${t('settings.profile.header')}</label>
-        <div class="group-profile-image-actions group-profile-header-actions">
-            <button type="button" class="group-profile-header-preview ${headerUrl ? '' : 'is-empty'}" id="group-profile-header-picker" title="${t('group.image_picker_title')}">${headerUrl ? `<img src="${escapeHTML(headerUrl)}" alt="${t('group.header_preview_alt')}">` : `<span>${t('group.header_select')}</span>`}</button>
+        <div class="group-edit-actions">
+            <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-profile-icon">${t('group.icon_delete')}</button>
             <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" id="reset-group-profile-header">${t('group.header_delete')}</button>
         </div>
-        <input type="file" id="group-profile-header-input" accept="image/*" class="hidden">
         <label for="group-profile-description">${t('report.description_label')}</label>
         <textarea id="group-profile-description" name="description" class="nui-input" maxlength="2000" rows="4" placeholder="${t('group.description_placeholder')}">${escapeHTML(group?.description || '')}</textarea>
         <label>${t('group.visibility_label')}</label>
@@ -621,40 +659,34 @@ function getDefaultRoleType(role) {
 
 function renderRolePermissionCards(role = null) {
     const assignedPermissions = new Set(Array.isArray(role?.permissions) ? role.permissions : []);
-    const checkIcon = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3.5 8.5 6.5 11.5 12.5 4.5"></polyline></svg>`;
     return PERMISSION_CONFIG.map((perm) => {
         const isChecked = assignedPermissions.has(perm.id);
-        return `<label class="group-role-perm-tile ${isChecked ? 'is-checked' : ''}">
-            <input type="checkbox" name="permissions" value="${escapeHTML(perm.id)}" ${isChecked ? 'checked' : ''} class="group-role-perm-checkbox">
-            <div class="group-role-perm-tile-inner">
-                <div class="group-role-perm-tile-check">${checkIcon}</div>
-                <div class="group-role-perm-tile-info">
-                    <div class="group-role-perm-tile-title">
-                        <strong>${escapeHTML(perm.label)}</strong>
-                        ${perm.badge ? `<span class="group-role-perm-badge">${escapeHTML(perm.badge)}</span>` : ''}
-                    </div>
-                    <p class="group-role-perm-tile-desc">${escapeHTML(perm.description)}</p>
-                </div>
-            </div>
+        return `<label class="group-perm-row nui-toggle">
+            <span class="group-perm-copy">
+                <span class="group-perm-title"><strong>${escapeHTML(perm.label)}</strong>${perm.badge ? `<span class="nui-badge">${escapeHTML(perm.badge)}</span>` : ''}</span>
+                <span class="nui-help-text">${escapeHTML(perm.description)}</span>
+            </span>
+            <input type="checkbox" name="permissions" value="${escapeHTML(perm.id)}" ${isChecked ? 'checked' : ''} class="nui-toggle-input group-role-perm-checkbox" role="switch">
+            <span class="nui-toggle-track" aria-hidden="true"><span class="nui-toggle-thumb"></span></span>
         </label>`;
     }).join('');
 }
 
 function renderRoleChips(role, isOwner) {
     if (isOwner) {
-        return `<span class="group-role-chip is-admin">${t('group.role_all_permissions')}</span>`;
+        return `<span class="nui-badge nui-badge-accent">${t('group.role_all_permissions')}</span>`;
     }
     const permissions = Array.isArray(role?.permissions) ? role.permissions : [];
     if (permissions.includes('admin')) {
-        return `<span class="group-role-chip is-admin">${t('group.role_all_permissions')}</span>`;
+        return `<span class="nui-badge nui-badge-accent">${t('group.role_all_permissions')}</span>`;
     }
     if (permissions.length === 0) {
-        return `<span class="group-role-chip is-empty">${t('group.role_no_permissions')}</span>`;
+        return `<span class="nui-badge">${t('group.role_no_permissions')}</span>`;
     }
     return permissions.map((permId) => {
         const perm = PERMISSION_CONFIG.find((p) => p.id === permId);
         const label = perm?.label || permId;
-        return `<span class="group-role-chip">${escapeHTML(label)}</span>`;
+        return `<span class="nui-badge">${escapeHTML(label)}</span>`;
     }).join('');
 }
 
@@ -664,51 +696,40 @@ function renderRoleCard(role) {
     const ownerRole = roleType === 'owner';
     const defaultRole = Boolean(roleType);
     const roleName = escapeHTML(role.name || t('group.role_untitled'));
-    
-    let badgeHtml = '';
-    if (ownerRole) {
-        badgeHtml = `<span class="settings-session-current group-role-badge-owner">${t('group.role_owner')}</span>`;
-    } else if (roleType === 'admin') {
-        badgeHtml = `<span class="settings-session-current group-role-badge-admin">${t('group.role_admin_default')}</span>`;
-    } else if (defaultRole) {
-        badgeHtml = `<span class="settings-session-current group-role-badge-default">${t('group.role_member_default')}</span>`;
-    } else {
-        badgeHtml = `<span class="settings-session-current group-role-badge-custom">${t('group.role_custom')}</span>`;
-    }
 
-    return `<article class="group-role-card ${ownerRole ? 'is-owner-role' : ''}" id="role-card-${roleId}" data-role-id="${roleId}">
-        <div class="group-role-card-summary">
+    return `<article class="group-role-row ${ownerRole ? 'is-owner-role' : ''}" id="role-card-${roleId}" data-role-id="${roleId}">
+        <div class="group-role-summary">
             <div class="group-role-summary-main">
                 <div class="group-role-title-row">
-                    <h5 class="group-role-title" data-role-title="${roleId}">${roleName}</h5>
-                    ${badgeHtml}
+                    <h5 class="group-role-title" data-role-title="${roleId}">${escapeHTML(roleDisplayName(role))}</h5>
+                    ${defaultRole ? '' : `<span class="nui-badge">${t('group.role_custom')}</span>`}
                 </div>
                 <div class="group-role-perm-preview" data-role-preview="${roleId}">
                     ${renderRoleChips(role, ownerRole)}
                 </div>
             </div>
-            <div class="group-role-summary-actions">
-                ${ownerRole ? `<span class="group-role-locked-tag">${t('group.role_locked')}</span>` : `
-                    <button type="button" class="nui-button-secondary group-ui-secondary-button group-role-edit-toggle-btn" data-nui="button-secondary" data-toggle-role="${roleId}" aria-expanded="false" aria-controls="role-editor-${roleId}">
+            <div class="nui-actions group-role-summary-actions">
+                ${ownerRole ? `<span class="nui-help-text">${t('group.role_locked')}</span>` : `
+                    <button type="button" class="nui-button-secondary group-ui-secondary-button" data-nui="button-secondary" data-toggle-role="${roleId}" aria-expanded="false" aria-controls="role-editor-${roleId}">
                         ${t('post.edit')}
                     </button>
-                    ${defaultRole ? '' : `<button type="button" class="settings-session-revoke-button nui-button-danger group-role-delete-btn" data-delete-role="${roleId}" aria-label="${t('group.role_delete_aria', { name: roleName })}">${t('post.delete')}</button>`}
+                    ${defaultRole ? '' : `<button type="button" class="nui-button-danger" data-nui="button-danger" data-delete-role="${roleId}" aria-label="${t('group.role_delete_aria', { name: roleName })}">${t('post.delete')}</button>`}
                 `}
             </div>
         </div>
         ${ownerRole ? '' : `
         <div class="group-role-editor-pane hidden" id="role-editor-${roleId}">
-            <form class="group-role-edit-form" data-edit-group-role="${roleId}">
-                <div class="group-role-input-group">
-                    <label class="group-role-input-label" for="role-name-${roleId}">${t('group.role_name_label')}</label>
-                    <input id="role-name-${roleId}" name="name" maxlength="50" required value="${roleName}" class="group-role-name-input nui-input">
+            <form class="group-role-edit-form nui-form" data-nui="form" data-edit-group-role="${roleId}">
+                <div class="nui-field">
+                    <label for="role-name-${roleId}">${t('group.role_name_label')}</label>
+                    <input id="role-name-${roleId}" name="name" maxlength="50" required value="${roleName}" class="nui-input">
                 </div>
                 <div class="group-role-perm-section">
                     <div class="group-role-perm-header">
                         <span class="group-role-input-label">${t('group.role_actions_label')}</span>
                         <span class="nui-help-text">${t('group.role_actions_hint_edit')}</span>
                     </div>
-                    <div class="group-role-perm-grid">
+                    <div class="group-perm-list">
                         ${renderRolePermissionCards(role)}
                     </div>
                 </div>
@@ -726,34 +747,29 @@ function renderRoleCard(role) {
 function renderRolesPanel(group) {
     const roles = Array.isArray(group.roles) ? group.roles : [];
     return `<div class="group-roles-container">
-        <div class="group-roles-header">
-            <div class="group-roles-header-text">
-                <p class="nui-help-text">${t('group.roles_intro')}</p>
-            </div>
-            <button type="button" class="nui-button settings-primary-button group-role-add-btn" data-nui="button" id="toggle-create-role-btn">
+        <div class="nui-toolbar group-roles-toolbar">
+            <p class="nui-help-text">${t('group.roles_intro')}</p>
+            <button type="button" class="nui-button settings-primary-button" data-nui="button" id="toggle-create-role-btn">
                 ${t('group.role_add')}
             </button>
         </div>
 
         <div id="group-role-create-wrapper" class="group-role-create-wrapper hidden">
-            <form id="group-role-form" class="group-role-card group-role-create-card">
-                <div class="group-role-card-header">
-                    <div class="group-role-card-title-wrap">
-                        <h5 class="group-role-card-title">${t('group.role_create_title')}</h5>
-                        <span class="settings-session-current group-role-badge-custom">${t('group.role_custom')}</span>
-                    </div>
-                    <button type="button" class="modal-close-btn group-role-create-close-btn" id="cancel-create-role-btn" aria-label="${t('common.close')}">×</button>
+            <form id="group-role-form" class="group-role-edit-form nui-form" data-nui="form">
+                <div class="group-role-create-header">
+                    <h5 class="nui-section-title">${t('group.role_create_title')}</h5>
+                    <button type="button" class="modal-close-btn" id="cancel-create-role-btn" aria-label="${t('common.close')}">×</button>
                 </div>
-                <div class="group-role-input-group">
-                    <label for="create-role-name" class="group-role-input-label">${t('group.role_name_label')}</label>
-                    <input id="create-role-name" name="name" maxlength="50" required placeholder="${t('group.role_name_placeholder')}" class="group-role-name-input nui-input">
+                <div class="nui-field">
+                    <label for="create-role-name">${t('group.role_name_label')}</label>
+                    <input id="create-role-name" name="name" maxlength="50" required placeholder="${t('group.role_name_placeholder')}" class="nui-input">
                 </div>
                 <div class="group-role-perm-section">
                     <div class="group-role-perm-header">
                         <span class="group-role-input-label">${t('group.role_actions_label')}</span>
                         <span class="nui-help-text">${t('group.role_actions_hint_create')}</span>
                     </div>
-                    <div class="group-role-perm-grid">
+                    <div class="group-perm-list">
                         ${renderRolePermissionCards()}
                     </div>
                 </div>
@@ -768,6 +784,47 @@ function renderRolesPanel(group) {
             ${roles.map((role) => renderRoleCard(role)).join('')}
         </div>
     </div>`;
+}
+
+const MEMBER_PAGE_SIZE = 50;
+let groupMembersObserver = null;
+let groupMembersScrollHandler = null;
+
+function stopGroupMembersScroll() {
+    groupMembersObserver?.disconnect();
+    groupMembersObserver = null;
+    if (groupMembersScrollHandler) {
+        window.removeEventListener('scroll', groupMembersScrollHandler, { capture: true });
+        groupMembersScrollHandler = null;
+    }
+}
+
+function renderGroupMemberRow(entry, group) {
+    const roles = Array.isArray(group.roles) ? group.roles : [];
+    const canAdmin = isGroupAdmin(group);
+    const canBan = hasGroupPermission(group, 'ban');
+    const member = entry.membership || {};
+    const user = entry.user || {};
+    const owner = Number(member.user_id) === Number(group.owner_id);
+    const memberName = escapeHTML(user.name || t('dm.user_number', { id: member.user_id }));
+    const handle = escapeHTML(getNyaitterId(user) || `#${member.user_id}`);
+    const avatarUrl = getUserIconUrl(user);
+    return `<article class="nui-list-item nui-row group-member-item" data-nui="list-item" data-member-id="${Number(member.user_id)}" data-member-search-text="${escapeHTML((user.name || '').toLowerCase())} ${String(member.user_id)}">
+        <div class="group-member-info">
+            <img ${rankAvatarAttributes(user)} src="${escapeHTML(avatarUrl)}" class="nui-avatar group-member-avatar" alt="">
+            <div class="group-member-details">
+                <div class="group-member-name-row">
+                    <span class="group-member-name">${memberName}</span>
+                    ${owner ? `<span class="nui-badge nui-badge-accent">${t('group.role_owner')}</span>` : ''}
+                </div>
+                <span class="group-member-handle">${handle}</span>
+            </div>
+        </div>
+        <div class="nui-actions group-member-actions">
+            ${canAdmin && !owner ? `<select class="settings-select group-ui-role-select nui-input" data-member-role="${Number(member.user_id)}" aria-label="${t('group.member_role_aria', { name: memberName })}">${roles.map((role) => `<option value="${escapeHTML(String(role.id))}" ${String(role.id) === String(member.role_id) ? 'selected' : ''}>${escapeHTML(roleDisplayName(role))}</option>`).join('')}</select>` : ''}
+            ${canBan && !owner ? `<button type="button" class="nui-button-danger settings-session-revoke-button" data-nui="button-danger" data-ban-member="${Number(member.user_id)}" aria-label="${t('group.member_ban_aria', { name: memberName })}">${t('group.ban_button')}</button>` : ''}
+        </div>
+    </article>`;
 }
 
 function renderManageTabs(group, { canProfile, canMembers, canInvite, canAdmin, canTransfer }) {
@@ -792,7 +849,7 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
     const canMembers = canAdmin || canBan;
     const canTransfer = isGroupOwner(group);
     const [memberData, requestData] = await Promise.all([
-        canMembers ? request(groupPath(group.id, '/members?status=active')) : Promise.resolve({ members: [] }),
+        canMembers ? request(groupPath(group.id, `/members?status=active&limit=${MEMBER_PAGE_SIZE}&offset=0`)) : Promise.resolve({ members: [] }),
         canInvite ? request(groupPath(group.id, '/join-requests?status=pending')) : Promise.resolve({ join_requests: [] }),
     ]);
     const members = Array.isArray(memberData.members) ? memberData.members : [];
@@ -806,7 +863,6 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
             <div class="group-ui-manage-context">
                 ${groupAvatar(group, 'nui-avatar group-ui-manage-avatar')}
                 <div class="group-ui-manage-heading-copy">
-                    <span class="group-ui-manage-eyebrow">${t('group.manage_eyebrow')}</span>
                     <h3>${t('group.manage_heading', { name: escapeHTML(group.name || ''), tab: t('group.manage_fallback') })}</h3>
                     <p class="nui-help-text settings-group-description">${escapeHTML(tabs.find((tab) => tab.id === selectedTab)?.description || '')}</p>
                 </div>
@@ -818,40 +874,18 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                 ${tabs.map((tab) => `<button type="button" class="nui-nav-item settings-group-button ${tab.id === selectedTab ? 'active' : ''}" id="group-manage-tab-${tab.id}" role="tab" aria-selected="${tab.id === selectedTab ? 'true' : 'false'}" aria-controls="group-manage-panel-${tab.id}" data-nui="nav-item" data-group-manage-tab="${tab.id}" data-group-manage-title="${escapeHTML(tab.label)}" data-group-manage-description="${escapeHTML(tab.description)}">${escapeHTML(tab.label)}</button>`).join('')}
             </div>
             <div class="group-ui-manage-detail">
-                ${canProfile ? `<section class="nui-section settings-group-panel" id="group-manage-panel-profile" role="tabpanel" aria-labelledby="group-manage-tab-profile" data-group-manage-panel="profile" ${selectedTab === 'profile' ? '' : 'hidden'}>${renderGroupSection(t('group.tab_profile_label'), renderGroupProfileForm(group))}</section>` : ''}
-                ${canMembers ? `<section class="nui-section settings-group-panel" id="group-manage-panel-members" role="tabpanel" aria-labelledby="group-manage-tab-members" data-group-manage-panel="members" ${selectedTab === 'members' ? '' : 'hidden'}>${renderGroupSection(t('group.members_manage_section'), `
+                ${canProfile ? `<section class="nui-section settings-group-panel" id="group-manage-panel-profile" role="tabpanel" aria-labelledby="group-manage-tab-profile" data-group-manage-panel="profile" ${selectedTab === 'profile' ? '' : 'hidden'}>${groupPanelHeading(t('group.tab_profile_label'))}${renderGroupProfileForm(group)}</section>` : ''}
+                ${canMembers ? `<section class="nui-section settings-group-panel" id="group-manage-panel-members" role="tabpanel" aria-labelledby="group-manage-tab-members" data-group-manage-panel="members" ${selectedTab === 'members' ? '' : 'hidden'}>${groupPanelHeading(t('group.members_manage_section'))}
                     <div class="nui-toolbar group-members-toolbar">
                         <input type="search" class="group-members-search-input nui-input" id="group-member-search" placeholder="${t('group.members_search_placeholder')}" aria-label="${t('group.members_search_label')}" aria-controls="group-members-list">
                         <span class="nui-help-text" id="group-member-count-label" role="status" aria-live="polite">${t('group.members_total', { count: members.length })}</span>
                     </div>
-                    <div class="nui-list group-members-list" id="group-members-list">${members.map((entry) => {
-                        const member = entry.membership || {};
-                        const user = entry.user || {};
-                        const owner = Number(member.user_id) === Number(group.owner_id);
-                        const memberName = escapeHTML(user.name || t('dm.user_number', { id: member.user_id }));
-                        const handle = escapeHTML(getNyaitterId(user) || `#${member.user_id}`);
-                        const avatarUrl = getUserIconUrl(user);
-                        return `<article class="nui-list-item nui-row group-member-item" data-nui="list-item" data-member-id="${Number(member.user_id)}" data-member-search-text="${escapeHTML((user.name || '').toLowerCase())} ${String(member.user_id)}">
-                            <div class="group-member-info">
-                                <img ${rankAvatarAttributes(user)} src="${escapeHTML(avatarUrl)}" class="nui-avatar group-member-avatar" alt="">
-                                <div class="group-member-details">
-                                    <div class="group-member-name-row">
-                                        <span class="group-member-name">${memberName}</span>
-                                        ${owner ? `<span class="settings-session-current group-role-badge-owner">${t('group.role_owner')}</span>` : ''}
-                                    </div>
-                                    <span class="group-member-handle">${handle}</span>
-                                </div>
-                            </div>
-                            <div class="nui-actions group-member-actions">
-                                ${canAdmin && !owner ? `<select class="settings-select group-ui-role-select nui-input" data-member-role="${Number(member.user_id)}" aria-label="${t('group.member_role_aria', { name: memberName })}">${roles.map((role) => `<option value="${escapeHTML(String(role.id))}" ${String(role.id) === String(member.role_id) ? 'selected' : ''}>${escapeHTML(role.name)}</option>`).join('')}</select>` : ''}
-                                ${canBan && !owner ? `<button type="button" class="nui-button-danger settings-session-revoke-button" data-nui="button-danger" data-ban-member="${Number(member.user_id)}" aria-label="${t('group.member_ban_aria', { name: memberName })}">${t('group.ban_button')}</button>` : ''}
-                            </div>
-                        </article>`;
-                    }).join('') || `<p class="nui-empty-text">${t('group.members_none')}</p>`}</div>
+                    <div class="nui-list group-members-list" id="group-members-list">${members.map((entry) => renderGroupMemberRow(entry, group)).join('') || `<p class="nui-empty-text">${t('group.members_none')}</p>`}</div>
                     <p class="nui-empty-text group-members-empty" id="group-members-empty" hidden>${t('group.members_no_match')}</p>
-                `)}</section>` : ''}
+                    <div id="group-members-sentinel"></div>
+                </section>` : ''}
                 ${canInvite ? `<section class="nui-section settings-group-panel" id="group-manage-panel-invites" role="tabpanel" aria-labelledby="group-manage-tab-invites" data-group-manage-panel="invites" ${selectedTab === 'invites' ? '' : 'hidden'}>
-                    ${renderGroupSection(t('group.invite_section'), `
+                    ${groupPanelHeading(t('group.invite_section'))}
                         <form id="group-invite-form" class="user-invite-form">
                             <label for="group-invite-search">${t('group.invite_id_label')}</label>
                             <input id="group-invite-search" type="search" class="nui-input" autocomplete="off" placeholder="${t('group.invite_id_placeholder')}" data-invite-input>
@@ -859,8 +893,8 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                             <div class="user-invite-selected" data-invite-selected aria-live="polite"></div>
                             <div class="user-invite-actions"><p class="nui-help-text">${t('group.invite_hint')}</p><button type="submit" class="nui-button settings-primary-button" data-nui="button" data-invite-submit disabled>${t('group.invite_send_button')}</button></div>
                         </form>
-                    `)}
-                    ${renderGroupSection(t('group.join_requests_section'), joinRequests.length ? `
+                    ${groupPanelHeading(t('group.join_requests_section'))}
+                    ${joinRequests.length ? `
                         <div class="nui-list group-requests-list">${joinRequests.map((item) => {
                             const reqUser = item.user || {};
                             const reqUserId = Number(item.userId ?? item.user_id);
@@ -880,15 +914,15 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                                 </div>
                             </article>`;
                         }).join('')}</div>
-                    ` : `<p class="nui-empty-text">${t('group.join_requests_none')}</p>`)}
+                    ` : `<p class="nui-empty-text">${t('group.join_requests_none')}</p>`}
                 </section>` : ''}
-                ${canAdmin ? `<section class="nui-section settings-group-panel" id="group-manage-panel-roles" role="tabpanel" aria-labelledby="group-manage-tab-roles" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${renderGroupSection(t('group.roles_section'), renderRolesPanel(group))}</section>` : ''}
-                ${canTransfer ? `<section class="nui-section settings-group-panel" id="group-manage-panel-danger" role="tabpanel" aria-labelledby="group-manage-tab-danger" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>
-                    ${renderGroupSection(t('group.tab_danger_label'), `<div class="group-danger-stack">
+                ${canAdmin ? `<section class="nui-section settings-group-panel" id="group-manage-panel-roles" role="tabpanel" aria-labelledby="group-manage-tab-roles" data-group-manage-panel="roles" ${selectedTab === 'roles' ? '' : 'hidden'}>${groupPanelHeading(t('group.roles_section'))}${renderRolesPanel(group)}</section>` : ''}
+                ${canTransfer ? `<section class="nui-section settings-group-panel group-manage-panel-plain" id="group-manage-panel-danger" role="tabpanel" aria-labelledby="group-manage-tab-danger" data-group-manage-panel="danger" ${selectedTab === 'danger' ? '' : 'hidden'}>
+                    <div class="group-danger-stack">
                         <div class="nui-card nui-danger-card group-danger-card" data-nui="card">
                             <h4 class="nui-section-title group-danger-card-title">${t('group.danger_transfer_title')}</h4>
                             <p class="nui-help-text group-danger-card-desc">${t('group.danger_transfer_desc')}</p>
-                            <form id="group-transfer-owner-form" class="group-ui-inline-form">
+                            <form id="group-transfer-owner-form" class="nui-form group-danger-form">
                                 <label>${t('group.danger_new_owner_label')}<input name="user_id" class="nui-input" inputmode="numeric" required placeholder="${t('group.danger_new_owner_placeholder')}"></label>
                                 <button type="submit" class="nui-button-danger settings-danger-button" data-nui="button-danger">${t('group.danger_transfer_button')}</button>
                             </form>
@@ -900,7 +934,7 @@ async function renderGroupManage(content, group, initialTab = 'profile') {
                                 <button type="button" id="delete-group-button" class="nui-button-danger settings-danger-button" data-nui="button-danger">${t('group.danger_delete_title')}</button>
                             </div>
                         </div>
-                    </div>`)}
+                    </div>
                 </section>` : ''}
             </div>
         </div>
@@ -1122,28 +1156,29 @@ function bindGroupManageEvents(group) {
 
     // メンバーのインクリメンタル検索
     const memberSearchInput = document.getElementById('group-member-search');
-    const memberItems = document.querySelectorAll('.group-member-item');
     const memberCountLabel = document.getElementById('group-member-count-label');
     const memberEmpty = document.getElementById('group-members-empty');
-    if (memberSearchInput) {
-        memberSearchInput.addEventListener('input', () => {
-            const query = memberSearchInput.value.trim().toLowerCase();
-            let visibleCount = 0;
-            memberItems.forEach((item) => {
-                const searchText = (item.dataset.memberSearchText || '').toLowerCase();
-                const matches = !query || searchText.includes(query);
-                item.style.display = matches ? 'flex' : 'none';
-                if (matches) visibleCount += 1;
-            });
-            if (memberCountLabel) {
-                memberCountLabel.textContent = query
-                    ? t('group.members_fraction', { visible: visibleCount, total: memberItems.length })
-                    : t('group.members_total', { count: memberItems.length });
-            }
-            if (memberEmpty) {
-                memberEmpty.hidden = !(query && visibleCount === 0 && memberItems.length > 0);
-            }
+    const applyMemberFilter = () => {
+        const memberItems = document.querySelectorAll('.group-member-item');
+        const query = (memberSearchInput?.value || '').trim().toLowerCase();
+        let visibleCount = 0;
+        memberItems.forEach((item) => {
+            const searchText = (item.dataset.memberSearchText || '').toLowerCase();
+            const matches = !query || searchText.includes(query);
+            item.style.display = matches ? 'flex' : 'none';
+            if (matches) visibleCount += 1;
         });
+        if (memberCountLabel) {
+            memberCountLabel.textContent = query
+                ? t('group.members_fraction', { visible: visibleCount, total: memberItems.length })
+                : t('group.members_total', { count: memberItems.length });
+        }
+        if (memberEmpty) {
+            memberEmpty.hidden = !(query && visibleCount === 0 && memberItems.length > 0);
+        }
+    };
+    if (memberSearchInput) {
+        memberSearchInput.addEventListener('input', applyMemberFilter);
     }
     const groupInviteForm = document.getElementById('group-invite-form');
     if (groupInviteForm) {
@@ -1187,7 +1222,10 @@ function bindGroupManageEvents(group) {
             showLoading(false);
         }
     }));
-    document.querySelectorAll('[data-member-role]').forEach((select) => select.addEventListener('change', async () => {
+    const membersListEl = document.getElementById('group-members-list');
+    membersListEl?.addEventListener('change', async (event) => {
+        const select = event.target.closest('[data-member-role]');
+        if (!select) return;
         try {
             showLoading(true);
             await request(groupPath(group.id, `/members/${encodeURIComponent(select.dataset.memberRole)}`), { method: 'PATCH', body: { role_id: select.value } });
@@ -1197,8 +1235,10 @@ function bindGroupManageEvents(group) {
         } finally {
             showLoading(false);
         }
-    }));
-    document.querySelectorAll('[data-ban-member]').forEach((button) => button.addEventListener('click', async () => {
+    });
+    membersListEl?.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-ban-member]');
+        if (!button) return;
         if (!await showAppConfirm(t('group.ban_confirm'))) return;
         try {
             showLoading(true);
@@ -1209,15 +1249,50 @@ function bindGroupManageEvents(group) {
         } finally {
             showLoading(false);
         }
-    }));
-
-    // ロール権限チェックボックスのリアルタイム表示切り替え
-    document.querySelectorAll('.group-role-perm-checkbox').forEach((checkbox) => {
-        checkbox.addEventListener('change', () => {
-            const tile = checkbox.closest('.group-role-perm-tile');
-            if (tile) tile.classList.toggle('is-checked', checkbox.checked);
-        });
     });
+
+    // メンバー一覧の続きをスクロールで読み込む
+    const membersSentinel = document.getElementById('group-members-sentinel');
+    if (membersListEl && membersSentinel) {
+        stopGroupMembersScroll();
+        let offset = membersListEl.querySelectorAll('.group-member-item').length;
+        let loading = false;
+        let done = offset < MEMBER_PAGE_SIZE;
+        const loadMoreMembers = async () => {
+            if (loading || done || !membersListEl.isConnected) return;
+            loading = true;
+            try {
+                const data = await request(groupPath(group.id, `/members?status=active&limit=${MEMBER_PAGE_SIZE}&offset=${offset}`));
+                const more = Array.isArray(data.members) ? data.members : [];
+                offset += more.length;
+                if (more.length) {
+                    membersListEl.insertAdjacentHTML('beforeend', more.map((entry) => renderGroupMemberRow(entry, group)).join(''));
+                    applyMemberFilter();
+                }
+                done = more.length < MEMBER_PAGE_SIZE;
+                if (done) {
+                    stopGroupMembersScroll();
+                    membersSentinel.remove();
+                }
+            } catch {
+                // 失敗したページは、次に末尾が見えたときに取り直す
+            } finally {
+                loading = false;
+            }
+        };
+        if (!done) {
+            groupMembersObserver = new IntersectionObserver((entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) void loadMoreMembers();
+            }, { rootMargin: '400px 0px' });
+            groupMembersObserver.observe(membersSentinel);
+            groupMembersScrollHandler = () => {
+                if (!membersSentinel.getClientRects().length) return;
+                if (membersSentinel.getBoundingClientRect().top < window.innerHeight + 400) void loadMoreMembers();
+            };
+            window.addEventListener('scroll', groupMembersScrollHandler, { passive: true, capture: true });
+            groupMembersScrollHandler();
+        }
+    }
 
     // ロール編集ペインの開閉
     document.querySelectorAll('[data-toggle-role]').forEach((button) => {

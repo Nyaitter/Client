@@ -1855,3 +1855,134 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     list-style: none;
 }
 
+
+.profile-edit-hero .profile-banner {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 1;
+    overflow: hidden;
+    border: none;
+    border-radius: 0;
+    background: var(--main-bg-color);
+    cursor: pointer;
+}
+
+.profile-edit-hero .profile-banner img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+.profile-edit-hero .profile-banner.is-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--secondary-text-color);
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--light-primary-color), var(--bg-color));
+}
+
+.profile-edit-hero {
+    flex-shrink: 0;
+}
+
+.profile-edit-main {
+    position: relative;
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+
+.profile-edit-hero:has(#setting-header-preview:not(.is-empty)) .profile-edit-main {
+    margin-top: -5.5rem;
+    background: linear-gradient(to bottom, transparent 0, var(--nui-surface, var(--bg-color)) 72%);
+}
+
+.profile-edit-toprow {
+    display: flex;
+    align-items: flex-start;
+}
+
+.profile-edit-main #setting-icon-preview {
+    width: clamp(76px, 30vw, 152px);
+    height: clamp(76px, 30vw, 152px);
+    margin: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.profile-edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+#setting-username.profile-edit-name,
+#setting-me.profile-edit-bio {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+}
+
+#setting-username.profile-edit-name {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+}
+
+#setting-me.profile-edit-bio {
+    font-size: 1rem !important;
+    resize: none !important;
+}
+
+.profile-edit-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.profile-edit-name {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 0;
+}
+
+.profile-edit-name:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.profile-edit-bio {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1.55;
+    padding: 0;
+    resize: none;
+    width: 100%;
+}
+
+.profile-edit-bio:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.side-menu-zone[data-zone='shown'] .side-menu-list:empty::after,
+.side-menu-zone[data-zone='hidden'] .side-menu-list:empty::after {
+    content: attr(data-empty-text);
+}

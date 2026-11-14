@@ -251,6 +251,9 @@ export function cacheUser(user) {
         group_badges: Array.isArray(user.group_badges) && user.group_badges.length > 0
             ? user.group_badges
             : (existing.group_badges || []),
+        post_group_badges: Array.isArray(user.post_group_badges)
+            ? user.post_group_badges
+            : existing.post_group_badges,
     };
     cache.set(userId, cachedUser);
     cache.delete(String(userId));

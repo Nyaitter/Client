@@ -843,11 +843,22 @@ export function getGroupIconUrl(value) {
     return image || '';
 }
 
-export function getGroupBadgesHtml(user, { maxCount = 5 } = {}) {
-    if (!user) return '';
-    const badges = Array.isArray(user.group_badges)
+function groupBadgesFor(user, all) {
+    if (all) {
+        return Array.isArray(user.group_badges)
+            ? user.group_badges
+            : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
+    }
+    if (Array.isArray(user.post_group_badges)) return user.post_group_badges;
+    if (Array.isArray(user.postGroupBadges)) return user.postGroupBadges;
+    return Array.isArray(user.group_badges)
         ? user.group_badges
         : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
+}
+
+export function getGroupBadgesHtml(user, { maxCount = 5, all = false } = {}) {
+    if (!user) return '';
+    const badges = groupBadgesFor(user, all);
     const validBadges = badges
         .filter((b) => b && (maxCount === Infinity || getGroupIconUrl(b)))
         .slice(0, maxCount);
@@ -857,11 +868,9 @@ export function getGroupBadgesHtml(user, { maxCount = 5 } = {}) {
         .join('')}</span>`;
 }
 
-export function renderGroupBadgesElement(user, { maxCount = 5 } = {}) {
+export function renderGroupBadgesElement(user, { maxCount = 5, all = false } = {}) {
     if (!user) return null;
-    const badges = Array.isArray(user.group_badges)
-        ? user.group_badges
-        : (Array.isArray(user.groupBadges) ? user.groupBadges : []);
+    const badges = groupBadgesFor(user, all);
     const validBadges = badges
         .filter((b) => b && getGroupIconUrl(b))
         .slice(0, maxCount);

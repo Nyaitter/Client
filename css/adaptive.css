@@ -524,17 +524,8 @@ body.mobile-sidebar-open {
 }
 
 @media (max-width: 608px) {
-.group-modal-images,
-    .group-role-form {
+.group-role-form {
         grid-template-columns: 1fr;
-    }
-
-    .group-modal-header-field {
-        min-width: 0;
-    }
-
-    .group-modal-header-preview {
-        max-width: 100%;
     }
 
     .group-ui-manage-layout {
@@ -590,15 +581,6 @@ body.mobile-sidebar-open {
 }
 
 @media (max-width: 512px) {
-    .group-profile-header-preview {
-        width: 100%;
-    }
-
-    .group-profile-header-actions {
-        display: grid;
-        width: 100%;
-    }
-
     .group-members-toolbar {
         align-items: stretch;
     }
@@ -625,16 +607,12 @@ body.mobile-sidebar-open {
         min-width: 0;
     }
 
-    .group-roles-header {
+    .group-roles-toolbar {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .group-role-add-btn {
-        width: 100%;
-    }
-
-    .group-role-card-summary {
+    .group-role-summary {
         flex-direction: column;
         align-items: stretch;
         gap: 0.75rem;
@@ -645,10 +623,6 @@ body.mobile-sidebar-open {
         justify-content: flex-end;
         padding-top: 0.5rem;
         border-top: 1px dashed var(--border-color);
-    }
-
-    .group-role-perm-grid {
-        grid-template-columns: 1fr;
     }
 
     .group-role-card-actions {
@@ -668,15 +642,13 @@ body.mobile-sidebar-open {
 
 @media (max-width: 608px) {
 .group-ui-manage-page > .group-ui-page-heading {
-        top: 0;
+        top: var(--page-header-height, 62px);
         margin: -1rem -1rem 0;
         padding: 0.7rem 1rem;
     }
 
     .group-ui-manage-layout .settings-group-list {
-        position: sticky;
-        top: 5.1rem;
-        z-index: 30;
+        position: static;
         max-height: none;
         margin-top: 0;
         background: var(--main-bg-color);

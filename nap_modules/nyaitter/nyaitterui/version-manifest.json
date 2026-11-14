@@ -2,7 +2,7 @@
   "files": {
     "dist/index.cjs": "a019c24589ae1b89d89eed91a6fd1bba7896984964c308b3092bee88dd7e4d43",
     "dist/index.js": "577cc6fbebbffd7c985255802baf62a22206dc9e16fe2e5ec293dcdb7ddc94a1",
-    "dist/nyaitter-ui.css": "55552a09543159130068e0abcd453bf673595c1088dc51483703ee451d634965",
+    "dist/nyaitter-ui.css": "8cb11e5cba89f0ada6c87ce12fad033f14c6e2bceaec43d4cfa1e32abd44589f",
     "dist/nyaitter-ui.js": "547a80a081360cf59c0f7116c7d562a82890ca4bfa916bcab8117ed5343fef4b"
   },
   "libraries": {}

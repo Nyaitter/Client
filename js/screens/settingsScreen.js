@@ -50,6 +50,7 @@ import { router } from '../router.js';
 import {
     getSettingsGroupFromHash,
     normalizeDmInvitation,
+    normalizeLargePostDisplay,
     SETTINGS_GROUP_DETAILS,
 } from './settings/config.js';
 import { readSettingsForm } from './settings/formModel.js';
@@ -57,6 +58,7 @@ import { t, getLanguage, getAvailableLanguages, languageName, setLanguage } from
 import { rebuildSettings, bindSettingsDiscovery, showSettingsSaveStatus, bindSettingsNetworkUsage } from './settings/redesign.js';
 import { bindSettingsStatus } from './settings/status.js';
 import { bindSettingsDisplayRanks } from './settings/displayRanks.js';
+import { bindSettingsProfileEditor } from './settings/profileEditor.js';
 import { ALL_HOME_TABS, DEFAULT_HOME_TABS, getSavedHomeTabs } from './settings/homeTabs.js';
 import { ALL_SIDEBAR_ITEMS, SIDEBAR_ITEM_KEYS, DEFAULT_SIDEBAR, getSavedSideMenu, writeSideMenuMirror } from '../modules/sidebar.js';
 import { getActiveScreenContext, showScreenCompat } from '../screenManager.js';
@@ -65,6 +67,7 @@ import {
     escapeHTML,
     getUserIconUrl,
     getUserHeaderImageUrl,
+    getNyaitterId,
     getSafeHttpUrl,
     copyTextToClipboard,
     formatSecurityTimestamp,
@@ -501,24 +504,35 @@ export async function showSettingsScreen(
                     </div>
                 </section>
                 <section class="nui-section settings-group-panel" data-settings-panel="profile">
-                    <label for="setting-username">${t('login.email.username')}</label>
-                    <input type="text" id="setting-username" class="nui-input" required data-server-input-limit="user_name_length" value="${escapeHTML(getCurrentUser().name)}">
-                    <label for="setting-icon-input">${t('settings.profile.icon')}</label>
-                    <div class="setting-icon-container nui-row">
-                        <img id="setting-icon-preview" src="${getUserIconUrl(getCurrentUser())}" alt="${t('settings.profile.icon_preview')}" title="${t('settings.profile.click_to_select')}">
-                        <button type="button" id="reset-icon-btn" class="nui-button-secondary">${t('settings.profile.reset_default')}</button>
-                    </div>
-                    <input type="file" id="setting-icon-input" accept="image/*" class="hidden">
-                    <label for="setting-header-input">${t('settings.profile.header')}</label>
-                    <div class="setting-header-container nui-row">
-                        <div id="setting-header-preview" class="setting-header-preview ${getUserHeaderImageUrl(getCurrentUser()) ? '' : 'is-empty'}" title="${t('settings.profile.click_to_select')}">
+                    <div class="profile-hero profile-edit-hero nui-card" data-nui="card">
+                        <div id="setting-header-preview" class="profile-banner setting-header-preview ${getUserHeaderImageUrl(getCurrentUser()) ? '' : 'is-empty'}" title="${t('settings.profile.click_to_select')}">
                             ${getUserHeaderImageUrl(getCurrentUser()) ? `<img src="${escapeHTML(getUserHeaderImageUrl(getCurrentUser()))}" alt="${t('settings.profile.header_preview')}">` : '<span>' + t('settings.profile.header_select') + '</span>'}
                         </div>
-                        <button type="button" id="reset-header-btn" class="nui-button-secondary">${t('settings.profile.header_delete')}</button>
+                        <div class="profile-edit-main">
+                            <div class="profile-edit-toprow">
+                                <img id="setting-icon-preview" class="nui-avatar" src="${getUserIconUrl(getCurrentUser())}" alt="${t('settings.profile.icon_preview')}" title="${t('settings.profile.click_to_select')}">
+                            </div>
+                            <div class="profile-info profile-hero-copy">
+                                <div class="profile-identity">
+                                    <div class="profile-edit-name-row">
+                                        <input type="text" id="setting-username" class="profile-edit-name" required data-server-input-limit="user_name_length" value="${escapeHTML(getCurrentUser().name)}" aria-label="${t('login.email.username')}">
+                                        ${getCurrentUser().admin ? `<img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">` : getCurrentUser().verify ? `<img src="icons/verify.png" class="verify-badge" title="${t('settings.verification.verified')}">` : ''}
+                                        ${getCurrentUser().is_imposter ? `<span class="imposter-badge" title="${t('profile.imposter_title')}">${t('post.imposter_badge')}</span>` : ''}
+                                    </div>
+                                    <div class="user-id" title="Nyaitter ID">${getNyaitterId(getCurrentUser())} ${getCurrentUser().visibility?.scid === 'public' && getCurrentUser().scid ? `(<a href="https://scratch.mit.edu/users/${getCurrentUser().scid}" class="scidlink" target="_blank" rel="noopener noreferrer">@${getCurrentUser().scid}</a>)` : ''}</div>
+                                </div>
+                                <div id="settings-profile-badges" class="profile-edit-badges"></div>
+                                <textarea id="setting-me" class="profile-edit-bio" rows="3" data-server-input-limit="profile_bio_length" aria-label="${t('settings.profile.bio')}" placeholder="${t('settings.profile.bio')}">${escapeHTML(getCurrentUser().me || '')}</textarea>
+                            </div>
+                            <div class="profile-edit-actions">
+                                <button type="button" id="reset-icon-btn" class="nui-button-secondary">${t('settings.profile.reset_default')}</button>
+                                <button type="button" id="reset-header-btn" class="nui-button-secondary">${t('settings.profile.header_delete')}</button>
+                            </div>
+                        </div>
                     </div>
+                    <input type="file" id="setting-icon-input" accept="image/*" class="hidden">
                     <input type="file" id="setting-header-input" accept="image/*" class="hidden">
-                    <label for="setting-me">${t('settings.profile.bio')}</label>
-                    <textarea id="setting-me" class="nui-input" data-server-input-limit="profile_bio_length">${escapeHTML(getCurrentUser().me || '')}</textarea>
+                    <div id="settings-post-badges"></div>
                 </section>
                 <section class="nui-section settings-group-panel" data-settings-panel="privacy" hidden>
                     <fieldset class="nui-card"><legend>${t('settings.profile.visibility')}</legend>
@@ -584,6 +598,11 @@ export async function showSettingsScreen(
                         <option value="absolute_12">${t('settings.timestamp.absolute')}</option>
                     </select>
                     <p class="settings-help-text nui-help-text">${t('settings.timestamp.help')}</p>
+                    <label for="setting-large-post-display">${t('settings.large_post_display')}</label>
+                    <select id="setting-large-post-display" class="settings-select nui-input">
+                        <option value="clamp">${t('settings.large_post_display_clamp')}</option>
+                        <option value="shrink">${t('settings.large_post_display_shrink')}</option>
+                    </select>
                     <label for="setting-emoji-kind">${t('settings.emoji_font')}</label>
                     <select id="setting-emoji-kind" class="settings-select nui-input">
                         <option value="twemoji">Twemoji</option>
@@ -775,6 +794,8 @@ export async function showSettingsScreen(
     }
     document.getElementById('setting-post-timestamp-format').value =
         normalizePostTimestampFormat(getCurrentUser().settings?.post_timestamp_format);
+    document.getElementById('setting-large-post-display').value =
+        normalizeLargePostDisplay(getCurrentUser().settings?.large_post_display);
     document.getElementById('setting-emoji-kind').value =
         getCurrentUser().settings?.emoji || 'twemoji';
     document.getElementById('setting-content-editor').value =
@@ -2272,8 +2293,8 @@ export async function showSettingsScreen(
         if (activeGroup === 'imposter') void loadImposters();
         if (activeGroup === 'resources') renderResourceLinks();
         if (activeGroup === 'client') void loadClientSettings();
-        if (activeGroup === 'status') void loadSettingsStatus();
-        if (activeGroup === 'privacy') {
+        if (activeGroup === 'status') {
+            void loadSettingsStatus();
             void loadSettingsDisplayRanks();
         }
     };
@@ -2302,6 +2323,7 @@ export async function showSettingsScreen(
     rebuildSettings(settingsRoot);
     const loadSettingsStatus = bindSettingsStatus(settingsRoot, settingsScreenContext);
     const loadSettingsDisplayRanks = bindSettingsDisplayRanks(settingsRoot, settingsScreenContext, () => requestSettingsSave(document.getElementById('settings-form')));
+    bindSettingsProfileEditor(settingsRoot, () => requestSettingsSave(document.getElementById('settings-form')));
     const stopUsageUpdates = bindSettingsNetworkUsage(settingsRoot);
     settingsScreenContext?.addCleanup(stopUsageUpdates);
     bindSettingsDiscovery(settingsRoot, selectSettingsGroup, () => requestSettingsSave(document.getElementById('settings-form')));

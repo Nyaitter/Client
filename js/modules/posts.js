@@ -455,7 +455,9 @@ export async function renderPost(post, author, options = {}) {
     } else if (post.announcement) {
         const announcementIndicator = document.createElement('span');
         announcementIndicator.className = 'group-post-indicator';
-        announcementIndicator.textContent = t('timeline.tab.announcements');
+        const announcementLabel = document.createElement('span');
+        announcementLabel.textContent = t('timeline.tab.announcements');
+        announcementIndicator.appendChild(announcementLabel);
         postHeader.appendChild(announcementIndicator);
     }
 
@@ -866,68 +868,121 @@ export async function renderPost(post, author, options = {}) {
     if (clampHeight && !post.mask) {
         const targetEl = postBody || postMain.querySelector('.post-body, .post-content');
         if (targetEl && (post.content || (post.attachments && post.attachments.length > 0) || post.reposted_post || post.poll)) {
-            postEl.dataset.clampContent = '1';
-            const toggleBtn = document.createElement('button');
-            toggleBtn.type = 'button';
-            toggleBtn.className = 'post-clamp-toggle';
-            toggleBtn.textContent = t('post.show_more');
-            toggleBtn.addEventListener('click', () => {
-                const expanded = targetEl.classList.toggle('post-content-expanded');
-                postEl.classList.toggle('post-expanded', expanded);
-                targetEl.querySelectorAll('.post-content').forEach((c) => {
-                    c.classList.toggle('post-content-expanded', expanded);
-                });
-                toggleBtn.textContent = expanded ? t('common.close') : t('post.show_more');
-                toggleBtn.classList.toggle('expanded', expanded);
-            });
-            targetEl.after(toggleBtn);
+            const useShrink = getCurrentUser()?.settings?.large_post_display === 'shrink';
 
-            const measure = () => {
-                if (!postEl.isConnected || !targetEl.isConnected) return null;
-                if (targetEl.classList.contains('post-content-expanded')) {
-                    toggleBtn.classList.add('is-visible');
+            if (useShrink) {
+                let shrinkClassApplied = false;
+                const measure = () => {
+                    if (!postEl.isConnected || !targetEl.isConnected) return null;
+                    if (shrinkClassApplied) return true;
+
+                    const scrollHeight = targetEl.scrollHeight || 0;
+                    if (!scrollHeight) return false;
+
+                    const isNested = Boolean(postEl.closest('.nested-repost-container'));
+                    const heightLimit = isNested ? 180 : 240;
+                    if (scrollHeight <= heightLimit) return true;
+
+                    const ratio = scrollHeight / heightLimit;
+                    if (ratio <= 1.5) {
+                        postEl.classList.add('post-shrink-1');
+                    } else if (ratio <= 2.5) {
+                        postEl.classList.add('post-shrink-2');
+                    } else {
+                        postEl.classList.add('post-shrink-3');
+                    }
+                    shrinkClassApplied = true;
                     return true;
-                }
+                };
 
-                const scrollHeight = targetEl.scrollHeight || 0;
-                const clientHeight = targetEl.clientHeight || 0;
-                const clampLimit = Number.parseFloat(window.getComputedStyle(targetEl).maxHeight);
-
-                const isOverflowing = (Number.isFinite(clampLimit) && scrollHeight > clampLimit + 1) ||
-                                      (clientHeight > 0 && scrollHeight > clientHeight + 1);
-
-                if (isOverflowing) {
-                    toggleBtn.classList.add('is-visible');
-                } else {
-                    toggleBtn.classList.remove('is-visible');
-                }
-                return true;
-            };
-
-            if (typeof ResizeObserver !== 'undefined') {
-                let rafId = null;
-                const ro = new ResizeObserver(() => {
-                    if (targetEl.classList.contains('post-content-expanded')) return;
-                    if (rafId) cancelAnimationFrame(rafId);
-                    rafId = requestAnimationFrame(() => {
-                        rafId = null;
-                        measure();
+                if (typeof ResizeObserver !== 'undefined') {
+                    let rafId = null;
+                    const ro = new ResizeObserver(() => {
+                        if (shrinkClassApplied) return;
+                        if (rafId) cancelAnimationFrame(rafId);
+                        rafId = requestAnimationFrame(() => {
+                            rafId = null;
+                            measure();
+                        });
                     });
-                });
-                ro.observe(targetEl);
-            }
-
-            targetEl.querySelectorAll('img').forEach((img) => {
-                if (!img.complete) {
-                    img.addEventListener('load', () => requestAnimationFrame(measure), { once: true });
-                    img.addEventListener('error', () => requestAnimationFrame(measure), { once: true });
+                    ro.observe(targetEl);
                 }
-            });
 
-            let attempts = 0;
-            const timer = setInterval(() => {
-                if (measure() === true || ++attempts >= 15) clearInterval(timer);
-            }, 60);
+                targetEl.querySelectorAll('img').forEach((img) => {
+                    if (!img.complete) {
+                        img.addEventListener('load', () => requestAnimationFrame(measure), { once: true });
+                        img.addEventListener('error', () => requestAnimationFrame(measure), { once: true });
+                    }
+                });
+
+                let attempts = 0;
+                const timer = setInterval(() => {
+                    if (measure() === true || ++attempts >= 15) clearInterval(timer);
+                }, 60);
+            } else {
+                postEl.dataset.clampContent = '1';
+                const toggleBtn = document.createElement('button');
+                toggleBtn.type = 'button';
+                toggleBtn.className = 'post-clamp-toggle';
+                toggleBtn.textContent = t('post.show_more');
+                toggleBtn.addEventListener('click', () => {
+                    const expanded = targetEl.classList.toggle('post-content-expanded');
+                    postEl.classList.toggle('post-expanded', expanded);
+                    targetEl.querySelectorAll('.post-content').forEach((c) => {
+                        c.classList.toggle('post-content-expanded', expanded);
+                    });
+                    toggleBtn.textContent = expanded ? t('common.close') : t('post.show_more');
+                    toggleBtn.classList.toggle('expanded', expanded);
+                });
+                targetEl.after(toggleBtn);
+
+                const measure = () => {
+                    if (!postEl.isConnected || !targetEl.isConnected) return null;
+                    if (targetEl.classList.contains('post-content-expanded')) {
+                        toggleBtn.classList.add('is-visible');
+                        return true;
+                    }
+
+                    const scrollHeight = targetEl.scrollHeight || 0;
+                    const clientHeight = targetEl.clientHeight || 0;
+                    const clampLimit = Number.parseFloat(window.getComputedStyle(targetEl).maxHeight);
+
+                    const isOverflowing = (Number.isFinite(clampLimit) && scrollHeight > clampLimit + 1) ||
+                                          (clientHeight > 0 && scrollHeight > clientHeight + 1);
+
+                    if (isOverflowing) {
+                        toggleBtn.classList.add('is-visible');
+                    } else {
+                        toggleBtn.classList.remove('is-visible');
+                    }
+                    return true;
+                };
+
+                if (typeof ResizeObserver !== 'undefined') {
+                    let rafId = null;
+                    const ro = new ResizeObserver(() => {
+                        if (targetEl.classList.contains('post-content-expanded')) return;
+                        if (rafId) cancelAnimationFrame(rafId);
+                        rafId = requestAnimationFrame(() => {
+                            rafId = null;
+                            measure();
+                        });
+                    });
+                    ro.observe(targetEl);
+                }
+
+                targetEl.querySelectorAll('img').forEach((img) => {
+                    if (!img.complete) {
+                        img.addEventListener('load', () => requestAnimationFrame(measure), { once: true });
+                        img.addEventListener('error', () => requestAnimationFrame(measure), { once: true });
+                    }
+                });
+
+                let attempts = 0;
+                const timer = setInterval(() => {
+                    if (measure() === true || ++attempts >= 15) clearInterval(timer);
+                }, 60);
+            }
         }
     }
 

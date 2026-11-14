@@ -338,6 +338,11 @@ export async function showDmScreen(dmId = null, showScreenFn = null) {
                 getTabKey: (btn) => btn.dataset.dmTab,
                 onTabChange: (tab) => {
                     saveScrollPosition(getScrollRouteKey('#dm', activeDmListTab));
+                    tabsContainer.querySelectorAll('.dm-tab-button').forEach((btn) => {
+                        const isActive = btn.dataset.dmTab === tab;
+                        btn.classList.toggle('active', isActive);
+                        btn.classList.toggle('is-active', isActive);
+                    });
                     renderListForTab(tab);
                 },
                 onRefresh: async () => {
