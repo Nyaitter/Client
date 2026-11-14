@@ -7,7 +7,7 @@ export function selectedPostBadges(user) {
         ? user.group_badges.filter((b) => b && b.id != null)
         : [];
     const saved = user?.settings?.display_group_badges;
-    if (!Array.isArray(saved)) return badges;
+    if (!Array.isArray(saved)) return badges.slice(0, 5);
     const byId = new Map(badges.map((b) => [String(b.id), b]));
     return saved.map((id) => byId.get(String(id))).filter(Boolean);
 }
@@ -191,7 +191,7 @@ export function bindSettingsProfileEditor(root, requestSave) {
 
     resetBtn.addEventListener('click', () => {
         customized = false;
-        zones = { shown: [...displayable], hidden: [] };
+        zones = { shown: displayable.slice(0, 5), hidden: displayable.slice(5) };
         render();
         requestSave?.();
     });
