@@ -533,8 +533,8 @@ body.mobile-sidebar-open {
     }
 
     .group-ui-manage-layout .settings-group-list {
-        position: static;
         display: flex;
+        flex-direction: row;
         width: auto;
         margin: 0 -0.75rem 1rem;
         padding: 0.45rem 0.75rem;
@@ -642,13 +642,15 @@ body.mobile-sidebar-open {
 
 @media (max-width: 608px) {
 .group-ui-manage-page > .group-ui-page-heading {
-        top: var(--page-header-height, 62px);
+        position: static;
         margin: -1rem -1rem 0;
         padding: 0.7rem 1rem;
     }
 
     .group-ui-manage-layout .settings-group-list {
-        position: static;
+        position: sticky;
+        top: var(--page-header-height, 62px);
+        z-index: 30;
         max-height: none;
         margin-top: 0;
         background: var(--main-bg-color);

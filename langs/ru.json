@@ -263,6 +263,7 @@
   "settings.profile.post_badge_show_title": "Показать в постах",
   "settings.profile.post_badge_hide": "Скрыть",
   "settings.profile.post_badge_hide_title": "Скрыть из постов",
+  "settings.profile.post_badges_reset": "Сбросить к значениям по умолчанию",
   "settings.rank": "Ранги",
   "settings.save_retry": "Повторить сохранение",
   "settings.search.label": "Найти настройку",

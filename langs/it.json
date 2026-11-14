@@ -263,6 +263,7 @@
   "settings.profile.post_badge_show_title": "Mostra nei post",
   "settings.profile.post_badge_hide": "Nascondi",
   "settings.profile.post_badge_hide_title": "Nascondi dai post",
+  "settings.profile.post_badges_reset": "Ripristina predefiniti",
   "settings.rank": "Ranghi",
   "settings.save_retry": "Riprova a salvare",
   "settings.search.label": "Cerca un'impostazione",

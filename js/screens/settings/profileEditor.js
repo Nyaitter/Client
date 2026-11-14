@@ -43,6 +43,7 @@ export function bindSettingsProfileEditor(root, requestSave) {
     if (!displayable.length) return;
 
     const byId = new Map(displayable.map((b) => [String(b.id), b]));
+    let customized = Array.isArray(user?.settings?.display_group_badges);
     let zones = {
         shown: selectedPostBadges(user).filter((b) => byId.has(String(b.id))),
         hidden: displayable.filter(
@@ -126,14 +127,31 @@ export function bindSettingsProfileEditor(root, requestSave) {
     const customizer = document.createElement('div');
     customizer.className = 'side-menu-customizer';
     customizer.append(shownZone.zoneEl, hiddenZone.zoneEl);
-    picker.append(customizer);
+    const resetRow = document.createElement('div');
+    resetRow.className = 'profile-edit-actions';
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'nui-button-secondary';
+    resetBtn.textContent = t('settings.profile.post_badges_reset');
+    resetRow.append(resetBtn);
+    picker.append(customizer, resetRow);
 
     const render = () => {
         for (const [zone, list] of [['shown', shownZone.list], ['hidden', hiddenZone.list]]) {
             list.innerHTML = '';
             zones[zone].forEach((badge) => list.appendChild(createItemElement(badge, zone)));
         }
+        shownZone.list.dataset.badgeMode = customized ? 'custom' : 'default';
+        resetRow.hidden = !customized;
     };
+
+    resetBtn.addEventListener('click', () => {
+        customized = false;
+        zones = { shown: [...displayable], hidden: [] };
+        render();
+        renderHeroRow(zones.shown);
+        requestSave?.();
+    });
 
     const readZones = () => {
         const read = (list) => [...list.querySelectorAll(':scope > .side-menu-item')]
@@ -143,6 +161,7 @@ export function bindSettingsProfileEditor(root, requestSave) {
     };
 
     const commit = (next) => {
+        customized = true;
         zones = next;
         render();
         renderHeroRow(zones.shown);
