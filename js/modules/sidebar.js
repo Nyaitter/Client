@@ -102,7 +102,7 @@ function setupMobileSidebarOverflow(overlay, signal) {
         : [];
     if (!menu || menuLinks.length === 0) return () => false;
 
-    // 高さあふれの自動移動が手動設定を上書きしないよう、手動固定項目は計算から外す
+    // PCと同じ基準: 固定格納はPCの「その他」ゾーンの項目だけに適用する
     const pinnedLinks = menuLinks.filter((item) =>
         item.hasAttribute('data-menu-overflow'),
     );
@@ -164,13 +164,15 @@ function setupMobileSidebarOverflow(overlay, signal) {
     const applyOverflow = () => {
         scheduled = false;
         if (!menu.isConnected) return;
-        menu.insertBefore(overflow, postButton || null);
-        menuLinks.forEach((item) => menu.insertBefore(item, overflow));
+        menuLinks.forEach((item) => menu.insertBefore(item, postButton || null));
         panel.replaceChildren();
         closeOverflow();
-        // replaceChildren() で panel から外れるため、手動固定した項目を必ず戻す
+        overflow.remove();
+        // 切り替えボタンを除いて収まるなら、項目は隠さない
+        if (!pinnedLinks.length && menu.scrollHeight <= menu.clientHeight) return;
+        menu.insertBefore(overflow, postButton || null);
+        // replaceChildren() で panel から外れるため、固定項目を必ず戻す
         pinnedLinks.forEach((item) => panel.append(item));
-
         let visibleCount = flexLinks.length;
         while (menu.scrollHeight > menu.clientHeight && visibleCount > 0) {
             visibleCount -= 1;
@@ -676,8 +678,10 @@ export async function updateNavAndSidebars() {
             mobileOrder: mobileOrderOf.get(item.key) ?? 0,
             mobileHidden: mobileHiddenKeys.has(item.key),
         }));
-    const toMobileEntries = (items, overflow) =>
-        items.map((item) => ({ item, overflow }));
+    // ドロワーの並びはモバイル設定順、固定格納の指定はPC側のゾーンに従う
+    const pcMoreKeys = new Set(pcZones.moreItems.map((item) => item.key));
+    const toMobileEntries = (items) =>
+        items.map((item) => ({ item, overflow: pcMoreKeys.has(item.key) }));
 
     const renderMenuMarkup = (entries) => `${entries
         .map((entry) => {
@@ -724,8 +728,8 @@ export async function updateNavAndSidebars() {
     ]);
     // PC側の高さ調整でlive DOMが組み替わっても、ドロワーはモバイル設定順を維持する
     const mobileMenuMarkup = renderMenuMarkup([
-        ...toMobileEntries(mobileZones.barItems, false),
-        ...toMobileEntries(mobileZones.moreItems, true),
+        ...toMobileEntries(mobileZones.barItems),
+        ...toMobileEntries(mobileZones.moreItems),
     ]);
     DOM.navMenuTop.innerHTML = fullMenuMarkup;
     DOM.navMenuTop.dataset.mobileMenuMarkup = mobileMenuMarkup;

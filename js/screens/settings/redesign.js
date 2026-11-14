@@ -5,7 +5,7 @@ import { getNetworkUsage, subscribeNetworkUsage, resetNetworkUsage } from '../..
 import { isDataSaverEnabled } from '../../modules/theme.js';
 
 const NAVIGATION = [
-    ['settings.nav.about_you', [['overview', 'settings'], ['profile', 'profile'], ['status', 'status'], ['account', 'profile'], ['privacy', 'lock']]],
+    ['settings.nav.about_you', [['overview', 'settings'], ['profile', 'profile'], ['account', 'profile'], ['privacy', 'lock'], ['status', 'status']]],
     ['settings.nav.experience', [['ui', 'stars'], ['editor', 'post'], ['home', 'home_outline'], ['menu', 'more'], ['filters', 'search'], ['notifications', 'notifications'], ['connection', 'explore']]],
     ['settings.nav.manage', [['storage', 'post'], ['apps', 'globe'], ['imposter', 'profile'], ['api', 'post'], ['resources', 'globe'], ['client', 'client']]],
 ];
@@ -28,6 +28,9 @@ export function rebuildSettings(root) {
     for (const selector of ['.settings-login-security', '.settings-auth-providers', '.settings-sessions', '.settings-blocked-ips', '.settings-danger-zone']) move(selector, 'account');
     move('.settings-verification-application', 'profile');
     move('.settings-ng-words', 'filters');
+    move('.settings-community-notes', 'filters');
+    move('.settings-rank-display', 'status');
+    move('#settings-display-ranks', 'status');
     move('.settings-data-saver', 'connection');
     const usage = document.createElement('section');
     usage.className = 'settings-network-usage nui-section';
@@ -52,7 +55,7 @@ export function rebuildSettings(root) {
     }
 
     // Move complete label/control/help groups so all existing IDs and handlers survive.
-    for (const id of ['setting-content-editor', 'setting-post-timestamp-format']) {
+    for (const id of ['setting-content-editor', 'setting-post-timestamp-format', 'setting-large-post-display']) {
         const control = form.querySelector(`#${id}`);
         if (!control) continue;
         const label = form.querySelector(`label[for="${id}"]`);

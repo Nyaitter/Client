@@ -612,7 +612,7 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                     </h2>
                     <div class="user-id" title="Nyaitter ID">${getNyaitterId(user)} ${user.visibility?.scid === 'public' && user.scid ? `(<a href="https://scratch.mit.edu/users/${user.scid}" class="scidlink" target="_blank" rel="noopener noreferrer">@${user.scid}</a>)` : ''}</div>
                     </div>
-                    ${getGroupBadgesHtml(user, { maxCount: Infinity })}
+                    ${getGroupBadgesHtml(user, { maxCount: Infinity, all: true })}
                     <p class="user-me">${userMeHtml}</p>
                     <div class="profile-joined" aria-label="${t('profile.joined_label')}">
                         <svg class="calendar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
@@ -674,6 +674,21 @@ export async function showProfileScreen(userId, subpage = 'posts', showScreenFn 
                     window.handleFollowToggle(userId, followButton, user.lock);
                 actionsContainer.appendChild(followButton);
 
+                const menuButton = document.createElement('button');
+                menuButton.type = 'button';
+                menuButton.className = 'profile-menu-button dm-button';
+                menuButton.innerHTML = ICONS.more;
+                menuButton.title = t('profile.menu_title');
+                menuButton.setAttribute('aria-label', t('profile.menu_title'));
+                menuButton.onclick = (e) => {
+                    e.stopPropagation();
+                    openProfileMenu(user, menuButton);
+                };
+                actionsContainer.appendChild(menuButton);
+            }
+        } else if (getCurrentUser() && isCurrentUserProfile(user)) {
+            const actionsContainer = profileHeader.querySelector('#profile-actions');
+            if (actionsContainer) {
                 const menuButton = document.createElement('button');
                 menuButton.type = 'button';
                 menuButton.className = 'profile-menu-button dm-button';
@@ -1094,6 +1109,17 @@ export function openProfileMenu(targetUser, triggerElement) {
     const menu = document.createElement('div');
     menu.id = 'profile-menu';
     menu.className = 'post-menu is-visible';
+
+    if (isCurrentUserProfile(targetUser)) {
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.textContent = t('profile.edit');
+        editBtn.onclick = () => {
+            menu.remove();
+            location.hash = '#settings/profile';
+        };
+        menu.appendChild(editBtn);
+    }
 
     if (!isCurrentUserProfile(targetUser)) {
         const isBlocked =

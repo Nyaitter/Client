@@ -42,3 +42,8 @@ export function normalizeDmInvitation(value) {
     if (value === 'deny' || value === 'reject') return 'deny';
     return 'require_approval';
 }
+
+export function normalizeLargePostDisplay(value) {
+    if (value === 'shrink') return 'shrink';
+    return 'clamp';
+}

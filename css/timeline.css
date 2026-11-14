@@ -669,6 +669,24 @@
     max-height: none !important;
 }
 
+.post.post-shrink-1 .post-content,
+.post.post-shrink-2 .post-content,
+.post.post-shrink-3 .post-content {
+    line-height: 1.35;
+}
+
+.post.post-shrink-1 .post-content {
+    font-size: 0.88em;
+}
+
+.post.post-shrink-2 .post-content {
+    font-size: 0.78em;
+}
+
+.post.post-shrink-3 .post-content {
+    font-size: 0.68em;
+}
+
 .post-clamp-toggle {
     display: none;
     margin: 0.25rem 0 0.5rem;
@@ -976,12 +994,6 @@
     filter: brightness(0.8); /* ホバー時に少し暗くする */
 }
 
-.setting-icon-container {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
 #setting-icon-preview {
     width: 80px;
     height: 80px;
@@ -990,13 +1002,6 @@
     border: 2px solid var(--border-color);
     margin-top: 0.5rem;
     cursor: pointer;
-}
-
-.setting-header-container {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
 }
 
 .setting-header-preview {
@@ -1137,6 +1142,15 @@
     display: flex;
     align-items: center;
     gap: 0.6rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.account-switcher-item .switcher-user-info > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .account-switcher-item .switcher-user-icon {
@@ -1144,6 +1158,11 @@
     height: 32px;
     border-radius: 50%;
     object-fit: cover;
+    flex-shrink: 0;
+}
+
+.account-switcher-item .switcher-delete-btn {
+    flex-shrink: 0;
 }
 
 .account-switcher-item.active {
