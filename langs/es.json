@@ -390,7 +390,7 @@
   "settings.privacy.dm": "Mensajes directos",
   "settings.apps.scope.dm_send_long": "Enviar mensajes directos",
   "settings.apps.scope.dm_read_long": "Leer mensajes directos",
-  "settings.profile.reset_default": "Restablecer valores predeterminados",
+  "settings.profile.reset_default": "Restablecer el icono predeterminado",
   "settings.menu.reset_order": "Restablecer el orden predeterminado",
   "settings.home_tabs.active_hint": "Arrastra para reordenar o elimina con el botón ×.",
   "settings.menu.order_hint_menu": "Arrastra o usa los botones ↑↓ para cambiar el orden en el menú.",

@@ -8,7 +8,7 @@ import {
     getScreenDataCache,
     setScreenDataCache,
 } from '../modules/cache.js';
-import { renderPost } from '../modules/posts.js';
+import { renderPost, finalizePostSizes } from '../modules/posts.js';
 import { getScrollRouteKey, getSavedScrollPositions, scrollWindowTo } from '../modules/scroll.js';
 import { createViewportObserver } from '../utils/viewport.js';
 import { showLoading } from '../utils/helpers.js';
@@ -105,6 +105,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                 }
             }
             contentDiv.appendChild(ancestorsContainer);
+            finalizePostSizes(ancestorsContainer);
         }
 
         // ── メインポストの描画 ───────────────────────
@@ -118,6 +119,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                 mainPostEl.classList.add('main-post-reply-focus');
             }
             contentDiv.appendChild(mainPostEl);
+            finalizePostSizes(mainPostEl);
         }
 
         // ── 返信セクション ─────────────────────────────────────────────
@@ -336,6 +338,7 @@ export async function showPostDetail(postId, options = {}, maybeShowScreenFn = n
                 }
 
                 repliesContainer.appendChild(branchContainer);
+                finalizePostSizes(branchContainer);
             }
 
             pagination.page++;

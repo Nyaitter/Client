@@ -390,7 +390,7 @@
   "settings.privacy.dm": "الرسائل المباشرة",
   "settings.apps.scope.dm_send_long": "إرسال الرسائل الخاصة",
   "settings.apps.scope.dm_read_long": "قراءة الرسائل الخاصة",
-  "settings.profile.reset_default": "إعادة التعيين إلى الافتراضي",
+  "settings.profile.reset_default": "إعادة تعيين الأيقونة إلى الافتراضي",
   "settings.menu.reset_order": "إعادة التعيين إلى الترتيب الافتراضي",
   "settings.home_tabs.active_hint": "اسحب لإعادة الترتيب، أو أزل بزر ×.",
   "settings.menu.order_hint_menu": "اسحب أو استخدم أزرار ↑↓ لإعادة ترتيب القائمة.",

@@ -1923,6 +1923,11 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 .profile-edit-hero:has(#setting-header-preview:not(.is-empty)) .profile-edit-main {
     margin-top: -5.5rem;
     background: linear-gradient(to bottom, transparent 0, var(--nui-surface, var(--bg-color)) 72%);
+    pointer-events: none;
+}
+
+.profile-edit-hero:has(#setting-header-preview:not(.is-empty)) .profile-edit-main :is(a, button, input, textarea, select, label, #setting-icon-preview) {
+    pointer-events: auto;
 }
 
 .profile-edit-toprow {

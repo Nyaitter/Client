@@ -5,7 +5,7 @@
  */
 
 import { t } from './i18n.js';
-import { renderPost } from './posts.js';
+import { renderPost, finalizePostSizes } from './posts.js';
 import { renderUserCard } from './pagination.js';
 import { initTabGroup } from './tabSwipe.js';
 import { registerDynamicPtrHandler, unregisterDynamicPtrHandler } from './theme.js';
@@ -61,6 +61,7 @@ export async function renderPostList(container, posts = [], options = {}) {
     }
 
     container.appendChild(listWrapper);
+    for (const postElement of postElements) finalizePostSizes(postElement);
     return listWrapper;
 }
 

@@ -872,17 +872,7 @@ export async function renderPost(post, author, options = {}) {
 
             if (useShrink) {
                 postEl.dataset.shrinkContent = '1';
-                let fitted = false;
-                let fittedContentHeight = 0;
-                let fitting = false;
-                const measure = () => {
-                    if (!postEl.isConnected || !targetEl.isConnected) return null;
-                    if (fitting) return true;
-
-                    const contentHeight = targetEl.scrollHeight || 0;
-                    if (!contentHeight) return false;
-                    if (fitted && contentHeight === fittedContentHeight) return true;
-
+                postEl.__finalizeSize = () => {
                     let inner = targetEl.querySelector(':scope > .post-scale-inner');
                     if (!inner) {
                         inner = document.createElement('div');
@@ -891,21 +881,10 @@ export async function renderPost(post, author, options = {}) {
                         targetEl.appendChild(inner);
                     }
 
-                    fitting = true;
-                    targetEl.style.height = '';
-                    inner.style.transform = '';
-                    inner.style.transformOrigin = '';
-                    inner.style.width = '';
-
                     const isNested = Boolean(postEl.closest('.nested-repost-container'));
                     const heightLimit = isNested ? 180 : 240;
                     const naturalHeight = inner.scrollHeight || 0;
-                    if (naturalHeight <= heightLimit) {
-                        fitted = true;
-                        fittedContentHeight = targetEl.scrollHeight || 0;
-                        fitting = false;
-                        return true;
-                    }
+                    if (naturalHeight <= heightLimit) return;
 
                     let scale = heightLimit / naturalHeight;
                     let laidOutHeight = naturalHeight;
@@ -919,35 +898,7 @@ export async function renderPost(post, author, options = {}) {
                     inner.style.transformOrigin = 'top left';
                     inner.style.transform = `scale(${scale})`;
                     targetEl.style.height = `${Math.min(laidOutHeight * scale, heightLimit)}px`;
-                    fitted = true;
-                    fittedContentHeight = targetEl.scrollHeight || 0;
-                    fitting = false;
-                    return true;
                 };
-
-                if (typeof ResizeObserver !== 'undefined') {
-                    let rafId = null;
-                    const ro = new ResizeObserver(() => {
-                        if (rafId) cancelAnimationFrame(rafId);
-                        rafId = requestAnimationFrame(() => {
-                            rafId = null;
-                            measure();
-                        });
-                    });
-                    ro.observe(targetEl);
-                }
-
-                targetEl.querySelectorAll('img').forEach((img) => {
-                    if (!img.complete) {
-                        img.addEventListener('load', () => requestAnimationFrame(measure), { once: true });
-                        img.addEventListener('error', () => requestAnimationFrame(measure), { once: true });
-                    }
-                });
-
-                let attempts = 0;
-                const timer = setInterval(() => {
-                    if (measure() === true || ++attempts >= 15) clearInterval(timer);
-                }, 60);
             } else {
                 postEl.dataset.clampContent = '1';
                 const toggleBtn = document.createElement('button');
@@ -965,13 +916,7 @@ export async function renderPost(post, author, options = {}) {
                 });
                 targetEl.after(toggleBtn);
 
-                const measure = () => {
-                    if (!postEl.isConnected || !targetEl.isConnected) return null;
-                    if (targetEl.classList.contains('post-content-expanded')) {
-                        toggleBtn.classList.add('is-visible');
-                        return true;
-                    }
-
+                postEl.__finalizeSize = () => {
                     const scrollHeight = targetEl.scrollHeight || 0;
                     const clientHeight = targetEl.clientHeight || 0;
                     const clampLimit = Number.parseFloat(window.getComputedStyle(targetEl).maxHeight);
@@ -979,43 +924,27 @@ export async function renderPost(post, author, options = {}) {
                     const isOverflowing = (Number.isFinite(clampLimit) && scrollHeight > clampLimit + 1) ||
                                           (clientHeight > 0 && scrollHeight > clientHeight + 1);
 
-                    if (isOverflowing) {
-                        toggleBtn.classList.add('is-visible');
-                    } else {
-                        toggleBtn.classList.remove('is-visible');
-                    }
-                    return true;
+                    toggleBtn.classList.toggle('is-visible', isOverflowing);
                 };
-
-                if (typeof ResizeObserver !== 'undefined') {
-                    let rafId = null;
-                    const ro = new ResizeObserver(() => {
-                        if (targetEl.classList.contains('post-content-expanded')) return;
-                        if (rafId) cancelAnimationFrame(rafId);
-                        rafId = requestAnimationFrame(() => {
-                            rafId = null;
-                            measure();
-                        });
-                    });
-                    ro.observe(targetEl);
-                }
-
-                targetEl.querySelectorAll('img').forEach((img) => {
-                    if (!img.complete) {
-                        img.addEventListener('load', () => requestAnimationFrame(measure), { once: true });
-                        img.addEventListener('error', () => requestAnimationFrame(measure), { once: true });
-                    }
-                });
-
-                let attempts = 0;
-                const timer = setInterval(() => {
-                    if (measure() === true || ++attempts >= 15) clearInterval(timer);
-                }, 60);
             }
         }
     }
 
     return postEl;
+}
+
+export function finalizePostSizes(root) {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    const targets = [];
+    if (typeof root.__finalizeSize === 'function') targets.push(root);
+    root.querySelectorAll('*').forEach((el) => {
+        if (typeof el.__finalizeSize === 'function') targets.push(el);
+    });
+    for (let i = targets.length - 1; i >= 0; i--) {
+        const finalize = targets[i].__finalizeSize;
+        delete targets[i].__finalizeSize;
+        finalize();
+    }
 }
 
 function getPostingAccountId(container) {

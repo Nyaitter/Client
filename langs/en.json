@@ -390,7 +390,7 @@
   "settings.privacy.dm": "Direct messages",
   "settings.apps.scope.dm_send_long": "Send direct messages",
   "settings.apps.scope.dm_read_long": "Read direct messages",
-  "settings.profile.reset_default": "Reset to default",
+  "settings.profile.reset_default": "Reset icon to default",
   "settings.menu.reset_order": "Reset to the default order",
   "settings.home_tabs.active_hint": "Drag to reorder, or remove with the × button.",
   "settings.menu.order_hint_menu": "Drag or use the ↑↓ buttons to change the order in the menu.",
