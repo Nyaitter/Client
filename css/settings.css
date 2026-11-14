@@ -628,11 +628,17 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 }
 
 .settings-session-title {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.45rem;
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-weight: 700;
+}
+
+.home-tab-name.nui-list-title,
+.side-menu-name.nui-list-title {
+    display: block;
 }
 
 .settings-session-current {
@@ -1335,6 +1341,10 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     font-weight: 700;
     font-size: 0.98rem;
     color: var(--text-color);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .home-tab-description {
@@ -1589,6 +1599,21 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     font-weight: 700;
     font-size: 0.98rem;
     color: var(--text-color);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.settings-group-list .settings-group-button > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.settings-group-list .settings-group-button .settings-category-icon {
+    flex-shrink: 0;
 }
 
 .side-menu-hash {
@@ -1919,6 +1944,20 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 0.5rem;
+}
+
+.post-badge-preview {
+    margin-bottom: 1rem;
+}
+
+.post-badge-preview-label {
+    margin-bottom: 0.5rem;
+}
+
+.post-badge-preview .post {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.75rem;
 }
 
 .profile-edit-actions[hidden] {

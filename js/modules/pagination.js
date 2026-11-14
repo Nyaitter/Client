@@ -707,7 +707,7 @@ export function renderUserCard(u) {
         ? ` <img src="icons/admin.png" class="admin-badge" title="NyaitterTeam">`
         : u.verify
           ? ` <img src="icons/verify.png" class="verify-badge" title="${t('settings.verification.verified')}">`
-          : '') + getGroupBadgesHtml(u);
+          : '') + getGroupBadgesHtml(u, { maxCount: Infinity });
 
     const bioText = u.me || u.bio || '';
 

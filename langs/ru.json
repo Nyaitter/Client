@@ -264,6 +264,8 @@
   "settings.profile.post_badge_hide": "Скрыть",
   "settings.profile.post_badge_hide_title": "Скрыть из постов",
   "settings.profile.post_badges_reset": "Сбросить к значениям по умолчанию",
+  "settings.profile.post_badges_preview": "Предпросмотр поста",
+  "settings.profile.post_badges_preview_text": "Привет",
   "settings.rank": "Ранги",
   "settings.save_retry": "Повторить сохранение",
   "settings.search.label": "Найти настройку",

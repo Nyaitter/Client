@@ -1,6 +1,6 @@
 import { t } from '../../modules/i18n.js';
 import { getCurrentUser } from '../../state.js';
-import { getGroupBadgesHtml, getGroupIconUrl } from '../../utils/helpers.js';
+import { getGroupBadgesHtml, getGroupIconUrl, getNyaitterId, getUserIconUrl } from '../../utils/helpers.js';
 
 export function selectedPostBadges(user) {
     const badges = Array.isArray(user?.group_badges)
@@ -34,10 +34,7 @@ export function bindSettingsProfileEditor(root, requestSave) {
         ? user.group_badges.filter((b) => b && b.id != null)
         : [];
 
-    const renderHeroRow = (selected) => {
-        heroRow.innerHTML = getGroupBadgesHtml({ group_badges: selected });
-    };
-    renderHeroRow(selectedPostBadges(user));
+    heroRow.innerHTML = getGroupBadgesHtml(user, { maxCount: Infinity, all: true });
 
     const displayable = badges.filter((b) => getGroupIconUrl(b));
     if (!displayable.length) return;
@@ -134,7 +131,53 @@ export function bindSettingsProfileEditor(root, requestSave) {
     resetBtn.className = 'nui-button-secondary';
     resetBtn.textContent = t('settings.profile.post_badges_reset');
     resetRow.append(resetBtn);
-    picker.append(customizer, resetRow);
+
+    const preview = document.createElement('div');
+    preview.className = 'post-badge-preview';
+    const previewLabel = document.createElement('div');
+    previewLabel.className = 'post-badge-preview-label nui-section-title';
+    previewLabel.textContent = t('settings.profile.post_badges_preview');
+    const previewPost = document.createElement('article');
+    previewPost.className = 'post';
+    const previewIconLink = document.createElement('span');
+    previewIconLink.className = 'user-icon-link';
+    const previewIcon = document.createElement('img');
+    previewIcon.className = 'user-icon nui-avatar';
+    previewIcon.src = getUserIconUrl(user);
+    previewIcon.alt = '';
+    previewIconLink.appendChild(previewIcon);
+    const previewMain = document.createElement('div');
+    previewMain.className = 'post-main';
+    const previewHeader = document.createElement('div');
+    previewHeader.className = 'post-header';
+    const previewAuthor = document.createElement('span');
+    previewAuthor.className = 'post-author';
+    const previewName = document.createElement('span');
+    previewName.className = 'post-author-name';
+    previewName.textContent = user?.name || '';
+    previewAuthor.appendChild(previewName);
+    const previewBadges = document.createElement('span');
+    const previewTime = document.createElement('span');
+    previewTime.className = 'post-time nui-list-meta';
+    previewTime.textContent = user ? getNyaitterId(user) : '';
+    previewHeader.append(previewAuthor, previewBadges, previewTime);
+    const previewBody = document.createElement('div');
+    previewBody.className = 'post-body';
+    const previewContent = document.createElement('div');
+    previewContent.className = 'post-content';
+    previewContent.textContent = t('settings.profile.post_badges_preview_text');
+    previewBody.appendChild(previewContent);
+    previewMain.append(previewHeader, previewBody);
+    previewPost.append(previewIconLink, previewMain);
+    preview.append(previewLabel, previewPost);
+    picker.append(preview, customizer, resetRow);
+
+    const renderPreview = () => {
+        previewBadges.innerHTML = getGroupBadgesHtml(
+            { post_group_badges: zones.shown },
+            { maxCount: Infinity },
+        );
+    };
 
     const render = () => {
         for (const [zone, list] of [['shown', shownZone.list], ['hidden', hiddenZone.list]]) {
@@ -143,13 +186,13 @@ export function bindSettingsProfileEditor(root, requestSave) {
         }
         shownZone.list.dataset.badgeMode = customized ? 'custom' : 'default';
         resetRow.hidden = !customized;
+        renderPreview();
     };
 
     resetBtn.addEventListener('click', () => {
         customized = false;
         zones = { shown: [...displayable], hidden: [] };
         render();
-        renderHeroRow(zones.shown);
         requestSave?.();
     });
 
@@ -164,7 +207,6 @@ export function bindSettingsProfileEditor(root, requestSave) {
         customized = true;
         zones = next;
         render();
-        renderHeroRow(zones.shown);
         requestSave?.();
     };
 

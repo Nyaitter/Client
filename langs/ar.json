@@ -264,6 +264,8 @@
   "settings.profile.post_badge_hide": "إخفاء",
   "settings.profile.post_badge_hide_title": "إخفاء من المنشورات",
   "settings.profile.post_badges_reset": "إعادة تعيين إلى الافتراضي",
+  "settings.profile.post_badges_preview": "معاينة المنشور",
+  "settings.profile.post_badges_preview_text": "مرحبا",
   "settings.rank": "الرتب",
   "settings.save_retry": "إعادة محاولة الحفظ",
   "settings.search.label": "ابحث عن إعداد",

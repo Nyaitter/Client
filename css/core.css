@@ -454,6 +454,10 @@ em-emoji-picker {
 #page-header h2 {
     margin: 0;
     font-size: 1.25rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .header-search-bar {

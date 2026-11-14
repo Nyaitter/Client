@@ -264,6 +264,8 @@
   "settings.profile.post_badge_hide": "不顯示",
   "settings.profile.post_badge_hide_title": "在貼文中不顯示",
   "settings.profile.post_badges_reset": "恢復預設",
+  "settings.profile.post_badges_preview": "貼文預覽",
+  "settings.profile.post_badges_preview_text": "你好",
   "settings.rank": "等級",
   "settings.save_retry": "重試儲存",
   "settings.search.label": "尋找設定",

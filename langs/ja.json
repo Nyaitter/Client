@@ -264,6 +264,8 @@
   "settings.profile.post_badge_hide": "表示しない",
   "settings.profile.post_badge_hide_title": "ポストに表示しない",
   "settings.profile.post_badges_reset": "デフォルトに戻す",
+  "settings.profile.post_badges_preview": "ポストのプレビュー",
+  "settings.profile.post_badges_preview_text": "こんにちは",
   "settings.rank": "ランク",
   "settings.save_retry": "保存を再試行",
   "settings.search.label": "設定を探す",
