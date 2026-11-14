@@ -1718,8 +1718,13 @@
 .group-ui-manage-context {
     display: flex;
     min-width: 0;
+    max-width: 100%;
     align-items: center;
     gap: 0.85rem;
+}
+
+.group-ui-page-heading {
+    max-width: 100%;
 }
 
 .group-ui-manage-avatar {
@@ -1733,8 +1738,30 @@
     min-width: 0;
 }
 
-.group-ui-manage-heading-copy h3 {
-    overflow-wrap: anywhere;
+.group-ui-manage-heading-copy h3,
+.group-ui-manage-heading-copy p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.group-ui-page .profile-hero-copy {
+    min-width: 0;
+}
+
+.group-ui-page .profile-hero-copy > h3 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.group-ui-page .profile-hero-actions {
+    flex-shrink: 0;
+}
+
+.group-ui-page .profile-hero-actions button,
+.group-ui-page .profile-hero-actions a {
+    white-space: nowrap;
 }
 
 .group-ui-manage-page .nui-section {
@@ -2436,6 +2463,7 @@ body:has(#groups-screen:not(.hidden) .group-ui-index-page) #groups-content {
     gap: 0.75rem;
     flex: 1;
     min-width: 0;
+    max-width: 100%;
 }
 
 .group-member-avatar {
@@ -2465,6 +2493,7 @@ body:has(#groups-screen:not(.hidden) .group-ui-index-page) #groups-content {
     font-weight: 700;
     font-size: 0.95rem;
     color: var(--text-color);
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

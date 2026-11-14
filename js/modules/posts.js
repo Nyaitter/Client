@@ -431,7 +431,7 @@ export async function renderPost(post, author, options = {}) {
         authorLink.appendChild(verifyBadge);
     }
 
-    const groupBadgesEl = renderGroupBadgesElement(displayAuthor);
+    const groupBadgesEl = renderGroupBadgesElement(displayAuthor, { maxCount: Infinity });
     if (groupBadgesEl) {
         postHeader.appendChild(groupBadgesEl);
     }

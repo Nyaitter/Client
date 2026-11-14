@@ -264,6 +264,8 @@
   "settings.profile.post_badge_hide": "Hide",
   "settings.profile.post_badge_hide_title": "Hide from posts",
   "settings.profile.post_badges_reset": "Reset to default",
+  "settings.profile.post_badges_preview": "Post preview",
+  "settings.profile.post_badges_preview_text": "Hello",
   "settings.rank": "Ranks",
   "settings.save_retry": "Retry save",
   "settings.search.label": "Find a setting",

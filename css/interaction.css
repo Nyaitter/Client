@@ -377,6 +377,7 @@ body:has(#dm-screen:not(.hidden)) #content-area {
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .dm-list-item-header {
@@ -384,15 +385,23 @@ body:has(#dm-screen:not(.hidden)) #content-area {
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
+    min-width: 0;
 }
 
 .dm-list-item-title {
     font-weight: 700;
     font-size: 0.95rem;
     color: var(--text-color);
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.dm-list-item-title.nui-list-title,
+.dm-search-user-name.nui-list-title,
+.dm-manage-member-name.nui-list-title {
+    display: block;
 }
 
 .dm-list-item-unread-badge {
@@ -413,6 +422,7 @@ body:has(#dm-screen:not(.hidden)) #content-area {
 .dm-list-item-sub {
     font-size: 0.8rem;
     color: var(--secondary-text-color);
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -648,6 +658,7 @@ body:has(#dm-screen:not(.hidden)) #content-area {
     font-weight: 700;
     font-size: 0.92rem;
     color: var(--text-color);
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -735,6 +746,7 @@ body:has(#dm-screen:not(.hidden)) #content-area {
     font-size: 0.88rem;
     font-weight: 700;
     color: var(--text-color);
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

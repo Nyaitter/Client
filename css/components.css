@@ -1842,4 +1842,43 @@ body.pull-to-refresh-enabled {
     transform: translateY(0);
 }
 
+.nui-list-title {
+    overflow: hidden;
+}
+
+.nui-list-item .nui-list-title {
+    flex-wrap: nowrap;
+}
+
+.nui-list-title-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nui-list-title > .nui-badge {
+    flex-shrink: 0;
+}
+
+.profile-card .profile-link > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-card .profile-link .name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trend-item-name,
+.docs-portal-item-title {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 
