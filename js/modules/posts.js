@@ -657,7 +657,13 @@ export async function renderPost(post, author, options = {}) {
         const postAlert = document.createElement('button');
         postAlert.className = 'post-mask-alert nui-button-secondary';
         const maskReason = typeof post.mask_reason === 'string' ? post.mask_reason.trim() : '';
-        postAlert.innerText = maskReason || t('post.cushion_attached');
+        const maskIcon = document.createElement('span');
+        maskIcon.className = 'post-mask-alert-icon';
+        maskIcon.innerHTML = ICONS.eyeOff;
+        const maskText = document.createElement('span');
+        maskText.className = 'post-mask-alert-text';
+        maskText.textContent = maskReason || t('post.cushion_attached');
+        postAlert.append(maskIcon, maskText);
         if (maskReason) postAlert.title = maskReason;
         postBody.appendChild(postAlert);
     }
@@ -2663,6 +2669,9 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
         setMarkdownEditorValue(contentEl, '');
         setPostingGroup(container, null);
         setPostingReplyControl(container, 'everyone');
+        setPostMaskActive(container, false);
+        container._maskReason = '';
+        closePostMaskMenu(container);
         const previewContainer = container.querySelector('.file-preview-container');
         if (previewContainer) previewContainer.innerHTML = '';
 
