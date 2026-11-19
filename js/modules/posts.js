@@ -2955,9 +2955,19 @@ export async function openEditPostModal(postId, onSaved = null) {
             currentAttachments.forEach((attachment) => {
                 if (filesToDelete.has(attachment.id)) return;
                 const maskable = attachment.type === 'image' || attachment.type === 'video';
+                const { data: publicUrlData } = api.storage.from('nyaitter').getPublicUrl(attachment.id);
+                const publicURL = getSafeHttpUrl(publicUrlData?.publicUrl);
+                let mediaHTML;
+                if (attachment.type === 'image' && publicURL) {
+                    mediaHTML = `<img src="${escapeHTML(publicURL)}" alt="${escapeHTML(attachment.name || '')}">`;
+                } else if (attachment.type === 'video' && publicURL) {
+                    mediaHTML = `<video src="${escapeHTML(publicURL)}" controls></video>`;
+                } else {
+                    mediaHTML = `<span>${attachment.type === 'audio' ? '🎵' : '📄'} ${escapeHTML(attachment.name)}</span>`;
+                }
                 existingHTML += `
                     <div class="file-preview-item">
-                        <span>${attachment.type === 'image' ? '🖼️' : '📎'} ${escapeHTML(attachment.name)}</span>
+                        ${mediaHTML}
                         ${maskable ? `<button class="file-preview-mask ${attachment.mask ? 'active' : ''}" data-id="${escapeHTML(String(attachment.id))}" data-type="existing" title="${t('composer.mask')}">${ICONS.eyeOff}</button>` : ''}
                         <button class="file-preview-remove" data-id="${escapeHTML(String(attachment.id))}" data-type="existing">×</button>
                     </div>`;
@@ -2966,9 +2976,18 @@ export async function openEditPostModal(postId, onSaved = null) {
             let newHTML = '';
             filesToAdd.forEach((file, index) => {
                 const maskable = file.type.startsWith('image/') || file.type.startsWith('video/');
+                let mediaHTML;
+                if (maskable) {
+                    if (!file._previewUrl) file._previewUrl = URL.createObjectURL(file);
+                    mediaHTML = file.type.startsWith('image/')
+                        ? `<img src="${file._previewUrl}" alt="${escapeHTML(file.name)}">`
+                        : `<video src="${file._previewUrl}" controls></video>`;
+                } else {
+                    mediaHTML = `<span>${file.type.startsWith('audio/') ? '🎵' : '📄'} ${escapeHTML(file.name)}</span>`;
+                }
                 newHTML += `
                     <div class="file-preview-item">
-                        <span>${file.type.startsWith('image/') ? '🖼️' : '📎'} ${escapeHTML(file.name)}</span>
+                        ${mediaHTML}
                         ${maskable ? `<button class="file-preview-mask ${file._nyaitterMask ? 'active' : ''}" data-index="${index}" data-type="new" title="${t('composer.mask')}">${ICONS.eyeOff}</button>` : ''}
                         <button class="file-preview-remove" data-index="${index}" data-type="new">×</button>
                     </div>`;
