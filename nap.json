@@ -14,7 +14,8 @@
     },
     {
       "name": "nyaitter/nyaitterime",
-      "version": "b6e45bdfc06d0f647044da4a2b35ac994a8ac68e9202a99a022da414cf885e67"
+      "version": "b6e45bdfc06d0f647044da4a2b35ac994a8ac68e9202a99a022da414cf885e67",
+      "external": true
     },
     {
       "name": "nyaitter/nap",
