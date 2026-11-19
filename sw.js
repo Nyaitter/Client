@@ -11,6 +11,32 @@ const configReady = self.NyaitterClientConfig.ready.then(() => {
 });
 
 const NYAITTER_JS_URL = './nap_modules/nyaitter/nyaitter.js/dist/nyaitter.js';
+const NAP_CDN_BASE = 'https://cdn.nyaitter.jp';
+
+let nyaitterJsPinPromise = null;
+function loadNyaitterJsPin() {
+  if (!nyaitterJsPinPromise) {
+    nyaitterJsPinPromise = fetch('./nap.json')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const entry = (data?.composition || []).find(
+          (item) => item && typeof item === 'object' && item.name === 'nyaitter/nyaitter.js' && item.version,
+        );
+        return entry ? String(entry.version) : '';
+      })
+      .catch(() => '');
+  }
+  return nyaitterJsPinPromise;
+}
+
+async function importNyaitterJs() {
+  try {
+    importScripts(NYAITTER_JS_URL);
+    return;
+  } catch (_) {}
+  const pin = await loadNyaitterJsPin();
+  if (pin) importScripts(`${NAP_CDN_BASE}/nyaitter/nyaitter.js/${pin}/dist/nyaitter.js`);
+}
 
 // configReady 解決後に Nyaitter.js SDK を importScripts で読み込み、
 // NyaitterClient を遅延生成して使い回す。既に読み込み済みなら再ロードしない。
@@ -20,7 +46,7 @@ function getSdkClient() {
     sdkClientPromise = (async () => {
       await configReady;
       if (!globalThis.Nyaitter?.NyaitterClient) {
-        importScripts(NYAITTER_JS_URL);
+        await importNyaitterJs();
       }
       const NyaitterClient = globalThis.Nyaitter?.NyaitterClient;
       if (!NyaitterClient) throw new Error('Nyaitter.js SDK の読み込みに失敗しました。');
@@ -251,14 +277,31 @@ self.addEventListener('activate', (event) => {
 });
 
 // 切り替え中の版があれば、その版のキャッシュから返す。
+const MEMBER_PATH_PATTERN = /^nap_modules\/([a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*)\/(.+)$/;
+
 async function matchNapVersionResponse(url, isNavigate) {
   try {
     const keys = await caches.keys();
-    const name = keys.find((key) => key.startsWith('nap-page:'));
-    if (!name) return null;
     const scopePath = new URL(self.registration.scope).pathname;
     let relative = url.pathname.startsWith(scopePath) ? url.pathname.slice(scopePath.length) : '';
     if (isNavigate || relative === '') relative = 'index.html';
+    const member = MEMBER_PATH_PATTERN.exec(relative);
+    if (member) {
+      const memberCacheName = keys.find((key) => key.startsWith(`nap-page:${member[1]}:`));
+      if (memberCacheName) {
+        const memberCache = await caches.open(memberCacheName);
+        const memberResponse = await memberCache.match(member[2]);
+        if (memberResponse) return memberResponse;
+      }
+    }
+    let name = null;
+    try {
+      await self.NyaitterClientConfig?.ready;
+      const source = String(self.NyaitterClientConfig?.clientNap || '').trim().toLowerCase();
+      if (source) name = keys.find((key) => key.startsWith(`nap-page:${source}:`)) || null;
+    } catch (_) {}
+    if (!name) name = keys.find((key) => key.startsWith('nap-page:'));
+    if (!name) return null;
     const cache = await caches.open(name);
     return (await cache.match(relative)) || null;
   } catch (_) {

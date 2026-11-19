@@ -125,5 +125,6 @@
     "dist/types/deprecated.d.ts": 115,
     "dist/types/index.d.ts": 2037,
     "dist/types/models.d.ts": 2613
-  }
+  },
+  "externals": {}
 }

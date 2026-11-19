@@ -29,13 +29,57 @@
     const RELOAD_GUARD_KEY = 'nyaitter-client-boot-reloaded';
     const ALWAYS_LATEST_KEY = 'nyaitter-always-latest';
     const SW_READY_TIMEOUT_MS = 10000;
+    const NAP_CDN_BASE = 'https://cdn.nyaitter.jp';
 
-    function getNyaitterJsUrl() {
-        return new URL('nap_modules/nyaitter/nyaitter.js/dist/nyaitter.js', pageBaseUrl).href;
+    let compositionPinsPromise = null;
+    function loadCompositionPins() {
+        if (!compositionPinsPromise) {
+            compositionPinsPromise = fetch(new URL('nap.json', pageBaseUrl).href)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((data) => {
+                    const pins = {};
+                    for (const entry of data?.composition || []) {
+                        if (entry && typeof entry === 'object' && entry.name && entry.version) {
+                            pins[String(entry.name)] = String(entry.version);
+                        }
+                    }
+                    return pins;
+                })
+                .catch(() => ({}));
+        }
+        return compositionPinsPromise;
     }
 
-    function getNyaitterUiUrls() {
-        return [new URL('nap_modules/nyaitter/nyaitterui/dist/nyaitter-ui.js', pageBaseUrl).href];
+    async function libraryUrls(name, path) {
+        const pins = await loadCompositionPins();
+        const urls = [new URL(`nap_modules/${name}/${path}`, pageBaseUrl).href];
+        if (pins[name]) urls.push(`${NAP_CDN_BASE}/${name}/${pins[name]}/${path}`);
+        return urls;
+    }
+
+    async function loadNyaitterJs() {
+        const urls = await libraryUrls('nyaitter/nyaitter.js', 'dist/nyaitter.js');
+        for (const url of urls) {
+            try {
+                await loadScript(url);
+            } catch (_) {
+                continue;
+            }
+            if (globalThis.Nyaitter?.NyaitterClient) return;
+        }
+        throw new Error(lt('bootstrap.no_url'));
+    }
+
+    async function importFirst(urls) {
+        let lastError = null;
+        for (const url of urls) {
+            try {
+                return await import(url);
+            } catch (error) {
+                lastError = error;
+            }
+        }
+        throw lastError;
     }
 
     function loadScript(src) {
@@ -79,8 +123,8 @@
     }
 
     // CSS は実際に読み込めた JS と同じ配布元/版から選ぶ。CSS失敗はアプリ起動を妨げない。
-    function loadNyaitterUi() {
-        const scriptUrls = getNyaitterUiUrls();
+    async function loadNyaitterUi() {
+        const scriptUrls = await libraryUrls('nyaitter/nyaitterui', 'dist/nyaitter-ui.js');
         return loadFirst(scriptUrls)
             .then((scriptUrl) => loadStylesheet(getNyaitterUiCssUrls([scriptUrl])[0]))
             .catch((error) => {
@@ -226,7 +270,7 @@
         if (typeof caches === 'undefined') return 'failed';
         let page;
         try {
-            const mod = await import(new URL('nap_modules/nyaitter/nap/client/nap-page.js', pageBaseUrl).href);
+            const mod = await importFirst(await libraryUrls('nyaitter/nap', 'client/nap-page.js'));
             page = mod.createNapPage({ source });
             await mod.ensurePersistentStorage?.();
         } catch (_) {
@@ -281,9 +325,9 @@
         }
     }
 
-    function startApp() {
+    async function startApp() {
         loadAppStylesheets();
-        return loadScript(getNyaitterJsUrl())
+        return loadNyaitterJs()
             .then(() => {
                 const endpoint = new URL(config.apiEndpoint, window.location.href);
                 const client = new globalThis.Nyaitter.NyaitterClient({

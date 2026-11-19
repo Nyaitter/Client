@@ -4,6 +4,8 @@ import { createNapPage, ensurePersistentStorage } from '../../nap_modules/nyaitt
 const RELOAD_DELAY_MS = 400;
 const PAGE_SIZE = 20;
 let bound = false;
+let boundToggle = null;
+let boundCheckButton = null;
 let loadInFlight = null;
 let napPage = null;
 let switching = false;
@@ -278,6 +280,11 @@ async function runLoad({ announce = false } = {}) {
     }
     const supported = await isClientUpdateSupported();
     const currentId = await getCurrentVersionId();
+    if (currentId && !entries.some((entry) => entry.id === currentId)) {
+        try {
+            entries = await page.versions({ fresh: true });
+        } catch (_) {}
+    }
     const formal = entries.filter((entry) => !entry.tag);
     const latestEntry = formal.length ? formal[formal.length - 1] : null;
     listView = {
@@ -289,6 +296,8 @@ async function runLoad({ announce = false } = {}) {
     };
     list.textContent = '';
     appendVersionRows();
+    const currentIndex = listView.ordered.findIndex((entry) => entry.id === currentId);
+    while (currentIndex >= listView.rendered) appendVersionRows();
     if (!list.dataset.autoloadBound) {
         list.dataset.autoloadBound = '1';
         list.addEventListener('scroll', fillVersionList, { passive: true });
@@ -310,21 +319,27 @@ function loadClientVersionList(options) {
 }
 
 export function bindClientSettings() {
-    if (bound) return;
-    bound = true;
-    document.getElementById('settings-client-check')?.addEventListener('click', () => {
-        void loadClientVersionList({ announce: true });
-    });
+    const checkButton = document.getElementById('settings-client-check');
+    if (checkButton && checkButton !== boundCheckButton) {
+        boundCheckButton = checkButton;
+        checkButton.addEventListener('click', () => {
+            void loadClientVersionList({ announce: true });
+        });
+    }
     const alwaysLatestToggle = document.getElementById('settings-client-always-latest');
-    if (alwaysLatestToggle) {
+    if (alwaysLatestToggle && alwaysLatestToggle !== boundToggle) {
+        boundToggle = alwaysLatestToggle;
         alwaysLatestToggle.checked = readAlwaysLatest();
         alwaysLatestToggle.addEventListener('change', () => {
             writeAlwaysLatest(alwaysLatestToggle.checked);
         });
     }
-    navigator.serviceWorker?.addEventListener('controllerchange', () => {
-        void loadClientVersionList();
-    });
+    if (!bound) {
+        bound = true;
+        navigator.serviceWorker?.addEventListener('controllerchange', () => {
+            void loadClientVersionList();
+        });
+    }
 }
 
 export async function loadClientSettings() {

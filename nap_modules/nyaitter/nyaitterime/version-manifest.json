@@ -7,5 +7,6 @@
   "sizes": {
     "data/nyaitter-ime-core.bin.gz": 18082040,
     "dist/nyaitter-ime.min.js": 852139
-  }
+  },
+  "externals": {}
 }

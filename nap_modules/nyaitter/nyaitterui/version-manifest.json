@@ -11,5 +11,6 @@
     "dist/index.js": 28984,
     "dist/nyaitter-ui.css": 18902,
     "dist/nyaitter-ui.js": 32241
-  }
+  },
+  "externals": {}
 }

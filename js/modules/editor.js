@@ -54,10 +54,38 @@ function loadNyaitterImeScript(urls) {
     });
 }
 
+const NYAITTER_IME_REF = 'nyaitter/nyaitterime';
+let nyaitterImePackagePromise = null;
+
+function ensureNyaitterImePackage() {
+    if (nyaitterImePackagePromise) return nyaitterImePackagePromise;
+    nyaitterImePackagePromise = (async () => {
+        const root = new URL('../../', import.meta.url).href;
+        const manifest = await fetch(new URL('version-manifest.json', root).href)
+            .then((res) => (res.ok ? res.json() : null))
+            .catch(() => null);
+        const versionId = manifest?.externals?.[NYAITTER_IME_REF];
+        if (!versionId) return;
+        const mod = await import(new URL('nap_modules/nyaitter/nap/client/nap-page.js', root).href);
+        const page = mod.createNapPage({ source: NYAITTER_IME_REF });
+        const stored = await page.storedVersions().catch(() => []);
+        if (!stored.includes(versionId)) {
+            const result = await page.fetchVersion(versionId);
+            await page.store(result);
+        }
+        await page.activate(versionId);
+    })().catch((error) => {
+        nyaitterImePackagePromise = null;
+        throw error;
+    });
+    return nyaitterImePackagePromise;
+}
+
 function ensureNyaitterImeReady() {
     if (nyaitterIme) return Promise.resolve(nyaitterIme);
     if (nyaitterImeReadyPromise) return nyaitterImeReadyPromise;
     nyaitterImeReadyPromise = (async () => {
+        await ensureNyaitterImePackage();
         globalThis.NYAITTER_IME_DICTIONARY_URL = NYAITTER_IME_DICTIONARY_URL;
         const ime = await loadNyaitterImeScript(getNyaitterImeScriptUrls());
         nyaitterIme = ime;
