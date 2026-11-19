@@ -395,6 +395,62 @@
     text-align: center;
 }
 
+.file-preview-mask {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.file-preview-mask svg {
+    width: 13px;
+    height: 13px;
+}
+
+.file-preview-mask.active {
+    background: var(--primary-color);
+}
+
+.attachment-item-masked {
+    position: relative;
+}
+
+.attachment-item-masked > img,
+.attachment-item-masked > video {
+    filter: blur(18px);
+}
+
+.attachment-mask-reveal {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    padding: 0;
+}
+
+.attachment-mask-reveal svg {
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0.55rem;
+    border-radius: 9999px;
+    background: rgb(0 0 0 / 55%);
+}
+
 .post {
     padding: 1rem;
     border-bottom: 1px solid var(--border-color);
@@ -634,8 +690,28 @@
     display: none;
 }
 
-.post-content.post-mask-title {
-    margin-bottom: auto;
+.post-embed {
+    max-width: 100%;
+    margin: 0 0 1rem;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-color);
+}
+
+.post-embed iframe {
+    display: block;
+    width: 100%;
+    border: 0;
+}
+
+.post-embed-youtube iframe,
+.post-embed-nicovideo iframe {
+    aspect-ratio: 16 / 9;
+}
+
+.post-embed-soundcloud iframe {
+    height: 166px;
 }
 
 .post[data-clamp-content] .post-body,
@@ -1182,6 +1258,8 @@
 }
 
 .post-mask-alert {
+    display: block;
+    width: fit-content;
     padding: 0.6rem 1.2rem;
     border-radius: 10px;
     font-weight: 700;
@@ -1193,6 +1271,11 @@
         background-color 0.2s,
         border-color 0.2s;
     margin-right: 0.5rem;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
 }
 
 .post-mask-alert:hover {
@@ -1501,7 +1584,9 @@
 
 /* 投稿本文のクッション解除ボタンを nui の見た目に寄せる */
 [data-nyaitter-ui='nui'] .post-mask-alert.nui-button-secondary {
-    width: auto;
+    display: block;
+    width: fit-content;
+    text-align: left;
 }
 
 .advertising-post {

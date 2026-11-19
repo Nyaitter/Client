@@ -456,6 +456,7 @@ export const api = (() => {
                                 repost_to: params.p_repost_to,
                                 attachments: params.p_attachments || [],
                                 mask: params.p_mask,
+                                mask_reason: params.p_mask_reason || null,
                                 lock: params.p_lock,
                                 announcement: params.p_announcement,
                                 group_id: params.p_group_id,

@@ -631,27 +631,11 @@ export async function renderPost(post, author, options = {}) {
 
         if (post.mask) {
             postContent.classList.add('hidden');
-            if (post.mask && post.content.startsWith('!')) {
-                const masktitle = document.createElement('div');
-                masktitle.className = 'post-content post-mask-title';
-                masktitle.innerHTML = renderNyarkDown(
-                    post.content.split('\n')[0].slice(1),
-                    userCache,
-                    { allowMarkdown: true, allowContentDecorations: true },
-                );
-                postBody.appendChild(masktitle);
-                postContent.innerHTML = renderNyarkDown(
-                    post.content.slice(1),
-                    userCache,
-                    { allowMarkdown: true, allowContentDecorations: true },
-                );
-            } else {
-                postContent.innerHTML = renderNyarkDown(
-                    post.content,
-                    userCache,
-                    { allowMarkdown: true, allowContentDecorations: true },
-                );
-            }
+            postContent.innerHTML = renderNyarkDown(
+                post.content,
+                userCache,
+                { allowMarkdown: true, allowContentDecorations: true },
+            );
         } else {
             postContent.innerHTML = renderNyarkDown(
                 post.content,
@@ -672,7 +656,9 @@ export async function renderPost(post, author, options = {}) {
     if (post.mask) {
         const postAlert = document.createElement('button');
         postAlert.className = 'post-mask-alert nui-button-secondary';
-        postAlert.innerText = t('post.cushion_attached');
+        const maskReason = typeof post.mask_reason === 'string' ? post.mask_reason.trim() : '';
+        postAlert.innerText = maskReason || t('post.cushion_attached');
+        if (maskReason) postAlert.title = maskReason;
         postBody.appendChild(postAlert);
     }
 
@@ -745,6 +731,21 @@ export async function renderPost(post, author, options = {}) {
                         window.handleDownload?.(publicURL, attachmentName);
                     };
                     itemDiv.appendChild(downloadLink);
+                }
+                if (attachment.mask && (attachment.type === 'image' || attachment.type === 'video')) {
+                    itemDiv.classList.add('attachment-item-masked');
+                    const revealButton = document.createElement('button');
+                    revealButton.type = 'button';
+                    revealButton.className = 'attachment-mask-reveal';
+                    revealButton.title = t('post.mask_title');
+                    revealButton.setAttribute('aria-label', t('post.mask_title'));
+                    revealButton.innerHTML = ICONS.eyeOff;
+                    revealButton.onclick = (e) => {
+                        e.stopPropagation();
+                        itemDiv.classList.remove('attachment-item-masked');
+                        revealButton.remove();
+                    };
+                    itemDiv.appendChild(revealButton);
                 }
                 attachmentsContainer.appendChild(itemDiv);
             }
@@ -893,6 +894,18 @@ export async function renderPost(post, author, options = {}) {
                         laidOutHeight = inner.scrollHeight || 0;
                         const visualHeight = laidOutHeight * scale;
                         if (visualHeight <= heightLimit + 1) break;
+                        if (i === 0) {
+                            // 幅を広げても見た目の高さが半分も減らない内容は
+                            // 幅補正なしの縮小に切り替える。
+                            const reduced =
+                                (naturalHeight - visualHeight) / (naturalHeight - heightLimit);
+                            if (reduced < 0.5) {
+                                inner.style.width = '';
+                                laidOutHeight = naturalHeight;
+                                scale = heightLimit / naturalHeight;
+                                break;
+                            }
+                        }
                         scale *= heightLimit / visualHeight;
                     }
                     inner.style.transformOrigin = 'top left';
@@ -933,6 +946,55 @@ export async function renderPost(post, author, options = {}) {
     return postEl;
 }
 
+// 非表示の間や画像の読み込み中は高さを正しく測れない。測れる状態になるまで
+// 最終計測を保留し、画面に近づいたときと画像の読み込み完了時にやり直す。
+const pendingPostSizes = new Set();
+let postSizeObserver = null;
+
+function postSizeMeasurable(postEl) {
+    if (!postEl.isConnected) return false;
+    if (postEl.getClientRects().length === 0) return false;
+    for (const img of postEl.querySelectorAll('img')) {
+        if (!img.complete) return false;
+    }
+    return true;
+}
+
+function stopWatchingPostSize(postEl) {
+    pendingPostSizes.delete(postEl);
+    postSizeObserver?.unobserve(postEl);
+}
+
+function retryPostSize(postEl) {
+    if (!postEl.isConnected) {
+        stopWatchingPostSize(postEl);
+        return;
+    }
+    finalizePostSizes(postEl);
+}
+
+function watchPostSize(postEl) {
+    if (pendingPostSizes.has(postEl)) return;
+    pendingPostSizes.add(postEl);
+    if (!postSizeObserver) {
+        postSizeObserver = new IntersectionObserver(
+            (entries) => {
+                for (const entry of entries) {
+                    if (entry.isIntersecting) retryPostSize(entry.target);
+                }
+            },
+            { rootMargin: '600px 0px' },
+        );
+    }
+    postSizeObserver.observe(postEl);
+    postEl.querySelectorAll('img').forEach((img) => {
+        if (img.complete) return;
+        const retry = () => retryPostSize(postEl);
+        img.addEventListener('load', retry, { once: true });
+        img.addEventListener('error', retry, { once: true });
+    });
+}
+
 export function finalizePostSizes(root) {
     if (!root || typeof root.querySelectorAll !== 'function') return;
     const targets = [];
@@ -941,8 +1003,14 @@ export function finalizePostSizes(root) {
         if (typeof el.__finalizeSize === 'function') targets.push(el);
     });
     for (let i = targets.length - 1; i >= 0; i--) {
-        const finalize = targets[i].__finalizeSize;
-        delete targets[i].__finalizeSize;
+        const postEl = targets[i];
+        if (!postSizeMeasurable(postEl)) {
+            watchPostSize(postEl);
+            continue;
+        }
+        const finalize = postEl.__finalizeSize;
+        delete postEl.__finalizeSize;
+        stopWatchingPostSize(postEl);
         finalize();
     }
 }
@@ -1091,7 +1159,7 @@ export function createPostFormHTML(isModal = false) {
                             <button type="button" class="post-tool-btn post-lock-button" title="${t('composer.private')}" aria-pressed="false">
                                 ${ICONS.lock}
                             </button>
-                            <button type="button" class="post-tool-btn post-mask-button" title="${t('composer.mask')}">
+                            <button type="button" class="post-tool-btn post-mask-button" title="${t('composer.mask')}" aria-haspopup="menu" aria-expanded="false">
                                 ${ICONS.mask}
                             </button>
                             <button type="button" class="post-tool-btn post-reply-control-button" title="${t('composer.reply_control.everyone')}" aria-label="${t('composer.reply_control.everyone')}" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
@@ -1106,6 +1174,7 @@ export function createPostFormHTML(isModal = false) {
                     <div id="emoji-picker" class="hidden"></div>
                     <div class="post-group-menu hidden" role="menu"></div>
                     <div class="post-reply-control-menu hidden" role="menu"></div>
+                    <div class="post-mask-menu hidden" role="menu"></div>
                     <div class="post-schedule-menu hidden" role="dialog" aria-label="${t('composer.schedule.dialog')}"></div>
                 </div>
             </div>
@@ -1242,6 +1311,7 @@ function togglePostScheduleMenu(container) {
     if (!menu || !button) return;
     closePostGroupMenu(container);
     closePostReplyControlMenu(container);
+    closePostMaskMenu(container);
     closePostAccountMenu(container);
     const willOpen = menu.classList.contains('hidden');
     if (!willOpen) {
@@ -1426,11 +1496,98 @@ function renderPostReplyControlMenu(container) {
     }));
 }
 
+function getMaskReason(container) {
+    return typeof container?._maskReason === 'string' ? container._maskReason : '';
+}
+
+function setPostMaskActive(container, active) {
+    const button = container?.querySelector('.post-mask-button');
+    if (!button) return;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+}
+
+function closePostMaskMenu(container) {
+    const menu = container?.querySelector('.post-mask-menu');
+    const button = container?.querySelector('.post-mask-button');
+    menu?.classList.add('hidden');
+    button?.setAttribute('aria-expanded', 'false');
+    if (container?._postMaskMenuOutsideHandler) {
+        document.removeEventListener('pointerdown', container._postMaskMenuOutsideHandler, true);
+        container._postMaskMenuOutsideHandler = null;
+    }
+}
+
+function bindPostMaskMenuOutsideHandler(container) {
+    if (!container || container._postMaskMenuOutsideHandler) return;
+    const handler = (event) => {
+        const menu = container.querySelector('.post-mask-menu');
+        const button = container.querySelector('.post-mask-button');
+        if (!menu || menu.classList.contains('hidden') || menu.contains(event.target) || button?.contains(event.target)) return;
+        closePostMaskMenu(container);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+    container._postMaskMenuOutsideHandler = handler;
+    document.addEventListener('pointerdown', handler, true);
+}
+
+function renderPostMaskMenu(container) {
+    const menu = container?.querySelector('.post-mask-menu');
+    if (!menu) return;
+    const active = container.querySelector('.post-mask-button')?.classList.contains('active') || false;
+    menu.innerHTML = `
+        <div class="post-mask-menu-row">
+            <span class="post-mask-menu-label">${t('composer.mask')}</span>
+            <label class="nui-toggle">
+                <input type="checkbox" class="nui-toggle-input post-mask-toggle" role="switch" ${active ? 'checked' : ''}>
+                <span class="nui-toggle-track" aria-hidden="true"><span class="nui-toggle-thumb"></span></span>
+            </label>
+        </div>
+        <input type="text" class="post-mask-reason-input" maxlength="100" placeholder="${t('composer.mask_reason')}" value="${escapeHTML(getMaskReason(container))}" ${active ? '' : 'disabled'}>
+    `;
+    const toggle = menu.querySelector('.post-mask-toggle');
+    const input = menu.querySelector('.post-mask-reason-input');
+    toggle?.addEventListener('change', () => {
+        setPostMaskActive(container, toggle.checked);
+        if (input) {
+            input.disabled = !toggle.checked;
+            if (toggle.checked) input.focus();
+        }
+    });
+    input?.addEventListener('input', () => {
+        container._maskReason = input.value;
+    });
+}
+
+function togglePostMaskMenu(container) {
+    const menu = container?.querySelector('.post-mask-menu');
+    const button = container?.querySelector('.post-mask-button');
+    if (!menu || !button) return;
+    closePostGroupMenu(container);
+    closePostReplyControlMenu(container);
+    closePostAccountMenu(container);
+    const willOpen = menu.classList.contains('hidden');
+    if (willOpen) {
+        renderPostMaskMenu(container);
+        menu.classList.remove('hidden');
+        button.setAttribute('aria-expanded', 'true');
+        bindPostMaskMenuOutsideHandler(container);
+        positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        window.requestAnimationFrame(() => {
+            positionElementRelativeToAnchor(menu, button, { placement: 'top-start', gap: 6, useFixed: true });
+        });
+    } else {
+        closePostMaskMenu(container);
+    }
+}
+
 function togglePostReplyControlMenu(container) {
     const menu = container?.querySelector('.post-reply-control-menu');
     const button = container?.querySelector('.post-reply-control-button');
     if (!menu || !button) return;
     closePostGroupMenu(container);
+    closePostMaskMenu(container);
     closePostAccountMenu(container);
     const willOpen = menu.classList.contains('hidden');
     if (willOpen) {
@@ -1658,6 +1815,7 @@ async function openPostGroupMenu(container) {
         return;
     }
     closePostReplyControlMenu(container);
+    closePostMaskMenu(container);
     closePostAccountMenu(container);
     const postingAccountVersion = Number(container._postingAccountVersion || 0);
     menu.classList.remove('hidden');
@@ -2347,14 +2505,14 @@ export async function handleFileSelection(event, container, { append = false } =
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                previewItem.innerHTML = `<img src="${e.target.result}" alt="${escapeHTML(file.name)}"><button class="file-preview-remove" data-index="${index}">×</button>`;
+                previewItem.innerHTML = `<img src="${e.target.result}" alt="${escapeHTML(file.name)}"><button class="file-preview-mask ${file._nyaitterMask ? 'active' : ''}" data-index="${index}" title="${t('composer.mask')}">${ICONS.eyeOff}</button><button class="file-preview-remove" data-index="${index}">×</button>`;
                 previewContainer.appendChild(previewItem);
             };
             reader.readAsDataURL(file);
         } else if (file.type.startsWith('video/')) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                previewItem.innerHTML = `<video src="${e.target.result}" controls></video><button class="file-preview-remove" data-index="${index}">×</button>`;
+                previewItem.innerHTML = `<video src="${e.target.result}" controls></video><button class="file-preview-mask ${file._nyaitterMask ? 'active' : ''}" data-index="${index}" title="${t('composer.mask')}">${ICONS.eyeOff}</button><button class="file-preview-remove" data-index="${index}">×</button>`;
                 previewContainer.appendChild(previewItem);
             };
             reader.readAsDataURL(file);
@@ -2368,6 +2526,15 @@ export async function handleFileSelection(event, container, { append = false } =
     });
 
     previewContainer.onclick = (e) => {
+        const maskButton = e.target.closest('.file-preview-mask');
+        if (maskButton) {
+            const file = getSelectedFiles()[parseInt(maskButton.dataset.index, 10)];
+            if (file) {
+                file._nyaitterMask = !file._nyaitterMask;
+                maskButton.classList.toggle('active', Boolean(file._nyaitterMask));
+            }
+            return;
+        }
         if (e.target.classList.contains('file-preview-remove')) {
             const indexToRemove = parseInt(e.target.dataset.index, 10);
             getSelectedFiles().splice(indexToRemove, 1);
@@ -2383,8 +2550,7 @@ export async function handleFileSelection(event, container, { append = false } =
 }
 
 export function handlePostMask(container) {
-    const button = container.querySelector('.post-mask-button');
-    button?.classList.toggle('active');
+    togglePostMaskMenu(container);
 }
 
 export function handlePostLock(container) {
@@ -2418,9 +2584,6 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
     const postingGroup = getPostingGroup(container);
     const scheduledGroupId = postingGroup?.id || null;
     const groupAnnouncementActive = Boolean(postingGroup && announcementActive);
-    if (postingGroup && getQuotingPost()) {
-        return showAppAlert(t('post.quote_group_forbidden'));
-    }
 
     const button = container.querySelector('#post-submit-button');
     if (button) {
@@ -2449,6 +2612,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 type: fileType,
                 id: fileId,
                 name: file.name,
+                ...(file._nyaitterMask ? { mask: true } : {}),
             });
         }
 
@@ -2466,6 +2630,7 @@ export async function handlePostSubmit(container, onPostSuccess = null) {
                 p_repost_to: getQuotingPost()?.id || null,
                 p_attachments: attachmentsData.length > 0 ? attachmentsData : null,
                 p_mask: maskActive,
+                p_mask_reason: maskActive ? getMaskReason(container).trim() : '',
                 p_lock: lockActive,
                 p_announcement: Boolean(!postingGroup && announcementActive),
                 p_group_id: postingGroup?.id || null,
@@ -2774,13 +2939,14 @@ export async function openEditPostModal(postId, onSaved = null) {
     try {
         const { data: post, error } = await api
             .from('post')
-            .select('content, mask, attachments, reply_id, replyTo, reply_to, reply_to_post, reply_control, replyControl, lock')
+            .select('content, mask, mask_reason, attachments, reply_id, replyTo, reply_to, reply_to_post, reply_control, replyControl, lock')
             .eq('id', postId)
             .single();
         if (error || !post) throw new Error(t('post.fetch_failed'));
 
         const isReply = Boolean(post.reply_id || post.replyTo || post.reply_to || post.reply_to_post);
         let currentAttachments = post.attachments || [];
+        DOM.editPostModalContent._maskReason = post.mask_reason || '';
         let filesToDelete = new Set();
         let filesToAdd = [];
 
@@ -2788,18 +2954,22 @@ export async function openEditPostModal(postId, onSaved = null) {
             let existingHTML = '';
             currentAttachments.forEach((attachment) => {
                 if (filesToDelete.has(attachment.id)) return;
+                const maskable = attachment.type === 'image' || attachment.type === 'video';
                 existingHTML += `
                     <div class="file-preview-item">
                         <span>${attachment.type === 'image' ? '🖼️' : '📎'} ${escapeHTML(attachment.name)}</span>
+                        ${maskable ? `<button class="file-preview-mask ${attachment.mask ? 'active' : ''}" data-id="${escapeHTML(String(attachment.id))}" data-type="existing" title="${t('composer.mask')}">${ICONS.eyeOff}</button>` : ''}
                         <button class="file-preview-remove" data-id="${escapeHTML(String(attachment.id))}" data-type="existing">×</button>
                     </div>`;
             });
 
             let newHTML = '';
             filesToAdd.forEach((file, index) => {
+                const maskable = file.type.startsWith('image/') || file.type.startsWith('video/');
                 newHTML += `
                     <div class="file-preview-item">
                         <span>${file.type.startsWith('image/') ? '🖼️' : '📎'} ${escapeHTML(file.name)}</span>
+                        ${maskable ? `<button class="file-preview-mask ${file._nyaitterMask ? 'active' : ''}" data-index="${index}" data-type="new" title="${t('composer.mask')}">${ICONS.eyeOff}</button>` : ''}
                         <button class="file-preview-remove" data-index="${index}" data-type="new">×</button>
                     </div>`;
             });
@@ -2824,7 +2994,7 @@ export async function openEditPostModal(postId, onSaved = null) {
                             <button type="button" class="emoji-pic-button" title="${t('composer.emoji')}">${ICONS.emoji}</button>
                             <div class="post-tools-right-group post-tools-right-start">
                                 <button type="button" class="post-tool-btn post-lock-button ${post.lock ? 'active' : ''}" title="${t('post.private')}" aria-pressed="${post.lock ? 'true' : 'false'}">${ICONS.lock}</button>
-                                <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="${t('post.mask_title')}">${ICONS.mask}</button>
+                                <button type="button" class="post-tool-btn post-mask-button ${post.mask ? 'active' : ''}" title="${t('post.mask_title')}" aria-haspopup="menu" aria-expanded="false">${ICONS.mask}</button>
                                 ${!isReply ? `<button type="button" class="post-tool-btn post-reply-control-button" title="${t('composer.reply_control.everyone')}" aria-label="${t('composer.reply_control.everyone')}" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>` : ''}
                             </div>
                         </div>
@@ -2834,6 +3004,7 @@ export async function openEditPostModal(postId, onSaved = null) {
                         <input type="file" id="edit-file-input" class="hidden" multiple>
                         <div id="emoji-picker" class="hidden"></div>
                         <div class="post-reply-control-menu hidden" role="menu"></div>
+                        <div class="post-mask-menu hidden" role="menu"></div>
                     </div>
                 </div>
             </div>
@@ -2918,6 +3089,18 @@ export async function openEditPostModal(postId, onSaved = null) {
         };
 
         DOM.editPostModalContent.querySelector('.file-preview-container').onclick = (e) => {
+            const maskButton = e.target.closest('.file-preview-mask');
+            if (maskButton) {
+                if (maskButton.dataset.type === 'existing') {
+                    const attachment = currentAttachments.find((a) => String(a.id) === maskButton.dataset.id);
+                    if (attachment) attachment.mask = !attachment.mask;
+                } else if (maskButton.dataset.type === 'new') {
+                    const file = filesToAdd[parseInt(maskButton.dataset.index, 10)];
+                    if (file) file._nyaitterMask = !file._nyaitterMask;
+                }
+                updatePreview();
+                return;
+            }
             if (e.target.classList.contains('file-preview-remove')) {
                 const type = e.target.dataset.type;
                 if (type === 'existing') {
@@ -2980,6 +3163,7 @@ export async function handleUpdatePost(postId, originalAttachments, filesToAdd, 
                     type: fileType,
                     id: fileId,
                     name: file.name,
+                    ...(file._nyaitterMask ? { mask: true } : {}),
                 });
             }
         }
@@ -2995,6 +3179,7 @@ export async function handleUpdatePost(postId, originalAttachments, filesToAdd, 
                 content: newContent,
                 attachments: finalAttachments,
                 mask: maskActive,
+                mask_reason: maskActive ? getMaskReason(DOM.editPostModalContent).trim() || null : null,
                 lock: lockActive,
                 reply_control: replyControlValue,
             })
@@ -3217,9 +3402,7 @@ export async function handleStar(button, postId) {
 export function handleShowMaskedPost(button) {
     button.disabled = true;
     const postMain = button.parentElement;
-    const postMaskTitle = postMain.querySelector('.post-mask-title');
 
-    if (postMaskTitle) postMaskTitle.remove();
     button.remove();
 
     const postContent = postMain.querySelector('.post-content');

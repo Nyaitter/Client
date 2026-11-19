@@ -665,6 +665,18 @@ export async function showSettingsScreen(
                             <label class="settings-color-field">${t('settings.color.dark_light_primary')}
                                 <span class="settings-color-control"><input type="color" id="setting-color-dark-light-primary-picker" data-color-key="dark_light_primary_color"><input type="text" id="setting-color-dark-light-primary" data-color-key="dark_light_primary_color" class="settings-color-code nui-input" maxlength="7"></span>
                             </label>
+                            <label class="settings-color-field">${t('settings.color.light_background')}
+                                <span class="settings-color-control"><input type="color" id="setting-color-light-background-picker" data-color-key="light_background_color"><input type="text" id="setting-color-light-background" data-color-key="light_background_color" class="settings-color-code nui-input" maxlength="7"></span>
+                            </label>
+                            <label class="settings-color-field">${t('settings.color.light_surface')}
+                                <span class="settings-color-control"><input type="color" id="setting-color-light-surface-picker" data-color-key="light_surface_color"><input type="text" id="setting-color-light-surface" data-color-key="light_surface_color" class="settings-color-code nui-input" maxlength="7"></span>
+                            </label>
+                            <label class="settings-color-field">${t('settings.color.dark_background')}
+                                <span class="settings-color-control"><input type="color" id="setting-color-dark-background-picker" data-color-key="dark_background_color"><input type="text" id="setting-color-dark-background" data-color-key="dark_background_color" class="settings-color-code nui-input" maxlength="7"></span>
+                            </label>
+                            <label class="settings-color-field">${t('settings.color.dark_surface')}
+                                <span class="settings-color-control"><input type="color" id="setting-color-dark-surface-picker" data-color-key="dark_surface_color"><input type="text" id="setting-color-dark-surface" data-color-key="dark_surface_color" class="settings-color-code nui-input" maxlength="7"></span>
+                            </label>
                         </div>
                     </section>
                 </section>

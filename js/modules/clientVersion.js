@@ -1,5 +1,5 @@
 import { t } from './i18n.js';
-import { createNapPage } from '../../nap_modules/nyaitter/nap/client/nap-page.js';
+import { createNapPage, ensurePersistentStorage } from '../../nap_modules/nyaitter/nap/client/nap-page.js';
 
 const RELOAD_DELAY_MS = 400;
 const PAGE_SIZE = 20;
@@ -44,6 +44,7 @@ function getNapPage() {
     const source = String(globalThis.NyaitterClientConfig?.clientNap || '').trim();
     if (!source) return null;
     napPage = createNapPage({ source });
+    void ensurePersistentStorage();
     return napPage;
 }
 
