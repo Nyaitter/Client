@@ -10,7 +10,6 @@ const configReady = self.NyaitterClientConfig.ready.then(() => {
   userFileEndpointPath = getSameOriginEndpointPath(self.NyaitterClientConfig.userFileEndpoint || '');
 });
 
-const NYAITTER_JS_URL = './nap_modules/nyaitter/nyaitter.js/dist/nyaitter.js';
 const NAP_CDN_BASE = 'https://cdn.nyaitter.jp';
 
 let nyaitterJsPinPromise = null;
@@ -30,10 +29,6 @@ function loadNyaitterJsPin() {
 }
 
 async function importNyaitterJs() {
-  try {
-    importScripts(NYAITTER_JS_URL);
-    return;
-  } catch (_) {}
   const pin = await loadNyaitterJsPin();
   if (pin) importScripts(`${NAP_CDN_BASE}/nyaitter/nyaitter.js/${pin}/dist/nyaitter.js`);
 }

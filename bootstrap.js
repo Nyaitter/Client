@@ -52,9 +52,8 @@
 
     async function libraryUrls(name, path) {
         const pins = await loadCompositionPins();
-        const urls = [new URL(`nap_modules/${name}/${path}`, pageBaseUrl).href];
-        if (pins[name]) urls.push(`${NAP_CDN_BASE}/${name}/${pins[name]}/${path}`);
-        return urls;
+        if (!pins[name]) return [];
+        return [`${NAP_CDN_BASE}/${name}/${pins[name]}/${path}`];
     }
 
     async function loadNyaitterJs() {
