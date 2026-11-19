@@ -2034,3 +2034,15 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 .side-menu-zone[data-zone='hidden'] .side-menu-list:empty::after {
     content: attr(data-empty-text);
 }
+
+.settings-custom-language {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.settings-custom-language input {
+    flex: 1;
+    min-width: 0;
+}

@@ -1,5 +1,6 @@
 import { DOM, openImageModal } from '../dom.js';
-import { t } from './i18n.js';
+import { t, getLanguage } from './i18n.js';
+import { autoTranslateEnabled, languageDisplayName, sameLanguage, translateText } from './translate.js';
 import { registerRankAvatar, rankAvatarAttributes } from './rankAvatarIntegration.js';
 import { ICONS, decorateMenuButtons } from '../icons.js';
 import { api, apiRequest, getCommunityNoteReasonLabel } from '../api.js';
@@ -240,6 +241,62 @@ export function renderUnknownPostReference(post) {
     postMain.append(postHeader, message);
     postEl.appendChild(postMain);
     return postEl;
+}
+
+function setupPostTranslation(post, postBody, userCache) {
+    if (!autoTranslateEnabled()) return;
+    const maskTextEl = postBody.querySelector('.post-mask-alert-text');
+    const maskReason = typeof post.mask_reason === 'string' ? post.mask_reason.trim() : '';
+    if (maskReason && maskTextEl) {
+        translateText(maskReason).then((result) => {
+            if (!result || !maskTextEl.isConnected) return;
+            if (!result.sourceLanguage || sameLanguage(result.sourceLanguage, getLanguage())) return;
+            if (result.translatedText === maskReason) return;
+            maskTextEl.textContent = result.translatedText;
+            maskTextEl.closest('.post-mask-alert')?.setAttribute('title', result.translatedText);
+        }).catch(() => {});
+    }
+
+    const contentEl = postBody.querySelector('.post-content');
+    const language = post.language;
+    if (!language || !contentEl || !post.content) return;
+    if (sameLanguage(language, getLanguage())) return;
+    translateText(post.content, { sourceLanguage: language }).then((result) => {
+        if (!result || !contentEl.isConnected) return;
+        if (result.translatedText === post.content) return;
+        const name = languageDisplayName(language);
+        const bar = document.createElement('div');
+        bar.className = 'post-translation-bar';
+        const label = document.createElement('span');
+        label.className = 'post-translation-label';
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'post-translation-toggle';
+        let showingTranslation = true;
+        const originalHtml = contentEl.innerHTML;
+        const translatedHtml = renderNyarkDown(
+            result.translatedText,
+            userCache,
+            { allowMarkdown: true, allowContentDecorations: true },
+        );
+        const apply = () => {
+            contentEl.innerHTML = showingTranslation ? translatedHtml : originalHtml;
+            label.textContent = showingTranslation
+                ? t('post.translated_from', { language: name })
+                : t('post.original_post', { language: name });
+            toggle.textContent = showingTranslation ? t('post.show_original') : t('post.show_translation');
+            const root = postBody.closest('[data-post-id]');
+            if (root && typeof root.__finalizeSize === 'function') root.__finalizeSize();
+        };
+        toggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            showingTranslation = !showingTranslation;
+            apply();
+        });
+        bar.append(label, toggle);
+        postBody.insertBefore(bar, postBody.firstChild);
+        apply();
+    }).catch(() => {});
 }
 
 export async function renderPost(post, author, options = {}) {
@@ -793,6 +850,7 @@ export async function renderPost(post, author, options = {}) {
         postBody.appendChild(nestedContainer);
     }
 
+    setupPostTranslation(post, postBody, userCache);
     postMain.appendChild(postBody);
 
     if (getCurrentUser() && !isNested) {

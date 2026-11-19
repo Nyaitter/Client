@@ -8,6 +8,7 @@
     'use strict';
 
     const STORAGE_KEY = 'nyaitter-language';
+    const CUSTOM_STORAGE_KEY = 'nyaitter-custom-languages';
     const FALLBACK_LANGUAGE = 'ja';
     const LANGUAGE_NAMES = Object.freeze({
         ja: '日本語', en: 'English', ko: '한국어', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文',
@@ -39,8 +40,22 @@
         return new URL(source.replace(/^\/+/, ''), pageBaseUrl).href;
     }
 
+    function readCustomLanguages() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(CUSTOM_STORAGE_KEY) || '{}');
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
     async function fetchPack(language) {
         if (loadedPacks[language]) return loadedPacks[language];
+        const custom = readCustomLanguages()[language];
+        if (custom && custom.pack && typeof custom.pack === 'object') {
+            loadedPacks[language] = custom.pack;
+            return custom.pack;
+        }
         const url = resolvePackUrl(languagePacks[language]);
         if (!url) return null;
         try {
@@ -121,6 +136,12 @@
         if (!languagePacks[defaultLanguage]) {
             languagePacks[defaultLanguage] = `/langs/${defaultLanguage}.json`;
         }
+        for (const [code, entry] of Object.entries(readCustomLanguages())) {
+            if (entry && entry.pack && typeof entry.pack === 'object') {
+                languagePacks[code] = `custom:${code}`;
+                loadedPacks[code] = entry.pack;
+            }
+        }
 
         const saved = readSavedLanguage();
         if (saved && languagePacks[saved]) {
@@ -194,6 +215,29 @@
         return true;
     }
 
+    function registerCustomLanguage(name, pack) {
+        const displayName = String(name || '').trim();
+        if (!displayName || !pack || typeof pack !== 'object') return null;
+        const slug = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        let suffix = slug;
+        if (!suffix) {
+            let hash = 0;
+            for (let i = 0; i < displayName.length; i++) hash = ((hash * 31) + displayName.charCodeAt(i)) >>> 0;
+            suffix = hash.toString(36);
+        }
+        const code = `custom-${suffix}`;
+        const customs = readCustomLanguages();
+        customs[code] = { name: displayName, pack };
+        try {
+            localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(customs));
+        } catch (_) {
+            return null;
+        }
+        languagePacks[code] = `custom:${code}`;
+        loadedPacks[code] = pack;
+        return code;
+    }
+
     globalThis.NyaitterI18n = Object.freeze({
         ready,
         t,
@@ -202,5 +246,7 @@
         getAvailableLanguages,
         languageName,
         setLanguage,
+        loadPack: fetchPack,
+        registerCustomLanguage,
     });
 })();

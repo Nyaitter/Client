@@ -36,6 +36,9 @@ export function readSettingsForm(form, currentSettings = {}) {
             emoji: form.querySelector('#setting-emoji-kind')?.value || 'twemoji',
             content_editor: form.querySelector('#setting-content-editor')?.value === 'nyaitter' ? 'nyaitter' : 'textarea',
             data_saver: form.querySelector('#setting-data-saver')?.checked || false,
+            auto_translate:
+                form.querySelector('#setting-auto-translate')?.checked ??
+                (currentSettings.auto_translate !== false),
             show_community_notes:
                 form.querySelector('#setting-show-community-notes')?.checked ??
                 (currentSettings.show_community_notes !== false),

@@ -1915,6 +1915,17 @@ button.dm-reply-reference:focus-visible {
     text-align: left;
 }
 
+.notification-translate-toggle {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-top: 0.15rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    cursor: pointer;
+}
+
 .notification-target-post {
     margin-top: 0.28rem;
     white-space: nowrap;
