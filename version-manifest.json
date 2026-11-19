@@ -299,9 +299,6 @@
     "nap_modules/nyaitter/nyaitter.js/dist/types/index.d.ts": "1496a4b04e6a9d55034eac516262368bfc7323143f4d9f96c569bfba555a02fc",
     "nap_modules/nyaitter/nyaitter.js/dist/types/models.d.ts": "38ef2b726f3435c683811d6450d2827287a9a4e184c9ca4685b861dad2688102",
     "nap_modules/nyaitter/nyaitter.js/version-manifest.json": "54be0237df090f612d61ee7276cbc612215945cd6a83384125142f3ef690919d",
-    "nap_modules/nyaitter/nyaitterime/data/nyaitter-ime-core.bin.gz": "a22376feca596adfcce13b407abee0b82be2b23cf3a4c608f5ddd5045d314636",
-    "nap_modules/nyaitter/nyaitterime/dist/nyaitter-ime.min.js": "416ac7dfd52ab1fdfec40fe9483f231e43771e916c2501196b5118d0edfed51d",
-    "nap_modules/nyaitter/nyaitterime/version-manifest.json": "4ad5ce9e33b9dfdfdfa8c7104a654e9ae546018e808b08a4a86b538f8f54f71e",
     "nap_modules/nyaitter/nyaitterui/dist/index.cjs": "a019c24589ae1b89d89eed91a6fd1bba7896984964c308b3092bee88dd7e4d43",
     "nap_modules/nyaitter/nyaitterui/dist/index.js": "577cc6fbebbffd7c985255802baf62a22206dc9e16fe2e5ec293dcdb7ddc94a1",
     "nap_modules/nyaitter/nyaitterui/dist/nyaitter-ui.css": "8cb11e5cba89f0ada6c87ce12fad033f14c6e2bceaec43d4cfa1e32abd44589f",
@@ -311,5 +308,8 @@
     "pwa-icon-512.png": "d5ae8afadd91511f9b2ae95369443536e78c82dae776115027a89240ca66867a",
     "sw.js": "1ea8191c8533cc173cc036cf83e20ebda9164d15e9c70149714c16c0b9bdce3d"
   },
-  "libraries": {}
+  "libraries": {},
+  "externals": {
+    "nyaitter/nyaitterime": "b6e45bdfc06d0f647044da4a2b35ac994a8ac68e9202a99a022da414cf885e67"
+  }
 }
