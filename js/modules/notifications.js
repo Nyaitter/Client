@@ -1,4 +1,5 @@
-import { t } from './i18n.js';
+import { t, getLanguage } from './i18n.js';
+import { autoTranslateEnabled, sameLanguage, translateText } from './translate.js';
 import { api } from '../api.js';
 import { getCurrentUser } from '../state.js';
 import { formatPostTimestamp } from '../utils/helpers.js';
@@ -172,6 +173,30 @@ export function getNotificationDisplayText(notification) {
         : t('notification.generic');
 }
 
+function setupNotificationTranslation(messageEl, originalText) {
+    if (!autoTranslateEnabled()) return;
+    translateText(originalText).then((result) => {
+        if (!result || !messageEl.isConnected) return;
+        if (!result.sourceLanguage || sameLanguage(result.sourceLanguage, getLanguage())) return;
+        if (result.translatedText === originalText) return;
+        let showingTranslation = true;
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'notification-translate-toggle';
+        const apply = () => {
+            messageEl.textContent = showingTranslation ? result.translatedText : originalText;
+            toggle.textContent = showingTranslation ? t('post.show_original') : t('post.show_translation');
+        };
+        toggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            showingTranslation = !showingTranslation;
+            apply();
+        });
+        messageEl.after(toggle);
+        apply();
+    }).catch(() => {});
+}
+
 export function appendNotificationDisplay(container, notification) {
     if (!container) return;
 
@@ -193,6 +218,7 @@ export function appendNotificationDisplay(container, notification) {
     message.className = 'notification-message';
     if (structured.message?.trim()) {
         message.textContent = structured.message.trim();
+        setupNotificationTranslation(message, structured.message.trim());
     } else {
         const actorId = Number(structured.from?.id);
         const suffix = getNotificationMessageSuffix(structured);
