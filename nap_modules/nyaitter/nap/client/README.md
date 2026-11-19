@@ -14,9 +14,11 @@ const client = createClient({
 
 指定できるもの:
 
-- rawBase: 取得先の基底 URL。nap-cdn のような配信サーバーを使うときに指定する
-- cache: get と put を持つオブジェクト。省略するとメモリ上のものになる
+- rawBase: 取得先の基底 URL。省略すると配信サーバーから取得する。GitHub から直接取るときは null を渡す
+- cache: get と put を持つオブジェクト。省略するとメモリ上のものになる。has も持つキャッシュでは、未取得のファイルが少ない版はファイル単位で取得する
 - fetch: 取得に使う fetch。省略すると標準の fetch を使う
+
+ブラウザでは createCacheStorageCache を渡すと、取得したファイルを Cache Storage に保存して版をまたいで再利用します。
 
 取得先は、各呼び出しに渡す入手先から決まります。入手先の形は所有者とリポジトリ名を並べたもので、対象は GitHub のリポジトリです。
 
@@ -84,7 +86,7 @@ const version = await client.fetchVersion(repo, ref);
 
 第3引数に onProgress を渡すと、取得の進み具合が phase と fetched と cached と total の形で通知されます。phase は download と unpack のどちらかです。
 
-rawBase を渡したクライアントは、配信サーバーの専用 API で版の一覧を取り、版のファイルは ZIP で一括取得します。ZIP の取得や展開に失敗したときは、ファイルごとの取得に切り替わります。ZIP の取得中は、進捗の bytes と bytesTotal に受信バイト数と全体のバイト数が入ります。
+配信サーバー経由のクライアントは、専用 API で版の一覧を取り、版のファイルは ZIP で一括取得します。ZIP の取得や展開に失敗したときは、ファイルごとの取得に切り替わります。ZIP の取得中は、進捗の bytes と bytesTotal に受信バイト数と全体のバイト数が入ります。
 
 戻り値は versionId と tag と files と libraries と stats です。
 
@@ -133,3 +135,7 @@ source は必須です。rawBase と currentVersionId は任意です。rawBase 
 - cacheName: 版の保存名を返す
 
 store はブラウザの Cache Storage を使います。使えない環境ではエラーになります。
+
+取得したファイルは Cache Storage に保存され、次の版の取得では変わったファイルだけを取得します。
+
+ensurePersistentStorage を呼び出すと、ブラウザにストレージの永続化を求めます。許可されると、保存した版がブラウザの都合で消されにくくなります。

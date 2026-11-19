@@ -228,6 +228,7 @@
         try {
             const mod = await import(new URL('nap_modules/nyaitter/nap/client/nap-page.js', pageBaseUrl).href);
             page = mod.createNapPage({ source });
+            await mod.ensurePersistentStorage?.();
         } catch (_) {
             return 'failed';
         }

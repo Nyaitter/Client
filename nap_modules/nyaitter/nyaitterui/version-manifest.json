@@ -5,5 +5,11 @@
     "dist/nyaitter-ui.css": "8cb11e5cba89f0ada6c87ce12fad033f14c6e2bceaec43d4cfa1e32abd44589f",
     "dist/nyaitter-ui.js": "547a80a081360cf59c0f7116c7d562a82890ca4bfa916bcab8117ed5343fef4b"
   },
-  "libraries": {}
+  "libraries": {},
+  "sizes": {
+    "dist/index.cjs": 30185,
+    "dist/index.js": 28984,
+    "dist/nyaitter-ui.css": 18902,
+    "dist/nyaitter-ui.js": 32241
+  }
 }

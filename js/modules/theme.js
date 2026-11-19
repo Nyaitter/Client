@@ -24,12 +24,20 @@ export const COLOR_THEME_PRESETS = Object.freeze({
         primary_hover_color: '#e88b00',
         light_primary_color: '#ffebcc',
         dark_light_primary_color: '#8f5600',
+        light_background_color: '#f9f9f9',
+        light_surface_color: '#ffffff',
+        dark_background_color: '#18191d',
+        dark_surface_color: '#1c1d21',
     }),
     nyax: Object.freeze({
         primary_color: '#1d9bf0',
         primary_hover_color: '#1a8cd8',
         light_primary_color: '#cce6ff',
         dark_light_primary_color: '#004a8f',
+        light_background_color: '#f9f9f9',
+        light_surface_color: '#ffffff',
+        dark_background_color: '#18191d',
+        dark_surface_color: '#1c1d21',
     }),
 });
 
@@ -38,6 +46,10 @@ export const COLOR_THEME_CSS_VARIABLES = Object.freeze({
     primary_hover_color: '--primary-hover-color',
     light_primary_color: '--l-light-primary-color',
     dark_light_primary_color: '--d-light-primary-color',
+    light_background_color: '--l-bg-color',
+    light_surface_color: '--l-main-bg-color',
+    dark_background_color: '--d-bg-color',
+    dark_surface_color: '--d-main-bg-color',
 });
 
 export function isDataSaverEnabled() {

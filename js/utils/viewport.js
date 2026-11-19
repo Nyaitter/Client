@@ -88,7 +88,11 @@ export function positionElementRelativeToAnchor(
 
     // maxWidth/maxHeight も layout 座標なので、視覚サイズの上限を scale で割る。
     element.style.maxWidth = `${maxAllowedWidth / scale}px`;
-    element.style.maxHeight = `${maxAllowedHeight / scale}px`;
+    // CSS で max-height が指定されている要素は、その上限を優先する。
+    element.style.maxHeight = '';
+    const cssMaxHeight = Number.parseFloat(getComputedStyle(element).maxHeight);
+    const viewportMaxHeight = maxAllowedHeight / scale;
+    element.style.maxHeight = `${Number.isFinite(cssMaxHeight) && cssMaxHeight > 0 ? Math.min(viewportMaxHeight, cssMaxHeight) : viewportMaxHeight}px`;
     element.style.position = useFixed ? 'fixed' : 'absolute';
 
     const anchorRect = anchor.getBoundingClientRect();

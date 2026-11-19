@@ -571,12 +571,13 @@ export function configureAttachmentImage(img, previewUrl, originalUrl) {
 const urlCardCache = new Map();
 const URL_CARD_CACHE_LIMIT = 200;
 
-export function getUrlCardTarget(content) {
+export function getUrlCardTargets(content) {
     const source = String(content || '')
         .replace(/```[\s\S]*?```/g, '')
         .replace(/`[^`\r\n]{0,500}`/g, '');
     const urlPattern =
         /https:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,63}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=;]*)/g;
+    const targets = [];
     let match;
     while ((match = urlPattern.exec(source)) !== null) {
         const candidate = match[0];
@@ -589,13 +590,17 @@ export function getUrlCardTarget(content) {
         try {
             const parsed = new URL(safeUrl);
             if (parsed.protocol === 'https:' && !parsed.username && !parsed.password) {
-                return parsed.href;
+                targets.push(parsed.href);
             }
         } catch (_) {
             // 次の候補を検査する。
         }
     }
-    return null;
+    return targets;
+}
+
+export function getUrlCardTarget(content) {
+    return getUrlCardTargets(content)[0] || null;
 }
 
 export function getUrlCard(url) {
@@ -637,62 +642,192 @@ export function getUrlCard(url) {
     return requestPromise;
 }
 
+const YOUTUBE_HOSTS = new Set([
+    'www.youtube.com',
+    'youtube.com',
+    'm.youtube.com',
+    'music.youtube.com',
+    'www.youtube-nocookie.com',
+]);
+const NICOVIDEO_HOSTS = new Set(['www.nicovideo.jp', 'nicovideo.jp', 'nico.ms']);
+const SOUNDCLOUD_HOSTS = new Set(['soundcloud.com', 'www.soundcloud.com']);
+const SOUNDCLOUD_RESERVED_SEGMENTS = new Set([
+    'you',
+    'discover',
+    'stream',
+    'upload',
+    'settings',
+    'notifications',
+    'messages',
+    'people',
+    'pages',
+    'charts',
+    'search',
+]);
+
+function parseEmbedStartSeconds(value) {
+    if (!value) return 0;
+    if (/^\d+$/.test(value)) return Number(value);
+    const match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(value);
+    if (!match || (!match[1] && !match[2] && !match[3])) return 0;
+    return Number(match[1] || 0) * 3600 + Number(match[2] || 0) * 60 + Number(match[3] || 0);
+}
+
+// 対応サービスのURLから埋め込みプレイヤーの情報を返す。対象外は null。
+export function getMediaEmbed(rawUrl) {
+    let parsed;
+    try {
+        parsed = new URL(rawUrl);
+    } catch (_) {
+        return null;
+    }
+    if (parsed.protocol !== 'https:') return null;
+    const host = parsed.hostname.toLowerCase();
+
+    if (host === 'youtu.be' || YOUTUBE_HOSTS.has(host)) {
+        let id = '';
+        if (host === 'youtu.be') {
+            id = parsed.pathname.split('/').filter(Boolean)[0] || '';
+        } else if (parsed.pathname === '/watch') {
+            id = parsed.searchParams.get('v') || '';
+        } else {
+            const match = /^\/(?:shorts|live|embed|v)\/([A-Za-z0-9_-]+)/.exec(parsed.pathname);
+            if (match) id = match[1];
+        }
+        if (!/^[A-Za-z0-9_-]{11}$/.test(id)) return null;
+        const start = parseEmbedStartSeconds(
+            parsed.searchParams.get('t') || parsed.searchParams.get('start'),
+        );
+        return {
+            provider: 'youtube',
+            title: 'YouTube',
+            embedUrl:
+                `https://www.youtube-nocookie.com/embed/${id}` +
+                (start > 0 ? `?start=${start}` : ''),
+        };
+    }
+
+    if (NICOVIDEO_HOSTS.has(host)) {
+        const match =
+            /^\/watch\/([a-z]{2}\d+)$/.exec(parsed.pathname) ||
+            (host === 'nico.ms' ? /^\/([a-z]{2}\d+)$/.exec(parsed.pathname) : null);
+        const id = match?.[1] || '';
+        if (!/^(?:sm|nm|so)\d+$/.test(id)) return null;
+        return {
+            provider: 'nicovideo',
+            title: 'ニコニコ動画',
+            embedUrl: `https://embed.nicovideo.jp/watch/${id}`,
+        };
+    }
+
+    if (SOUNDCLOUD_HOSTS.has(host)) {
+        const segments = parsed.pathname
+            .split('/')
+            .filter(Boolean)
+            .map((segment) => {
+                try {
+                    return decodeURIComponent(segment);
+                } catch (_) {
+                    return segment;
+                }
+            });
+        const owner = (segments[0] || '').toLowerCase();
+        const isTrack = segments.length === 2 && !SOUNDCLOUD_RESERVED_SEGMENTS.has(owner);
+        const isSet = segments.length === 3 && segments[1] === 'sets' && !SOUNDCLOUD_RESERVED_SEGMENTS.has(owner);
+        if (!isTrack && !isSet) return null;
+        const pageUrl = `https://soundcloud.com/${segments.map(encodeURIComponent).join('/')}`;
+        return {
+            provider: 'soundcloud',
+            title: 'SoundCloud',
+            embedUrl: `https://w.soundcloud.com/player/?url=${encodeURIComponent(pageUrl)}&auto_play=false&visual=false`,
+        };
+    }
+
+    return null;
+}
+
+function buildMediaEmbedElement(embed) {
+    const embedWrap = document.createElement('div');
+    embedWrap.className = `post-embed post-embed-${embed.provider}`;
+    const frame = document.createElement('iframe');
+    frame.src = embed.embedUrl;
+    frame.title = embed.title;
+    frame.loading = 'lazy';
+    frame.referrerPolicy = 'strict-origin-when-cross-origin';
+    frame.setAttribute(
+        'allow',
+        'accelerometer; encrypted-media; picture-in-picture; web-share',
+    );
+    frame.allowFullscreen = true;
+    embedWrap.appendChild(frame);
+    return embedWrap;
+}
+
 export function appendUrlCard(container, content, contextOptions = {}) {
     if (!container) return;
-    const targetUrl = getUrlCardTarget(content);
-    if (!targetUrl) return;
+    const targets = getUrlCardTargets(content);
+    if (targets.length === 0) return;
 
     // If post already has an explicit quote, skip embedded URL quote card
     if (contextOptions.hasExistingQuote) return;
 
-    const placeholder = document.createElement('div');
-    placeholder.className = 'url-card-placeholder';
-    placeholder.setAttribute('aria-live', 'polite');
-    container.appendChild(placeholder);
-
-    void getUrlCard(targetUrl).then(async (card) => {
-        if (!card || !placeholder.parentElement) {
-            placeholder.remove();
-            return;
+    // 対応サービスのURLはプレイヤーを埋め込む。データセーバー時はリンクカードにする。
+    const embedsEnabled = !getCurrentUser()?.settings?.data_saver;
+    for (const targetUrl of targets) {
+        const embed = embedsEnabled ? getMediaEmbed(targetUrl) : null;
+        if (embed) {
+            container.appendChild(buildMediaEmbedElement(embed));
+            continue;
         }
+        const placeholder = document.createElement('div');
+        placeholder.className = 'url-card-placeholder';
+        placeholder.setAttribute('aria-live', 'polite');
+        container.appendChild(placeholder);
 
-        if (card.type === 'nyaitter_post' && card.post && typeof contextOptions.renderPost === 'function') {
-            const nestedContainer = document.createElement('div');
-            nestedContainer.className = 'nested-repost-container';
-            const nestedPostEl = await contextOptions.renderPost(
-                card.post,
-                card.post.author || card.post.user,
-                { ...(contextOptions.options || {}), isNested: true, clampHeight: true },
-            );
-            if (nestedPostEl) {
-                nestedContainer.appendChild(nestedPostEl);
-                placeholder.replaceWith(nestedContainer);
+        void getUrlCard(targetUrl).then(async (card) => {
+            if (!card || !placeholder.parentElement) {
+                placeholder.remove();
                 return;
             }
-        }
 
-        const cardLink = document.createElement('a');
-        cardLink.className = 'url-card';
-        cardLink.href = card.url;
-        cardLink.target = '_blank';
-        cardLink.rel = 'noopener noreferrer';
+            if (card.type === 'nyaitter_post' && card.post && typeof contextOptions.renderPost === 'function') {
+                const nestedContainer = document.createElement('div');
+                nestedContainer.className = 'nested-repost-container';
+                const nestedPostEl = await contextOptions.renderPost(
+                    card.post,
+                    card.post.author || card.post.user,
+                    { ...(contextOptions.options || {}), isNested: true, clampHeight: true },
+                );
+                if (nestedPostEl) {
+                    nestedContainer.appendChild(nestedPostEl);
+                    placeholder.replaceWith(nestedContainer);
+                    return;
+                }
+            }
 
-        const hostname = document.createElement('span');
-        hostname.className = 'url-card-hostname';
-        hostname.textContent = card.siteName || card.hostname;
-        const title = document.createElement('strong');
-        title.className = 'url-card-title';
-        title.textContent = card.title;
-        cardLink.append(hostname, title);
+            const cardLink = document.createElement('a');
+            cardLink.className = 'url-card';
+            cardLink.href = card.url;
+            cardLink.target = '_blank';
+            cardLink.rel = 'noopener noreferrer';
 
-        if (card.description) {
-            const description = document.createElement('span');
-            description.className = 'url-card-description';
-            description.textContent = card.description;
-            cardLink.appendChild(description);
-        }
-        placeholder.replaceWith(cardLink);
-    });
+            const hostname = document.createElement('span');
+            hostname.className = 'url-card-hostname';
+            hostname.textContent = card.siteName || card.hostname;
+            const title = document.createElement('strong');
+            title.className = 'url-card-title';
+            title.textContent = card.title;
+            cardLink.append(hostname, title);
+
+            if (card.description) {
+                const description = document.createElement('span');
+                description.className = 'url-card-description';
+                description.textContent = card.description;
+                cardLink.appendChild(description);
+            }
+            placeholder.replaceWith(cardLink);
+        });
+    }
 }
 
 export function getUserIconUrl(user) {
