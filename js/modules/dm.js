@@ -1,5 +1,5 @@
 import { getLanguage, t } from './i18n.js';
-import { autoTranslateEnabled, languageDisplayName, sameLanguage, translateText } from './translate.js';
+import { autoTranslateEnabled, languageDisplayName, sameLanguage, translateText, whenVisible } from './translate.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { api, apiRequest } from '../api.js';
@@ -230,6 +230,7 @@ function setupDmMessageTranslation(messageEl, msg) {
     const plaintext = String(msg.content || msg.message || '');
     if (!plaintext.trim()) return;
     messageEl.dataset.translationSetup = '1';
+    whenVisible(messageEl, () => {
     translateText(plaintext).then((result) => {
         if (!result || !contentEl.isConnected) return;
         if (!result.sourceLanguage || sameLanguage(result.sourceLanguage, getLanguage())) return;
@@ -263,6 +264,7 @@ function setupDmMessageTranslation(messageEl, msg) {
         anchor.after(bar);
         apply();
     }).catch(() => {});
+    });
 }
 
 export function initializeDmMessageTranslations(root = document, messages = []) {

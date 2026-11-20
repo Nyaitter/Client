@@ -1,6 +1,6 @@
 import { DOM, openImageModal } from '../dom.js';
 import { t, getLanguage } from './i18n.js';
-import { autoTranslateEnabled, languageDisplayName, sameLanguage, translateText } from './translate.js';
+import { autoTranslateEnabled, languageDisplayName, sameLanguage, translateText, whenVisible } from './translate.js';
 import { registerRankAvatar, rankAvatarAttributes } from './rankAvatarIntegration.js';
 import { ICONS, decorateMenuButtons } from '../icons.js';
 import { api, apiRequest, getCommunityNoteReasonLabel } from '../api.js';
@@ -245,6 +245,10 @@ export function renderUnknownPostReference(post) {
 
 function setupPostTranslation(post, postBody, userCache) {
     if (!autoTranslateEnabled()) return;
+    whenVisible(postBody, () => setupPostTranslationNow(post, postBody, userCache));
+}
+
+function setupPostTranslationNow(post, postBody, userCache) {
     const maskTextEl = postBody.querySelector('.post-mask-alert-text');
     const maskReason = typeof post.mask_reason === 'string' ? post.mask_reason.trim() : '';
     if (maskReason && maskTextEl) {

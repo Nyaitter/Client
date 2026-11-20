@@ -51,6 +51,32 @@ function storePersistent(cacheKey, result) {
     savePersistentEntries();
 }
 
+let visibilityObserver = null;
+const visibilityWaiters = new Map();
+
+// 要素が画面に表示されたら一度だけ実行する。表示されていないコンテンツは対象にしない。
+export function whenVisible(element, callback) {
+    if (!element) return;
+    if (typeof IntersectionObserver === 'undefined') {
+        callback();
+        return;
+    }
+    if (!visibilityObserver) {
+        visibilityObserver = new IntersectionObserver((entries) => {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                visibilityObserver.unobserve(entry.target);
+                const waiter = visibilityWaiters.get(entry.target);
+                visibilityWaiters.delete(entry.target);
+                if (waiter) waiter();
+            }
+        }, { rootMargin: '200px 0px' });
+    }
+    if (visibilityWaiters.has(element)) return;
+    visibilityWaiters.set(element, callback);
+    visibilityObserver.observe(element);
+}
+
 export function autoTranslateEnabled() {
     return getCurrentUser()?.settings?.auto_translate !== false;
 }
