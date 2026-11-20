@@ -568,7 +568,6 @@
   "post.this_post": "Этот пост",
   "post.cushion_attached": "У этого поста есть предупреждение.",
   "post.translated_from": "Переведено с {language}",
-  "post.translating": "Выполняется перевод…",
   "post.original_post": "Язык оригинала: {language}",
   "post.show_original": "Показать оригинал",
   "post.show_translation": "Показать перевод",

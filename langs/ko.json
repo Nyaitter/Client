@@ -568,7 +568,6 @@
   "post.this_post": "이 포스트",
   "post.cushion_attached": "이 포스트에는 쿠션이 첨부되어 있습니다.",
   "post.translated_from": "{language}에서 번역됨",
-  "post.translating": "번역 중…",
   "post.original_post": "{language} 게시물",
   "post.show_original": "원문 표시",
   "post.show_translation": "번역 표시",

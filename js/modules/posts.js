@@ -259,12 +259,7 @@ function setupPostTranslation(post, postBody, userCache) {
 
     const contentEl = postBody.querySelector('.post-content');
     if (!contentEl || !post.content) return;
-    const status = document.createElement('div');
-    status.className = 'post-translation-bar post-translation-loading';
-    status.textContent = t('post.translating');
-    postBody.insertBefore(status, postBody.firstChild);
     translateText(post.content).then((result) => {
-        status.remove();
         if (!result || !contentEl.isConnected) return;
         if (!result.sourceLanguage || sameLanguage(result.sourceLanguage, getLanguage())) return;
         if (result.translatedText === post.content) return;
@@ -300,9 +295,7 @@ function setupPostTranslation(post, postBody, userCache) {
         bar.append(label, toggle);
         postBody.insertBefore(bar, postBody.firstChild);
         apply();
-    }).catch(() => {
-        status.remove();
-    });
+    }).catch(() => {});
 }
 
 export async function renderPost(post, author, options = {}) {
