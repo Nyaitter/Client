@@ -568,6 +568,7 @@
   "post.this_post": "このポスト",
   "post.cushion_attached": "このポストにはワンクッションが付与されています",
   "post.translated_from": "{language} からの翻訳",
+  "post.translating": "翻訳中…",
   "post.original_post": "{language} のポスト",
   "post.show_original": "原文を表示",
   "post.show_translation": "翻訳を表示",
