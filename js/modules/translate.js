@@ -4,6 +4,51 @@ import { getCurrentUser } from '../state.js';
 
 const translationCache = new Map();
 
+const PERSISTENT_CACHE_KEY = 'nyaitter-translation-cache';
+const PERSISTENT_CACHE_LIMIT = 300;
+let persistentEntries = null;
+
+function loadPersistentEntries() {
+    if (persistentEntries) return persistentEntries;
+    try {
+        const parsed = JSON.parse(localStorage.getItem(PERSISTENT_CACHE_KEY) || '{}');
+        persistentEntries = parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_) {
+        persistentEntries = {};
+    }
+    return persistentEntries;
+}
+
+function savePersistentEntries() {
+    try {
+        localStorage.setItem(PERSISTENT_CACHE_KEY, JSON.stringify(persistentEntries));
+    } catch (_) {
+        // 容量超過時はキャッシュを空にして入れ直す。
+        try {
+            persistentEntries = {};
+            localStorage.setItem(PERSISTENT_CACHE_KEY, '{}');
+        } catch (_) {}
+    }
+}
+
+function lookupPersistent(cacheKey) {
+    const entry = loadPersistentEntries()[cacheKey];
+    if (!entry || typeof entry.t !== 'string') return null;
+    entry.a = Date.now();
+    return { translatedText: entry.t, sourceLanguage: entry.s || null };
+}
+
+function storePersistent(cacheKey, result) {
+    const entries = loadPersistentEntries();
+    entries[cacheKey] = { t: result.translatedText, s: result.sourceLanguage, a: Date.now() };
+    const keys = Object.keys(entries);
+    if (keys.length > PERSISTENT_CACHE_LIMIT) {
+        keys.sort((a, b) => (entries[a].a || 0) - (entries[b].a || 0));
+        for (const key of keys.slice(0, keys.length - PERSISTENT_CACHE_LIMIT)) delete entries[key];
+    }
+    savePersistentEntries();
+}
+
 export function autoTranslateEnabled() {
     return getCurrentUser()?.settings?.auto_translate !== false;
 }
@@ -34,6 +79,12 @@ export async function translateText(text, { sourceLanguage } = {}) {
     const targetLanguage = getLanguage();
     const cacheKey = `${targetLanguage}\n${sourceLanguage || ''}\n${source}`;
     if (translationCache.has(cacheKey)) return translationCache.get(cacheKey);
+    const cached = lookupPersistent(cacheKey);
+    if (cached) {
+        const promise = Promise.resolve(cached);
+        translationCache.set(cacheKey, promise);
+        return promise;
+    }
     const promise = (async () => {
         const { data, error } = await apiRequest('/server/api/translate', {
             method: 'POST',
@@ -44,10 +95,12 @@ export async function translateText(text, { sourceLanguage } = {}) {
             },
         });
         if (error || !data || typeof data.translated_text !== 'string') return null;
-        return {
+        const result = {
             translatedText: data.translated_text,
             sourceLanguage: data.source_language || sourceLanguage || null,
         };
+        storePersistent(cacheKey, result);
+        return result;
     })();
     translationCache.set(cacheKey, promise);
     return promise;
