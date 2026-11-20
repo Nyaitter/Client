@@ -4,12 +4,14 @@ import { getCurrentUser } from '../state.js';
 
 const translationCache = new Map();
 
-const PERSISTENT_CACHE_KEY = 'nyaitter-translation-cache';
+const PERSISTENT_CACHE_KEY = 'nyaitter-translation-cache-v2';
+const LEGACY_CACHE_KEY = 'nyaitter-translation-cache';
 const PERSISTENT_CACHE_LIMIT = 300;
 let persistentEntries = null;
 
 function loadPersistentEntries() {
     if (persistentEntries) return persistentEntries;
+    try { localStorage.removeItem(LEGACY_CACHE_KEY); } catch (_) {}
     try {
         const parsed = JSON.parse(localStorage.getItem(PERSISTENT_CACHE_KEY) || '{}');
         persistentEntries = parsed && typeof parsed === 'object' ? parsed : {};
