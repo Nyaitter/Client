@@ -24,6 +24,7 @@ import {
     renderDmMessage,
     attachDmMessageClamp,
     initializeDmMessageClamps,
+    initializeDmMessageTranslations,
     flushRealtimeDmMessages,
     beginDmEditLoad,
     isCurrentDmEditLoad,
@@ -592,6 +593,7 @@ export async function showDmConversation(dmId, { unreadBefore = null, refreshAtt
             void updateNavAndSidebars();
             if (await applyPendingEdits(editLoad) === null) return;
             initializeDmMessageClamps(container);
+            initializeDmMessageTranslations(container, posts);
 
             document.getElementById('dm-accept-request-btn')?.addEventListener('click', async () => {
                 await handleAcceptDmRequest(dm.id, async () => {
@@ -644,6 +646,7 @@ export async function showDmConversation(dmId, { unreadBefore = null, refreshAtt
             void updateNavAndSidebars();
             if (await applyPendingEdits(editLoad) === null) return;
             initializeDmMessageClamps(container);
+            initializeDmMessageTranslations(container, posts);
 
             let messageInput = document.getElementById('dm-message-input');
             messageInput = attachMarkdownContentEditor(messageInput) || messageInput;
@@ -814,6 +817,7 @@ export async function showDmConversation(dmId, { unreadBefore = null, refreshAtt
                             }
                             loadedCount += nextSlice.length;
                             initializeDmMessageClamps(conversationView);
+                            initializeDmMessageTranslations(conversationView, posts);
                         }
                         if (loadedCount >= posts.length) {
                             loadMoreContainer.remove();
@@ -948,6 +952,7 @@ async function sendDirectMessage(dmId, conversationTitle, files = [], replyTo = 
             if (input.isConnected && view.isConnected) {
                 view.insertAdjacentHTML('afterbegin', messageHtml);
                 initializeDmMessageClamps(view);
+                initializeDmMessageTranslations(view, [messageObject]);
                 optimisticEl = view.querySelector(`[data-message-id="${messageObject.id}"]`);
             }
         }
