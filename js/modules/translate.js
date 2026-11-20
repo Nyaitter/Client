@@ -53,18 +53,3 @@ export async function translateText(text, { sourceLanguage } = {}) {
     return promise;
 }
 
-export async function translateTexts(texts, { sourceLanguage, targetLanguage } = {}) {
-    const { data, error } = await apiRequest('/server/api/translate', {
-        method: 'POST',
-        body: {
-            texts,
-            target_language: targetLanguage || getLanguage(),
-            ...(sourceLanguage ? { source_language: sourceLanguage } : {}),
-        },
-    });
-    if (error || !data || !Array.isArray(data.translations)) return null;
-    return data.translations.map((item) => ({
-        translatedText: item?.translated_text,
-        sourceLanguage: item?.source_language || sourceLanguage || null,
-    }));
-}
