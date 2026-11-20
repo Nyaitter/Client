@@ -1,5 +1,5 @@
 import { t, getLanguage } from './i18n.js';
-import { autoTranslateEnabled, languageDisplayName, sameLanguage, translateText } from './translate.js';
+import { autoTranslateEnabled, languageDisplayName, sameLanguage, translateText, whenVisible } from './translate.js';
 import { api } from '../api.js';
 import { getCurrentUser } from '../state.js';
 import { formatPostTimestamp } from '../utils/helpers.js';
@@ -177,6 +177,7 @@ function setupNotificationTranslation(messageEl, originalText) {
     if (!autoTranslateEnabled()) return;
     if (messageEl.dataset.translationSetup) return;
     messageEl.dataset.translationSetup = '1';
+    whenVisible(messageEl, () => {
     translateText(originalText).then((result) => {
         if (!result || !messageEl.isConnected) return;
         if (!result.sourceLanguage || sameLanguage(result.sourceLanguage, getLanguage())) return;
@@ -206,6 +207,7 @@ function setupNotificationTranslation(messageEl, originalText) {
         messageEl.after(bar);
         apply();
     }).catch(() => {});
+    });
 }
 
 export function appendNotificationDisplay(container, notification) {
