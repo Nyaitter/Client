@@ -1,5 +1,5 @@
 import { t, getLanguage } from './i18n.js';
-import { autoTranslateEnabled, sameLanguage, translateText } from './translate.js';
+import { autoTranslateEnabled, languageDisplayName, sameLanguage, translateText } from './translate.js';
 import { api } from '../api.js';
 import { getCurrentUser } from '../state.js';
 import { formatPostTimestamp } from '../utils/helpers.js';
@@ -175,16 +175,26 @@ export function getNotificationDisplayText(notification) {
 
 function setupNotificationTranslation(messageEl, originalText) {
     if (!autoTranslateEnabled()) return;
+    if (messageEl.dataset.translationSetup) return;
+    messageEl.dataset.translationSetup = '1';
     translateText(originalText).then((result) => {
         if (!result || !messageEl.isConnected) return;
         if (!result.sourceLanguage || sameLanguage(result.sourceLanguage, getLanguage())) return;
         if (result.translatedText === originalText) return;
-        let showingTranslation = true;
+        const name = languageDisplayName(result.sourceLanguage);
+        const bar = document.createElement('div');
+        bar.className = 'notification-translation-bar';
+        const label = document.createElement('span');
+        label.className = 'notification-translation-label';
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'notification-translate-toggle';
+        let showingTranslation = true;
         const apply = () => {
             messageEl.textContent = showingTranslation ? result.translatedText : originalText;
+            label.textContent = showingTranslation
+                ? t('post.translated_from', { language: name })
+                : t('post.original_post', { language: name });
             toggle.textContent = showingTranslation ? t('post.show_original') : t('post.show_translation');
         };
         toggle.addEventListener('click', (event) => {
@@ -192,7 +202,8 @@ function setupNotificationTranslation(messageEl, originalText) {
             showingTranslation = !showingTranslation;
             apply();
         });
-        messageEl.after(toggle);
+        bar.append(label, toggle);
+        messageEl.after(bar);
         apply();
     }).catch(() => {});
 }

@@ -1915,11 +1915,19 @@ button.dm-reply-reference:focus-visible {
     text-align: left;
 }
 
+.notification-translation-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.15rem;
+    font-size: 0.82rem;
+    color: var(--secondary-text-color);
+}
+
 .notification-translate-toggle {
     background: none;
     border: none;
     padding: 0;
-    margin-top: 0.15rem;
     font-size: 0.82rem;
     font-weight: 700;
     color: var(--primary-color);
