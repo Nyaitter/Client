@@ -54,8 +54,7 @@ import {
     SETTINGS_GROUP_DETAILS,
 } from './settings/config.js';
 import { readSettingsForm } from './settings/formModel.js';
-import { t, getLanguage, getAvailableLanguages, languageName, setLanguage, loadPack, registerCustomLanguage } from '../modules/i18n.js';
-import { translateTexts } from '../modules/translate.js';
+import { t, getLanguage, getAvailableLanguages, languageName, setLanguage } from '../modules/i18n.js';
 import { rebuildSettings, bindSettingsDiscovery, showSettingsSaveStatus, bindSettingsNetworkUsage } from './settings/redesign.js';
 import { bindSettingsStatus } from './settings/status.js';
 import { bindSettingsDisplayRanks } from './settings/displayRanks.js';
@@ -646,10 +645,6 @@ export async function showSettingsScreen(
                     <label for="setting-language">${t('settings.language')}</label>
                     <select id="setting-language" class="settings-select nui-input"></select>
                     <p class="settings-help-text nui-help-text">${t('settings.language_help')}</p>
-                    <div id="custom-language-box" class="settings-custom-language hidden">
-                        <input type="text" id="setting-custom-language-name" class="nui-input" placeholder="${t('settings.language_custom_placeholder')}">
-                        <button type="button" id="setting-custom-language-apply" class="nui-button">${t('settings.language_custom_apply')}</button>
-                    </div>
                     <label for="setting-color-theme">${t('settings.color_theme')}</label>
                     <select id="setting-color-theme" class="settings-select nui-input">
                         <option value="nyaitter">Nyaitter</option>
@@ -835,56 +830,8 @@ export async function showSettingsScreen(
                 return option;
             }),
         );
-        const otherOption = document.createElement('option');
-        otherOption.value = '__other__';
-        otherOption.textContent = t('settings.language_other');
-        languageSelect.appendChild(otherOption);
         languageSelect.value = getLanguage();
     }
-
-    const customLanguageApply = document.getElementById('setting-custom-language-apply');
-    const customLanguageName = document.getElementById('setting-custom-language-name');
-    customLanguageApply?.addEventListener('click', async () => {
-        const name = customLanguageName?.value.trim() || '';
-        if (!name) return;
-        customLanguageApply.disabled = true;
-        if (customLanguageName) customLanguageName.disabled = true;
-        try {
-            const enPack = await loadPack('en');
-            if (!enPack) throw new Error('English pack unavailable');
-            const entries = Object.entries(enPack).filter(
-                ([key, value]) => typeof value === 'string' && key !== 'meta.name',
-            );
-            const uniqueValues = [...new Set(entries.map(([, value]) => value).filter((value) => /[A-Za-z]/.test(value)))];
-            const translatedByValue = new Map();
-            const batchSize = 25;
-            for (let i = 0; i < uniqueValues.length; i += batchSize) {
-                const batch = uniqueValues.slice(i, i + batchSize);
-                const results = await translateTexts(batch, { sourceLanguage: 'en', targetLanguage: name });
-                if (!results) throw new Error('Translation failed');
-                batch.forEach((value, index) => translatedByValue.set(value, results[index]?.translatedText));
-                customLanguageApply.textContent = t('settings.language_custom_progress', {
-                    done: Math.min(i + batchSize, uniqueValues.length),
-                    total: uniqueValues.length,
-                });
-            }
-            const placeholdersOf = (text) => [...String(text).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
-            const pack = { 'meta.name': name };
-            for (const [key, value] of entries) {
-                const translated = translatedByValue.get(value);
-                pack[key] = typeof translated === 'string' && translated && placeholdersOf(translated) === placeholdersOf(value)
-                    ? translated
-                    : value;
-            }
-            const code = registerCustomLanguage(name, pack);
-            if (code && (await setLanguage(code))) window.location.reload();
-            else throw new Error('Custom language unavailable');
-        } catch (_) {
-            customLanguageApply.disabled = false;
-            if (customLanguageName) customLanguageName.disabled = false;
-            customLanguageApply.textContent = t('settings.language_custom_apply');
-        }
-    });
 
     const colorThemeSelect = document.getElementById('setting-color-theme');
     const customColorsSection = document.getElementById('settings-custom-colors');
@@ -2500,12 +2447,6 @@ export async function showSettingsScreen(
         control.addEventListener('change', async () => {
             if (control.dataset.imposterControl === 'true') return;
             if (control.id === 'setting-language') {
-                if (control.value === '__other__') {
-                    document.getElementById('custom-language-box')?.classList.remove('hidden');
-                    control.value = getLanguage();
-                    return;
-                }
-                document.getElementById('custom-language-box')?.classList.add('hidden');
                 if (await setLanguage(control.value)) window.location.reload();
                 else control.value = getLanguage();
                 return;

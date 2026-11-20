@@ -29,12 +29,3 @@ export async function setLanguage(language) {
     return api ? api.setLanguage(language) : false;
 }
 
-export async function loadPack(language) {
-    const api = backend();
-    return api ? api.loadPack(language) : null;
-}
-
-export function registerCustomLanguage(name, pack) {
-    const api = backend();
-    return api ? api.registerCustomLanguage(name, pack) : null;
-}
