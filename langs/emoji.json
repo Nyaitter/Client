@@ -568,6 +568,7 @@
   "post.this_post": "👉📝",
   "post.cushion_attached": "⚠️🛡️📝",
   "post.translated_from": "🌐⬅️ {language}",
+  "post.translating": "🌐⏳",
   "post.original_post": "📝 {language}",
   "post.show_original": "📄👀",
   "post.show_translation": "🌐👀",

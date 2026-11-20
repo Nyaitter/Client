@@ -258,13 +258,17 @@ function setupPostTranslation(post, postBody, userCache) {
     }
 
     const contentEl = postBody.querySelector('.post-content');
-    const language = post.language;
-    if (!language || !contentEl || !post.content) return;
-    if (sameLanguage(language, getLanguage())) return;
-    translateText(post.content, { sourceLanguage: language }).then((result) => {
+    if (!contentEl || !post.content) return;
+    const status = document.createElement('div');
+    status.className = 'post-translation-bar post-translation-loading';
+    status.textContent = t('post.translating');
+    postBody.insertBefore(status, postBody.firstChild);
+    translateText(post.content).then((result) => {
+        status.remove();
         if (!result || !contentEl.isConnected) return;
+        if (!result.sourceLanguage || sameLanguage(result.sourceLanguage, getLanguage())) return;
         if (result.translatedText === post.content) return;
-        const name = languageDisplayName(language);
+        const name = languageDisplayName(result.sourceLanguage);
         const bar = document.createElement('div');
         bar.className = 'post-translation-bar';
         const label = document.createElement('span');
@@ -296,7 +300,9 @@ function setupPostTranslation(post, postBody, userCache) {
         bar.append(label, toggle);
         postBody.insertBefore(bar, postBody.firstChild);
         apply();
-    }).catch(() => {});
+    }).catch(() => {
+        status.remove();
+    });
 }
 
 export async function renderPost(post, author, options = {}) {

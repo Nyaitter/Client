@@ -1277,6 +1277,10 @@
     white-space: nowrap;
 }
 
+.post-translation-loading {
+    opacity: 0.75;
+}
+
 .post-mask-alert {
     display: inline-flex;
     align-items: center;

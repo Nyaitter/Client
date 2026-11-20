@@ -568,6 +568,7 @@
   "post.this_post": "Esta publicação",
   "post.cushion_attached": "Esta publicação tem um aviso.",
   "post.translated_from": "Traduzido de {language}",
+  "post.translating": "Traduzindo…",
   "post.original_post": "Publicação em {language}",
   "post.show_original": "Mostrar original",
   "post.show_translation": "Mostrar tradução",

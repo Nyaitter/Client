@@ -568,6 +568,7 @@
   "post.this_post": "هذا المنشور",
   "post.cushion_attached": "يحتوي هذا المنشور على تحذير.",
   "post.translated_from": "مترجم من {language}",
+  "post.translating": "جارٍ الترجمة…",
   "post.original_post": "منشور بـ{language}",
   "post.show_original": "عرض الأصل",
   "post.show_translation": "عرض الترجمة",
