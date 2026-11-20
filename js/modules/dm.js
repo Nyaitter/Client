@@ -1,4 +1,5 @@
-import { t } from './i18n.js';
+import { getLanguage, t } from './i18n.js';
+import { autoTranslateEnabled, languageDisplayName, sameLanguage, translateText } from './translate.js';
 import { DOM } from '../dom.js';
 import { ICONS } from '../icons.js';
 import { api, apiRequest } from '../api.js';
@@ -203,11 +204,10 @@ export function attachDmMessageClamp(messageEl) {
         const naturalHeight = contentEl.getBoundingClientRect().height;
         if (!wasExpanded) contentEl.classList.remove('dm-message-content-expanded');
         const clampLimit = Number.parseFloat(window.getComputedStyle(contentEl).maxHeight);
-        if (Number.isFinite(clampLimit) && naturalHeight > clampLimit + 1) {
-            toggleBtn.classList.add('is-visible');
-        }
+        toggleBtn.classList.toggle('is-visible', Number.isFinite(clampLimit) && naturalHeight > clampLimit + 1);
         return true;
     };
+    messageEl._dmClampMeasure = measure;
     let attempts = 0;
     const timer = setInterval(() => {
         if (measure() === true || ++attempts >= 20) clearInterval(timer);
@@ -216,6 +216,68 @@ export function attachDmMessageClamp(messageEl) {
 
 export function initializeDmMessageClamps(root = document) {
     root.querySelectorAll('.dm-message').forEach(attachDmMessageClamp);
+}
+
+export function refreshDmMessageClamp(messageEl) {
+    if (messageEl?._dmClampMeasure) messageEl._dmClampMeasure();
+}
+
+function setupDmMessageTranslation(messageEl, msg) {
+    if (msg.type !== 'user' || msg.e2e || msg.deleted || msg.deleted_at) return;
+    if (messageEl.dataset.translationSetup) return;
+    const contentEl = messageEl.querySelector('.dm-message-content');
+    if (!contentEl) return;
+    const plaintext = String(msg.content || msg.message || '');
+    if (!plaintext.trim()) return;
+    messageEl.dataset.translationSetup = '1';
+    translateText(plaintext).then((result) => {
+        if (!result || !contentEl.isConnected) return;
+        if (!result.sourceLanguage || sameLanguage(result.sourceLanguage, getLanguage())) return;
+        if (result.translatedText === plaintext) return;
+        const name = languageDisplayName(result.sourceLanguage);
+        const bar = document.createElement('div');
+        bar.className = 'dm-translation-bar';
+        const label = document.createElement('span');
+        label.className = 'dm-translation-label';
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'dm-translation-toggle';
+        let showingTranslation = true;
+        const originalHtml = contentEl.innerHTML;
+        const translatedHtml = renderNyarkDown(result.translatedText, getAllUsersCache(), { allowMarkdown: true });
+        const apply = () => {
+            contentEl.innerHTML = showingTranslation ? translatedHtml : originalHtml;
+            label.textContent = showingTranslation
+                ? t('post.translated_from', { language: name })
+                : t('post.original_post', { language: name });
+            toggle.textContent = showingTranslation ? t('post.show_original') : t('post.show_translation');
+            refreshDmMessageClamp(messageEl);
+        };
+        toggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            showingTranslation = !showingTranslation;
+            apply();
+        });
+        bar.append(label, toggle);
+        const anchor = messageEl.querySelector('.dm-clamp-toggle') || contentEl;
+        anchor.after(bar);
+        apply();
+    }).catch(() => {});
+}
+
+export function initializeDmMessageTranslations(root = document, messages = []) {
+    if (!autoTranslateEnabled()) return;
+    const byId = new Map();
+    for (const message of messages || []) {
+        if (message && message.id !== undefined && message.id !== null) byId.set(String(message.id), message);
+    }
+    if (!byId.size) return;
+    root.querySelectorAll('.dm-message-container[data-message-id]').forEach((container) => {
+        const msg = byId.get(container.dataset.messageId);
+        if (!msg) return;
+        const messageEl = container.querySelector('.dm-message');
+        if (messageEl) setupDmMessageTranslation(messageEl, msg);
+    });
 }
 
 export function positionDmMessageMenu(menu, menuButton) {
@@ -317,6 +379,7 @@ export async function appendRealtimeDmMessage(dmId, message, sender = null) {
     if (!isActiveDmConversation(dmId) || hasRenderedDmMessage(view, message.id)) return;
     view.insertAdjacentHTML('afterbegin', messageHtml);
     initializeDmMessageClamps(view);
+    initializeDmMessageTranslations(view, [message]);
     setLastRenderedMessageId(message.id);
     await markOpenDmMessageRead(dmId, message);
 }
