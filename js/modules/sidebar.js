@@ -678,10 +678,8 @@ export async function updateNavAndSidebars() {
             mobileOrder: mobileOrderOf.get(item.key) ?? 0,
             mobileHidden: mobileHiddenKeys.has(item.key),
         }));
-    // ドロワーの並びはモバイル設定順、固定格納の指定はPC側のゾーンに従う
-    const pcMoreKeys = new Set(pcZones.moreItems.map((item) => item.key));
-    const toMobileEntries = (items) =>
-        items.map((item) => ({ item, overflow: pcMoreKeys.has(item.key) }));
+    const toDrawerEntries = (items, overflow) =>
+        items.map((item) => ({ item, overflow }));
 
     const renderMenuMarkup = (entries) => `${entries
         .map((entry) => {
@@ -726,10 +724,10 @@ export async function updateNavAndSidebars() {
         ...toPcEntries(pcZones.barItems, false),
         ...toPcEntries(pcZones.moreItems, true),
     ]);
-    // PC側の高さ調整でlive DOMが組み替わっても、ドロワーはモバイル設定順を維持する
+    // ドロワーはPCのサイドメニューと同じ項目・並び・格納で描く
     const mobileMenuMarkup = renderMenuMarkup([
-        ...toMobileEntries(mobileZones.barItems),
-        ...toMobileEntries(mobileZones.moreItems),
+        ...toDrawerEntries(pcZones.barItems, false),
+        ...toDrawerEntries(pcZones.moreItems, true),
     ]);
     DOM.navMenuTop.innerHTML = fullMenuMarkup;
     DOM.navMenuTop.dataset.mobileMenuMarkup = mobileMenuMarkup;
