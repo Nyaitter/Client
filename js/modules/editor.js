@@ -168,6 +168,13 @@ function getRenderedUnicodeEmojiSource(node) {
     return source || null;
 }
 
+function getRenderedMentionSource(node) {
+    if (!(node instanceof Element) || node.tagName !== 'A') return null;
+    if (node.classList.contains('hashtag-mention')) return null;
+    const match = /^#profile\/(\d+)$/.exec(node.getAttribute('href') || '');
+    return match ? `@${match[1]}` : null;
+}
+
 function serializeDirectEditorNode(node) {
     if (!node) return '';
     if (node.nodeType === Node.TEXT_NODE) return node.nodeValue || '';
@@ -175,6 +182,8 @@ function serializeDirectEditorNode(node) {
     if (node instanceof Element) {
         const unicodeEmoji = getRenderedUnicodeEmojiSource(node);
         if (unicodeEmoji !== null) return unicodeEmoji;
+        const mentionSource = getRenderedMentionSource(node);
+        if (mentionSource !== null) return mentionSource;
         if (node.classList.contains('markdown-editor-emoji')) {
             const id = node.dataset.emojiId || node.querySelector('img.nyaitter-emoji')?.dataset.emojiId || '';
             return `_${id}_`;
@@ -572,6 +581,8 @@ export function getMarkdownEditorSourceLength(node) {
     if (node instanceof Element) {
         const unicodeEmoji = getRenderedUnicodeEmojiSource(node);
         if (unicodeEmoji !== null) return unicodeEmoji.length;
+        const mentionSource = getRenderedMentionSource(node);
+        if (mentionSource !== null) return mentionSource.length;
         if (node.classList.contains('markdown-syntax')) return node.textContent.length;
         if (node.classList.contains('markdown-editor-emoji')) {
             const id = node.dataset.emojiId || node.querySelector('img.nyaitter-emoji')?.dataset.emojiId || '';
@@ -697,6 +708,25 @@ export function getMarkdownEditorSourceSegments(root) {
                     });
                 }
                 currentPosition += tokenLength;
+                return;
+            }
+            const mentionSource = getRenderedMentionSource(node);
+            if (mentionSource !== null) {
+                const mentionParent = node.parentNode;
+                const mentionIndex = mentionParent
+                    ? Array.from(mentionParent.childNodes).indexOf(node)
+                    : -1;
+                if (mentionParent && mentionIndex >= 0) {
+                    segments.push({
+                        node,
+                        start: currentPosition,
+                        end: currentPosition + mentionSource.length,
+                        length: mentionSource.length,
+                        boundaryBefore: { container: mentionParent, offset: mentionIndex },
+                        boundaryAfter: { container: mentionParent, offset: mentionIndex + 1 },
+                    });
+                }
+                currentPosition += mentionSource.length;
                 return;
             }
 
