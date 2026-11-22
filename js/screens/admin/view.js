@@ -141,7 +141,7 @@ function renderCardFlags(report, snapshot, subject) {
 }
 
 export function renderRequestCard(report, options = {}) {
-    const { formatDate = () => t('settings.common.unknown_date'), now = Date.now() } = options;
+    const { formatDate = () => t('settings.common.unknown_date'), now = Date.now(), groupNames = {} } = options;
     const meta = requestTypeMeta(report);
     const snapshot = report.target_snapshot || {};
     const subject = snapshot?.subjectUser || null;
@@ -151,6 +151,10 @@ export function renderRequestCard(report, options = {}) {
 
     const targetChip = meta.key === 'report'
         ? `<span class="admin-request-target">${escapeHTML(moderationTargetLabel(report.target_kind))}</span>`
+        : '';
+    const groupName = report.group_id ? groupNames[report.group_id] : '';
+    const groupChip = groupName
+        ? `<span class="admin-request-target">${escapeHTML(groupName)}</span>`
         : '';
 
     const reasonLabel = meta.key === 'report'
@@ -175,6 +179,7 @@ export function renderRequestCard(report, options = {}) {
                     <span class="admin-request-badge__icon" aria-hidden="true">${meta.icon}</span>${escapeHTML(meta.label)}
                 </span>
                 ${targetChip}
+                ${groupChip}
                 <span class="admin-request-card__time" title="${escapeHTML(formatDate(assignedAt))}">
                     ${overdue ? `<span class="admin-request-card__overdue">${t('admin.overdue_label')}</span>` : ''}
                     ${escapeHTML(formatRelativeTime(assignedAt, now))}
@@ -195,6 +200,9 @@ export function renderReportList(content, reports, options = {}) {
         formatDate = () => t('settings.common.unknown_date'),
         filter = 'all',
         onFilterChange = null,
+        groupFilter = 'all',
+        groupNames = {},
+        onGroupFilterChange = null,
         now = Date.now(),
     } = options;
 
@@ -208,10 +216,26 @@ export function renderReportList(content, reports, options = {}) {
         { key: 'verification_application', label: t('admin.verification_request_badge'), count: counts.verification_application },
     ].filter((def) => def.key === 'all' || def.count > 0);
 
+    const groupCounts = new Map();
+    let outsideGroupCount = 0;
+    for (const report of reports) {
+        if (report.group_id) groupCounts.set(report.group_id, (groupCounts.get(report.group_id) || 0) + 1);
+        else outsideGroupCount += 1;
+    }
+    const groupFilterDefs = groupCounts.size === 0 ? [] : [
+        { key: 'all', label: t('timeline.tab.all'), count: reports.length },
+        ...(outsideGroupCount > 0 ? [{ key: 'site', label: t('admin.filter_outside_group'), count: outsideGroupCount }] : []),
+        ...[...groupCounts.entries()]
+            .sort((a, b) => String(groupNames[a[0]] || '').localeCompare(String(groupNames[b[0]] || '')))
+            .map(([groupId, count]) => ({ key: groupId, label: groupNames[groupId] || groupId, count })),
+    ];
+    const activeGroupFilter = groupFilterDefs.some((def) => def.key === groupFilter) ? groupFilter : 'all';
+
     const activeFilter = filterDefs.some((def) => def.key === filter) ? filter : 'all';
-    const visible = activeFilter === 'all'
-        ? reports
-        : reports.filter((report) => requestTypeMeta(report).key === activeFilter);
+    const visible = reports
+        .filter((report) => activeFilter === 'all' || requestTypeMeta(report).key === activeFilter)
+        .filter((report) => activeGroupFilter === 'all'
+            || (activeGroupFilter === 'site' ? !report.group_id : report.group_id === activeGroupFilter));
 
     content.innerHTML = `
         <div class="admin-requests-container nui-page" data-nui="page">
@@ -229,16 +253,28 @@ export function renderReportList(content, reports, options = {}) {
                         ${escapeHTML(def.label)}<span class="admin-requests-filter__count">${def.count}</span>
                     </button>`).join('')}
             </div>` : ''}
+            ${groupFilterDefs.length > 1 ? `
+            <div class="admin-requests-filters nui-tabs" role="tablist" aria-label="${t('admin.group_filter_label')}" data-nui="tabs">
+                ${groupFilterDefs.map((def) => `
+                    <button type="button" role="tab" aria-selected="${def.key === activeGroupFilter}" class="admin-requests-filter nui-tab${def.key === activeGroupFilter ? ' is-active' : ''}" data-group-filter="${escapeHTML(def.key)}">
+                        ${escapeHTML(def.label)}<span class="admin-requests-filter__count">${def.count}</span>
+                    </button>`).join('')}
+            </div>` : ''}
             <div class="admin-requests-list nui-list" data-nui="list">
                 ${visible.length === 0
                     ? `<p class="moderation-help-text admin-requests-list__empty nui-empty-text">${t('admin.no_matching_requests')}</p>`
-                    : visible.map((report) => renderRequestCard(report, { formatDate, now })).join('')}
+                    : visible.map((report) => renderRequestCard(report, { formatDate, now, groupNames })).join('')}
             </div>
         </div>`;
 
     if (typeof onFilterChange === 'function') {
         content.querySelectorAll('[data-request-filter]').forEach((button) => {
             button.addEventListener('click', () => onFilterChange(button.dataset.requestFilter));
+        });
+    }
+    if (typeof onGroupFilterChange === 'function') {
+        content.querySelectorAll('[data-group-filter]').forEach((button) => {
+            button.addEventListener('click', () => onGroupFilterChange(button.dataset.groupFilter));
         });
     }
 }

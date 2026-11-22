@@ -650,14 +650,12 @@ export async function updateNavAndSidebars() {
                 icon: ICONS.group,
             },
         );
-        if (getCurrentUser().admin) {
-            menuItems.push({
-                key: 'admin_reports',
-                name: t('nav.admin_reports'),
-                hash: '#admin/reports',
-                icon: ICONS.mask,
-            });
-        }
+        menuItems.push({
+            key: 'admin_reports',
+            name: t('nav.admin_reports'),
+            hash: '#admin/reports',
+            icon: ICONS.mask,
+        });
     }
 
     const sideMenu = getSavedSideMenu();
@@ -879,7 +877,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
         hash: '#admin/reports',
         icon: ICONS.mask,
         auth: true,
-        admin: true,
+        admin: false,
         mobileBarDefault: false,
     }),
 ]);

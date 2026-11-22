@@ -49,10 +49,9 @@ export const ROUTES = [
     }),
     route('admin-report-detail', (hash) => hash.startsWith('#admin/reports/'), {
         requiresAuth: true,
-        requiresAdmin: true,
         parse: (hash) => ({ reportId: hash.substring('#admin/reports/'.length) }),
     }),
-    route('admin-reports', '#admin/reports', { requiresAuth: true, requiresAdmin: true }),
+    route('admin-reports', '#admin/reports', { requiresAuth: true }),
     route('admin-logs', '#admin/logs', { requiresAuth: true, requiresAdmin: true }),
     route('groups', '#groups', { requiresAuth: true }),
     route('group-detail', (hash) => hash.startsWith('#group/'), {

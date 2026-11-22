@@ -63,10 +63,10 @@ export function moderationActionSummary(actions = {}) {
     return lines;
 }
 
-function renderActionCard({ id, tone, icon, title, description }) {
+function renderActionCard({ id, tone, icon, title, description, checked = false }) {
     return `
         <label class="moderation-action-card moderation-action-card--${tone} nui-list-item">
-            <input id="${id}" type="checkbox">
+            <input id="${id}" type="checkbox"${checked ? ' checked' : ''}>
             <span class="moderation-action-card__icon" aria-hidden="true">${icon}</span>
             <span class="moderation-action-card__body">
                 <span class="moderation-action-card__title nui-list-title">${escapeHTML(title)}</span>
@@ -85,10 +85,16 @@ function renderCurrentPostState(targetState, snapshot) {
     const badges = [];
     if (mask) badges.push(`<span class="moderation-state-badge moderation-state-badge--mask nui-badge">${t('admin.state_masked')}</span>`);
     if (lock) badges.push(`<span class="moderation-state-badge moderation-state-badge--lock nui-badge">${t('post.private')}</span>`);
+    const ageRating = targetState ? Number(targetState.age_rating || 0) : 0;
+    if (ageRating > 0) badges.push(`<span class="moderation-state-badge moderation-state-badge--age nui-badge">${t('admin.state_age_rating', { age: ageRating })}</span>`);
     if (badges.length === 0) {
         return `<p class="moderation-help-text nui-help-text">${t('admin.no_visibility_limit')}</p>`;
     }
-    return `<div class="moderation-post-state">${badges.join('')}</div>`;
+    const maskReason = mask && targetState?.mask_reason ? String(targetState.mask_reason).trim() : '';
+    const reasonLine = maskReason
+        ? `<p class="moderation-help-text nui-help-text">${escapeHTML(maskReason)}</p>`
+        : '';
+    return `<div class="moderation-post-state">${badges.join('')}</div>${reasonLine}`;
 }
 
 export async function showAdminReportsScreen(showScreenFn = null) {
@@ -107,13 +113,33 @@ export async function showAdminReportsScreen(showScreenFn = null) {
             renderEmpty(contentDiv, t('admin.no_assigned_requests'));
             return;
         }
+        const groupNames = {};
+        const groupIds = [...new Set(reports.map((report) => report.group_id).filter(Boolean))];
+        if (groupIds.length > 0) {
+            const { data: mineData } = await apiRequest('/server/api/groups/mine?limit=200');
+            for (const group of Array.isArray(mineData?.groups) ? mineData.groups : []) {
+                if (group?.id && group?.name) groupNames[group.id] = group.name;
+            }
+            for (const groupId of groupIds) {
+                if (groupNames[groupId]) continue;
+                const { data: groupData } = await apiRequest(`/server/api/groups/${encodeURIComponent(groupId)}`);
+                if (groupData?.group?.name) groupNames[groupId] = groupData.group.name;
+            }
+        }
         let filter = 'all';
+        let groupFilter = 'all';
         const draw = () => {
             renderReportList(contentDiv, reports, {
                 formatDate: formatModerationDate,
                 filter,
                 onFilterChange: (nextFilter) => {
                     filter = nextFilter;
+                    draw();
+                },
+                groupFilter,
+                groupNames,
+                onGroupFilterChange: (nextFilter) => {
+                    groupFilter = nextFilter;
                     draw();
                 },
             });
@@ -295,6 +321,15 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
         const postAvailable = isPost && (!targetState || targetState.exists !== false);
         const alreadyMasked = targetState ? Boolean(targetState.mask) : Boolean(snapshot.post?.mask);
         const alreadyPrivate = targetState ? Boolean(targetState.lock) : Boolean(snapshot.post?.lock);
+        const groupId = report.group_id || snapshot.post?.groupId || null;
+        const isGroupReport = Boolean(groupId);
+        const viewerIsAdmin = Boolean(getCurrentUser()?.admin);
+        const groupRestricted = isGroupReport && !viewerIsAdmin;
+        let groupName = '';
+        if (groupId) {
+            const { data: groupData } = await apiRequest(`/server/api/groups/${encodeURIComponent(groupId)}`);
+            groupName = groupData?.group?.name || '';
+        }
 
         const postStateSection = isPost
             ? `<section class="moderation-review-section nui-section" data-nui="section">
@@ -320,28 +355,29 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                 title: t('admin.action_delete_post'),
                 description: t('admin.action_delete_post_desc'),
             } : null,
-            postAvailable && !alreadyMasked ? {
+            postAvailable ? {
                 id: 'moderation-mask-post',
                 tone: 'mask',
                 icon: ICONS.preview,
                 title: t('admin.action_mask_post'),
                 description: t('admin.action_mask_post_desc'),
+                checked: alreadyMasked,
             } : null,
-            postAvailable && !alreadyPrivate ? {
+            postAvailable && !alreadyPrivate && !groupRestricted ? {
                 id: 'moderation-make-private',
                 tone: 'lock',
                 icon: ICONS.lock,
                 title: t('admin.action_make_private'),
                 description: t('admin.action_make_private_desc'),
             } : null,
-            {
+            groupRestricted ? null : {
                 id: 'moderation-search-exclude',
                 tone: 'shadow',
                 icon: ICONS.search_off,
                 title: t('admin.action_search_exclude'),
                 description: t('admin.action_search_exclude_desc'),
             },
-            {
+            groupRestricted ? null : {
                 id: 'moderation-freeze',
                 tone: 'freeze',
                 icon: ICONS.freeze,
@@ -354,9 +390,10 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
             <div class="moderation-review-layout nui-page" data-nui="page">
                 <header class="moderation-detail-head nui-page-heading" data-nui="page-heading">
                     <span class="admin-request-badge admin-request-badge--report nui-badge">
-                        <span class="admin-request-badge__icon" aria-hidden="true">${ICONS.report}</span>${t('admin.report_badge')}
+                        <span class="admin-request-badge__icon" aria-hidden="true">${ICONS.report}</span>${snapshot.automod ? t('admin.automod_badge') : t('admin.report_badge')}
                     </span>
                     <span class="admin-request-target">${escapeHTML(moderationTargetLabel(report.target_kind))}</span>
+                    ${groupName ? `<span class="admin-request-target">${escapeHTML(groupName)}</span>` : ''}
                     <span class="moderation-detail-head__meta">${t('admin.request_number', { id: Number(report.id) })}</span>
                 </header>
                 <section class="moderation-review-section nui-section" data-nui="section">
@@ -369,11 +406,12 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                     <h3 class="nui-section-title">${t('admin.response')}</h3>
                     <p class="moderation-help-text nui-help-text">${t('admin.response_hint')}</p>
                     <form id="moderation-resolution-form" class="nui-form" data-report-id="${Number(report.id)}" data-nui="form">
-                        ${selectableUsers.length > 0 ? `<div class="moderation-action-field nui-field"><label for="moderation-target-user">${t('admin.target_user_label')}</label><select id="moderation-target-user" class="moderation-target-select nui-input"><option value="">${t('admin.select_placeholder')}</option>${targetOptions}</select><p class="moderation-help-text nui-help-text">${t('admin.target_user_hint')}</p></div>` : ''}
+                        ${selectableUsers.length > 0 && !groupRestricted ? `<div class="moderation-action-field nui-field"><label for="moderation-target-user">${t('admin.target_user_label')}</label><select id="moderation-target-user" class="moderation-target-select nui-input"><option value="">${t('admin.select_placeholder')}</option>${targetOptions}</select><p class="moderation-help-text nui-help-text">${t('admin.target_user_hint')}</p></div>` : ''}
                         <div class="moderation-action-grid">
                             ${actionCards.map((card) => renderActionCard(card)).join('')}
                         </div>
-                        <div class="moderation-action-field nui-field"><label for="moderation-freeze-reason">${t('admin.freeze_reason_label')}</label><input id="moderation-freeze-reason" class="moderation-target-select nui-input" type="text" maxlength="2000" placeholder="${t('admin.freeze_reason_placeholder')}"></div>
+                        ${postAvailable ? `<div class="moderation-action-field nui-field"><label for="moderation-mask-reason">${t('admin.mask_reason_label')}</label><input id="moderation-mask-reason" class="moderation-target-select nui-input" type="text" maxlength="100" value="${escapeHTML(targetState?.mask_reason || '')}"></div>` : ''}
+                        ${groupRestricted ? '' : `<div class="moderation-action-field nui-field"><label for="moderation-freeze-reason">${t('admin.freeze_reason_label')}</label><input id="moderation-freeze-reason" class="moderation-target-select nui-input" type="text" maxlength="2000" placeholder="${t('admin.freeze_reason_placeholder')}"></div>`}
                         <div class="moderation-action-field nui-field"><label for="moderation-notice">${t('admin.notice_label')}</label><textarea id="moderation-notice" class="moderation-textarea nui-input" maxlength="2000" rows="4" placeholder="${t('admin.notice_placeholder')}"></textarea></div>
                         <div class="moderation-form-actions nui-actions"><button type="submit" class="moderation-submit-button nui-button">${t('admin.complete_response')}</button></div>
                         <p id="moderation-resolution-error" class="login-modal-message login-modal-error nui-help-text hidden" role="alert"></p>
@@ -389,6 +427,7 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
             const actions = {
                 deletePost: Boolean(document.getElementById('moderation-delete-post')?.checked),
                 maskPost: Boolean(document.getElementById('moderation-mask-post')?.checked),
+                maskReason: document.getElementById('moderation-mask-reason')?.value || '',
                 makePrivate: Boolean(document.getElementById('moderation-make-private')?.checked),
                 searchExclude: Boolean(document.getElementById('moderation-search-exclude')?.checked),
                 freeze: Boolean(document.getElementById('moderation-freeze')?.checked),

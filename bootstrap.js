@@ -293,7 +293,9 @@
                     const formal = entries.filter((entry) => !entry.tag);
                     const latestFormal = formal.length ? formal[formal.length - 1] : null;
                     const storedFormal = formal.some((entry) => stored.includes(entry.id));
-                    if (latestFormal && storedFormal && !stored.includes(latestFormal.id)) {
+                    if (latestFormal && stored.length > 1 && stored.includes(latestFormal.id)) {
+                        await page.activate(latestFormal.id);
+                    } else if (latestFormal && storedFormal && !stored.includes(latestFormal.id)) {
                         await registerShellServiceWorker();
                         if (await fetchLatestAndStore(page)) return 'fetched';
                         setBootStatus('');

@@ -301,27 +301,114 @@ export function createClient({ cache, fetch: fetchImpl, rawBase: rawBaseOption, 
         return `${String(rawBase).replace(/\/+$/, '')}/api/repos/${repo}${suffix}`;
     }
 
+    const RETRY_DELAYS_MS = [1000, 2000, 4000];
+    const STALL_MS = 30000;
+
+    function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function isRetryableStatus(status) {
+        return status === 408 || status === 429 || (typeof status === 'number' && status >= 500 && status <= 599);
+    }
+
+    // 応答本文を読み切る。バイトが届く限り時間制限はなく、進展が止まったときだけ中断する。
+    async function readResponseBytes(res, onChunk) {
+        if (!res.body || typeof res.body.getReader !== 'function') {
+            return new Uint8Array(await res.arrayBuffer());
+        }
+        const reader = res.body.getReader();
+        const chunks = [];
+        let received = 0;
+        for (;;) {
+            let timer = null;
+            const stalled = new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error('受信が止まりました')), STALL_MS);
+            });
+            let step;
+            try {
+                step = await Promise.race([reader.read(), stalled]);
+            } catch (error) {
+                try {
+                    await reader.cancel();
+                } catch (_) {}
+                throw error;
+            } finally {
+                clearTimeout(timer);
+            }
+            if (step.done) break;
+            chunks.push(step.value);
+            received += step.value.length;
+            if (onChunk) onChunk(received);
+        }
+        const bytes = new Uint8Array(received);
+        let at = 0;
+        for (const chunk of chunks) {
+            bytes.set(chunk, at);
+            at += chunk.length;
+        }
+        return bytes;
+    }
+
+    // 接続と応答開始までを再試行する。本文の読み取りは呼び出し側が行う。
+    async function requestWithRetry(url, options) {
+        let lastError = null;
+        for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+            if (attempt > 0) await sleep(RETRY_DELAYS_MS[attempt - 1]);
+            let res;
+            try {
+                res = await doFetch(url, options);
+            } catch (error) {
+                lastError = error;
+                continue;
+            }
+            if (res && isRetryableStatus(res.status) && attempt < RETRY_DELAYS_MS.length) {
+                lastError = new Error(`HTTP ${res.status}`);
+                continue;
+            }
+            return res;
+        }
+        throw lastError || new Error('接続できませんでした');
+    }
+
     // ソースから導出した URL で取得し、応答のバイト列を返す。
+    // 一時的な失敗（接続エラー、読み取りの中断、サーバー側の応答エラー）は再試行する。
     async function fetchBytes(repo, ref, filePath) {
         const url = `${rawBaseFor(repo, rawBase)}/${ref}/${filePath}`;
-        try {
-            const res = await doFetch(url);
+        let lastError = null;
+        for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+            if (attempt > 0) await sleep(RETRY_DELAYS_MS[attempt - 1]);
+            let res;
+            try {
+                res = await doFetch(url);
+            } catch (error) {
+                lastError = error;
+                continue;
+            }
             if (!res || !res.ok) {
+                const status = res ? res.status : null;
+                if (isRetryableStatus(status) && attempt < RETRY_DELAYS_MS.length) {
+                    lastError = new Error(`HTTP ${status}`);
+                    continue;
+                }
                 const error = new Error(
                     `${repo} を取得できませんでした。${filePath} が見つかりません。URL を確認してください`,
                 );
                 error.napFetchFailed = true;
                 throw error;
             }
-            return new Uint8Array(await res.arrayBuffer());
-        } catch (error) {
-            if (error && error.napFetchFailed) throw error;
-            const wrapped = new Error(
-                `${repo} に接続できませんでした。ネットワークを確認してください`,
-            );
-            wrapped.napFetchFailed = true;
-            throw wrapped;
+            try {
+                return await readResponseBytes(res);
+            } catch (error) {
+                lastError = error;
+            }
         }
+        const wrapped = new Error(
+            `${repo} に接続できませんでした。ネットワークを確認してください`,
+        );
+        wrapped.napFetchFailed = true;
+        wrapped.cause = lastError;
+        throw wrapped;
     }
 
     async function fetchText(repo, ref, filePath) {
@@ -377,7 +464,7 @@ export function createClient({ cache, fetch: fetchImpl, rawBase: rawBaseOption, 
                     const suffix = cursor
                         ? `/versions?limit=100&cursor=${encodeURIComponent(cursor)}`
                         : '/versions?limit=100';
-                    const res = await doFetch(apiUrlFor(repo, suffix), fresh ? { cache: 'no-store' } : undefined);
+                    const res = await requestWithRetry(apiUrlFor(repo, suffix), fresh ? { cache: 'no-store' } : undefined);
                     if (!res || !res.ok) throw new Error(`HTTP ${res ? res.status : '?'}`);
                     const data = await res.json();
                     const list = Array.isArray(data) ? data : data.versions || [];
@@ -450,7 +537,7 @@ export function createClient({ cache, fetch: fetchImpl, rawBase: rawBaseOption, 
         const ref = pathRefFor(versionId, tag, true);
         let status = null;
         try {
-            const res = await doFetch(apiUrlFor(repo, `/versions/${ref}`));
+            const res = await requestWithRetry(apiUrlFor(repo, `/versions/${ref}`));
             status = res ? res.status : null;
             if (res && res.ok) {
                 const data = await res.json();
@@ -537,40 +624,22 @@ export function createClient({ cache, fetch: fetchImpl, rawBase: rawBaseOption, 
             const tagRef = pathRefFor(versionId, tag, false);
             url = `https://codeload.github.com/${repo}/zip/refs/tags/${tagRef}`;
         }
-        const res = await doFetch(url);
+        const res = await requestWithRetry(url);
         if (!res || !res.ok) throw new Error(`HTTP ${res ? res.status : '?'}`);
-        let bytes;
-        if (res.body && typeof res.body.getReader === 'function') {
-            const reader = res.body.getReader();
-            const chunks = [];
-            let received = 0;
-            const baseFetched = stats ? stats.byteFetched || 0 : 0;
-            const baseTotal = stats ? stats.byteTotal || 0 : 0;
-            const lengthHeader =
-                res.headers && typeof res.headers.get === 'function'
-                    ? Number(res.headers.get('content-length')) || 0
-                    : 0;
-            for (;;) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-                received += value.length;
-                if (stats) {
-                    stats.phase = 'download';
-                    stats.byteFetched = baseFetched + received;
-                    stats.byteTotal = baseTotal + lengthHeader;
-                    notifyProgress(stats);
-                }
+        const baseFetched = stats ? stats.byteFetched || 0 : 0;
+        const baseTotal = stats ? stats.byteTotal || 0 : 0;
+        const lengthHeader =
+            res.headers && typeof res.headers.get === 'function'
+                ? Number(res.headers.get('content-length')) || 0
+                : 0;
+        const bytes = await readResponseBytes(res, (received) => {
+            if (stats) {
+                stats.phase = 'download';
+                stats.byteFetched = baseFetched + received;
+                stats.byteTotal = baseTotal + lengthHeader;
+                notifyProgress(stats);
             }
-            bytes = new Uint8Array(received);
-            let at = 0;
-            for (const chunk of chunks) {
-                bytes.set(chunk, at);
-                at += chunk.length;
-            }
-        } else {
-            bytes = new Uint8Array(await res.arrayBuffer());
-        }
+        });
         const byName = new Map(readZipDirectory(bytes).map((entry) => [entry.name, entry]));
         let prefix = '';
         if (!byName.has('version-manifest.json')) {
@@ -634,8 +703,12 @@ export function createClient({ cache, fetch: fetchImpl, rawBase: rawBaseOption, 
                 notifyProgress(stats);
                 return;
             }
-            const bytes = await fetchBytes(repo, refText, rel);
-            const actual = await sha256Hex(bytes);
+            let bytes = await fetchBytes(repo, refText, rel);
+            let actual = await sha256Hex(bytes);
+            if (actual !== expected) {
+                bytes = await fetchBytes(repo, refText, rel);
+                actual = await sha256Hex(bytes);
+            }
             if (actual !== expected) {
                 throw new Error(
                     `照合に失敗しました: ${rel}。期待 ${expected} / 実際 ${actual}`,
