@@ -315,6 +315,16 @@ function setContentEditableSelection(editor, start, end = start) {
     selection?.addRange(range);
 }
 
+function getAdjacentMentionSegment(editor, inputType, selection) {
+    if (!selection || selection.start !== selection.end) return null;
+    if (inputType !== 'deleteContentBackward' && inputType !== 'deleteContentForward') return null;
+    const { segments } = getMarkdownEditorSourceSegments(editor);
+    return segments.find((segment) => getRenderedMentionSource(segment.node) !== null
+        && (inputType === 'deleteContentBackward'
+            ? segment.end === selection.start
+            : segment.start === selection.start)) || null;
+}
+
 function getDirectEditorDeleteCaret(editor, inputType, selection) {
     if (!selection) return null;
     if (selection.start !== selection.end) return selection.start;
@@ -1354,6 +1364,13 @@ export function attachMarkdownContentEditor(editor) {
                         : null,
                 };
                 handleNyaitterImeBeforeInput(editor, event);
+                if (!event.defaultPrevented) {
+                    const mentionSegment = getAdjacentMentionSegment(editor, event.inputType, selection);
+                    if (mentionSegment) {
+                        event.preventDefault();
+                        replaceMarkdownEditorRange(editor, '', mentionSegment.start, mentionSegment.end);
+                    }
+                }
             });
             editor.addEventListener('keydown', (event) => {
                 if (event.defaultPrevented) return;
