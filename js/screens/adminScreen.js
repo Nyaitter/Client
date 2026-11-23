@@ -323,8 +323,7 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
         const alreadyPrivate = targetState ? Boolean(targetState.lock) : Boolean(snapshot.post?.lock);
         const groupId = report.group_id || snapshot.post?.groupId || null;
         const isGroupReport = Boolean(groupId);
-        const viewerIsAdmin = Boolean(getCurrentUser()?.admin);
-        const groupRestricted = isGroupReport && !viewerIsAdmin;
+        const groupRestricted = isGroupReport;
         let groupName = '';
         if (groupId) {
             const { data: groupData } = await apiRequest(`/server/api/groups/${encodeURIComponent(groupId)}`);
@@ -405,7 +404,7 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                     <h3 class="nui-section-title">${t('admin.response')}</h3>
                     <p class="moderation-help-text nui-help-text">${t('admin.response_hint')}</p>
                     <form id="moderation-resolution-form" class="nui-form" data-report-id="${Number(report.id)}" data-nui="form">
-                        ${selectableUsers.length > 0 && !groupRestricted ? `<div class="moderation-action-field nui-field"><label for="moderation-target-user">${t('admin.target_user_label')}</label><select id="moderation-target-user" class="moderation-target-select nui-input"><option value="">${t('admin.select_placeholder')}</option>${targetOptions}</select><p class="moderation-help-text nui-help-text">${t('admin.target_user_hint')}</p></div>` : ''}
+                        ${selectableUsers.length > 0 ? `<div class="moderation-action-field nui-field"><label for="moderation-target-user">${t('admin.target_user_label')}</label><select id="moderation-target-user" class="moderation-target-select nui-input"><option value="">${t('admin.select_placeholder')}</option>${targetOptions}</select><p class="moderation-help-text nui-help-text">${t('admin.target_user_hint')}</p></div>` : ''}
                         <div class="moderation-action-grid">
                             ${actionCards.map((card) => renderActionCard(card)).join('')}
                         </div>

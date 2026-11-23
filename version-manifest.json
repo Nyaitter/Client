@@ -181,7 +181,7 @@
     "js/screenManager.js": "20c0fa0ff51ef6bd88943f03b81fcba571c20936a2e3d3520fac8ad14dd1b35f",
     "js/screenRegistry.js": "7f7f714ba5625466d6e9eaab1ee5b942e9780537377aae7c8547dd44b870d3a8",
     "js/screens/admin/view.js": "29a32b2263d7fc7cecde16a8fd391335afa7d75a664188d4753cab0f4817115b",
-    "js/screens/adminScreen.js": "38868de6371c16ecc92526e1a8aad7d51996b9972d24cd45df0b04a642b50570",
+    "js/screens/adminScreen.js": "b33deef667e249e65f639c5a03e9e5bf02aa4f1c3a5aaaf5129ce55be690290d",
     "js/screens/callScreen.js": "a8b8a553db0d37da91553b88c14c5d302897db376f4f98a6f5ecbe59458efb13",
     "js/screens/dmScreen.js": "04127bd7d4d67a3ce0d9a15d9b6c35507cdebfd36a12dbc0d0aa7b6fec032814",
     "js/screens/docDetailScreen.js": "203b8fa9d8d0cb267abdce1637357d0890f2401fca4ade8877a713860f27dc1c",
