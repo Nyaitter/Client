@@ -361,7 +361,6 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                 icon: ICONS.preview,
                 title: t('admin.action_mask_post'),
                 description: t('admin.action_mask_post_desc'),
-                checked: alreadyMasked,
             } : null,
             postAvailable && !alreadyPrivate && !groupRestricted ? {
                 id: 'moderation-make-private',
@@ -424,10 +423,13 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
             event.preventDefault();
             const errorElement = document.getElementById('moderation-resolution-error');
             const targetUserId = document.getElementById('moderation-target-user')?.value || null;
+            const maskReasonValue = document.getElementById('moderation-mask-reason')?.value || '';
+            const maskPost = Boolean(document.getElementById('moderation-mask-post')?.checked)
+                || (alreadyMasked && maskReasonValue.trim() !== String(targetState?.mask_reason || '').trim());
             const actions = {
                 deletePost: Boolean(document.getElementById('moderation-delete-post')?.checked),
-                maskPost: Boolean(document.getElementById('moderation-mask-post')?.checked),
-                maskReason: document.getElementById('moderation-mask-reason')?.value || '',
+                maskPost,
+                maskReason: maskReasonValue,
                 makePrivate: Boolean(document.getElementById('moderation-make-private')?.checked),
                 searchExclude: Boolean(document.getElementById('moderation-search-exclude')?.checked),
                 freeze: Boolean(document.getElementById('moderation-freeze')?.checked),

@@ -654,7 +654,7 @@ export async function updateNavAndSidebars() {
             key: 'admin_reports',
             name: t('nav.admin_reports'),
             hash: '#admin/reports',
-            icon: ICONS.mask,
+            icon: ICONS.inbox,
         });
     }
 
@@ -875,7 +875,7 @@ export const ALL_SIDEBAR_ITEMS = Object.freeze([
         name: t('dm.request_suffix'),
         labelKey: 'nav.admin_reports',
         hash: '#admin/reports',
-        icon: ICONS.mask,
+        icon: ICONS.inbox,
         auth: true,
         admin: false,
         mobileBarDefault: false,
