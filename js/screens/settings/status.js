@@ -2,7 +2,8 @@ import { t } from '../../modules/i18n.js';
 import { api } from '../../api.js';
 
 const STATUS_TABS = [
-    ['trust', 'Trust'],
+    ['trust', 'Status'],
+    ['option', 'Option'],
 ];
 
 const TRUST_COLORS = {
@@ -19,7 +20,11 @@ const TRUST_COLORS = {
 export function bindSettingsStatus(root, context) {
     const group = root.querySelector('[data-settings-panel="status"]');
     if (!group) return () => {};
-    group.querySelector('.settings-status-root')?.remove();
+    const previousRoot = group.querySelector('.settings-status-root');
+    if (previousRoot) {
+        for (const node of previousRoot.querySelectorAll('.settings-rank-display, #settings-display-ranks')) group.append(node);
+        previousRoot.remove();
+    }
     const statusRoot = document.createElement('div');
     statusRoot.className = 'settings-status-root';
     statusRoot.innerHTML = `
@@ -33,6 +38,14 @@ export function bindSettingsStatus(root, context) {
         <p class="settings-help-text nui-help-text" role="status" aria-live="polite" id="settings-status-message"></p>
         ${STATUS_TABS.map(([key]) => `<section class="settings-status-category" id="settings-status-panel-${key}" role="tabpanel" aria-labelledby="settings-status-tab-${key}" tabindex="0" hidden></section>`).join('')}`;
     group.prepend(statusRoot);
+
+    const optionPanel = statusRoot.querySelector('#settings-status-panel-option');
+    if (optionPanel) {
+        const rankDisplay = root.querySelector('.settings-rank-display');
+        const displayRanks = root.querySelector('#settings-display-ranks');
+        if (rankDisplay) optionPanel.append(rankDisplay);
+        if (displayRanks) optionPanel.append(displayRanks);
+    }
 
     const tabs = [...group.querySelectorAll('[role="tab"]')];
     const panels = [...group.querySelectorAll('[role="tabpanel"]')];
@@ -79,7 +92,6 @@ export function bindSettingsStatus(root, context) {
         const description = document.createElement('p');
         description.className = 'settings-help-text nui-help-text';
         description.textContent = status.description;
-        detail.replaceChildren(selectedLabel, rank, description);
         const section = document.createElement('div');
         section.className = 'settings-status-details';
         const heading = document.createElement('h5');
@@ -92,14 +104,14 @@ export function bindSettingsStatus(root, context) {
             item.textContent = text;
             list.append(item);
         }
+        section.append(heading, list);
         const scroll = document.createElement('div');
         scroll.className = 'settings-status-details-scroll';
         scroll.tabIndex = 0;
         scroll.setAttribute('role', 'group');
         scroll.setAttribute('aria-labelledby', heading.id);
-        scroll.append(list);
-        section.append(heading, scroll);
-        detail.append(section);
+        scroll.append(description, section);
+        detail.replaceChildren(selectedLabel, rank, scroll);
     };
 
     const render = (panel, status, key) => {
@@ -194,6 +206,7 @@ export function bindSettingsStatus(root, context) {
             if (error) throw error;
             const normalized = {};
             for (const [key] of STATUS_TABS) {
+                if (key !== 'trust') continue;
                 const status = data?.[key];
                 if (!validRank(status, key) || (status.ranks !== undefined &&
                     (!Array.isArray(status.ranks) || !status.ranks.every(item => validRank(item, key)) ||
@@ -203,7 +216,9 @@ export function bindSettingsStatus(root, context) {
                 }
                 normalized[key] = { ...status, ranks: status.ranks ?? [status], estimatedAge: typeof data?.estimated_age === 'number' ? data.estimated_age : null };
             }
-            STATUS_TABS.forEach(([key], index) => render(panels[index], normalized[key], key));
+            STATUS_TABS.forEach(([key], index) => {
+                if (key === 'trust') render(panels[index], normalized[key], key);
+            });
             loaded = true;
             message.textContent = '';
             message.hidden = true;
