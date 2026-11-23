@@ -128,10 +128,6 @@
     fill: none;
 }
 
-.post-mask-button svg {
-    stroke: var(--text-color);
-}
-
 .post-actions button {
     background: none;
     border: none;
@@ -1711,7 +1707,6 @@ body.pull-to-refresh-enabled {
 .group-timeline-mode-menu,
 .profile-timeline-mode-menu,
 .post-reply-control-menu,
-.post-tools-overflow-menu,
 .post-mask-menu,
 .post-account-menu,
 .profile-notify-menu,
