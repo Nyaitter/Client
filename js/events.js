@@ -41,6 +41,7 @@ import {
     positionDmMessageMenu,
 } from './modules/dm.js';
 import { getNotificationTargetHash } from './modules/notifications.js';
+import { ROUTES } from './routeTable.js';
 import { updateNavAndSidebars } from './modules/sidebar.js';
 import { beginScrollRouteTransition, saveScrollPosition } from './modules/scroll.js';
 import { goToLoginPage } from './modules/auth.js';
@@ -207,6 +208,89 @@ export function setupGlobalEventListeners() {
 // ---------------------------------------------------------------------------
 // handleGlobalClick — master delegated click handler
 // ---------------------------------------------------------------------------
+
+function isRouteHash(hash) {
+    if (!hash || hash === '#') return false;
+    return ROUTES.some((routeDefinition) => {
+        const match = routeDefinition.match;
+        if (typeof match === 'string') return match === hash;
+        if (match instanceof RegExp) return match.test(hash);
+        return Boolean(match(hash));
+    });
+}
+
+function configuredShareBase() {
+    const configured =
+        globalThis.NyaitterClientConfig?.shareUrl ||
+        globalThis.NyaitterClientConfig?.postShareUrl;
+    if (!configured) return null;
+    try {
+        const url = new URL(String(configured).trim());
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+        url.hash = '';
+        url.search = '';
+        return url;
+    } catch (_) {
+        return null;
+    }
+}
+
+function pathWithinBase(pathname, basePath) {
+    if (!basePath) return pathname;
+    if (pathname === basePath) return '/';
+    if (pathname.startsWith(`${basePath}/`)) return pathname.slice(basePath.length);
+    return null;
+}
+
+function decodePathSegment(segment) {
+    try {
+        return decodeURIComponent(segment);
+    } catch (_) {
+        return null;
+    }
+}
+
+// フルURLの内部リンクに対応するハッシュルートを返す。対応付けできない場合は null。
+function internalLinkDestination(url) {
+    let relativePath = null;
+    if (url.origin === window.location.origin) {
+        const appBasePath = new URL('.', document.baseURI).pathname.replace(/\/+$/, '');
+        relativePath = pathWithinBase(url.pathname, appBasePath);
+    }
+    if (relativePath === null) {
+        const shareBase = configuredShareBase();
+        if (shareBase && url.origin === shareBase.origin) {
+            relativePath = pathWithinBase(
+                url.pathname,
+                shareBase.pathname.replace(/\/+$/, ''),
+            );
+        }
+    }
+    if (relativePath === null) return null;
+
+    if (url.hash && isRouteHash(url.hash)) return url.hash;
+
+    const postPathMatch = relativePath.match(/^(?:\/@[^/]+)?\/posts?\/(\d+)$/i);
+    if (postPathMatch) return `#post/${postPathMatch[1]}`;
+
+    const groupPathMatch = relativePath.match(/^\/groups?\/([^/]+)\/?$/i);
+    if (groupPathMatch) {
+        const groupId = decodePathSegment(groupPathMatch[1]);
+        if (groupId) return `#group/${groupId.toLowerCase()}`;
+    }
+
+    const stagePathMatch = relativePath.match(/^\/(?:stages?|spaces?)\/([^/]+)\/?$/i);
+    if (stagePathMatch) {
+        const stageId = decodePathSegment(stagePathMatch[1]);
+        if (stageId) return `#stage/${stageId.toLowerCase()}`;
+    }
+
+    const queryPostId = url.searchParams.get('post');
+    if (queryPostId && /^\d+$/.test(queryPostId)) return `#post/${queryPostId}`;
+
+    return null;
+}
+
 function handleGlobalClick(e) {
     const target = e.target;
 
@@ -228,6 +312,38 @@ function handleGlobalClick(e) {
             window.location.hash = destinationHash;
         }
         return;
+    }
+
+    // ── Full-URL internal link navigation ─────────────────────────────────
+    const pageLink = target.closest('a[href]');
+    const isPlainClick =
+        e.button === 0 &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.shiftKey &&
+        !e.altKey;
+    if (
+        isPlainClick &&
+        pageLink &&
+        !pageLink.hasAttribute('data-action') &&
+        !pageLink.hasAttribute('download')
+    ) {
+        let destinationHash = null;
+        try {
+            const url = new URL(pageLink.href);
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+                destinationHash = internalLinkDestination(url);
+            }
+        } catch (_) {}
+        if (destinationHash) {
+            e.preventDefault();
+            const currentHash = window.location.hash || '#';
+            if (destinationHash !== currentHash) {
+                beginScrollRouteTransition();
+                window.location.hash = destinationHash;
+            }
+            return;
+        }
     }
 
     // ── data-action dispatch ──────────────────────────────────────────────
