@@ -1027,6 +1027,7 @@
   "status.situation": "状况",
   "status.none": "无",
   "status.current_rank": "当前等级：{label}",
+  "status.estimated_age": "估计年龄：{age}岁",
   "status.rank_list": "等级列表",
   "status.selected_detail_label": "选中等级的详情",
   "status.current_badge": "当前",

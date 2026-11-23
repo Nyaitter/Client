@@ -1027,6 +1027,7 @@
   "status.situation": "상황",
   "status.none": "없음",
   "status.current_rank": "현재 랭크: {label}",
+  "status.estimated_age": "추정 나이: {age}세",
   "status.rank_list": "랭크 목록",
   "status.selected_detail_label": "선택 중인 랭크의 상세",
   "status.current_badge": "현재",

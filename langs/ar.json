@@ -1038,6 +1038,7 @@
   "status.situation": "الوضع",
   "status.none": "لا شيء",
   "status.current_rank": "الرتبة الحالية: {label}",
+  "status.estimated_age": "العمر التقديري: {age}",
   "status.rank_list": "قائمة الرتب",
   "status.selected_detail_label": "تفاصيل الرتبة المحددة",
   "status.current_badge": "الحالية",
