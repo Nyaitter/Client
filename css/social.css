@@ -1140,7 +1140,6 @@
 
 .post-group-menu,
 .post-reply-control-menu,
-.post-tools-overflow-menu,
 .post-mask-menu {
     position: fixed;
     z-index: 40;
@@ -1937,10 +1936,8 @@
 
 .post-form-actions .post-group-menu-item,
 .post-form-actions .post-reply-control-menu-item,
-.post-form-actions .post-tools-overflow-menu-item,
 .post-group-menu-item,
-.post-reply-control-menu-item,
-.post-tools-overflow-menu-item {
+.post-reply-control-menu-item {
     display: flex;
     align-items: center;
     gap: 0.65rem;
@@ -1963,34 +1960,25 @@
 .post-form-actions .post-reply-control-menu-item:hover,
 .post-form-actions .post-reply-control-menu-item:focus-visible,
 .post-form-actions .post-reply-control-menu-item.active,
-.post-form-actions .post-tools-overflow-menu-item:hover,
-.post-form-actions .post-tools-overflow-menu-item:focus-visible,
-.post-form-actions .post-tools-overflow-menu-item.active,
 .post-group-menu-item:hover,
 .post-group-menu-item:focus-visible,
 .post-group-menu-item.active,
 .post-reply-control-menu-item:hover,
 .post-reply-control-menu-item:focus-visible,
-.post-reply-control-menu-item.active,
-.post-tools-overflow-menu-item:hover,
-.post-tools-overflow-menu-item:focus-visible,
-.post-tools-overflow-menu-item.active {
+.post-reply-control-menu-item.active {
     background: var(--hover-bg-color, var(--main-bg-color));
 }
 
 .post-form-actions .post-group-menu-item:focus-visible,
 .post-form-actions .post-reply-control-menu-item:focus-visible,
-.post-form-actions .post-tools-overflow-menu-item:focus-visible,
 .post-group-menu-item:focus-visible,
-.post-reply-control-menu-item:focus-visible,
-.post-tools-overflow-menu-item:focus-visible {
+.post-reply-control-menu-item:focus-visible {
     outline: 2px solid var(--primary-color);
     outline-offset: -2px;
 }
 
 .post-group-menu-icon,
-.post-reply-control-menu-icon,
-.post-tools-overflow-menu-icon {
+.post-reply-control-menu-icon {
     box-sizing: border-box;
     flex: 0 0 36px;
     width: 36px;
@@ -2010,8 +1998,7 @@
 }
 
 .post-group-menu-icon-fallback,
-.post-reply-control-menu-icon,
-.post-tools-overflow-menu-icon {
+.post-reply-control-menu-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2021,8 +2008,7 @@
 }
 
 .post-group-menu-icon-fallback svg,
-.post-reply-control-menu-icon svg,
-.post-tools-overflow-menu-icon svg {
+.post-reply-control-menu-icon svg {
     display: block;
     width: 1.25rem;
     height: 1.25rem;
@@ -2031,53 +2017,56 @@
     margin: auto;
 }
 
-.post-tools-overflow-menu-item[data-overflow-tool="mask"] .post-tools-overflow-menu-icon svg {
-    stroke-width: 0.7;
-}
 
 .post-group-menu-copy,
-.post-reply-control-menu-copy,
-.post-tools-overflow-menu-copy {
+.post-reply-control-menu-copy {
     display: flex;
     flex: 1;
     min-width: 0;
     flex-direction: column;
 }
 
+.post-menu-check {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    color: var(--primary-color);
+}
+
+.post-menu-check svg {
+    display: block;
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
 .post-group-menu-copy strong,
 .post-group-menu-copy small,
 .post-reply-control-menu-copy strong,
-.post-reply-control-menu-copy small,
-.post-tools-overflow-menu-copy strong,
-.post-tools-overflow-menu-copy small {
+.post-reply-control-menu-copy small {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .post-group-menu-copy strong,
-.post-reply-control-menu-copy strong,
-.post-tools-overflow-menu-copy strong {
+.post-reply-control-menu-copy strong {
     font-size: 0.95rem;
     font-weight: 700;
 }
 
 .post-group-menu-copy small,
-.post-reply-control-menu-copy small,
-.post-tools-overflow-menu-copy small {
+.post-reply-control-menu-copy small {
     color: var(--secondary-text-color);
     font-size: 0.82rem;
 }
 
 .post-group-menu-item.active,
-.post-reply-control-menu-item.active,
-.post-tools-overflow-menu-item.active {
+.post-reply-control-menu-item.active {
     color: var(--text-color);
 }
 
 .post-group-menu-item.active small,
-.post-reply-control-menu-item.active small,
-.post-tools-overflow-menu-item.active small {
+.post-reply-control-menu-item.active small {
     color: var(--secondary-text-color);
 }
 

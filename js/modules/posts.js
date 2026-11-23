@@ -1182,6 +1182,7 @@ async function openPostAccountMenu(container) {
                     <small>${escapeHTML(getNyaitterId(account))}</small>
                 </span>
                 ${account.is_imposter ? `<span class="settings-session-current">${t('post.imposter_badge')}</span>` : ''}
+                ${accountId === selectedId ? `<span class="post-menu-check" aria-hidden="true">${ICONS.check}</span>` : ''}
             `;
             item.addEventListener('click', () => {
                 setPostingAccount(container, account);
@@ -1230,7 +1231,7 @@ export function createPostFormHTML(isModal = false) {
                                 ${ICONS.mask}
                             </button>
                             <button type="button" class="post-tool-btn post-reply-control-button" title="${t('composer.reply_control.everyone')}" aria-label="${t('composer.reply_control.everyone')}" aria-haspopup="menu" aria-expanded="false">${ICONS.reply_control}</button>
-                            <button type="button" class="post-tool-btn post-schedule-button" title="${t('composer.schedule')}" aria-label="${t('composer.schedule')}" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 10h18"/><path d="M12 13v4l3 1"/></svg></button>
+                            <button type="button" class="post-tool-btn post-schedule-button" title="${t('composer.schedule')}" aria-label="${t('composer.schedule')}" aria-haspopup="dialog" aria-expanded="false">${ICONS.schedule}</button>
                             <button type="button" class="post-tool-btn post-group-button" title="${t('composer.destination', { name: 'Nyaitter' })}" aria-label="${t('composer.destination', { name: 'Nyaitter' })}" aria-haspopup="menu" aria-expanded="false">${ICONS.group}</button>
                         </div>
                     </div>
@@ -1397,21 +1398,6 @@ function togglePostScheduleMenu(container) {
     document.addEventListener('pointerdown', handler, true);
 }
 
-export function closePostToolsOverflowMenu(container) {
-    const menu = container?.querySelector('.post-tools-overflow-menu');
-    const button = container?.querySelector('.post-tools-overflow-button');
-    menu?.classList.add('hidden');
-    button?.setAttribute('aria-expanded', 'false');
-    if (container?._postToolsOverflowMenuOutsideHandler) {
-        document.removeEventListener('pointerdown', container._postToolsOverflowMenuOutsideHandler, true);
-        container._postToolsOverflowMenuOutsideHandler = null;
-    }
-}
-
-export function renderPostToolsOverflowMenu(_container) {}
-
-export function togglePostToolsOverflowMenu(_container) {}
-
 function syncPostToolsWrap(container) {
     const row = container?.querySelector('.post-form-tools-row');
     const group = row?.querySelector('.post-tools-right-group');
@@ -1554,6 +1540,7 @@ function renderPostReplyControlMenu(container) {
                 <strong>${escapeHTML(opt.title)}</strong>
                 <small>${escapeHTML(opt.description)}</small>
             </span>
+            ${selected ? `<span class="post-menu-check" aria-hidden="true">${ICONS.check}</span>` : ''}
         </button>`;
     }).join('');
     menu.querySelectorAll('[data-reply-control]').forEach((item) => item.addEventListener('click', () => {
@@ -1793,10 +1780,10 @@ async function applyPostGroupSelection(container, groupId, { timelineSyncVersion
 function renderPostGroupMenu(container, groups) {
     const menu = container?.querySelector('.post-group-menu');
     if (!menu) return;
-    const nyaitterItem = `<button type="button" class="post-group-menu-item ${!getPostingGroup(container) ? 'active' : ''}" data-group-id="" aria-pressed="${String(!getPostingGroup(container))}">${renderNyaitterPostMenuIcon()}<span class="post-group-menu-copy"><strong>Nyaitter</strong><small>${t('post.group_menu_normal')}</small></span></button>`;
+    const nyaitterItem = `<button type="button" class="post-group-menu-item ${!getPostingGroup(container) ? 'active' : ''}" data-group-id="" aria-pressed="${String(!getPostingGroup(container))}">${renderNyaitterPostMenuIcon()}<span class="post-group-menu-copy"><strong>Nyaitter</strong><small>${t('post.group_menu_normal')}</small></span>${!getPostingGroup(container) ? `<span class="post-menu-check" aria-hidden="true">${ICONS.check}</span>` : ''}</button>`;
     const groupItems = groups.map((group) => {
         const selected = String(group.id) === String(getPostingGroup(container)?.id);
-        return `<button type="button" class="post-group-menu-item ${selected ? 'active' : ''}" data-group-id="${escapeHTML(String(group.id))}" aria-pressed="${String(selected)}">${renderPostGroupMenuIcon(group)}<span class="post-group-menu-copy"><strong>${escapeHTML(group.name || t('post.group_untitled'))}</strong><small>${t('post.group_menu_group_post')}</small></span></button>`;
+        return `<button type="button" class="post-group-menu-item ${selected ? 'active' : ''}" data-group-id="${escapeHTML(String(group.id))}" aria-pressed="${String(selected)}">${renderPostGroupMenuIcon(group)}<span class="post-group-menu-copy"><strong>${escapeHTML(group.name || t('post.group_untitled'))}</strong><small>${t('post.group_menu_group_post')}</small></span>${selected ? `<span class="post-menu-check" aria-hidden="true">${ICONS.check}</span>` : ''}</button>`;
     }).join('');
     menu.innerHTML = `${nyaitterItem}${groupItems || `<p class="post-group-menu-empty">${t('post.no_groups_joined')}</p>`}`;
     menu.querySelectorAll('[data-group-id]').forEach((item) => item.addEventListener('click', async () => {
@@ -2448,9 +2435,6 @@ export function attachPostFormListeners(container, onPostSuccess = null) {
     });
     container.querySelector('.post-schedule-button')?.addEventListener('click', () => {
         togglePostScheduleMenu(container);
-    });
-    container.querySelector('.post-tools-overflow-button')?.addEventListener('click', () => {
-        togglePostToolsOverflowMenu(container);
     });
     setupPostToolsOverflowObserver(container);
     container.querySelector('#post-submit-button')?.addEventListener('click', () => {
@@ -3156,9 +3140,6 @@ export async function openEditPostModal(postId, onSaved = null) {
         });
         DOM.editPostModalContent.querySelector('.post-lock-button')?.addEventListener('click', () => {
             handlePostLock(DOM.editPostModalContent);
-        });
-        DOM.editPostModalContent.querySelector('.post-tools-overflow-button')?.addEventListener('click', () => {
-            togglePostToolsOverflowMenu(DOM.editPostModalContent);
         });
         setupPostToolsOverflowObserver(DOM.editPostModalContent);
 

@@ -127,7 +127,6 @@ img.emoji {
 .post-group-button,
 .post-reply-control-button,
 .post-schedule-button,
-.post-tools-overflow-button,
 .post-tools-group .post-tool-btn {
     background: none;
     border: none;
@@ -150,7 +149,6 @@ img.emoji {
 .post-group-button:hover,
 .post-reply-control-button:hover,
 .post-schedule-button:hover,
-.post-tools-overflow-button:hover,
 .post-tools-group .post-tool-btn:hover {
     background-color: var(--bg-color);
 }
@@ -167,16 +165,6 @@ img.emoji {
     box-sizing: border-box;
 }
 
-.post-schedule-button svg {
-    width: 1.2rem;
-    height: 1.2rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
 .post-schedule-button.active,
 .post-schedule-button[aria-expanded="true"] {
     color: var(--primary-color);
@@ -187,11 +175,6 @@ img.emoji {
 .post-schedule-button.active:hover,
 .post-schedule-button[aria-expanded="true"]:hover {
     background: color-mix(in srgb, var(--primary-color) 10%, transparent);
-}
-
-.emoji-pic-button svg {
-    stroke: none;
-    fill: var(--text-color);
 }
 
 textarea.markdown-content-editor {
