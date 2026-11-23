@@ -217,7 +217,7 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 .settings-status-indicator { display: block; flex-shrink: 0; width: 16px; height: 16px; }
 .settings-status-current-badge { margin-left: auto; white-space: nowrap; color: var(--secondary-text-color); font-size: .7rem; }
 .settings-group-panel h4.settings-status-rank { display: block; font-size: clamp(1.5rem, 4vw, 2.5rem); line-height: 1.25; color: var(--primary-color); overflow-wrap: anywhere; margin: 0 0 8px; }
-.settings-status-details { display: flex; flex-direction: column; flex: 1 1 auto; height: 0; min-height: 0; overflow: hidden; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; }
+.settings-status-details { border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; }
 .settings-status-details h5 { margin: 0 0 8px; font-size: .9rem; }
 .settings-status-details-scroll {
     flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
