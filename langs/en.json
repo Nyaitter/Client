@@ -1504,6 +1504,7 @@
   "status.situation": "Situation",
   "status.none": "None",
   "status.current_rank": "Current rank: {label}",
+  "status.estimated_age": "Estimated age: {age}",
   "status.rank_list": "Rank list",
   "status.selected_detail_label": "Selected rank details",
   "status.current_badge": "Current",

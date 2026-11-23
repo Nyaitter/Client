@@ -1038,6 +1038,7 @@
   "status.situation": "Ситуация",
   "status.none": "Нет",
   "status.current_rank": "Текущий ранг: {label}",
+  "status.estimated_age": "Предполагаемый возраст: {age}",
   "status.rank_list": "Список рангов",
   "status.selected_detail_label": "Детали выбранного ранга",
   "status.current_badge": "Текущий",

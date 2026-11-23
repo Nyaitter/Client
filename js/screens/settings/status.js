@@ -107,6 +107,13 @@ export function bindSettingsStatus(root, context) {
         current.className = 'settings-status-current';
         current.id = `settings-status-current-${key}`;
         current.textContent = t('status.current_rank', { label: status.label });
+        const blocks = [current];
+        if (typeof status.estimatedAge === 'number') {
+            const age = document.createElement('p');
+            age.className = 'settings-status-estimated-age';
+            age.textContent = t('status.estimated_age', { age: status.estimatedAge });
+            blocks.push(age);
+        }
         const layout = document.createElement('div');
         layout.className = 'settings-status-layout';
         const rankList = document.createElement('div');
@@ -165,7 +172,8 @@ export function bindSettingsStatus(root, context) {
         }
         renderDetails(detail, ranks.find(item => item.rank === status.rank) || status, key);
         layout.append(rankList, detail);
-        panel.replaceChildren(current, layout);
+        blocks.push(layout);
+        panel.replaceChildren(...blocks);
     };
 
     const validRank = (status, key) => status &&
@@ -193,7 +201,7 @@ export function bindSettingsStatus(root, context) {
                     new Set(status.ranks.map(item => item.rank)).size !== status.ranks.length))) {
                     throw new Error('Invalid status response');
                 }
-                normalized[key] = { ...status, ranks: status.ranks ?? [status] };
+                normalized[key] = { ...status, ranks: status.ranks ?? [status], estimatedAge: typeof data?.estimated_age === 'number' ? data.estimated_age : null };
             }
             STATUS_TABS.forEach(([key], index) => render(panels[index], normalized[key], key));
             loaded = true;

@@ -1038,6 +1038,7 @@
   "status.situation": "Situação",
   "status.none": "Nenhum",
   "status.current_rank": "Nível atual: {label}",
+  "status.estimated_age": "Idade estimada: {age}",
   "status.rank_list": "Lista de níveis",
   "status.selected_detail_label": "Detalhes do nível selecionado",
   "status.current_badge": "Atual",

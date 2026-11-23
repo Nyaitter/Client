@@ -195,12 +195,14 @@ body[data-active-screen="settings-screen"] #content-area { flex: 1; min-height: 
 .settings-status-tab[aria-selected='true'] { color: var(--primary-color); border-bottom-color: var(--primary-color); }
 .settings-redesigned .settings-group-panel > .settings-status-category { padding: 0; border: 0; background: transparent; }
 .settings-status-category { padding-top: 16px; }
-.settings-redesigned .settings-group-panel[data-settings-panel="status"]:not([hidden]) { display: flex; flex-direction: column; overflow: hidden; flex: 1 1 auto; height: auto; min-height: 0; }
-.settings-redesigned .settings-group-panel[data-settings-panel="status"]:not([hidden]) > .settings-status-category:not([hidden]) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.settings-redesigned .settings-group-panel[data-settings-panel="status"]:not([hidden]) { display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; flex: 1 1 auto; height: auto; min-height: 0; }
+.settings-redesigned .settings-group-panel[data-settings-panel="status"]:not([hidden]) > .settings-status-root { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 260px; }
+.settings-redesigned .settings-status-root > .settings-status-category:not([hidden]) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 .settings-redesigned .settings-status-layout { display: grid; flex: 1 1 auto; box-sizing: border-box; min-height: 0; grid-template-columns: minmax(150px, .8fr) minmax(0, 1.2fr); grid-template-rows: minmax(0, 1fr); gap: 16px; align-items: stretch; }
 .settings-status-tabs-container { position: sticky; top: 0; z-index: 1; margin: 0 -20px; padding: 8px 20px 0; background: var(--main-bg-color); }
 .settings-status-category[hidden] { display: none; }
 .settings-status-current { margin: 0 0 16px; font-size: .85rem; font-weight: 700; }
+.settings-status-estimated-age { margin: -8px 0 16px; font-size: .85rem; color: var(--secondary-text-color); }
 .settings-status-layout { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(0, 1.2fr); gap: 16px; align-items: start; min-height: 0; }
 .settings-status-list { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 20px; border: 1px solid var(--border-color); border-radius: 14px; background: var(--main-bg-color); }
 .settings-status-card { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 20px; border: 1px solid var(--border-color); border-radius: 14px; background: var(--main-bg-color); }
