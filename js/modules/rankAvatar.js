@@ -471,8 +471,6 @@ export const TRUST_COLORS = Object.freeze({
     Reliable: '#80b3ff',
     Credible: '#c2ffb3',
     Neutral: '#cccccc',
-    Questionable: '#f20000',
-    Suspicious: '#b30000',
     Banned: '#660000',
     Unknown: '#808080',
 });
@@ -480,7 +478,7 @@ export const TRUST_COLORS = Object.freeze({
 export const RANK_TYPES = Object.freeze(['trust']);
 const TRUST_IDS = Object.freeze({
     T: 'Trusted', R: 'Reliable', C: 'Credible', N: 'Neutral',
-    Q: 'Questionable', S: 'Suspicious', B: 'Banned', U: 'Unknown',
+    B: 'Banned', U: 'Unknown',
 });
 export function getRankAppearance(type, rankId) {
     if (!RANK_TYPES.includes(type)) return null;
