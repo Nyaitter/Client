@@ -11,8 +11,6 @@ const TRUST_COLORS = {
     Reliable: '#80b3ff',
     Credible: '#c2ffb3',
     Neutral: '#cccccc',
-    Questionable: '#f20000',
-    Suspicious: '#b30000',
     Banned: '#660000',
     Unknown: '#808080',
 };
@@ -191,7 +189,6 @@ export function bindSettingsStatus(root, context) {
     const validRank = (status, key) => status &&
         typeof status.rank === 'string' &&
         typeof status.label === 'string' && typeof status.description === 'string' &&
-        (status.requirements === undefined || (Array.isArray(status.requirements) && status.requirements.every(item => typeof item === 'string'))) &&
         ['benefits', 'restrictions'].every(field => Array.isArray(status[field]) && status[field].every(item => typeof item === 'string'));
 
     const load = async () => {
