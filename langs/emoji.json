@@ -1126,7 +1126,6 @@
   "callview.quality": "✨",
   "callview.quality_label": "📞✨",
   "callview.devices_heading": "🎤📷",
-  "callview.person_tools_label": "🎬 {name}",
   "callview.person_volume_label": "🔊 {name}",
   "callview.volume": "🔊",
   "callview.hide_video": "🎥🙈",

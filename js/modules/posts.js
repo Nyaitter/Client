@@ -951,6 +951,10 @@ export async function renderPost(post, author, options = {}) {
 
                     const isNested = Boolean(postEl.closest('.nested-repost-container'));
                     const heightLimit = isNested ? 180 : 240;
+                    // 画像の読み込みなどで測り直すときは、前回の縮小を戻してから測る。
+                    inner.style.width = '';
+                    inner.style.transform = '';
+                    targetEl.style.height = '';
                     const naturalHeight = inner.scrollHeight || 0;
                     if (naturalHeight <= heightLimit) return;
 
@@ -997,6 +1001,10 @@ export async function renderPost(post, author, options = {}) {
                 targetEl.after(toggleBtn);
 
                 postEl.__finalizeSize = () => {
+                    if (targetEl.classList.contains('post-content-expanded')) {
+                        toggleBtn.classList.add('is-visible');
+                        return;
+                    }
                     const scrollHeight = targetEl.scrollHeight || 0;
                     const clientHeight = targetEl.clientHeight || 0;
                     const clampLimit = Number.parseFloat(window.getComputedStyle(targetEl).maxHeight);
@@ -1013,14 +1021,20 @@ export async function renderPost(post, author, options = {}) {
     return postEl;
 }
 
-// 非表示の間や画像の読み込み中は高さを正しく測れない。測れる状態になるまで
-// 最終計測を保留し、画面に近づいたときと画像の読み込み完了時にやり直す。
+// 非表示の間は高さを正しく測れないため最終計測を保留し、画面に近づいたときに
+// やり直す。画像の読み込み完了は待たない。切り取られた範囲の外にある遅延読み込み
+// 画像は読み込みが始まらないことがあり、完了を待つと計測自体が行われなくなる。
+// 画像が読み込まれるたびに測り直し、結果を更新する。
 const pendingPostSizes = new Set();
 let postSizeObserver = null;
 
 function postSizeMeasurable(postEl) {
     if (!postEl.isConnected) return false;
     if (postEl.getClientRects().length === 0) return false;
+    return true;
+}
+
+function postImagesSettled(postEl) {
     for (const img of postEl.querySelectorAll('img')) {
         if (!img.complete) return false;
     }
@@ -1076,9 +1090,13 @@ export function finalizePostSizes(root) {
             continue;
         }
         const finalize = postEl.__finalizeSize;
-        delete postEl.__finalizeSize;
-        stopWatchingPostSize(postEl);
         finalize();
+        if (postImagesSettled(postEl)) {
+            delete postEl.__finalizeSize;
+            stopWatchingPostSize(postEl);
+        } else {
+            watchPostSize(postEl);
+        }
     }
 }
 

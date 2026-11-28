@@ -21,6 +21,20 @@ function notifyCallConnectionClosed() {
         .then((module) => module.callConnectionClosed())
         .catch(() => {});
 }
+function notifyCallConnectionInterrupted() {
+    if (!callsModulePromise) return;
+    void callsModulePromise
+        .then((module) => module.callConnectionInterrupted?.())
+        .catch(() => {});
+}
+function notifyCallConnectionRestored() {
+    if (!callsModulePromise) return;
+    void callsModulePromise
+        .then((module) => module.callConnectionRestored?.())
+        .catch(() => {});
+}
+// 切断を挟んだ再接続かどうか。明示的な停止では復帰扱いにしない。
+let realtimeInterrupted = false;
 import { t } from './i18n.js';
 import { apiRequest } from '../api.js';
 import { trackRealtimeUsage } from './networkUsage.js';
@@ -97,6 +111,7 @@ export function clearRealtimeTimers() {
 
 export function stopRealtimeConnection() {
     guestRealtime = false;
+    realtimeInterrupted = false;
     notifyCallConnectionClosed();
     setRealtimeShouldReconnect(false);
     clearRealtimeTimers();
@@ -306,6 +321,10 @@ export function connectRealtimeSocket(guestMode = guestRealtime) {
     socket.onopen = () => {
         if (getRealtimeChannel() !== socket) return;
         setRealtimeReconnectAttempts(0);
+        if (realtimeInterrupted) {
+            realtimeInterrupted = false;
+            notifyCallConnectionRestored();
+        }
         if (!guestMode) void refreshNavSummaryFallback();
         if (getRealtimePingTimer()) clearInterval(getRealtimePingTimer());
         setRealtimePingTimer(
@@ -327,7 +346,8 @@ export function connectRealtimeSocket(guestMode = guestRealtime) {
 
     socket.onclose = () => {
         if (getRealtimeChannel() !== socket) return;
-        notifyCallConnectionClosed();
+        realtimeInterrupted = true;
+        notifyCallConnectionInterrupted();
         setRealtimeChannel(null);
         setRealtimeAuthKey(null);
         if (getRealtimePingTimer()) clearInterval(getRealtimePingTimer());
