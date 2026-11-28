@@ -20,7 +20,6 @@ import {
     showAppPrompt,
 } from '../utils/helpers.js';
 import {
-    renderEmpty,
     renderError,
     renderHeader,
     renderLoading,
@@ -103,54 +102,69 @@ export async function showAdminReportsScreen(showScreenFn = null) {
 
     const contentDiv = document.getElementById('admin-reports-content');
     if (!contentDiv) return;
-    renderLoading(contentDiv);
 
-    try {
-        const { data, error } = await apiRequest('/server/api/reports/assigned');
-        if (error) throw error;
-        const reports = Array.isArray(data?.reports) ? data.reports : [];
-        if (reports.length === 0) {
-            renderEmpty(contentDiv, t('admin.no_assigned_requests'));
-            return;
-        }
-        const groupNames = {};
-        const groupIds = [...new Set(reports.map((report) => report.group_id).filter(Boolean))];
-        if (groupIds.length > 0) {
-            const { data: mineData } = await apiRequest('/server/api/groups/mine?limit=200');
-            for (const group of Array.isArray(mineData?.groups) ? mineData.groups : []) {
-                if (group?.id && group?.name) groupNames[group.id] = group.name;
+    let statusTab = 'active';
+    let filter = 'all';
+    let groupFilter = 'all';
+
+    const load = async () => {
+        renderLoading(contentDiv);
+        try {
+            const path = statusTab === 'completed'
+                ? '/server/api/reports/assigned?status=resolved'
+                : '/server/api/reports/assigned';
+            const { data, error } = await apiRequest(path);
+            if (error) throw error;
+            const reports = Array.isArray(data?.reports) ? data.reports : [];
+            const groupNames = {};
+            const groupIds = [...new Set(reports.map((report) => report.group_id).filter(Boolean))];
+            if (groupIds.length > 0) {
+                const { data: mineData } = await apiRequest('/server/api/groups/mine?limit=200');
+                for (const group of Array.isArray(mineData?.groups) ? mineData.groups : []) {
+                    if (group?.id && group?.name) groupNames[group.id] = group.name;
+                }
+                for (const groupId of groupIds) {
+                    if (groupNames[groupId]) continue;
+                    const { data: groupData } = await apiRequest(`/server/api/groups/${encodeURIComponent(groupId)}`);
+                    if (groupData?.group?.name) groupNames[groupId] = groupData.group.name;
+                }
             }
-            for (const groupId of groupIds) {
-                if (groupNames[groupId]) continue;
-                const { data: groupData } = await apiRequest(`/server/api/groups/${encodeURIComponent(groupId)}`);
-                if (groupData?.group?.name) groupNames[groupId] = groupData.group.name;
-            }
+            const draw = () => {
+                renderReportList(contentDiv, reports, {
+                    formatDate: formatModerationDate,
+                    filter,
+                    onFilterChange: (nextFilter) => {
+                        filter = nextFilter;
+                        draw();
+                    },
+                    groupFilter,
+                    groupNames,
+                    onGroupFilterChange: (nextFilter) => {
+                        groupFilter = nextFilter;
+                        draw();
+                    },
+                    statusTab,
+                    onStatusTabChange: (nextTab) => {
+                        if (nextTab === statusTab) return;
+                        statusTab = nextTab;
+                        filter = 'all';
+                        groupFilter = 'all';
+                        void load();
+                    },
+                    emptyMessage: statusTab === 'completed'
+                        ? t('admin.no_completed_requests')
+                        : t('admin.no_assigned_requests'),
+                });
+            };
+            draw();
+        } catch (error) {
+            console.error('リクエスト一覧の取得に失敗:', error);
+            renderError(contentDiv, t('admin.requests_load_failed'));
+        } finally {
+            showLoading(false);
         }
-        let filter = 'all';
-        let groupFilter = 'all';
-        const draw = () => {
-            renderReportList(contentDiv, reports, {
-                formatDate: formatModerationDate,
-                filter,
-                onFilterChange: (nextFilter) => {
-                    filter = nextFilter;
-                    draw();
-                },
-                groupFilter,
-                groupNames,
-                onGroupFilterChange: (nextFilter) => {
-                    groupFilter = nextFilter;
-                    draw();
-                },
-            });
-        };
-        draw();
-    } catch (error) {
-        console.error('リクエスト一覧の取得に失敗:', error);
-        renderError(contentDiv, t('admin.requests_load_failed'));
-    } finally {
-        showLoading(false);
-    }
+    };
+    await load();
 }
 
 export async function showAdminReportDetailScreen(reportId, showScreenFn = null) {
@@ -172,6 +186,10 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
         const report = data?.report;
         if (!report) throw new Error(t('admin.report_not_found'));
         const snapshot = report.target_snapshot || {};
+        const isCompleted = report.status === 'resolved';
+        const resolvedDateLine = isCompleted && (report.resolved_at || report.resolution?.handledAt)
+            ? `<p class="moderation-help-text nui-help-text">${escapeHTML(formatModerationDate(report.resolved_at || report.resolution.handledAt))}</p>`
+            : '';
 
         if (report.assignment_type === 'verification_application') {
             DOM.pageHeader.querySelector('#page-title').textContent = t('admin.review_verification_title');
@@ -187,6 +205,12 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                         <h3 class="nui-section-title">${t('admin.applicant')}</h3>
                         ${renderModerationSubject(snapshot.subjectUser)}
                     </section>
+                    ${isCompleted ? `
+                    <section class="moderation-review-section nui-section" data-nui="section">
+                        <h3 class="nui-section-title">${t('admin.resolution_result')}</h3>
+                        <div class="moderation-content-evidence">${escapeHTML(report.resolution?.verificationDecision === 'approved' ? t('admin.verification_approved') : t('admin.verification_rejected'))}</div>
+                        ${resolvedDateLine}
+                    </section>` : `
                     <section class="moderation-review-section nui-section" data-nui="section">
                         <h3 class="nui-section-title">${t('admin.decision')}</h3>
                         <p class="moderation-help-text nui-help-text">${t('admin.verification_approve_note')}</p>
@@ -195,7 +219,7 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                             <button type="button" class="delete-btn nui-button-danger" data-verification-decision="rejected">${t('admin.reject_button')}</button>
                         </div>
                         <p id="verification-decision-error" class="login-modal-message login-modal-error nui-help-text hidden" role="alert"></p>
-                    </section>
+                    </section>`}
                 </div>`;
 
             document.querySelectorAll('[data-verification-decision]').forEach((button) => {
@@ -255,6 +279,12 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                         <h3 class="nui-section-title">${t('admin.appeal_description')}</h3>
                         <div class="moderation-content-evidence">${escapeHTML(report.description || t('admin.no_description_attached'))}</div>
                     </section>
+                    ${isCompleted ? `
+                    <section class="moderation-review-section nui-section" data-nui="section">
+                        <h3 class="nui-section-title">${t('admin.resolution_result')}</h3>
+                        <div class="moderation-content-evidence">${escapeHTML(report.resolution?.appealDecision === 'approved' ? t('admin.appeal_approved') : t('admin.appeal_rejected'))}</div>
+                        ${resolvedDateLine}
+                    </section>` : `
                     <section class="moderation-review-section nui-section" data-nui="section">
                         <h3 class="nui-section-title">${t('admin.decision')}</h3>
                         <div class="moderation-form-actions nui-actions" id="appeal-decision-actions">
@@ -262,7 +292,7 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                             <button type="button" class="delete-btn nui-button-danger" data-appeal-decision="rejected">${t('admin.reject_button')}</button>
                         </div>
                         <p id="appeal-decision-error" class="login-modal-message login-modal-error nui-help-text hidden" role="alert"></p>
-                    </section>
+                    </section>`}
                 </div>`;
 
             document.querySelectorAll('[data-appeal-decision]').forEach((button) => {
@@ -337,6 +367,34 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                </section>`
             : '';
 
+        const reasonEntries = Array.isArray(report.reports) && report.reports.length > 0
+            ? report.reports
+            : [{ description: report.description || '', created_at: report.created_at || null }];
+        const reasonsSection = `
+                <section class="moderation-review-section nui-section" data-nui="section">
+                    <h3 class="nui-section-title">${t('admin.report_reason')}</h3>
+                    ${reasonEntries.map((entry) => `
+                    <div class="moderation-content-evidence">${escapeHTML(entry.description || t('admin.no_description_attached'))}</div>
+                    ${reasonEntries.length > 1 && entry.created_at ? `<p class="moderation-help-text nui-help-text">${escapeHTML(formatModerationDate(entry.created_at))}</p>` : ''}`).join('')}
+                </section>`;
+
+        const applied = report.resolution?.applied || {};
+        const resultLines = [];
+        if (applied.deletePost) resultLines.push(t('admin.action_delete_post'));
+        if (applied.maskPost) resultLines.push(t('admin.action_mask_post'));
+        if (applied.makePrivate) resultLines.push(t('admin.action_make_private'));
+        if (applied.searchExclude) resultLines.push(t('admin.action_search_exclude'));
+        if (applied.freeze) resultLines.push(t('admin.action_freeze_title'));
+        if (applied.notice) resultLines.push(t('admin.action_notice'));
+        if (report.resolution?.falseReport) resultLines.push(t('admin.resolution_false_report'));
+        if (resultLines.length === 0) resultLines.push(t('admin.resolution_no_action'));
+        const resultSection = `
+                <section class="moderation-review-section nui-section" data-nui="section">
+                    <h3 class="nui-section-title">${t('admin.resolution_result')}</h3>
+                    <div class="moderation-content-evidence">${resultLines.map((line) => escapeHTML(line)).join('<br>')}</div>
+                    ${resolvedDateLine}
+                </section>`;
+
         const evidence =
             isPost
                 ? `<div class="moderation-review-section nui-section" data-nui="section"><h3 class="nui-section-title">${t('admin.reported_post')}</h3>${renderModerationSubject(snapshot.subjectUser)}<div class="moderation-content-evidence">${moderationEvidenceText(snapshot.post?.content || '')}</div></div>`
@@ -394,12 +452,10 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                     ${groupName ? `<span class="admin-request-target">${escapeHTML(groupName)}</span>` : ''}
                     <span class="moderation-detail-head__meta">${t('admin.request_number', { id: Number(report.id) })}</span>
                 </header>
-                <section class="moderation-review-section nui-section" data-nui="section">
-                    <h3 class="nui-section-title">${t('admin.report_reason')}</h3>
-                    <div class="moderation-content-evidence">${escapeHTML(report.description || t('admin.no_description_attached'))}</div>
-                </section>
+                ${reasonsSection}
                 ${evidence}
                 ${postStateSection}
+                ${isCompleted ? resultSection : `
                 <section class="moderation-review-section moderation-review-section--actions nui-section" data-nui="section">
                     <h3 class="nui-section-title">${t('admin.response')}</h3>
                     <p class="moderation-help-text nui-help-text">${t('admin.response_hint')}</p>
@@ -414,7 +470,7 @@ export async function showAdminReportDetailScreen(reportId, showScreenFn = null)
                         <div class="moderation-form-actions nui-actions"><button type="submit" class="moderation-submit-button nui-button">${t('admin.complete_response')}</button></div>
                         <p id="moderation-resolution-error" class="login-modal-message login-modal-error nui-help-text hidden" role="alert"></p>
                     </form>
-                </section>
+                </section>`}
             </div>`;
 
         const form = document.getElementById('moderation-resolution-form');

@@ -4,12 +4,14 @@ import {
     handleCallEvent,
     leaveCall,
     callConnectionClosed,
+    callConnectionInterrupted,
+    callConnectionRestored,
 } from './callsCore.js';
 
 // The original call panel implementation lives in callsCore.js unchanged from
 // the first window UI. This wrapper keeps the tab route contract while letting
 // the original markup and logic render inside #call-content.
-export { handleCallEvent, leaveCall, callConnectionClosed };
+export { handleCallEvent, leaveCall, callConnectionClosed, callConnectionInterrupted, callConnectionRestored };
 
 const callHash = (kind, id) => `#call/${kind === 'stage' ? 'stage' : 'dm'}/${encodeURIComponent(String(id))}`;
 let mountedKey = null;

@@ -26,18 +26,6 @@ export function renderError(content, message, className = DEFAULT_CONTAINER_CLAS
     }
 }
 
-export function renderEmpty(content, message, className = DEFAULT_CONTAINER_CLASS) {
-    if (content) {
-        content.innerHTML = `
-            <div class="${className}">
-                <div class="admin-requests-empty">
-                    <span class="admin-requests-empty__icon" aria-hidden="true">${ICONS.user_check}</span>
-                    <p class="moderation-help-text nui-empty-text">${escapeHTML(message)}</p>
-                </div>
-            </div>`;
-    }
-}
-
 export function requestTypeMeta(report) {
     if (report?.assignment_type === 'freeze_appeal') {
         return { key: 'freeze_appeal', label: t('admin.freeze_appeal_badge'), tone: 'appeal', icon: ICONS.shield };
@@ -145,9 +133,11 @@ export function renderRequestCard(report, options = {}) {
     const meta = requestTypeMeta(report);
     const snapshot = report.target_snapshot || {};
     const subject = snapshot?.subjectUser || null;
-    const assignedAt = report.assigned_at || report.created_at;
+    const assignedAt = report.status === 'resolved'
+        ? (report.resolved_at || report.assigned_at || report.created_at)
+        : (report.assigned_at || report.created_at);
     const age = assignedAt ? now - new Date(assignedAt).getTime() : 0;
-    const overdue = Number.isFinite(age) && age >= OVERDUE_MS;
+    const overdue = report.status !== 'resolved' && Number.isFinite(age) && age >= OVERDUE_MS;
 
     const targetChip = meta.key === 'report'
         ? `<span class="admin-request-target">${escapeHTML(moderationTargetLabel(report.target_kind))}</span>`
@@ -203,6 +193,9 @@ export function renderReportList(content, reports, options = {}) {
         groupFilter = 'all',
         groupNames = {},
         onGroupFilterChange = null,
+        statusTab = 'active',
+        onStatusTabChange = null,
+        emptyMessage = null,
         now = Date.now(),
     } = options;
 
@@ -237,12 +230,24 @@ export function renderReportList(content, reports, options = {}) {
         .filter((report) => activeGroupFilter === 'all'
             || (activeGroupFilter === 'site' ? !report.group_id : report.group_id === activeGroupFilter));
 
+    const statusTabDefs = [
+        { key: 'active', label: t('admin.tab_active') },
+        { key: 'completed', label: t('admin.tab_completed') },
+    ];
+
     content.innerHTML = `
         <div class="admin-requests-container nui-page" data-nui="page">
+            ${typeof onStatusTabChange === 'function' ? `
+            <div class="admin-requests-filters nui-tabs" role="tablist" aria-label="${t('admin.filters_label')}" data-nui="tabs">
+                ${statusTabDefs.map((def) => `
+                    <button type="button" role="tab" aria-selected="${def.key === statusTab}" class="admin-requests-filter nui-tab${def.key === statusTab ? ' is-active' : ''}" data-status-tab="${def.key}">
+                        ${escapeHTML(def.label)}
+                    </button>`).join('')}
+            </div>` : ''}
             <div class="admin-requests-overview nui-card" data-nui="card">
                 <span class="admin-requests-overview__stat nui-stat">
                     <span class="admin-requests-overview__number">${reports.length}</span>
-                    <span class="admin-requests-overview__label">${t('admin.filter_pending')}</span>
+                    <span class="admin-requests-overview__label">${t(statusTab === 'completed' ? 'admin.tab_completed' : 'admin.filter_pending')}</span>
                 </span>
                 <p class="admin-requests-overview__hint nui-help-text">${t('admin.overview_hint')}</p>
             </div>
@@ -262,11 +267,16 @@ export function renderReportList(content, reports, options = {}) {
             </div>` : ''}
             <div class="admin-requests-list nui-list" data-nui="list">
                 ${visible.length === 0
-                    ? `<p class="moderation-help-text admin-requests-list__empty nui-empty-text">${t('admin.no_matching_requests')}</p>`
+                    ? `<p class="moderation-help-text admin-requests-list__empty nui-empty-text">${escapeHTML(emptyMessage || t('admin.no_matching_requests'))}</p>`
                     : visible.map((report) => renderRequestCard(report, { formatDate, now, groupNames })).join('')}
             </div>
         </div>`;
 
+    if (typeof onStatusTabChange === 'function') {
+        content.querySelectorAll('[data-status-tab]').forEach((button) => {
+            button.addEventListener('click', () => onStatusTabChange(button.dataset.statusTab));
+        });
+    }
     if (typeof onFilterChange === 'function') {
         content.querySelectorAll('[data-request-filter]').forEach((button) => {
             button.addEventListener('click', () => onFilterChange(button.dataset.requestFilter));

@@ -9,7 +9,7 @@ import { connectGuestRealtime, stopGuestRealtime, waitForRealtimeOpen } from './
 import { endStage, openStageManageModal } from './stageManage.js';
 
 // 複数の通話/ステージへ同時参加できるよう、状態はルームキー単位の record で持つ。
-// record = { key, session, panel, window, pending, activePersonTools, personToolsCloseTimer }
+// record = { key, session, panel, window, pending }
 // session は通話1件分のメディア/ロスター状態、panel は対応する dialog。
 const calls = new Map();
 const openingKeys = new Set();
@@ -160,6 +160,10 @@ function send(record, type, data = {}) {
 
 function status(message) {
     if (message) console.log(message);
+    for (const record of calls.values()) {
+        const element = record.panel?.querySelector('[data-call-status]');
+        if (element) element.textContent = message || '';
+    }
 }
 
 // Keep a live media node inside the document (but hidden) instead of detaching it.
@@ -185,6 +189,7 @@ function rerenderRoster(record) {
         remote.refreshVideo?.();
     }
     renderTranscripts(record);
+    renderPersonSheet(record);
 }
 
 function applyPersonPreferences(record) {
@@ -208,39 +213,6 @@ function applyPersonPreferences(record) {
     for (const message of panel.querySelectorAll('.call-message[data-user-id]')) message.hidden = Boolean(session.preferences[String(message.dataset.userId)]?.chatHidden);
 }
 
-function showContextMenu(record, x, y, panelId, userId = panelId) {
-    const session = record.session;
-    document.querySelector('.call-context-menu')?.remove();
-    const menu = document.createElement('div'); menu.className = 'call-context-menu'; menu.setAttribute('role', 'menu');
-    const prefs = { ...(session.preferences[String(panelId)] || {}), chatHidden: Boolean(session.preferences[String(userId)]?.chatHidden) };
-    const entries = [['mute', prefs.muted ? t('call.pref_unmute') : t('call.pref_mute')], ['camera', prefs.cameraHidden ? t('call.pref_show_video') : t('call.pref_hide_video')], ['chat', prefs.chatHidden ? t('call.pref_show_chat') : t('call.pref_hide_chat')], ['pin', prefs.pinned ? t('call.pref_unpin') : t('call.pref_pin')], ['hide', prefs.hidden ? t('call.pref_show') : t('call.pref_shelve')]];
-    if (session.role === 'host') {
-        const target = session.roster.find(person => String(person.user_id) === String(userId));
-        entries.push(['host-mute', t('call.host_mute')], ['host-camera', t('call.host_camera_off')], ['host-chat', t('call.host_chat_off')], ['host-pin', target?.force_pinned ? t('call.host_unpin') : t('call.host_pin')]);
-        if (target?.role === 'audience') entries.push(['host-promote', t('call.host_promote')]);
-        else if (target?.role === 'speaker') entries.push(['host-demote', t('call.host_demote')]);
-        entries.push(['host-kick', t('call.host_kick')]);
-    }
-    for (const [action, label] of entries) {
-        const button = document.createElement('button'); button.type = 'button'; button.setAttribute('role', 'menuitem'); button.textContent = label;
-        button.onclick = () => {
-            menu.remove();
-            if (action.startsWith('host-')) { void hostModerate(record, userId, action.slice(5)); return; }
-            const prefs = session.preferences[String(panelId)] ||= {};
-            if (action === 'mute') { prefs.muted = !prefs.muted; record.panel.querySelectorAll(`.call-person[data-panel-id="${CSS.escape(String(panelId))}"] video`).forEach(video => { video.muted = prefs.muted; }); }
-            if (action === 'camera') { prefs.cameraHidden = !prefs.cameraHidden; }
-            if (action === 'chat') { const chatPrefs = session.preferences[String(userId)] ||= {}; chatPrefs.chatHidden = !chatPrefs.chatHidden; record.panel.querySelectorAll(`.call-message[data-user-id="${CSS.escape(String(userId))}"]`).forEach(node => { node.hidden = chatPrefs.chatHidden; }); }
-            if (action === 'pin') { prefs.pinned = !prefs.pinned; prefs.hidden = false; }
-            if (action === 'hide') { prefs.hidden = !prefs.hidden; if (prefs.hidden) prefs.pinned = false; }
-            rerenderRoster(record);
-        };
-        menu.append(button);
-    }
-    document.body.append(menu); menu.style.left = `${Math.min(x, innerWidth - menu.offsetWidth - 8)}px`; menu.style.top = `${Math.min(y, innerHeight - menu.offsetHeight - 8)}px`;
-    const close = event => { if (!menu.contains(event.target)) { menu.remove(); document.removeEventListener('pointerdown', close, true); } };
-    setTimeout(() => document.addEventListener('pointerdown', close, true), 0);
-}
-
 async function hostModerate(record, userId, action) {
     const session = record.session;
     if (!session || session.role !== 'host') return;
@@ -249,6 +221,65 @@ async function hostModerate(record, userId, action) {
     try {
         send(record, 'call:moderate', { target: userId, action });
     } catch (error) { status(error.message); }
+}
+
+// 参加者への操作はシートに集約する。ホバーや右クリックには依存しない。
+function openPersonSheet(record, panelId, userId) {
+    const sheet = record.panel?.querySelector('[data-call-person-sheet]');
+    if (!sheet || !record.session) return;
+    sheet.dataset.panelId = String(panelId);
+    sheet.dataset.userId = String(userId);
+    sheet.hidden = false;
+    renderPersonSheet(record);
+}
+
+function closePersonSheet(record) {
+    const sheet = record.panel?.querySelector('[data-call-person-sheet]');
+    if (sheet) sheet.hidden = true;
+}
+
+function renderPersonSheet(record) {
+    const panel = record.panel;
+    const sheet = panel?.querySelector('[data-call-person-sheet]');
+    const session = record.session;
+    if (!sheet || sheet.hidden || !session) return;
+    const panelId = sheet.dataset.panelId;
+    const userId = sheet.dataset.userId;
+    const person = session.roster.find(entry => String(entry.user_id) === String(userId));
+    const isScreen = String(panelId).startsWith('screen:');
+    const isSelf = String(userId) === String(session.localUserId) && !isScreen;
+    if (!person && !isSelf) { closePersonSheet(record); return; }
+    const name = person ? (person.guest ? person.name : `@${person.name || t('call.participant_fallback')}`) : '';
+    sheet.querySelector('[data-sheet-name]').textContent = isScreen ? t('callview.share_screen_label') : name;
+    const prefs = { ...(session.preferences[String(panelId)] || {}), chatHidden: Boolean(session.preferences[String(userId)]?.chatHidden) };
+    const row = (attrs, label, active, danger = false) => `<button type="button" class="call-sheet-row${active ? ' is-active' : ''}${danger ? ' is-danger' : ''}" ${attrs}><span>${escapeHTML(label)}</span>${active !== null ? `<span class="call-sheet-state">${active ? t('callview.device_on') : t('callview.device_off')}</span>` : ''}</button>`;
+    const rows = [];
+    if (!isSelf) {
+        const volume = Math.round((Number.isFinite(prefs.volume) ? prefs.volume : 1) * 100);
+        rows.push(`<label class="call-sheet-volume"><span>${t('callview.volume')}</span><input type="range" min="0" max="200" step="5" value="${volume}" data-person-volume aria-label="${t('callview.person_volume_label', { name })}"></label>`);
+    }
+    rows.push(row('data-person-action="mute"', prefs.muted ? t('call.pref_unmute') : t('call.pref_mute'), Boolean(prefs.muted)));
+    rows.push(row('data-person-action="camera"', prefs.cameraHidden ? t('call.pref_show_video') : t('call.pref_hide_video'), Boolean(prefs.cameraHidden)));
+    rows.push(row('data-person-action="chat"', prefs.chatHidden ? t('call.pref_show_chat') : t('call.pref_hide_chat'), Boolean(prefs.chatHidden)));
+    rows.push(row('data-person-action="pin"', prefs.pinned ? t('call.pref_unpin') : t('call.pref_pin'), Boolean(prefs.pinned)));
+    rows.push(row('data-person-action="hide"', prefs.hidden ? t('call.pref_show') : t('call.pref_shelve'), Boolean(prefs.hidden)));
+    if (session.role === 'host' && person) {
+        if (isSelf) {
+            rows.push(row('data-host-action="pin"', person.force_pinned ? t('call.host_unpin') : t('call.host_pin'), Boolean(person.force_pinned)));
+        } else {
+            rows.push(row('data-host-action="mute"', t('call.host_mute'), Boolean(person.force_muted)));
+            rows.push(row('data-host-action="camera"', t('call.host_camera_off'), Boolean(person.force_camera_off)));
+            rows.push(row('data-host-action="chat"', t('call.host_chat_off'), Boolean(person.chat_disabled)));
+            rows.push(row('data-host-action="pin"', person.force_pinned ? t('call.host_unpin') : t('call.host_pin'), Boolean(person.force_pinned)));
+            if (person.role === 'audience') rows.push(row('data-host-action="promote"', t('call.host_promote'), null));
+            else if (person.role === 'speaker') rows.push(row('data-host-action="demote"', t('call.host_demote'), null));
+            rows.push(row('data-host-action="kick"', t('call.host_kick'), null, true));
+        }
+    }
+    const body = sheet.querySelector('[data-sheet-body]');
+    body.dataset.panelId = String(panelId);
+    body.dataset.userId = String(userId);
+    body.innerHTML = rows.join('');
 }
 
 function actionLabel(record, action, label, active = false) {
@@ -263,42 +294,6 @@ function actionLabel(record, action, label, active = false) {
     if (text) text.textContent = label;
 }
 
-function closePersonTools(record) {
-    clearTimeout(record.personToolsCloseTimer);
-    record.personToolsCloseTimer = null;
-    const active = record.activePersonTools;
-    if (!active) return;
-    record.activePersonTools = null;
-    const { card, tools } = active;
-    card.classList.remove('show-tools');
-    if (tools.matches(':popover-open')) tools.hidePopover();
-}
-
-function positionPersonTools(record) {
-    const active = record.activePersonTools;
-    if (!active) return;
-    const { card, tools } = active;
-    if (!card.isConnected || !record.panel?.open) { closePersonTools(record); return; }
-    const rect = card.getBoundingClientRect();
-    const menu = tools.getBoundingClientRect();
-    const fits = menu.width <= rect.width - 16 && menu.height <= rect.height - 16;
-    const left = fits ? rect.right - menu.width - 8 : rect.right - 8;
-    const top = fits ? rect.top + 8 : rect.top + 8 - menu.height;
-    tools.style.left = `${Math.max(8, Math.min(left, innerWidth - menu.width - 8))}px`;
-    tools.style.top = `${Math.max(8, Math.min(top, innerHeight - menu.height - 8))}px`;
-}
-
-function openPersonTools(record, card) {
-    clearTimeout(record.personToolsCloseTimer);
-    if (record.activePersonTools?.card === card) return;
-    closePersonTools(record);
-    const tools = card.querySelector('.call-person-tools');
-    if (!tools) return;
-    record.activePersonTools = { card, tools };
-    tools.showPopover();
-    positionPersonTools(record);
-}
-
 function createPanel(record) {
     if (record.panel) return record.panel;
     const panel = document.createElement('dialog');
@@ -306,31 +301,10 @@ function createPanel(record) {
     panel.className = 'call-panel';
     panel.setAttribute('aria-labelledby', `call-title-${record.uid}`);
     document.body.append(panel);
-    panel.addEventListener('pointerover', event => {
-        const card = event.target.closest('.call-person, .call-listeners li');
-        if (card) openPersonTools(record, card);
-    });
-    panel.addEventListener('pointerout', event => {
-        const card = event.target.closest('.call-person, .call-listeners li');
-        if (!card || card.contains(event.relatedTarget) || card.classList.contains('show-tools')) return;
-        record.personToolsCloseTimer = setTimeout(() => {
-            if (!card.contains(document.activeElement)) closePersonTools(record);
-        }, 120);
-    });
-    panel.addEventListener('focusin', event => {
-        const card = event.target.closest('.call-person, .call-listeners li');
-        if (card) openPersonTools(record, card);
-    });
-    panel.addEventListener('focusout', event => {
-        const card = event.target.closest('.call-person, .call-listeners li');
-        if (card && !card.contains(event.relatedTarget) && !card.matches(':hover') && !card.classList.contains('show-tools')) closePersonTools(record);
-    });
-    panel.addEventListener('scroll', () => positionPersonTools(record), true);
-    panel.addEventListener('close', () => closePersonTools(record));
-    panel.addEventListener('cancel', event => { event.preventDefault(); minimize(record); });
     panel.addEventListener('click', event => {
         const settingsDialog = panel.querySelector('[data-call-settings]');
         if (settingsDialog && !settingsDialog.hidden && event.target === settingsDialog) { setSettingsOpen(record, false); return; }
+        if (event.target.closest('[data-sheet-close]')) { closePersonSheet(record); return; }
         const personControl = event.target.closest('[data-person-action], [data-host-action]');
         if (personControl) {
             const card = personControl.closest('[data-user-id]');
@@ -340,6 +314,7 @@ function createPanel(record) {
             const panelId = card.dataset.panelId || id;
             if (personControl.dataset.hostAction) {
                 void hostModerate(record, id, personControl.dataset.hostAction);
+                renderPersonSheet(record);
                 return;
             }
             const prefs = session.preferences[panelId] ||= {};
@@ -373,16 +348,14 @@ function createPanel(record) {
             } else if (action === 'pin') { prefs.pinned = !prefs.pinned; prefs.hidden = false; rerenderRoster(record); }
             else if (action === 'hide') { prefs.hidden = !prefs.hidden; if (prefs.hidden) prefs.pinned = false; rerenderRoster(record); }
             else rerenderRoster(record);
+            renderPersonSheet(record);
             return;
         }
         const personCard = event.target.closest('.call-person, .call-listeners li');
         if (personCard && !event.target.closest('button, input, a')) {
-            personCard.classList.toggle('show-tools');
-            if (personCard.classList.contains('show-tools')) openPersonTools(record, personCard);
-            else closePersonTools(record);
+            if (record.session) openPersonSheet(record, personCard.dataset.panelId || personCard.dataset.userId, personCard.dataset.userId);
             return;
         }
-        if (!event.target.closest('.call-person-tools')) closePersonTools(record);
         const action = event.target.closest('[data-call-action]')?.dataset.callAction;
         if (!action) return;
         void perform(record, action).catch(error => {
@@ -413,15 +386,13 @@ function createPanel(record) {
         applyQuality(record, level);
     });
     panel.addEventListener('keydown', event => {
-        if (event.key !== 'Escape' || panel.querySelector('[data-call-settings]')?.hidden) return;
+        if (event.key !== 'Escape') return;
+        const sheet = panel.querySelector('[data-call-person-sheet]');
+        if (sheet && !sheet.hidden) { event.stopPropagation(); closePersonSheet(record); return; }
+        if (panel.querySelector('[data-call-settings]')?.hidden) return;
         event.stopPropagation();
         setSettingsOpen(record, false);
     }, true);
-    panel.addEventListener('contextmenu', event => {
-        const target = event.target.closest('[data-user-id], .call-message[data-user-id]');
-        if (!target || target.dataset.userId === String(record.session?.localUserId)) return;
-        event.preventDefault(); showContextMenu(record, event.clientX, event.clientY, target.dataset.panelId || target.dataset.userId, target.dataset.userId);
-    });
     panel.addEventListener('submit', event => {
         if (!event.target.matches('[data-call-chat]')) return;
         event.preventDefault();
@@ -466,7 +437,7 @@ export async function openCall(kind, id, options = {}) {
         ice: info.ice_servers || [], iceTransportPolicy: info.ice_transport_policy || 'all', bundlePolicy: info.bundle_policy || 'max-bundle', rtcpMuxPolicy: info.rtcp_mux_policy || 'require', peers: new Map(), roster: [], streams: new Map(),
         quality: 'middle', inputDevices: { audio: '', video: '' },
         local: typeof globalThis.MediaStream === 'function' ? new globalThis.MediaStream() : null, screen: null, joined: false, recognition: null, transcriptionEnabled: false, transcriptByUser: new Map(), screenShares: new Map(), captureVersion: 0 };
-    const record = { key, uid: ++panelSequence, session, panel: null, window: null, pending: null, activePersonTools: null, personToolsCloseTimer: null };
+    const record = { key, uid: ++panelSequence, session, panel: null, window: null, pending: null };
     const stacked = calls.size > 0;
     calls.set(key, record);
     const node = createPanel(record);
@@ -723,6 +694,41 @@ function sendState(record) {
 
 function hasActiveMicrophone(current) {
     return localTracks(current, 'audio').some(track => track.readyState === 'live' && track.enabled);
+}
+
+async function requestJoin(record) {
+    const current = record.session;
+    if (!current || record.pending || current.joined) return;
+    await waitForRealtimeOpen();
+    if (record.session !== current || record.pending || current.joined) return;
+    await new Promise((resolve, reject) => {
+        const id = `${Date.now()}-${++requestSequence}`;
+        const timeout = setTimeout(() => { if (record.pending?.id === id) { record.pending = null; try { send(record, 'call:leave'); } catch (_) {} reject(new Error(t('call.join_failed_retry'))); } }, 10000);
+        record.pending = { id, resolve: () => { clearTimeout(timeout); resolve(); }, reject: error => { clearTimeout(timeout); reject(error); } };
+        try { send(record, 'call:join', { request_id: id, muted: !hasActiveMicrophone(current), camera: localTracks(current, 'video').some(track => track.readyState === 'live' && track.enabled) }); }
+        catch (error) { record.pending.reject(error); record.pending = null; }
+    });
+}
+
+// 切断中はサーバー側の参加が外れているため、接続を作り直して参加し直す。
+// ローカルのマイク・カメラ・画面共有は保持され、新しい接続へ載せ直される。
+async function rejoinRecord(record) {
+    const session = record.session;
+    if (!session) return;
+    if (session.watching && !session.joined) {
+        send(record, 'call:watch');
+        return;
+    }
+    if (!session.joined) return;
+    for (const id of [...session.peers.keys()]) closePeer(record, id);
+    session.joined = false;
+    await requestJoin(record);
+    if (record.session !== session || !session.joined) return;
+    if (session.screen) {
+        try { send(record, 'call:screen', { active: true, stream_id: session.screen.id, track_id: session.screen.getVideoTracks()[0]?.id }); } catch (_) {}
+    }
+    sendState(record);
+    status('');
 }
 
 function startLocalTranscription(record, current) {
@@ -1457,17 +1463,8 @@ async function perform(record, action) {
         if (record.pending || current.joined) return;
         const button = panel.querySelector('[data-call-action="join"]');
         if (button) button.disabled = true;
-        try {
-            await waitForRealtimeOpen();
-            if (record.session !== current || record.pending || current.joined) return;
-            await new Promise((resolve, reject) => {
-                const id = `${Date.now()}-${++requestSequence}`;
-                const timeout = setTimeout(() => { if (record.pending?.id === id) { record.pending = null; try { send(record, 'call:leave'); } catch (_) {} reject(new Error(t('call.join_failed_retry'))); } }, 10000);
-                record.pending = { id, resolve: () => { clearTimeout(timeout); resolve(); }, reject: error => { clearTimeout(timeout); reject(error); } };
-                try { send(record, 'call:join', { request_id: id, muted: !hasActiveMicrophone(current), camera: localTracks(current, 'video').some(track => track.readyState === 'live' && track.enabled) }); }
-                catch (error) { record.pending.reject(error); record.pending = null; }
-            });
-        } finally { if (button?.isConnected) button.disabled = false; }
+        try { await requestJoin(record); }
+        finally { if (button?.isConnected) button.disabled = false; }
     } else if (action === 'share' && current.joined && current.role !== 'audience') {
         if (current.screen) { stopSharing(record); return; }
         if (!navigator.mediaDevices?.getDisplayMedia) throw new Error(t('call.share_unsupported'));
@@ -1528,7 +1525,7 @@ function closeRecord(record) {
     const leavingCallHash = leavingId
         ? `#call/${leavingKind === 'stage' ? 'stage' : 'dm'}/${encodeURIComponent(String(leavingId))}`
         : null;
-    closePersonTools(record);
+    closePersonSheet(record);
     record.stageEndController?.abort(); record.stageEndController = null;
     record.stageManage?.close(); record.stageManage = null;
     const wasJoining = Boolean(record.pending);
@@ -1575,5 +1572,41 @@ export function callConnectionClosed() {
     void showAppAlert(t('call.disconnected'));
 }
 
+// シグナリングが切れても通話は終わらせない。メディアと画面は保持し、
+// 再接続後に rejoinRecord で参加し直す。
+export function callConnectionInterrupted() {
+    for (const record of calls.values()) {
+        const session = record.session;
+        if (!session) continue;
+        if (record.pending) { record.pending.reject(new Error(t('call.disconnected'))); record.pending = null; }
+        if (session.joined || session.watching) {
+            session.reconnecting = true;
+            status(t('call.reconnecting'));
+        }
+    }
+}
+
+export function callConnectionRestored() {
+    for (const record of [...calls.values()]) {
+        const session = record.session;
+        if (!session?.reconnecting) continue;
+        session.reconnecting = false;
+        void rejoinRecord(record).catch(() => { if (record.session === session) status(t('call.disconnected')); });
+    }
+}
+
 window.addEventListener('pagehide', () => leaveCall());
-window.addEventListener('resize', () => { for (const record of calls.values()) positionPersonTools(record); });
+window.addEventListener('online', () => { if (calls.size) void waitForRealtimeOpen().catch(() => {}); });
+// バックグラウンドから戻ったら、切れた接続の回復を待たずに促す。
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !calls.size) return;
+    void waitForRealtimeOpen().catch(() => {});
+    for (const record of calls.values()) {
+        for (const peer of record.session?.peers.values() || []) {
+            const state = peer.pc.iceConnectionState;
+            if ((state === 'failed' || state === 'disconnected') && typeof peer.pc.restartIce === 'function') {
+                try { peer.pc.restartIce(); } catch (_) {}
+            }
+        }
+    }
+});

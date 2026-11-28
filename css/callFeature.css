@@ -165,6 +165,10 @@
     .stage-dialog-header { padding: 16px; }
     .stage-dialog-body { padding: 16px; gap: 20px; }
     .stage-dialog-footer { padding: 12px 16px; }
+    .stage-join-row [data-stage-join] { flex: 1 1 100%; min-height: 52px; font-size: 1rem; }
+    .stage-join-row [data-stage-share] { flex: 1 1 auto; min-width: 0; min-height: 48px; }
+    .stage-manage-open { min-height: 48px; }
+    .stage-list-link { padding: 18px 16px; }
 }
 .call-panel { font-family: inherit; }
 .call-panel [hidden] { display: none !important; }
@@ -204,6 +208,24 @@
 .call-panel-body { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: auto; background: var(--bg-color); }
 .call-status { flex-shrink: 0; margin: 0; padding: 12px 24px; color: var(--text-color); background: var(--main-bg-color); border-bottom: 1px solid var(--border-color); font-size: .85rem; line-height: 1.6; }
 .call-status:empty { display: none; }
+.call-person-sheet { position: absolute; inset: 0; z-index: 130; }
+.call-person-sheet[hidden] { display: none; }
+.call-sheet-backdrop { position: absolute; inset: 0; background: rgb(0 0 0 / 38%); }
+.call-sheet-card { position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%; overflow-y: auto; border-radius: 16px 16px 0 0; background: var(--main-bg-color); color: var(--text-color); box-shadow: 0 -10px 32px rgb(0 0 0 / 28%); padding-bottom: env(safe-area-inset-bottom); }
+.call-sheet-header { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border-color); background: var(--main-bg-color); }
+.call-sheet-header h3 { margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.call-sheet-close { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 auto; border: 0; border-radius: 50%; background: transparent; color: var(--secondary-text-color); cursor: pointer; }
+.call-sheet-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; }
+.call-sheet-body { display: grid; gap: 2px; padding: 8px; }
+.call-sheet-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; padding: 10px 12px; box-sizing: border-box; border: 0; border-radius: 10px; background: transparent; color: var(--text-color); font-size: .92rem; text-align: left; cursor: pointer; }
+.call-sheet-row:hover { background: var(--bg-color); }
+.call-sheet-row .call-sheet-state { color: var(--secondary-text-color); font-size: .8rem; }
+.call-sheet-row.is-danger { color: #d24850; }
+.call-sheet-volume { display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 10px 12px; box-sizing: border-box; font-size: .92rem; }
+.call-sheet-volume input { flex: 1; height: 28px; accent-color: var(--primary-color); }
+@media (min-width: 760px) {
+    .call-sheet-card { left: auto; right: 16px; bottom: 16px; width: min(420px, calc(100% - 32px)); border-radius: 16px; }
+}
 .call-waiting { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 180px; margin: auto; padding: 32px; text-align: center; }
 .call-guest-chat-note { margin: 8px 12px; color: var(--secondary-text-color); font-size: .78rem; }
 .call-waiting h3 { margin: 0; font-size: 1rem; font-weight: 500; color: var(--secondary-text-color); }
@@ -248,7 +270,7 @@
 .call-secondary-participants, .call-listeners { flex: 1 1 0; min-width: 0; min-height: 0; overflow: auto; padding: 6px 8px; }
 .call-secondary-participants ul, .call-listeners ul { display: flex; flex-wrap: nowrap; gap: 10px; width: 100%; overflow: auto; list-style: none; margin: 0; padding: 0; }
 .call-secondary-participants .call-person { flex: 0 0 112px; min-height: 64px; height: 64px; padding: 0; border: 0; border-radius: 10px; }
-.call-secondary-participants .call-person > :not(.call-person-avatar):not(.call-person-caption):not(.call-person-tools) { display: none; }
+.call-secondary-participants .call-person > :not(.call-person-avatar):not(.call-person-caption) { display: none; }
 .call-secondary-participants .call-person-avatar { position: absolute; inset: 4px auto 4px 5px; display: grid; place-items: center; width: 36px; }
 .call-secondary-participants .call-person-avatar > .call-avatar { width: 100%; height: auto; aspect-ratio: 1; }
 .call-secondary-participants .call-person-caption { right: 3px; bottom: 3px; left: 44px; max-width: calc(100% - 47px); justify-content: center; padding: 3px 5px; }
@@ -312,29 +334,6 @@
 .call-listener-name { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
 .call-listeners li[data-hidden-by-me="true"] { display: none !important; }
 .call-person[data-person-camera-hidden="true"] .call-person-camera, .call-person[data-person-camera-hidden="true"] .call-local-tile { display: none !important; }
-.call-person-tools { position: fixed; z-index: 9999; inset: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; width: max-content; max-width: calc(100vw - 24px); margin: 0; padding: 4px 6px; box-sizing: border-box; border: 1px solid rgb(255 255 255 / 10%); border-radius: 12px; background: rgb(12 14 17 / 58%); backdrop-filter: blur(10px); opacity: 0; pointer-events: none; overflow: visible; transition: opacity .14s ease; }
-.call-person-tools::-webkit-scrollbar { display: none; }
-.call-person-tools:popover-open, .call-person-tools:hover, .call-person-tools:focus-within { opacity: 1; pointer-events: auto; }
-.call-person-tools[popover]:not(:popover-open) { display: none; }
-.call-person:hover, .call-person:focus-within, .call-person.show-tools, .call-listeners li:hover, .call-listeners li:focus-within, .call-listeners li.show-tools { position: relative; z-index: 1000; }
-.call-person:hover .call-person-tools, .call-person:focus-within .call-person-tools, .call-person-tools:focus-within, .call-listeners li:hover .call-person-tools, .call-listeners li:focus-within .call-person-tools { opacity: 1; pointer-events: auto; }
-.call-person.show-tools .call-person-tools, .call-listeners li.show-tools .call-person-tools { opacity: 1; pointer-events: auto; }
-.call-person-tools:hover, .call-person-tools:focus-within { opacity: 1; pointer-events: auto; }
-.call-person-tools button { position: relative; display: grid; place-items: center; width: 26px; height: 26px; padding: 3px; border: 0; border-radius: 7px; background: transparent; color: white; cursor: pointer; flex: 0 0 auto; }
-.call-person-tools button:hover { background: rgb(255 255 255 / 16%); }
-.call-person-tools button.is-active { background: color-mix(in srgb, var(--primary-color) 28%, transparent); color: var(--primary-color); }
-.call-person-tools button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; }
-.call-person-tools .call-tool-user { position: absolute; right: 1px; bottom: 1px; display: grid; place-items: center; width: 10px; height: 10px; padding: 1px; border-radius: 50%; background: transparent; color: white; pointer-events: none; z-index: 1; }
-.call-person-tools .call-tool-user svg { width: 8px; height: 8px; display: block; fill: none; stroke: currentColor; stroke-width: 2; }
-.call-volume-control { display: flex; align-items: center; gap: 4px; color: white; }
-.call-volume-control input { width: 52px; height: 14px; accent-color: var(--primary-color); }
-.call-host-tools { display: flex; gap: 2px; padding-left: 4px; border-left: 1px solid rgb(255 255 255 / 25%); }
-.call-host-tools button { color: white; }
-.call-host-tools button.is-active { color: var(--primary-color); }
-.call-slash { position: absolute; width: 19px; height: 2px; border-radius: 2px; background: currentColor; transform: rotate(-45deg); }
-.call-context-menu { position: fixed; z-index: 3000; min-width: 210px; padding: 6px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--main-bg-color); box-shadow: 0 8px 28px rgb(0 0 0 / 28%); }
-.call-context-menu button { display: block; width: 100%; padding: 9px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--text-color); text-align: left; cursor: pointer; }
-.call-context-menu button:hover { background: var(--bg-color); }
 .call-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 0 20px 16px; border-left: 1px solid var(--border-color); background: var(--main-bg-color); }
 .call-chat > header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; min-height: 60px; }
 .call-chat h3 { margin: 0; font-size: .85rem; }
@@ -402,9 +401,8 @@
     .call-window-icon { width: 32px; height: 32px; border-radius: 8px; }
     .call-prejoin { gap: 20px; padding: 24px; }
     .call-prejoin-preview { aspect-ratio: 16 / 10; max-height: 280px; }
-    .call-room { display: flex; flex-direction: column; }
-    .call-panel[data-chat-open="true"] .call-room > .call-stage-area { display: none; }
-    .call-panel[data-chat-open="true"] .call-chat { flex: 1; border: 0; }
+    .call-room { display: flex; flex-direction: column; position: relative; }
+    .call-panel[data-chat-open="true"] .call-chat { position: absolute; inset: auto 0 0 0; z-index: 40; height: min(72%, 560px); border-left: 0; border-top: 1px solid var(--border-color); border-radius: 16px 16px 0 0; box-shadow: 0 -10px 32px rgb(0 0 0 / 24%); padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
     .call-stage-area { flex: 1; }
     .call-person { min-height: 150px; padding: 16px 8px 12px; gap: 10px; }
     .call-participants [data-call-roster] { grid-template-columns: repeat(auto-fit, minmax(min(100%, 135px), 1fr)); grid-auto-rows: minmax(150px, 1fr); max-height: min(62dvh, 520px); gap: 8px; }
@@ -412,10 +410,11 @@
     .call-panel-footer { gap: 8px; padding: 10px 12px; }
     .call-device-controls, .call-tools, .call-footer-actions { gap: 6px; }
     .call-tools { padding-left: 8px; }
-    .call-footer-devices .call-device-toggle { width: 36px; min-height: 40px; }
-        .call-tool-button { min-width: 36px; padding: 4px; }
-    .call-tool-button > span { display: none; }
-    .call-leave-button { padding: 0 12px; }
+    .call-footer-devices .call-device-toggle { width: 48px; min-height: 48px; }
+    .call-tool-button { min-width: 52px; min-height: 52px; padding: 6px 4px; }
+    .call-tool-button > span { font-size: .68rem; }
+    .call-leave-button { min-height: 48px; padding: 0 14px; }
+    .call-prejoin .call-device-toggle { min-height: 48px; }
 }
 
 /* ==========================================================================
@@ -586,14 +585,6 @@ body[data-active-screen='call-screen'] #right-sidebar {
     height: 18px;
     fill: none;
     stroke: currentColor;
-}
-
-/* 通話パネルの右クリメニューは body 直下に fixed 配置され、座標に
-   event.clientX/Y (視覚座標) をそのまま使う。html の zoom で描画時に
-   0.8 倍されるため、メニュー自身を逆スケールして位置と大きさを1:1に戻す。 */
-#call-content ~ .call-context-menu,
-body > .call-context-menu {
-    zoom: calc(1 / var(--app-scale, 1));
 }
 
 /* 初代の portrait 中パネルは参加者グリッドを2列固定にしていたため、

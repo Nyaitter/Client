@@ -354,12 +354,28 @@ export function setupTimelinePullToRefresh(onRefresh) {
         return false;
     };
 
-    const canStartPull = (target) => {
+    // Shadow DOM の中でスクロールするコンポーネントは、document からは
+    // 内部のスクロール位置が見えない。ジェスチャの経路がホスト要素に届く前に
+    // スクロール領域を通る場合は、そのコンポーネント側のスクロールを優先する。
+    const startsInComponentScroller = (event, host) => {
+        if (!event || typeof event.composedPath !== 'function') return false;
+        for (const node of event.composedPath()) {
+            if (node === host) break;
+            if (!(node instanceof HTMLElement)) continue;
+            const style = getComputedStyle(node);
+            if (['auto', 'scroll', 'overlay'].includes(style.overflowY)
+                && node.scrollHeight - node.clientHeight > 1) return true;
+        }
+        return false;
+    };
+
+    const canStartPull = (target, event) => {
         if (window.scrollY > 0) return false;
         if (!getActivePullToRefreshContext()) return false;
         if (target && target.closest('.modal-overlay:not(.hidden), textarea, input[type="text"], input[type="search"]')) {
             return false;
         }
+        if (target && startsInComponentScroller(event, target)) return false;
         // 会話・一覧などの内部スクロールをPTRより優先する。
         if (target && hasScrollableAncestor(target)) return false;
         return true;
@@ -428,7 +444,7 @@ export function setupTimelinePullToRefresh(onRefresh) {
         if (refreshInProgress || !isPullToRefreshTouchCapable()) return;
         const target = event.target instanceof Element ? event.target : null;
         const touch = event.touches[0];
-        if (!target || !touch || !canStartPull(target)) return;
+        if (!target || !touch || !canStartPull(target, event)) return;
         startX = touch.clientX;
         startY = touch.clientY;
         startScrollY = Math.max(0, window.scrollY || 0);
